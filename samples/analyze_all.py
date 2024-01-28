@@ -9,11 +9,11 @@ sample_source_apps = {
     "sample_repos/helloworld-mdb": "helloworld-mdb",
     "sample_repos/kitchensink": "kitchensink",
     "sample_repos/ticket-monster": "ticket-monster",
-    "sample_repos/jboss-eap-quickstarts/bmt-to-quarkus": "bmt-to-quarkus",
-    "sample_repos/jboss-eap-quickstarts/cmt-to-quarkus": "cmt-to-quarkus",
-    "sample_repos/jboss-eap-quickstarts/ejb-remote-to-quarkus-rest": "ejb-remote-to-quarkus-rest",
-    "sample_repos/jboss-eap-quickstarts/ejb-security-to-quarkus-basic-elytron": "ejb-security-to-quarkus-basic-elytron",
-    "sample_repos/jboss-eap-quickstarts/tasks-qute": "tasks-qute",
+    "sample_repos/jboss-eap-quickstarts/bmt": "bmt",
+    "sample_repos/jboss-eap-quickstarts/cmt": "cmt",
+    "sample_repos/jboss-eap-quickstarts/ejb-remote": "ejb-remote",
+    "sample_repos/jboss-eap-quickstarts/ejb-security": "ejb-security",
+    "sample_repos/jboss-eap-quickstarts/tasks-jsf": "tasks-jsf",
 }
 
 
