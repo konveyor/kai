@@ -32,6 +32,8 @@ For example, [analyzer-lsp Rules](https://github.com/konveyor/analyzer-lsp/blob/
 1. `./analyze_coolstore.sh` # Analyzes 'eap-coolstore-monolith' directory and writes an analysis output to [analysis_reports/eap-coolstore-monolith/output.yaml](/samples/analysis_reports/eap-coolstore-monolith/output.yaml)
    - There are a few other scripts in this directory to analyze other samples
 
+We plan to keep latest versions of static code analyis committed to this repo in [samples/analysis_reports](samples/analysis_reports)
+
 ## Contributing
 
 ### Linting
