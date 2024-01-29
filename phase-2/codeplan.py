@@ -27,21 +27,21 @@ class Change:
 
 
 @dataclass
-class TemporalContext:
+class TemporalContext: 
   previous_changes: list[Change]
 
 
 @dataclass
-class SpatialContext:
+class SpatialContext: 
   file_before_change: str
 
 
 @dataclass
-class CausalContext:
+class CausalContext: 
   cause: str
   description: str
-
-
+  
+  
 @dataclass
 class Seed:
   """
@@ -61,7 +61,7 @@ class CodePlanContext:
   language_server: LanguageServer
   repository: str
   tree_sitter_language: Language
-
+  
   gumtree_path: str
   tree_sitter_parser_path: str
 
@@ -74,15 +74,15 @@ def gumtree_diff(context: CodePlanContext, old_file: str, new_file: str):
   env = os.environ.copy()
   env['PATH'] = context.tree_sitter_parser_path + ':' + os.environ.get('PATH')
   result = subprocess.run(
-    [context.gumtree_path, 'textdiff', old_file, new_file, '-g', 'java-treesitter', '-f', 'JSON'],
-    stdout=subprocess.PIPE,
+    [context.gumtree_path, 'textdiff', old_file, new_file, '-g', 'java-treesitter', '-f', 'JSON'], 
+    stdout=subprocess.PIPE, 
     env=env
   )
-
+  
   actions = json.loads(result.stdout)['actions']
 
   # update-node
-
+  
 
 def run_codeplan(context: CodePlanContext, initial_change: Change) -> list[Diff]:
   # context = CodePlanContext(
@@ -90,7 +90,7 @@ def run_codeplan(context: CodePlanContext, initial_change: Change) -> list[Diff]
     # repository=,
     # tree_sitter_language=,
   # )
-
+  
   seeds = seeds_from_change(context, initial_change, TemporalContext())
   diffs: list[Diff] = []
   while len(seeds) > 0:
@@ -99,7 +99,7 @@ def run_codeplan(context: CodePlanContext, initial_change: Change) -> list[Diff]
     diffs.append(diff)
 
   # Reverse the changes to the filesystem
-
+  
 
 def seeds_from_change(context: CodePlanContext, change: Change, temporal_context: TemporalContext) -> list[Seed]:
   classification = classify_change(context, change.diff)
@@ -108,11 +108,11 @@ def seeds_from_change(context: CodePlanContext, change: Change, temporal_context
   temporal_context.previous_changes.append(change)
   for block in affected_blocks:
     block.temporal = temporal_context
-
+  
   success = merge(context, change.diff)
   if not success:
     raise Exception(":( [get_initial_seeds: Couldn't merge change]")
-
+  
   return affected_blocks + oracle(context)
 
 
@@ -133,7 +133,7 @@ def classify_change(context: CodePlanContext, diff: Diff) -> Classification:
   change, use Gumtree to find the differences (additions, modifications,
   deletions, and movings), and classify based on that.
   """
-
+  
   # Apply the diff to a temp file?
 
   return Classification('Because I said so')
