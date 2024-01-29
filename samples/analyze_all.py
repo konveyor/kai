@@ -6,9 +6,9 @@ import sys
 
 sample_source_apps = {
     "sample_repos/eap-coolstore-monolith": "eap-coolstore-monolith",
-    "sample_repos/helloworld-mdb": "helloworld-mdb",
-    "sample_repos/kitchensink": "kitchensink",
     "sample_repos/ticket-monster": "ticket-monster",
+    "sample_repos/jboss-eap-quickstarts/kitchensink": "kitchensink",
+    "sample_repos/jboss-eap-quickstarts/helloworld-mdb": "helloworld-mdb",
     "sample_repos/jboss-eap-quickstarts/bmt": "bmt",
     "sample_repos/jboss-eap-quickstarts/cmt": "cmt",
     "sample_repos/jboss-eap-quickstarts/ejb-remote": "ejb-remote",

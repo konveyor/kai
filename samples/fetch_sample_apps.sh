@@ -17,7 +17,10 @@ cd ..
 ########## https://github.com/tqvarnst/jboss-eap-quickstarts/tree/quarkus-3.2/kitchensink
 ## https://github.com/tqvarnst/jboss-eap-quickstarts/tree/quarkus-3.2
 # We will soon copy the below kitchensink example to Chris repo at: https://github.com/christophermay07/quarkus-migrations
-git clone https://github.com/tqvarnst/jboss-eap-quickstarts.git kitchensink
+git clone https://github.com/tqvarnst/jboss-eap-quickstarts.git kitchensink-quarkus
+cd kitchensink-quarkus || exit
+git checkout quarkus-3.2
+cd ..
 
 # Ticket Monster
 # 'master' is original Java EE
@@ -30,11 +33,15 @@ git clone https://github.com/jboss-developer/jboss-eap-quickstarts
 cd jboss-eap-quickstarts || exit
 git checkout 7.4.x
 cd ..
+
 # 'main' is the branch we will use for the quarkus migration
 git clone https://github.com/christophermay07/quarkus-migrations jboss-eap-quickstarts-quarkus
 
 # HelloWorld MDB
 #  This started from: https://github.com/jboss-developer/jboss-eap-quickstarts/tree/7.4.x/helloworld-mdb/src/main/java/org/jboss/as/quickstarts/mdb
-git clone https://github.com/savitharaghunathan/helloworld-mdb.git
+git clone https://github.com/savitharaghunathan/helloworld-mdb.git helloworld-mdb-quarkus
+cd helloworld-mdb-quarkus || exit
+git checkout quarkus
+cd ..
 
 popd || exit
