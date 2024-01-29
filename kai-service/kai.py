@@ -1,30 +1,42 @@
 #!/usr/bin/python3
 
-import aiohttp
+"""This module is intended to facilitate using Konveyor with LLMs."""
+
+import os
 import warnings
+import aiohttp
 import yaml
 
 from aiohttp import web
 
 def load_config():
-    with open("/usr/local/etc/kai.conf", "r") as stream:
+    """Load the configuration from a yaml conf file."""
+    config = "/usr/local/etc/kai.conf"
+    if os.environ.get('KAI_CONFIG'):
+        config = os.environ.get('KAI_CONFIG')
+
+    with open(config, "r", encoding="utf-8") as stream:
         try:
             return yaml.safe_load(stream)
         except yaml.YAMLError as exc:
             print(exc)
+            return None
 
 def load_templates():
+    """Get model templates from the loaded configuration."""
     return load_config()['model_templates']
 
 def load_template(model_name):
+    """Loads the requested template."""
     model_templates = load_templates()
     if model_name in model_templates:
         return model_templates[model_name]
-    else:
-        warnings.warn("Warning: Model not found, using default (first) model from kai.conf")
-        return list(model_templates.items())[0][1]
+
+    warnings.warn("Warning: Model not found, using default (first) model from kai.conf")
+    return list(model_templates.items())[0][1]
 
 async def generate_prompt(request):
+    """Generates a prompt based on input using the specified template."""
     try:
         data = await request.json()
 
@@ -51,6 +63,7 @@ async def generate_prompt(request):
         return web.json_response({'error': str(e)}, status=400)
 
 async def proxy_handler(request):
+    """Proxies a streaming request to an LLM."""
     upstream_url = request.query.get('upstream_url')
 
     if not upstream_url:
@@ -76,12 +89,12 @@ async def proxy_handler(request):
 
                     await response.write_eof()
                     return response
-                else:
-                    return web.Response(
-                        status=upstream_response.status,
-                        text=await upstream_response.text(),
-                        headers=upstream_response.headers
-                    )
+
+                return web.Response(
+                    status=upstream_response.status,
+                    text=await upstream_response.text(),
+                    headers=upstream_response.headers
+                )
         except aiohttp.ClientError as e:
             return web.Response(status=500, text=f"Error connecting to upstream service: {str(e)}")
 
