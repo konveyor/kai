@@ -1,24 +1,27 @@
 __version__ = "0.0.1"
 
+from typing import List, Optional
+
 import typer
 from typing_extensions import Annotated
-from typing import Optional, List
 
+from kai.incident_store import IncidentStore
 from kai.report import Report
 from kai.result import LLMResult
 
 app = typer.Typer()
 
-#report_app = typer.Typer()
-#result_app = typer.Typer()
+# report_app = typer.Typer()
+# result_app = typer.Typer()
 
-#app.add_typer(report_app, name="report", help="Generate a markdown report from a raw analysis yaml.")
-#app.add_typer(result_app, name="result", help="Generate patches for given violations and incidents from an analysis yaml")
+# app.add_typer(report_app, name="report", help="Generate a markdown report from a raw analysis yaml.")
+# app.add_typer(result_app, name="result", help="Generate patches for given violations and incidents from an analysis yaml")
+
 
 @app.command()
 def report(analysis_path: str, output_dir: str):
     """
-    Generate a Markdown report of a given analysis 
+    Generate a Markdown report of a given analysis
     YAML to be read by a human
     """
     report = Report(analysis_path)
@@ -26,13 +29,19 @@ def report(analysis_path: str, output_dir: str):
     print(f"We have results from {len(r.keys())} RuleSet(s) in {analysis_path}\n")
     report.write_markdown(output_dir)
 
+
 @app.command()
-def generate(path_to_report: str, path_to_source: str, example_initial_branch: str,
-             example_solved_branch: str, path_to_output: str,
-             limit_rulesets: Annotated[List[str], typer.Option("--ruleset", "-r")] = None,
-             limit_violations: Annotated[List[str], typer.Option("--violation", "-v")] = None,
-             model: Annotated[str, typer.Option("--model", "-m")] = "gpt-3.5-turbo-16k"):
-             #model: Annotated[Optional[str], typer.Argument()] = "gpt-3.5-turbo-16k"):
+def generate(
+    path_to_report: str,
+    path_to_source: str,
+    example_initial_branch: str,
+    example_solved_branch: str,
+    path_to_output: str,
+    limit_rulesets: Annotated[List[str], typer.Option("--ruleset", "-r")] = None,
+    limit_violations: Annotated[List[str], typer.Option("--violation", "-v")] = None,
+    model: Annotated[str, typer.Option("--model", "-m")] = "gpt-3.5-turbo-16k",
+):
+    # model: Annotated[Optional[str], typer.Argument()] = "gpt-3.5-turbo-16k"):
     """
     Generate patches for given violations and incidents from an analysis yaml report
 
@@ -52,15 +61,30 @@ def generate(path_to_report: str, path_to_source: str, example_initial_branch: s
 
     - model: Model name to use for generating the patches (defaults to 'gpt-3.5-turbo-16k', 'gpt-4-1106-preview' is another good option)
     """
-    print(f'Generating patches for {path_to_report} for example app at {path_to_source}')
-    print(f'Initial branch: {example_initial_branch}')
-    print(f'Solved branch: {example_solved_branch}')
-    print(f'Output directory: {path_to_output}')
-    print(f'Model: {model}')
-    print(f'Limit to ruleset(s): {limit_rulesets}')
-    print(f'Limit to violation(s): {limit_violations}')
+    print(
+        f"Generating patches for {path_to_report} for example app at {path_to_source}"
+    )
+    print(f"Initial branch: {example_initial_branch}")
+    print(f"Solved branch: {example_solved_branch}")
+    print(f"Output directory: {path_to_output}")
+    print(f"Model: {model}")
+    print(f"Limit to ruleset(s): {limit_rulesets}")
+    print(f"Limit to violation(s): {limit_violations}")
 
     llmResult = LLMResult(path_to_source, example_initial_branch, example_solved_branch)
     llmResult.parse_report(path_to_report)
     llmResult.process(path_to_output, model, limit_rulesets, limit_violations)
-    print(f'Completed processing, output written to {path_to_output}\n')
+    print(f"Completed processing, output written to {path_to_output}\n")
+
+
+@app.command()
+def load(apps: list):
+    """
+    Load the incident store with the given applications
+    write the cached_violations to a file for later use
+    """
+    incident_store = IncidentStore()
+    print(f"Loading incident store with {len(apps)} applications\n")
+    cached_violations = incident_store.load_app_cached_violation(apps)
+    print(f"Writing cached_violations")
+    incident_store.write_cached_violations(cached_violations)
