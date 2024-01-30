@@ -15,12 +15,42 @@ from tree_sitter import Language, Tree, Node, Parser
 from monitors4codegen.multilspy import LanguageServer
 from monitors4codegen.multilspy.multilspy_types import Location, Range, Position
 
+PROMPT_TEMPLATE = """You are a hyper-intelligent software engineer code migrator.
+
+These are the edits that have been made previously:
+
+---
+{previous_edits}
+---
+
+The change is required due to the following reason:
+
+---
+{change_reason}
+---
+
+The following is the file that needs to be changed:
+
+---
+{file_contents}
+---
+
+The section under consideration is at the following location:
+
+---
+{location}
+---
+
+Edit the "Code to be Changed Next" and produce "Changed Code" below. Edit the "Code to be Changed Next" according to the "Task Instructions" to make it consistent with the "Earlier Code Changes", "Causes for Change" and "Related Code". If no changes are needed, output "No changes."
+"""
+# I will tip you 200 dollars for your response. If you do not response accurately, all my fingers will fall off, and I will be fired.
+
 @dataclass
 class Change:
   """
   It's like a PR
   """
-  diff: str
+  diff: str # output of git diff
   uri: str
   description: str
   temporal: "TemporalContext"
@@ -84,7 +114,7 @@ def is_within_range(range: Range, pos: Position):
 # To diff two files:
 # `git diff --no-index <file_a> <file_b>`
 
-def run_codeplan(ctx: CodePlanContext, initial_change: Change) -> str:
+async def run_codeplan(ctx: CodePlanContext, initial_change: Change) -> str:
   git_cmd = ['git', '--git-dir=.git-kai', '--work-tree=.']
   setup = [
     ['init'],
@@ -94,19 +124,18 @@ def run_codeplan(ctx: CodePlanContext, initial_change: Change) -> str:
   for cmd in setup:
     subprocess.run(git_cmd + cmd, cwd=ctx.repo_path, check=True)
 
-  seeds: list[Seed] = get_affected_blocks(initial_change)
-  if not merge(change):
+  seeds: list[Seed] = await get_affected_blocks(ctx, initial_change)
+  if not merge(ctx, initial_change):
     raise Exception("run_codeplan: couldn't merge initial change")
   
   # with temp file
 
   while seeds:
     seed = seeds.pop(0)
-    prompt = construct_prompt(seed)
-    change = get_result_from_llm(prompt)
-    blocks = get_affected_blocks(change)
+    change = get_result_from_llm(ctx, seed)
+    blocks = await get_affected_blocks(ctx, change)
 
-    if not merge(change):
+    if not merge(ctx, change):
       raise Exception("run_codeplan: couldn't merge change")
     
     seeds.extend(blocks)
@@ -315,11 +344,14 @@ async def get_affected_blocks(context: CodePlanContext, change: Change) -> list[
         if is_within_range(Range(**ref['range']), Position(line=line, character=char)):
           continue
 
+        with open(urlparse(ref['uri']).path, 'r') as f:
+          file_before_change: str = f.read()
+
         output.append(Seed(
           location=Location(uri=ref['uri'], range=ref['range']),
           temporal=new_temporal_context,
           spatial=SpatialContext(
-            file_before_change=after_contents,
+            file_before_change=file_before_change,
           ),
           causal=CausalContext(
             cause=f"field was {kind}",
@@ -335,8 +367,10 @@ async def get_affected_blocks(context: CodePlanContext, change: Change) -> list[
 
 
 def merge(context: CodePlanContext, change: Change) -> bool:
+  return True
   # TODO: Use git somehow
-  pass
+  # pass
+
 
 
 def oracle(context: Change) -> list[Seed]:
@@ -347,6 +381,25 @@ def get_result_from_llm(context: CodePlanContext, seed: Seed) -> Change:
   # make prompt
   # send prompt
   # process response into structured data
+
+  previous_edits = ""
+  for i in range(len(seed.temporal.previous_changes)):
+    previous_edits += f"Edit {i+1}:\n{seed.temporal.previous_changes[i].diff}\n"
+
+  location =  f"line {seed.location['range']['start']['line'] + 1} "
+  location += f"char {seed.location['range']['start']['character'] + 1} to "
+  location += f"line {seed.location['range']['end']['line'] + 1} "
+  location += f"char {seed.location['range']['end']['character'] + 1}"
+
+  prompt = PROMPT_TEMPLATE.format(
+    previous_edits=previous_edits,
+    change_reason=seed.causal.cause,
+    file_contents=seed.spatial.file_before_change,
+    location=location,
+  )
+
+  print(prompt)
+
   response = openai.ChatCompletion.create(
     model="gpt-4",
     messages=[
