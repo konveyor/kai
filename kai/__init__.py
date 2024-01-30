@@ -1,6 +1,6 @@
 __version__ = "0.0.1"
 
-from typing import List, Optional
+from typing import List
 
 import typer
 from typing_extensions import Annotated
@@ -86,5 +86,5 @@ def load(apps: list):
     incident_store = IncidentStore()
     print(f"Loading incident store with {len(apps)} applications\n")
     cached_violations = incident_store.load_app_cached_violation(apps)
-    print(f"Writing cached_violations")
+    print("Writing cached_violations")
     incident_store.write_cached_violations(cached_violations)

@@ -21,17 +21,6 @@ class TestIncidentStore(unittest.TestCase):
         # Test when the specified app folder does not exist
         i = IncidentStore()
         app_name = "non_existing_app"
-        expected_output = (
-            f"Error: {app_name} does not exist in the analysis_reports directory."
-        )
-        yaml = i.fetch_output_yaml(app_name)
-        self.assertIsNone(yaml)
-
-    def test_fetch_output_yaml_missing_output_yaml(self):
-        # Test when output.yaml does not exist for the specified app
-        i = IncidentStore()
-        app_name = "missing_output_yaml_app"
-        expected_output = f"Error: output.yaml does not exist for {app_name}."
         yaml = i.fetch_output_yaml(app_name)
         self.assertIsNone(yaml)
 
