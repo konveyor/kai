@@ -83,8 +83,6 @@ def is_within_range(range: Range, pos: Position):
   
 # To diff two files:
 # `git diff --no-index <file_a> <file_b>`
-# To apply a patch:
-# stdin > `patch -p0 -s -o -`
 
 def run_codeplan(ctx: CodePlanContext, initial_change: Change) -> str:
   git_cmd = ['git', '--git-dir=.git-kai', '--work-tree=.']
@@ -113,6 +111,7 @@ def run_codeplan(ctx: CodePlanContext, initial_change: Change) -> str:
     
     seeds.extend(blocks)
     
+  # Diff whole repo
   git_diff = subprocess.run(git_cmd + ['diff'], stdout=subprocess.PIPE).stdout
 
   # undo changes
@@ -129,112 +128,98 @@ def run_codeplan(ctx: CodePlanContext, initial_change: Change) -> str:
   return git_diff
 
 
-# def run_codeplan(context: CodePlanContext, initial_change: Change) -> list[Diff]:
-#   seeds = seeds_from_change(context, initial_change, TemporalContext())
-#   diffs: list[Diff] = []
-#   while len(seeds) > 0:
-#     seed = seeds.pop(0)
-#     change = get_result_from_llm(seed)
-#     seeds.extend(seeds_from_change(context, change, seed.temporal))
-#     diffs.append(change.diff)
+# TODO: Add types to make this type safe. Something like a rust enum? 
 
-#   # TODO: Reverse the changes to the filesystem
-    
-#   return diffs
-  
+# TODO: Maybe remove this class and put all the methods in a namespace? The
+# class is pretty much stateless anyway
+class GumtreeParser:
+  def __init__(self):
+    self.pattern_type_tuple = r'^(.*?)\s\[(\d+),(\d+)\]$'
+    self.pattern_at         = r'^(.*?)\s(\d+)$'
+    self.pattern_replace_by = r'^replace\s(.*?)\sby\s(.*)$'
 
-# def seeds_from_change(context: CodePlanContext, change: Change, temporal_context: TemporalContext) -> list[Seed]:
-#   classification = classify_change(context, change.diff)
-#   affected_blocks = get_affected_blocks(context, change, classification)
-
-#   temporal_context.previous_changes.append(change)
-#   for block in affected_blocks:
-#     block.temporal = temporal_context
-  
-#   success = merge(context, change.diff)
-#   if not success:
-#     raise Exception(":( [get_initial_seeds: Couldn't merge change]")
-  
-#   return affected_blocks + oracle(context)
-
-
-# def codeplan(context: CodePlanContext, seed: Seed) -> tuple[list[Seed], Change]:
-#   """
-#   Returns the list of unprocessed "next changes to make" and the change that it
-#   did make.
-#   """
-#   change = get_result_from_llm(seed)
-#   return seeds_from_change(context, change, seed.temporal), change
-
-
-# def classify_change(context: CodePlanContext, diff: Diff) -> Classification:
-#   """
-#   Takes ???? as input
-
-#   Process is that we take the tree before the change and the tree after the
-#   change, use Gumtree to find the differences (additions, modifications,
-#   deletions, and movings), and classify based on that.
-#   """
-  
-#   # Apply the diff to a temp file?
-
-#   return Classification('Because I said so')
-
-def parse_gumtree_output(gumtree_output: str) -> list[dict]:
-  output: list[dict] = []
-
-  sections = gumtree_output.split('===\n')
-
-  for section in filter(None, sections):
-    pieces = section.split('---\n')
-    if len(pieces) != 2: continue # TODO: Silently fail for now
-
-    action, argument = pieces[0].strip(), pieces[1].strip()
-    if action == 'match': continue
-
-    arguments = argument.split('\n')
-
-    type_tuple_pattern = r'^(.*?)\s\[(\d+),(\d+)\]$'
-    at_pattern         = r'^(.*?)\s(\d+)$'
-    replace_by_pattern = r'^replace\s(.*?)\sby\s(.*)$'
-
-    m = re.search(type_tuple_pattern, arguments[0])
-    if not m: continue
-
-    node = {
-      'type':       str(m.group(1)),
-      'start_byte': int(m.group(2)),
-      'end_byte':   int(m.group(3)),
+    self.action_to_func = {
+      'update-node': self.parse_update_node,
+      'insert-tree': self.parse_insert_tree,
+      'move-tree':   self.parse_move_tree,
+      'delete-node': self.parse_delete_node,
     }
 
-    # NOTE: gumtree returns some funky stuff in `type` with `update-node`
-    if action == 'update-node':
-      m = re.search(replace_by_pattern, arguments[-1])
-      old, new = m.group(1), m.group(2)
+  def parse(self, raw: str, before_tree: Tree, after_tree: Tree) -> list[dict]:
+    output: list[dict] = []
+    sections = filter(None, raw.split('===\n'))
 
-      output.append({'action': action, 'old_node': node, 'old_text': old, 'new_text': new})
+    for section in sections:
+      pieces = section.split('---\n')
+      if len(pieces) != 2: continue # TODO: Silently fail for now
 
-    elif action == 'insert-tree' or action == 'move-tree':
-      m = re.search(type_tuple_pattern, arguments[-2])
-      to = {
-        'type':       str(m.group(1)),
-        'start_byte': int(m.group(2)),
-        'end_byte':   int(m.group(3)),
-      }
+      action, arguments = pieces[0].strip(), pieces[1].strip().split('\n')
+      if action == 'match': continue
+
+      if action not in self.action_to_func:
+        raise Exception(f"GumtreeParser.parse: unhandled action `{action}`")
       
-      m = re.search(at_pattern, arguments[-1])
-      at = int(m.group(2))
+      result = self.action_to_func[action](arguments, before_tree, after_tree)
+      if not result:
+        raise Exception(f"GumtreeParser.parse: error parsing:\n{arguments}")
+      
+      output.append(result)
 
-      output.append({'action': action, 'new_node': node, 'old_node': to, 'at': at})
-     
-    elif action == 'delete-node':
-      output.append({'action': action, 'old_node': node})
+    return output
 
-    else:
-      raise Exception(f"parse_gumtree_output: unhandled action `{action}`")
+  def parse_node(self, tree: Tree, arg: str) -> Optional[Node]:
+    if not (m := re.search(self.pattern_type_tuple, arg)):
+      return None
+    
+    node_type  = str(m.group(1))
+    start_byte = int(m.group(2))
+    end_byte   = int(m.group(3))
 
-  return output
+    return get_node_with_exact_range(tree.root_node, start_byte, end_byte)
+    
+    
+  def parse_update_node(self, args: list[str], before: Tree, after: Tree):
+    if not (first := self.parse_node(before, args[0])):         return None
+    if not (m := re.search(self.pattern_replace_by, args[-1])): return None
+    old, new = m.group(1), m.group(2)
 
+    return {
+      'action': 'update', 'on': 'node', 
+      'old_node': first, 'old_text': old, 'new_text': new,
+    }
+
+
+  def parse_insert_tree(self, args: list[str], before: Tree, after: Tree):
+    if not (first  := self.parse_node(after,  args[0])):  return None
+    if not (second := self.parse_node(before, args[-2])): return None
+    if not (m := re.search(self.pattern_at, args[-1])):   return None
+    at = int(m.group(2))
+
+    return {
+      'action': 'insert', 'on': 'tree', 
+      'new_node': first, 'old_node': second, 'at': at,
+    }
+
+  def parse_move_tree(self, args: list[str], before: Tree, after: Tree):
+    if not (first  := self.parse_node(after,  args[0])):  return None
+    if not (second := self.parse_node(before, args[-2])): return None
+    if not (m := re.search(self.pattern_at, args[-1])):   return None
+    at = int(m.group(2))
+
+    return {
+      'action': 'move', 'on': 'tree', 
+      'new_node': first, 'old_node': second, 'at': at,
+    }
+
+
+  def parse_delete_node(self, args: list[str], before: Tree, after: Tree):
+    if not (first := self.parse_node(before, args[0])): return None
+
+    return {
+      'action': 'delete', 'on': 'node', 
+      'old_node': first,
+    }
+  
 
 def get_node_with_exact_range(node: Node, start_byte: int, end_byte: int):
   if node.start_byte == start_byte and node.end_byte == end_byte:
@@ -244,7 +229,6 @@ def get_node_with_exact_range(node: Node, start_byte: int, end_byte: int):
       return result
   return None
 
-# def get_affected_blocks(context: CodePlanContext, change: Change, classification: Classification) -> list[Seed]:
 async def get_affected_blocks(context: CodePlanContext, change: Change) -> list[Seed]:
   # TODO: Node ticketing. Split this function up? 
   output: list[Seed] = []
@@ -255,7 +239,8 @@ async def get_affected_blocks(context: CodePlanContext, change: Change) -> list[
   before_path: str = urlparse(change.uri).path
   after_path: str
 
-  # print(f"{before_path=}")
+  # To apply a patch:
+  # stdin > `patch -s -o -`
 
   before_contents: str = pathlib.Path(before_path).read_text()
   after_contents:  str = subprocess.run(
@@ -265,8 +250,6 @@ async def get_affected_blocks(context: CodePlanContext, change: Change) -> list[
 
   before_tree = parser.parse(bytes(before_contents, 'utf-8'))
   after_tree = parser.parse(bytes(after_contents, 'utf-8'))
-
-  print(f"{before_contents=}\n{after_contents=}")
 
   new_temporal_context = change.temporal
   new_temporal_context.previous_changes.append(change)
@@ -283,70 +266,72 @@ async def get_affected_blocks(context: CodePlanContext, change: Change) -> list[
       env=env,
     ).stdout.decode()
 
-    gumtree_output = parse_gumtree_output(raw_gumtree_output)
+  # TODO: Make this more elegant
+  # gumtree_output = gumtree_parse(raw_gumtree_output, before_tree, after_tree)
 
+  gumtree_output = GumtreeParser().parse(
+    raw_gumtree_output, before_tree, after_tree
+  )
+
+  for element in gumtree_output:
+    # TODO: fix this not as easy as it looks at first blush. An insertion of a
+    # tree could mean a modification or an addition. Think adding a part to a
+    # method vs adding a new field to a class.
+    
+    kind: str
+    if element['action'] == 'move' and element['on'] == 'tree':
+      continue
+    elif element['action'] == 'update' and element['on'] == 'node':
+      kind = "modified"
+    elif element['action'] == 'insert' and element['on'] == 'tree':
+      kind = "added"
+    elif element['action'] == 'delete' and element['on'] == 'node':
+      kind = "removed"
+    else:
+      raise Exception(f"get_affected_blocks: unhandled gumtree action `{element['action']}`")
+
+    # FIXME: This break_types thing definitely doesn't work for certain things
+    # like insert tree
     break_types = ['field_declaration']
 
-    for element in gumtree_output:
-      old_node = get_node_with_exact_range(
-        before_tree.root_node, 
-        element['old_node']['start_byte'],
-        element['old_node']['end_byte']
-      )
-      if old_node == None:
-        raise Exception(f"get_affected_blocks: No node in before_tree with range [{element['old_node']['start_byte']}, {element['old_node']['end_byte']}]")
+    old_node = element['old_node']
+    break_node = old_node
+    while break_node and (break_node.type not in break_types):
+      break_node = break_node.parent
 
-      # TODO: fix this
-      kind: str
-      if element['action'] == 'move-tree':
-        continue
-      elif element['action'] == 'update-node':
-        kind = "modified"
-      elif element['action'] == 'insert-tree':
-        kind = "added"
-      elif element['action'] == 'delete-node':
-        kind = "removed"
-      else:
-        raise Exception(f"get_affected_blocks: unhandled gumtree action `{element['action']}`")
+    if not break_node:
+      raise Exception(f"get_affected_blocks: old_node didn't have a 'good' parent")
+    
+    if break_node.type == 'field_declaration':
+      line, char = break_node.child_by_field_name('declarator').end_point
+
+      refs = await (context.language_server.request_references(
+        change.uri[len(f"file://{context.repo_path}"):],
+        line,
+        char
+      ))
       
-      break_node = old_node
-      while break_node and (break_node.type not in break_types):
-        break_node = break_node.parent
+      for ref in refs:
+        if is_within_range(Range(**ref['range']), Position(line=line, character=char)):
+          continue
 
-      if not break_node:
-        raise Exception(f"get_affected_blocks: old_node didn't have a 'good' parent")
-      
-      if break_node.type == 'field_declaration':
-        line, char = break_node.child_by_field_name('declarator').end_point
-
-        refs = await (context.language_server.request_references(
-          change.uri[len(f"file://{context.repo_path}"):],
-          line,
-          char
+        output.append(Seed(
+          location=Location(uri=ref['uri'], range=ref['range']),
+          temporal=new_temporal_context,
+          spatial=SpatialContext(
+            file_before_change=after_contents,
+          ),
+          causal=CausalContext(
+            cause=f"field was {kind}",
+            description="",
+          ),
         ))
-        
-        for ref in refs:
-          if is_within_range(Range(**ref['range']), Position(line=line, character=char)):
-            continue
 
-          output.append(Seed(
-            location=Location(uri=ref['uri'], range=ref['range']),
-            temporal=new_temporal_context,
-            spatial=SpatialContext(
-              file_before_change=after_contents,
-            ),
-            causal=CausalContext(
-              cause=f"field was {kind}",
-              description="",
-            ),
-          ))
-
-      else:
-        # TODO: remove this once we've added all the break types
-        raise Exception(f"get_affected_blocks: unhandled break_node type `{break_node.type}`")
+    else:
+      # TODO: remove this once we've added all the break types
+      raise Exception(f"get_affected_blocks: unhandled break_node type `{break_node.type}`")
 
   return output
-
 
 
 def merge(context: CodePlanContext, change: Change) -> bool:
