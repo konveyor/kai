@@ -78,12 +78,13 @@ def generate(
 
 
 @app.command()
-def load(apps: list):
+def load(applications: str):
     """
     Load the incident store with the given applications
     write the cached_violations to a file for later use
     """
     incident_store = IncidentStore()
+    apps = applications.split(",")
     print(f"Loading incident store with {len(apps)} applications\n")
     cached_violations = incident_store.load_app_cached_violation(apps)
     print("Writing cached_violations")
