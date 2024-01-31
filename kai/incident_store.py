@@ -84,6 +84,7 @@ class IncidentStore:
                        file_path: [ {
                             variables: {}
                             line_number: int
+                            message: str
                         } ]
                     }
                }
