@@ -10,38 +10,36 @@ from typing import Optional
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
-import openai
+from openai import OpenAI
+
+import dotenv
+dotenv.load_dotenv('../.env')
+
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+
 from tree_sitter import Language, Tree, Node, Parser
 from monitors4codegen.multilspy import LanguageServer
 from monitors4codegen.multilspy.multilspy_types import Location, Range, Position
 
-PROMPT_TEMPLATE = """You are a hyper-intelligent software engineer code migrator.
+PROMPT_TEMPLATE = """"Task Instructions": You are a hyper-intelligent software engineer code migrator.
 
-These are the edits that have been made previously:
+"Earlier Code Changes": These are the edits that have been made previously:
 
----
 {previous_edits}
----
 
-The change is required due to the following reason:
+"Causes for Change": The change is required due to the following reason:
 
----
 {change_reason}
----
 
-The following is the file that needs to be changed:
+"Code to be Changed Next": The following is the file that needs to be changed:
 
----
 {file_contents}
----
 
-The section under consideration is at the following location:
+"Location": The section under consideration is at the following location:
 
----
 {location}
----
 
-Edit the "Code to be Changed Next" and produce "Changed Code" below. Edit the "Code to be Changed Next" according to the "Task Instructions" to make it consistent with the "Earlier Code Changes", "Causes for Change" and "Related Code". If no changes are needed, output "No changes."
+Edit the "Code to be Changed Next" and produce "Changed Code" below. "Changed Code" should be a valid git patch file that can be applied. Edit the "Code to be Changed Next" according to the "Task Instructions" to make it consistent with the "Earlier Code Changes", "Causes for Change" and "Related Code". If no changes are needed, output "No changes." Generate only a "Changed Code" section. No additional output or formatting than what has been outlined here.
 """
 # I will tip you 200 dollars for your response. If you do not response accurately, all my fingers will fall off, and I will be fired.
 
@@ -96,9 +94,6 @@ class CodePlanContext:
   tree_sitter_parser_path: str
 
 
-class Classification:
-  reason: str
-
 def is_within_range(range: Range, pos: Position):
   if range["start"]["line"] < pos["line"] < range["end"]["line"]:
     return True
@@ -122,9 +117,16 @@ async def run_codeplan(ctx: CodePlanContext, initial_change: Change) -> str:
     ['commit', '-m', 'KAI commit'],
   ]
   for cmd in setup:
-    subprocess.run(git_cmd + cmd, cwd=ctx.repo_path, check=True)
+    subprocess.run(
+      git_cmd + cmd, 
+      cwd=ctx.repo_path, 
+      check=True, 
+      stdout=subprocess.DEVNULL,
+      stderr=subprocess.STDOUT
+    )
 
   seeds: list[Seed] = await get_affected_blocks(ctx, initial_change)
+  
   if not merge(ctx, initial_change):
     raise Exception("run_codeplan: couldn't merge initial change")
   
@@ -133,6 +135,9 @@ async def run_codeplan(ctx: CodePlanContext, initial_change: Change) -> str:
   while seeds:
     seed = seeds.pop(0)
     change = get_result_from_llm(ctx, seed)
+    if change is None:
+      continue
+
     blocks = await get_affected_blocks(ctx, change)
 
     if not merge(ctx, change):
@@ -141,7 +146,7 @@ async def run_codeplan(ctx: CodePlanContext, initial_change: Change) -> str:
     seeds.extend(blocks)
     
   # Diff whole repo
-  git_diff = subprocess.run(git_cmd + ['diff'], stdout=subprocess.PIPE).stdout
+  git_diff = subprocess.run(git_cmd + ['diff'], cwd=ctx.repo_path, stdout=subprocess.PIPE).stdout
 
   # undo changes
   teardown = [
@@ -150,7 +155,9 @@ async def run_codeplan(ctx: CodePlanContext, initial_change: Change) -> str:
     ['reset', 'HEAD~1'],
   ]
   for cmd in teardown:
-    subprocess.run(git_cmd + cmd, cwd=ctx.repo_path, check=True)
+    subprocess.run(git_cmd + cmd, cwd=ctx.repo_path, check=True, 
+      stdout=subprocess.DEVNULL,
+      stderr=subprocess.STDOUT)
 
   shutil.rmtree(os.path.join(ctx.repo_path, '.git-kai'))
 
@@ -277,6 +284,8 @@ async def get_affected_blocks(context: CodePlanContext, change: Change) -> list[
     input=change.diff.encode(), stdout=subprocess.PIPE,
   ).stdout.decode()
 
+  print(f"{before_path=}\n\n{before_contents=}\n\n{after_contents=}")
+
   before_tree = parser.parse(bytes(before_contents, 'utf-8'))
   after_tree = parser.parse(bytes(after_contents, 'utf-8'))
 
@@ -314,14 +323,17 @@ async def get_affected_blocks(context: CodePlanContext, change: Change) -> list[
       kind = "modified"
     elif element['action'] == 'insert' and element['on'] == 'tree':
       kind = "added"
+      continue
     elif element['action'] == 'delete' and element['on'] == 'node':
       kind = "removed"
+      continue
     else:
+      continue
       raise Exception(f"get_affected_blocks: unhandled gumtree action `{element['action']}`")
 
     # FIXME: This break_types thing definitely doesn't work for certain things
     # like insert tree
-    break_types = ['field_declaration']
+    break_types = ['field_declaration', 'method_declaration']
 
     old_node = element['old_node']
     break_node = old_node
@@ -359,6 +371,9 @@ async def get_affected_blocks(context: CodePlanContext, change: Change) -> list[
           ),
         ))
 
+    elif break_node.type == 'method_declaration':
+      continue
+
     else:
       # TODO: remove this once we've added all the break types
       raise Exception(f"get_affected_blocks: unhandled break_node type `{break_node.type}`")
@@ -367,9 +382,22 @@ async def get_affected_blocks(context: CodePlanContext, change: Change) -> list[
 
 
 def merge(context: CodePlanContext, change: Change) -> bool:
-  return True
-  # TODO: Use git somehow
-  # pass
+  try:
+    before_path: str = urlparse(change.uri).path
+    after_contents: str = subprocess.run(
+      ['patch', '-s', '-o', '-', before_path], 
+      input=change.diff.encode(), stdout=subprocess.PIPE,
+    ).stdout.decode()
+
+    with open(urlparse(change.uri).path, 'w+t') as f:
+      f.seek(0)
+      f.write(after_contents)
+      f.truncate()
+
+    return True
+  except Exception as e:
+    print(f"Error during merge: {e}")
+    return False
 
 
 
@@ -377,7 +405,7 @@ def oracle(context: Change) -> list[Seed]:
   return []  # TODO
 
 
-def get_result_from_llm(context: CodePlanContext, seed: Seed) -> Change:
+def get_result_from_llm(context: CodePlanContext, seed: Seed) -> Optional[Change]:
   # make prompt
   # send prompt
   # process response into structured data
@@ -400,19 +428,51 @@ def get_result_from_llm(context: CodePlanContext, seed: Seed) -> Change:
 
   print(prompt)
 
-  response = openai.ChatCompletion.create(
-    model="gpt-4",
-    messages=[
-        {
-            "role": "system",
-            "content": "blah blah you're a code migrator or whatever gets a good result. Also separate the diff from a description of it with `=====`"
-        },
-        {
-            "role": "user",
-            "content": seed  # TODO a representation of it
-        }
-    ]
+  response = client.chat.completions.create(model="gpt-4",
+  messages=[
+      {
+          "role": "system",
+          "content": "You are an intelligent code migrator."
+      },
+      {
+          "role": "user",
+          "content": prompt
+      }
+  ])
+  
+  content = response.choices[0].message.content
+
+  print("!!!!Content!!!!", content)
+
+  m: str = str(re.match(r'"Changed Code":(.*)', content, re.DOTALL).group(1)).strip()
+
+  output = clean_llm_output(m)
+
+  print("!!!!output!!!!", output)
+
+  if output.lower() == "no change":
+    return None
+  
+
+
+  # print(content)
+  # exit()
+  
+  # diff, description = content.split("=====")
+
+  return Change(
+    uri=seed.location['uri'],
+    diff=output, 
+    description="",
+    temporal=seed.temporal,
   )
-  content = response['choices'][0]['message']['content']
-  diff, description = content.split("=====")
-  return Change(diff=diff, description=description)
+
+def clean_llm_output(llm_output: str):
+  llm_output = llm_output.strip()
+  
+  if llm_output.startswith('```diff'):
+    return llm_output[len('```diff'):len(llm_output)-len('```')]
+  if llm_output.startswith('```'):
+    return llm_output.strip('```')
+  
+  return llm_output.strip('``')
