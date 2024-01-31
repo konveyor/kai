@@ -1,0 +1,24 @@
+name: Annotate PR with trunk issues
+
+on:
+  workflow_run:
+    workflows: [Trunk Check]
+    types: [completed]
+
+permissions: read-all
+
+jobs:
+  trunk_check_annotate_pr:
+    name: Trunk Check PR Annotation
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Trunk Check
+        uses: trunk-io/trunk-action@v1
+        with:
+          post-annotations: true
