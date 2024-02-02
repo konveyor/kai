@@ -3,6 +3,7 @@
 This utility provides a service to generate AI prompts based off of a solved example and source that requires updating. It also proxies requests to LLMs, and will likely include additional functionality as required.
 
 ## Usage
+
 To deploy in cluster:
 
 oc create configmap kai-conf --from-file kai.conf
@@ -12,7 +13,9 @@ oc patch deploy/kai-service --patch '{"spec":{"template":{"metadata":{"labels":{
 oc create route edge kai-service --service kai-service --insecure-policy Redirect
 
 ## Brief Examples
+
 ### Generate a Prompt
+
 ```
 curl -k 'https://kai-service-konveyor-tackle.apps.example.com/generate_prompt' -X POST -H "Content-Type: application/json" -d '{ "issue_description": "my bad description",
                                                                                                                                              "language": "java-python-go-whatever",
@@ -23,6 +26,7 @@ curl -k 'https://kai-service-konveyor-tackle.apps.example.com/generate_prompt' -
 ```
 
 ### Proxy a Request
+
 ```
 export OPENAI_API_KEY=replace-with-your-key
 curl -k 'https://kai-service-konveyor-tackle.apps.example.com/proxy?upstream_url=https://api.openai.com/v1/chat/completions' \
