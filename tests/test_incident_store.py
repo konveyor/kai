@@ -107,6 +107,7 @@ class TestIncidentStore(unittest.TestCase):
                                 },
                                 "line_number": None,
                                 "message": "\n Session replication ensures that client sessions are not disrupted by node failure. Each node in the cluster shares information about ongoing sessions and can take over sessions if another node disappears. In a cloud environment, however, data in the memory of a running container can be wiped out by a restart.\n\n Recommendations\n\n * Review the session replication usage and ensure that it is configured properly.\n * Disable HTTP session clustering and accept its implications.\n * Re-architect the application so that sessions are stored in a cache backing service or a remote data grid.\n\n A remote data grid has the following benefits:\n\n * The application is more scaleable and elastic.\n * The application can survive EAP node failures because a JVM failure does not cause session data loss.\n * Session data can be shared by multiple applications.\n ",
+                                "commitId": None,
                             }
                         ]
                     }
@@ -144,6 +145,7 @@ class TestIncidentStore(unittest.TestCase):
                                 },
                                 "line_number": None,
                                 "message": "\n Session replication ensures that client sessions are not disrupted by node failure. Each node in the cluster shares information about ongoing sessions and can take over sessions if another node disappears. In a cloud environment, however, data in the memory of a running container can be wiped out by a restart.\n\n Recommendations\n\n * Review the session replication usage and ensure that it is configured properly.\n * Disable HTTP session clustering and accept its implications.\n * Re-architect the application so that sessions are stored in a cache backing service or a remote data grid.\n\n A remote data grid has the following benefits:\n\n * The application is more scaleable and elastic.\n * The application can survive EAP node failures because a JVM failure does not cause session data loss.\n * Session data can be shared by multiple applications.\n ",
+                                "commitId": None,
                             }
                         ]
                     }
@@ -158,6 +160,7 @@ class TestIncidentStore(unittest.TestCase):
                             },
                             "line_number": 57,
                             "message": "The app is trying to access local resource by HTTP, please try to migrate the resource to cloud",
+                            "commitId": None,
                         }
                     ],
                     "orders-service/src/test/java/org/ticketmonster/orders/SimpleTest.java": [
@@ -165,6 +168,7 @@ class TestIncidentStore(unittest.TestCase):
                             "variables": {"matchingText": "http://localhost"},
                             "line_number": 49,
                             "message": "The app is trying to access local resource by HTTP, please try to migrate the resource to cloud",
+                            "commitId": None,
                         }
                     ],
                 }
@@ -178,6 +182,7 @@ class TestIncidentStore(unittest.TestCase):
                             },
                             "line_number": 1,
                             "message": "The app is trying to access local resource by JDBC, please try to migrate the resource to cloud",
+                            "commitId": None,
                         },
                         {
                             "variables": {
@@ -185,6 +190,7 @@ class TestIncidentStore(unittest.TestCase):
                             },
                             "line_number": 6,
                             "message": "The app is trying to access local resource by JDBC, please try to migrate the resource to cloud",
+                            "commitId": None,
                         },
                     ],
                     "orders-service/target/classes/application-mysql.properties": [
@@ -194,6 +200,7 @@ class TestIncidentStore(unittest.TestCase):
                             },
                             "line_number": 1,
                             "message": "The app is trying to access local resource by JDBC, please try to migrate the resource to cloud",
+                            "commitId": None,
                         },
                         {
                             "variables": {
@@ -201,19 +208,22 @@ class TestIncidentStore(unittest.TestCase):
                             },
                             "line_number": 6,
                             "message": "The app is trying to access local resource by JDBC, please try to migrate the resource to cloud",
+                            "commitId": None,
                         },
                     ],
                 }
             },
         }
 
-        output_directory = "samples/generated_output/incident_store"
-        output_file_path = os.path.join(output_directory, "cached_violations.yaml")
         i = IncidentStore()
         try:
             # Call the function under test
-            i.write_cached_violations(test_cached_violations)
-
+            i.write_cached_violations(
+                test_cached_violations, "test_cached_violations.yaml"
+            )
+            output_file_path = (
+                "samples/generated_output/incident_store/test_cached_violations.yaml"
+            )
             # Check if the file was created
             print(output_file_path)
             self.assertTrue(os.path.exists(output_file_path))

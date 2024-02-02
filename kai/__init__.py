@@ -88,4 +88,4 @@ def load(applications: str):
     print(f"Loading incident store with {len(apps)} applications\n")
     cached_violations = incident_store.load_app_cached_violation(apps)
     print("Writing cached_violations")
-    incident_store.write_cached_violations(cached_violations)
+    incident_store.write_cached_violations(cached_violations, "cached_violations.yaml")
