@@ -3,9 +3,15 @@ on:
   pull_request:
     paths:
       - kai-service/**.py
+      - kai-service/Containerfile
+      - kai-service/requirements.txt
+      - kai-service/tests/requirements.txt
   push:
     paths:
       - kai-service/**.py
+      - kai-service/Containerfile
+      - kai-service/requirements.txt
+      - kai-service/tests/requirements.txt
   workflow_dispatch: {}
 
 jobs:
@@ -27,3 +33,13 @@ jobs:
 
       - name: Run test
         run: pushd kai-service && make test && popd
+
+      - name: Build the Container
+        id: build-image
+        uses: redhat-actions/buildah-build@main
+        with:
+          image: kai-service
+          tags: latest
+          context: kai-service
+          containerfiles: |
+            ./kai-service/Containerfile
