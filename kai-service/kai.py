@@ -35,7 +35,10 @@ def load_template(model_name):
     if model_name in model_templates:
         return model_templates[model_name]
 
-    warnings.warn("Warning: Model not found, using default (first) model from kai.conf")
+    warnings.warn(
+        "Warning: Model not found, using default (first) model from kai.conf",
+        stacklevel=2,
+    )
     return list(model_templates.items())[0][1]
 
 
@@ -53,7 +56,8 @@ async def generate_prompt(request):
 
         if model_template == "":
             warnings.warn(
-                "Model template not specified. For best results specify a model template."
+                "Model template not specified. For best results specify a model template.",
+                stacklevel=2,
             )
 
         response = load_template(model_template).format(

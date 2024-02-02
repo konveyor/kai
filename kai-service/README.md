@@ -16,7 +16,7 @@ oc create route edge kai-service --service kai-service --insecure-policy Redirec
 
 ### Generate a Prompt
 
-```
+```bash
 curl -k 'https://kai-service-konveyor-tackle.apps.example.com/generate_prompt' -X POST -H "Content-Type: application/json" -d '{ "issue_description": "my bad description",
                                                                                                                                              "language": "java-python-go-whatever",
                                                                                                                                              "example_original_code": "my original code",
@@ -27,7 +27,7 @@ curl -k 'https://kai-service-konveyor-tackle.apps.example.com/generate_prompt' -
 
 ### Proxy a Request
 
-```
+```bash
 export OPENAI_API_KEY=replace-with-your-key
 curl -k 'https://kai-service-konveyor-tackle.apps.example.com/proxy?upstream_url=https://api.openai.com/v1/chat/completions' \
 -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $OPENAI_API_KEY" -d '{ "stream": true, "model": "gpt-3.5-turbo", "messages": [{"role": "user", "content": "Say this is a test!"}] }'

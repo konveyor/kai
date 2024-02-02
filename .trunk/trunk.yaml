@@ -17,6 +17,12 @@ runtimes:
     - python@3.10.8
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
 lint:
+  definitions:
+    - name: bandit
+      direct_configs: [bandit.yaml]
+      commands:
+        - name: lint
+          run: bandit --exit-zero -c bandit.yaml --format json --output ${tmpfile} ${target}
   enabled:
     - actionlint@1.6.26
     - taplo@0.8.1
