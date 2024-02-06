@@ -5,12 +5,13 @@ import shutil
 import pathlib
 import tempfile
 import subprocess
-from enum import Enum
 from typing import Optional
 from dataclasses import dataclass
 from urllib.parse import urlparse
-
 from openai import OpenAI
+
+from sequoia_diff.types import Action, Insert, Update, Move, Delete
+from sequoia_diff import get_tree_diff
 
 import dotenv
 dotenv.load_dotenv('../.env')
@@ -305,38 +306,32 @@ async def get_affected_blocks(context: CodePlanContext, change: Change) -> list[
     ).stdout.decode()
 
   # TODO: Make this more elegant
-  # gumtree_output = gumtree_parse(raw_gumtree_output, before_tree, after_tree)
 
-  gumtree_output = GumtreeParser().parse(
-    raw_gumtree_output, before_tree, after_tree
-  )
+  actions = get_tree_diff('java', before_tree, after_tree)
 
-  for element in gumtree_output:
+  print(f"{actions=}")
+
+  for action in actions:
     # TODO: fix this not as easy as it looks at first blush. An insertion of a
     # tree could mean a modification or an addition. Think adding a part to a
     # method vs adding a new field to a class.
     
-    kind: str
-    if element['action'] == 'move' and element['on'] == 'tree':
+    if isinstance(action, Move):
       continue
-    elif element['action'] == 'update' and element['on'] == 'node':
-      kind = "modified"
-    elif element['action'] == 'insert' and element['on'] == 'tree':
-      kind = "added"
+    elif isinstance(action, Update):
+      pass
+    elif isinstance(action, Insert):
       continue
-    elif element['action'] == 'delete' and element['on'] == 'node':
-      kind = "removed"
+    elif isinstance(action, Delete):
       continue
     else:
-      continue
-      raise Exception(f"get_affected_blocks: unhandled gumtree action `{element['action']}`")
+      raise Exception(f"Unexpected Action of type {type(action)}")
 
     # FIXME: This break_types thing definitely doesn't work for certain things
     # like insert tree
     break_types = ['field_declaration', 'method_declaration']
 
-    old_node = element['old_node']
-    break_node = old_node
+    break_node = action.node
     while break_node and (break_node.type not in break_types):
       break_node = break_node.parent
 
@@ -366,7 +361,7 @@ async def get_affected_blocks(context: CodePlanContext, change: Change) -> list[
             file_before_change=file_before_change,
           ),
           causal=CausalContext(
-            cause=f"field was {kind}",
+            cause=f"field was modified",
             description="",
           ),
         ))
@@ -471,8 +466,11 @@ def clean_llm_output(llm_output: str):
   llm_output = llm_output.strip()
   
   if llm_output.startswith('```diff'):
-    return llm_output[len('```diff'):len(llm_output)-len('```')]
-  if llm_output.startswith('```'):
-    return llm_output.strip('```')
+    llm_output = llm_output[len('```diff'):len(llm_output)-len('```')]
+  elif llm_output.startswith('```'):
+    llm_output = llm_output.strip('```')
+
+  if not llm_output.endswith('\n'):
+    llm_output += "\n"
   
-  return llm_output.strip('``')
+  return llm_output
