@@ -4,6 +4,8 @@
 
 import os
 import warnings
+from os import listdir
+from os.path import isfile, join
 
 import aiohttp
 import yaml
@@ -12,16 +14,24 @@ from aiohttp import web
 
 def load_config():
     """Load the configuration from a yaml conf file."""
-    config = "/usr/local/etc/kai.conf"
-    if os.environ.get("KAI_CONFIG"):
-        config = os.environ.get("KAI_CONFIG")
+    config_prefix = "/usr/local/etc"
+    if os.environ.get("KAI_CONFIG_PREFIX"):
+        config_prefix = os.environ.get("KAI_CONFIG_PREFIX")
 
-    with open(config, "r", encoding="utf-8") as stream:
-        try:
-            return yaml.safe_load(stream)
-        except yaml.YAMLError as exc:
-            print(exc)
-            return None
+    config_dir = "kai.conf.d"
+    model_dir = os.path.join(config_prefix, config_dir)
+    files = [f for f in listdir(model_dir) if isfile(join(model_dir, f))]
+    model_templates = {}
+    for f in files:
+        filename, file_extension = os.path.splitext(f)
+        with open(join(model_dir, f), encoding="utf-8") as reader:
+            try:
+                model = reader.read()
+                model_templates[filename] = model
+            except yaml.YAMLError as exc:
+                print(exc)
+                return None
+        return {"model_templates": model_templates}
 
 
 def load_templates():
@@ -36,8 +46,8 @@ def load_template(model_name):
         return model_templates[model_name]
 
     warnings.warn(
-        "Warning: Model not found, using default (first) model from kai.conf",
-        stacklevel=2,
+        "Warning: Model not found, using first available model.",
+        stacklevel=5,
     )
     return list(model_templates.items())[0][1]
 
@@ -57,7 +67,7 @@ async def generate_prompt(request):
         if model_template == "":
             warnings.warn(
                 "Model template not specified. For best results specify a model template.",
-                stacklevel=2,
+                stacklevel=5,
             )
 
         response = load_template(model_template).format(

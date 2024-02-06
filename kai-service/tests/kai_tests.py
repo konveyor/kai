@@ -7,7 +7,7 @@ from aiohttp import web
 
 import kai
 
-os.environ["KAI_CONFIG"] = "tests/kai_tests.conf"
+os.environ["KAI_CONFIG_PREFIX"] = "tests"
 
 
 @pytest.fixture
