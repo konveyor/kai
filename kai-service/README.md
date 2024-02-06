@@ -6,9 +6,9 @@ This utility provides a service to generate AI prompts based off of a solved exa
 
 To deploy in cluster:
 
-oc create configmap kai-conf --from-file kai.conf
+oc create configmap models --from-file kai.conf.d
 oc new-app quay.io/jmontleon/kai-service:latest
-oc set volumes deploy/kai-service --add --type configmap -m /usr/local/etc --configmap-name kai-conf --name kai-conf
+oc set volumes deploy/kai-service --add --type configmap -m /usr/local/etc/kai.conf.d --configmap-name kai-conf --name models
 oc patch deploy/kai-service --patch '{"spec":{"template":{"metadata":{"labels":{"role":"tackle-ui"}}}}}' --type=merge
 oc create route edge kai-service --service kai-service --insecure-policy Redirect
 
