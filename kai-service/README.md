@@ -6,11 +6,24 @@ This utility provides a service to generate AI prompts based off of a solved exa
 
 To deploy in cluster:
 
+```bash
 oc create configmap models --from-file kai.conf.d
 oc new-app quay.io/jmontleon/kai-service:latest
-oc set volumes deploy/kai-service --add --type configmap -m /usr/local/etc/kai.conf.d --configmap-name kai-conf --name models
-oc patch deploy/kai-service --patch '{"spec":{"template":{"metadata":{"labels":{"role":"tackle-ui"}}}}}' --type=merge
+oc set volumes deploy/kai-service --add --type configmap -m /usr/local/etc/kai.conf.d --configmap-name models --name models
 oc create route edge kai-service --service kai-service --insecure-policy Redirect
+```
+
+If you deploy kai-service in the same namespace as Konveyor you'll need to label the pod:
+
+```bash
+oc patch deploy/kai-service --patch '{"spec":{"template":{"metadata":{"labels":{"role":"tackle-ui"}}}}}' --type=merge
+```
+
+If you deploy kai-service in the same namespace as MTA you'll need to label the pod:
+
+```bash
+oc patch deploy/kai-service --patch '{"spec":{"template":{"metadata":{"labels":{"role":"mta-ui"}}}}}' --type=merge
+```
 
 ## Brief Examples
 
