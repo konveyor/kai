@@ -107,38 +107,6 @@
   - xml-removed-camel41-00018
 - name: cloud-readiness
   description: This ruleset detects logging configurations that may be problematic when migrating an application to a cloud environment.
-  violations:
-    local-storage-00001:
-      description: File system - Java IO
-      category: mandatory
-      labels:
-      - konveyor.io/source
-      - konveyor.io/target=cloud-readiness
-      - storage
-      incidents:
-      - uri: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/servlet/HelloWorldMDBServletClient.java
-        message: "\n An application running inside a container could lose access to a file in local storage.\n\n Recommendations\n\n The following recommendations depend on the function of the file in local storage:\n\n * Logging: Log to standard output and use a centralized log collector to analyze the logs.\n * Caching: Use a cache backing service.\n * Configuration: Store configuration settings in environment variables so that they can be updated without code changes.\n * Data storage: Use a database backing service for relational data or use a persistent data storage system.\n * Temporary data storage: Use the file system of a running container as a brief, single-transaction cache.\n "
-        codeSnip: "  1  package org.jboss.as.quickstarts.servlet;\n  2  \n  3  import jakarta.enterprise.context.ApplicationScoped;\n  4  import jakarta.inject.Inject;\n  5  import jakarta.jms.Destination;\n  6  import jakarta.ws.rs.GET;\n  7  import jakarta.ws.rs.Path;\n  8  import jakarta.ws.rs.Produces;\n  9  import jakarta.ws.rs.QueryParam;\n 10  import org.eclipse.microprofile.reactive.messaging.Channel;\n 11  import org.eclipse.microprofile.reactive.messaging.Emitter;\n 12  \n 13  import jakarta.ws.rs.core.Context;\n 14  import java.util.List;\n 15  import java.util.ArrayList;\n 16  import jakarta.ws.rs.core.MultivaluedMap;\n 17  import jakarta.ws.rs.core.UriInfo;\n 18  import jakarta.ws.rs.core.MediaType;\n 19  \n 20  import jakarta.ws.rs.core.Response;\n 21  \n 22  \n 23  @ApplicationScoped\n 24  @Path(\"/HelloWorldMDBServletClient\")\n 25  public class HelloWorldMDBServletClient {\n 26  \n 27      private static final int MSG_COUNT = 5;\n 28  \n 29      @Inject\n 30      @Channel(\"HELLOWORLDMDBQueue\")\n 31      Emitter<String> queueEmitter;\n 32  \n 33      @Inject\n 34      @Channel(\"HELLOWORLDMDBTopic\")\n 35      Emitter<String> topicEmitter;\n 36  \n 37  \n 38      @GET\n 39      @Produces(MediaType.TEXT_HTML)\n 40      public Response doGet(@Context UriInfo uriInfo) {\n 41          MultivaluedMap<String, String> queryParams = uriInfo.getQueryParameters();\n 42          boolean isUsingTopic = queryParams.containsKey(\"topic\");\n 43  \n 44  \n 45          Emitter<String> emitter = isUsingTopic ? topicEmitter : queueEmitter;\n 46          String destination = isUsingTopic ? \"topic\" : \"queue\";\n 47        StringBuilder response = new StringBuilder();\n 48          response.append(\"<h1>Quickstart: Example demonstrates the use of eclipse reactive messaging in Quarkus.</h1>\");\n 49          response.append(\"<p>Sending messages to <em>\").append(destination).append(\"</em></p>\");\n 50          response.append(\"<h2>The following messages will be sent to the destination:</h2>\");\n 51  \n 52       List<String> messages = generateMessages(emitter);\n 53          response.append(\"<ol>\");\n 54          for (String message : messages) {\n 55              response.append(\"<li>\").append(message).append(\"</li>\");\n 56          }\n 57          response.append(\"</ol>\");\n 58  \n 59  \n 60          response.append(\"<p><i>Check your console or logs to see the result of messages processing.</i></p>\");\n 61  \n 62          return Response.ok(response.toString()).build();\n 63      \n 64      }\n 65  \n 66      private List<String> generateMessages(Emitter<String> emitter) {\n 67          List<String> messages = new ArrayList<>();\n 68  \n 69          for (int i = 1; i <= MSG_COUNT; i++) {\n 70              String messageText = \"This is message \" + i;\n 71              messages.add(messageText);\n 72              emitter.send(messageText);\n 73          }\n 74  \n 75          return messages;\n 76      }\n 77  }\n"
-        lineNumber: 41
-        variables:
-          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/servlet/HelloWorldMDBServletClient.java
-          kind: Method
-          name: doGet
-          package: org.jboss.as.quickstarts.servlet
-      links:
-      - url: https://docs.openshift.com/container-platform/4.5/builds/creating-build-inputs.html#builds-input-secrets-configmaps_creating-build-inputs
-        title: 'OpenShift Container Platform: Input secrets and ConfigMaps'
-      - url: https://docs.openshift.com/container-platform/4.5/logging/cluster-logging.html
-        title: 'OpenShift Container Platform: Understanding cluster logging'
-      - url: https://docs.openshift.com/container-platform/4.5/storage/understanding-persistent-storage.html
-        title: 'OpenShift Container Platform: Understanding persistent storage'
-      - url: https://12factor.net/backing-services
-        title: 'Twelve-Factor App: Backing services'
-      - url: https://12factor.net/config
-        title: 'Twelve-Factor App: Config'
-      - url: https://12factor.net/logs
-        title: 'Twelve-Factor App: Logs'
-      effort: 1
   unmatched:
   - embedded-cache-libraries-01000
   - embedded-cache-libraries-01000
@@ -218,6 +186,8 @@
   - jni-native-code-00000
   - jni-native-code-00000
   - jni-native-code-00001
+  - local-storage-00001
+  - local-storage-00001
   - local-storage-00002
   - local-storage-00002
   - local-storage-00004
@@ -1804,21 +1774,55 @@
 - name: technology-usage
   description: This ruleset provides analysis of logging libraries.
   tags:
+  - AMQP Client
   - Application Properties File
   - Application properties file detected
   - Bean=EJB XML
   - CDI
   - Configuration Management=Application Properties File
+  - Connect=AMQP Client
   - Connect=EJB XML
+  - Connect=Qpid Client
+  - Connect=RabbitMQ Client
+  - Embedded framework - CDI
+  - Embedded framework - GIN
+  - Embedded framework - Tornado Inject
+  - Embedded library - AMQP Client
+  - Embedded library - JBoss logging
+  - Embedded library - Logging Utils
+  - Embedded library - Qpid Client
+  - Embedded library - RabbitMQ Client
+  - Embedded library - SLF4J
+  - Embedded library - SSL
+  - Embedded=AMQP Client
   - Embedded=Application Properties File
+  - Embedded=GIN
   - Embedded=Properties
+  - Embedded=Qpid Client
+  - Embedded=RabbitMQ Client
+  - Embedded=Tornado Inject
   - Execute=CDI
+  - Execute=GIN
+  - Execute=Tornado Inject
+  - GIN
   - Inversion of Control=CDI
+  - Inversion of Control=GIN
+  - Inversion of Control=Tornado Inject
+  - JBoss logging
   - Java EE=CDI
   - Java EE=EJB XML
+  - Logging Utils
+  - Other=AMQP Client
   - Other=Properties
+  - Other=Qpid Client
+  - Other=RabbitMQ Client
+  - Qpid Client
+  - RabbitMQ Client
+  - SLF4J
+  - SSL
   - Sustain=Application Properties File
   - Sustain=Properties
+  - Tornado Inject
   violations:
     configuration-management-0200:
       description: Application properties file detected
@@ -1830,6 +1834,141 @@
         message: Application properties file detected
       - uri: file:///tmp/source-code/target/classes/application.properties
         message: Application properties file detected
+    connect-01800:
+      description: Embedded library - RabbitMQ Client
+      category: potential
+      labels:
+      - konveyor.io/include=always
+      incidents:
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/io.smallrye.reactive.smallrye-mutiny-vertx-amqp-client-3.7.2.jar
+        message: The application embeds a RabbitMQ client library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/io.vertx.vertx-amqp-client-4.4.6.jar
+        message: The application embeds a RabbitMQ client library.
+      links:
+      - url: https://access.redhat.com/articles/111663
+        title: Red Hat JBoss Enterprise Application Platform (EAP) 6 Supported Configurations
+      - url: https://access.redhat.com/articles/2026253
+        title: Red Hat JBoss Enterprise Application Platform (EAP) 7 Supported Configurations
+    connect-02300:
+      description: Embedded library - AMQP Client
+      category: potential
+      labels:
+      - konveyor.io/include=always
+      incidents:
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/io.quarkus.quarkus-smallrye-reactive-messaging-amqp-3.5.1.jar
+        message: The application embeds an AMQP client library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/io.smallrye.reactive.smallrye-mutiny-vertx-amqp-client-3.7.2.jar
+        message: The application embeds an AMQP client library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/io.smallrye.reactive.smallrye-reactive-messaging-amqp-4.10.1.jar
+        message: The application embeds an AMQP client library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/io.vertx.vertx-amqp-client-4.4.6.jar
+        message: The application embeds an AMQP client library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/org.amqphub.quarkus.quarkus-qpid-jms-2.4.0.jar
+        message: The application embeds an AMQP client library.
+      links:
+      - url: https://access.redhat.com/articles/111663
+        title: Red Hat JBoss Enterprise Application Platform (EAP) 6 Supported Configurations
+      - url: https://access.redhat.com/articles/2026253
+        title: Red Hat JBoss Enterprise Application Platform (EAP) 7 Supported Configurations
+    connect-02800:
+      description: Embedded library - Qpid Client
+      category: potential
+      labels:
+      - konveyor.io/include=always
+      incidents:
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/org.amqphub.quarkus.quarkus-qpid-jms-2.4.0.jar
+        message: The application embeds a Qpid client library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/org.apache.qpid.proton-j-0.34.1.jar
+        message: The application embeds a Qpid client library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/org.apache.qpid.qpid-jms-client-2.4.0.jar
+        message: The application embeds a Qpid client library.
+      links:
+      - url: https://access.redhat.com/articles/111663
+        title: Red Hat JBoss Enterprise Application Platform (EAP) 6 Supported Configurations
+      - url: https://access.redhat.com/articles/2026253
+        title: Red Hat JBoss Enterprise Application Platform (EAP) 7 Supported Configurations
+    embedded-framework-05500:
+      description: Embedded framework - CDI
+      category: potential
+      labels:
+      - konveyor.io/include=always
+      incidents:
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/jakarta.enterprise.jakarta.enterprise.cdi-api-4.0.1.jar
+        message: The application embeds a CDI library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/org.jboss.resteasy.resteasy-cdi-6.2.6.Final.jar
+        message: The application embeds a CDI library.
+    embedded-framework-05900:
+      description: Embedded framework - GIN
+      category: potential
+      labels:
+      - konveyor.io/include=always
+      incidents:
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/boot/org.jboss.logging.jboss-logging-3.4.2.Final.jar
+        message: The application embeds a GIN (GWT INjection) library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/io.quarkus.quarkus-smallrye-reactive-messaging-3.5.1.jar
+        message: The application embeds a GIN (GWT INjection) library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/io.quarkus.quarkus-smallrye-reactive-messaging-amqp-3.5.1.jar
+        message: The application embeds a GIN (GWT INjection) library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/io.quarkus.quarkus-smallrye-reactive-messaging-kotlin-3.5.1.jar
+        message: The application embeds a GIN (GWT INjection) library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/io.smallrye.reactive.smallrye-reactive-messaging-amqp-4.10.1.jar
+        message: The application embeds a GIN (GWT INjection) library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/io.smallrye.reactive.smallrye-reactive-messaging-api-4.10.1.jar
+        message: The application embeds a GIN (GWT INjection) library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/io.smallrye.reactive.smallrye-reactive-messaging-health-4.10.1.jar
+        message: The application embeds a GIN (GWT INjection) library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/io.smallrye.reactive.smallrye-reactive-messaging-otel-4.10.1.jar
+        message: The application embeds a GIN (GWT INjection) library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/io.smallrye.reactive.smallrye-reactive-messaging-provider-4.10.1.jar
+        message: The application embeds a GIN (GWT INjection) library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/org.jboss.logging.jboss-logging-annotations-2.2.1.Final.jar
+        message: The application embeds a GIN (GWT INjection) library.
+    embedded-framework-07500:
+      description: Embedded framework - Tornado Inject
+      category: potential
+      labels:
+      - konveyor.io/include=always
+      incidents:
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/jakarta.inject.jakarta.inject-api-2.0.1.jar
+        message: The application embeds a Tornado Inject library.
+    logging-usage-00030:
+      description: Embedded library - SLF4J
+      category: potential
+      labels:
+      - konveyor.io/include=always
+      incidents:
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/org.jboss.slf4j.slf4j-jboss-logmanager-2.0.0.Final.jar
+        message: The application embeds a Simple Logging Facade for Java (SLJ4J) library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/org.slf4j.slf4j-api-2.0.6.jar
+        message: The application embeds a Simple Logging Facade for Java (SLJ4J) library.
+    logging-usage-00080:
+      description: Embedded library - JBoss logging
+      category: potential
+      labels:
+      - konveyor.io/include=always
+      incidents:
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/boot/org.jboss.logging.jboss-logging-3.4.2.Final.jar
+        message: The application embeds a JBoss logging library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/org.jboss.logging.jboss-logging-annotations-2.2.1.Final.jar
+        message: The application embeds a JBoss logging library.
+    logging-usage-00160:
+      description: Embedded library - Logging Utils
+      category: potential
+      labels:
+      - konveyor.io/include=always
+      incidents:
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/boot/org.jboss.logging.jboss-logging-3.4.2.Final.jar
+        message: The application embeds a Common Java Logging Utils library.
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/org.jboss.logging.jboss-logging-annotations-2.2.1.Final.jar
+        message: The application embeds a Common Java Logging Utils library.
+    security-02300:
+      description: Embedded library - SSL
+      category: potential
+      labels:
+      - konveyor.io/include=always
+      incidents:
+      - uri: file:///tmp/source-code/target/quarkus-app/lib/main/io.smallrye.common.smallrye-common-classloader-2.1.2.jar
+        message: The application embeds an SSL library.
   unmatched:
   - 3rd-party-01000
   - 3rd-party-01000
@@ -1889,8 +2028,6 @@
   - connect-01600
   - connect-01700
   - connect-01700
-  - connect-01800
-  - connect-01800
   - connect-01900
   - connect-01900
   - connect-02000
@@ -1899,8 +2036,6 @@
   - connect-02100
   - connect-02200
   - connect-02200
-  - connect-02300
-  - connect-02300
   - connect-02400
   - connect-02400
   - connect-02500
@@ -1909,8 +2044,6 @@
   - connect-02600
   - connect-02700
   - connect-02700
-  - connect-02800
-  - connect-02800
   - database-01400
   - database-01400
   - database-01500
@@ -1995,16 +2128,12 @@
   - embedded-framework-05300
   - embedded-framework-05400
   - embedded-framework-05400
-  - embedded-framework-05500
-  - embedded-framework-05500
   - embedded-framework-05600
   - embedded-framework-05600
   - embedded-framework-05700
   - embedded-framework-05700
   - embedded-framework-05800
   - embedded-framework-05800
-  - embedded-framework-05900
-  - embedded-framework-05900
   - embedded-framework-06000
   - embedded-framework-06000
   - embedded-framework-06100
@@ -2035,8 +2164,6 @@
   - embedded-framework-07300
   - embedded-framework-07400
   - embedded-framework-07400
-  - embedded-framework-07500
-  - embedded-framework-07500
   - embedded-framework-07600
   - embedded-framework-07600
   - embedded-framework-07700
@@ -2243,14 +2370,10 @@
   - logging-usage-00010
   - logging-usage-00020
   - logging-usage-00020
-  - logging-usage-00030
-  - logging-usage-00030
   - logging-usage-00040
   - logging-usage-00040
   - logging-usage-00050
   - logging-usage-00050
-  - logging-usage-00080
-  - logging-usage-00080
   - logging-usage-00090
   - logging-usage-00090
   - logging-usage-00100
@@ -2265,8 +2388,6 @@
   - logging-usage-00140
   - logging-usage-00150
   - logging-usage-00150
-  - logging-usage-00160
-  - logging-usage-00160
   - logging-usage-00170
   - logging-usage-00170
   - logging-usage-00180
@@ -2444,8 +2565,6 @@
   - security-02100
   - security-02200
   - security-02200
-  - security-02300
-  - security-02300
   - security-02400
   - security-02400
   - security-02500
@@ -2506,17 +2625,14 @@
   - technology-usage-connect-01500
   - technology-usage-connect-01600
   - technology-usage-connect-01700
-  - technology-usage-connect-01800
   - technology-usage-connect-01900
   - technology-usage-connect-02000
   - technology-usage-connect-02100
   - technology-usage-connect-02200
-  - technology-usage-connect-02300
   - technology-usage-connect-02400
   - technology-usage-connect-02500
   - technology-usage-connect-02600
   - technology-usage-connect-02700
-  - technology-usage-connect-02800
   - technology-usage-database-01400
   - technology-usage-database-01500
   - technology-usage-database-01600
@@ -2558,7 +2674,6 @@
   - technology-usage-embedded-framework-05600
   - technology-usage-embedded-framework-05700
   - technology-usage-embedded-framework-05800
-  - technology-usage-embedded-framework-05900
   - technology-usage-embedded-framework-06000
   - technology-usage-embedded-framework-06100
   - technology-usage-embedded-framework-06200
@@ -2574,7 +2689,6 @@
   - technology-usage-embedded-framework-07200
   - technology-usage-embedded-framework-07300
   - technology-usage-embedded-framework-07400
-  - technology-usage-embedded-framework-07500
   - technology-usage-embedded-framework-07600
   - technology-usage-embedded-framework-07700
   - technology-usage-embedded-framework-07800

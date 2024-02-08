@@ -1,13 +1,15 @@
 __version__ = "0.0.1"
 
-from typing import List
+from typing import Annotated, List
 
 import typer
-from typing_extensions import Annotated
 
 from kai.incident_store import IncidentStore
 from kai.report import Report
 from kai.result import LLMResult
+
+# from typing_extensions import Annotated
+
 
 app = typer.Typer()
 
@@ -84,6 +86,20 @@ def load(folder_path: str):
     write the cached_violations to a file for later use
     """
     incident_store = IncidentStore()
-    cached_violations = incident_store.load_incident_store(folder_path)
-    print("Writing cached_violations")
-    incident_store.write_cached_violations(cached_violations, "cached_violations.yaml")
+    incident_store.load_incident_store(folder_path)
+
+
+@app.command()
+def patch(ruleset: str, violation: str):
+    """
+    Generate patches for a specific violation
+    """
+    print(f"Generating patches for {ruleset} - {violation}")
+    incident_store = IncidentStore()
+    patches = incident_store.get_solved_issue(ruleset, violation)
+    if len(patches) == 0:
+        print(f"No patches found for {ruleset} - {violation}")
+    else:
+        for patch in patches:
+            print(f"Patch: {patch}")
+    return patches

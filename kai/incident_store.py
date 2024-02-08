@@ -3,6 +3,7 @@ __all__ = ["Application", "IncidentStore"]
 import copy
 import os
 import pprint
+from collections import defaultdict
 
 import yaml
 
@@ -38,6 +39,8 @@ class IncidentStore:
         self.applications = {}
         # cached_violations is defined in comments in self._update_cached_violations
         self.cached_violations = {}
+        self.solved_violations = {}
+        self.missing_violations = {}
         self.pp = pprint.PrettyPrinter(indent=2)
 
     def add_app_to_incident_store(self, app_name, yaml):
@@ -135,7 +138,12 @@ class IncidentStore:
         """
         ### Add our Application's Name to the cached_violations
         # self.pp.pprint(a.report)
-
+        # load self.cached_violations if it is not loaded
+        if self.cached_violations is None:
+            self.cached_violations = self.get_cached_violations(
+                "cached_violations.yaml"
+            )
+        print(f"Updating cached_violations with '{a.name}'")
         for ruleset in a.report.keys():
             if ruleset not in self.cached_violations:
                 self.cached_violations[ruleset] = {}
@@ -277,10 +285,17 @@ class IncidentStore:
                 print(f"Loading application {app}\n")
                 _ = self.load_app_cached_violation(app, "initial")
                 print(f"Loaded application {app}\n")
-                solved_folder = os.path.join(folder_path, app, "solved")
-                if os.path.exists(solved_folder) and os.listdir(solved_folder):
-                    print("finding missing incidents")
-                    self.update_incident_store(app)
+
+        for app in apps:
+            solved_folder = os.path.join(folder_path, app, "solved")
+            if os.path.exists(solved_folder) and os.listdir(solved_folder):
+                print("finding missing incidents")
+                self.update_incident_store(app)
+
+        self.write_cached_violations(self.cached_violations, "cached_violations.yaml")
+        # write missing incidents to the a new file
+        self.write_cached_violations(self.missing_violations, "missing_incidents.yaml")
+        self.write_cached_violations(self.solved_violations, "solved_incidents.yaml")
 
     def load_app_cached_violation(self, app, folder):
         """
@@ -293,7 +308,7 @@ class IncidentStore:
             print(f"Error: output.yaml does not exist for {app}.")
             return None
         self.add_app_to_incident_store(app, output_yaml)
-        self.write_cached_violations(self.cached_violations, "cached_violations.yaml")
+        # self.write_cached_violations(self.cached_violations, "cached_violations.yaml")
         return self.cached_violations
 
     def fetch_output_yaml(self, app_name, folder="solved"):
@@ -487,9 +502,11 @@ class IncidentStore:
     def update_incident_store(self, app_name):
         """
         Update the incident store with the given application
+        Find missing and solved incidents
+        Add new incidents to the cached_violations
         """
 
-        cached_violations = self.get_cached_violations("cached_violations.yaml")
+        cached_violations = self.cached_violations
 
         print(f"Updating incident store with application {app_name}\n")
         output_yaml = self.fetch_output_yaml(app_name)
@@ -498,13 +515,9 @@ class IncidentStore:
             return None
         temp_report = Report(output_yaml).get_report()
         report = IncidentStore.create_temp_cached_violations(app_name, temp_report)
-        self.write_cached_violations(report, "temp_cached_violations.yaml")
-        missing_incidents = self.get_missing_incidents(app_name, report)
+        self.missing_violations = self.get_missing_incidents(app_name, report)
 
-        # write missing incidents to the a new file
-        self.write_cached_violations(missing_incidents, "missing_incidents.yaml")
-        solved_issues = self.find_solved_issues(missing_incidents)
-        self.write_cached_violations(solved_issues, "solved_incidents.yaml")
+        self.solved_violations = self.find_solved_issues()
 
         for ruleset in report.keys():
             if ruleset not in cached_violations:
@@ -546,11 +559,11 @@ class IncidentStore:
                                     break
 
                             if not is_duplicate:
-                                cached_violations[ruleset][violation_name][app][
+                                self.cached_violations[ruleset][violation_name][app][
                                     file_path
                                 ].append(incident)
 
-        self.write_cached_violations(cached_violations, "cached_violations.yaml")
+        return self.cached_violations
         print(f"Updated incident store with new issues for application {app_name}\n")
 
     # find the missing incidents from self.cached_violations
@@ -562,9 +575,6 @@ class IncidentStore:
         # get commit_id from app.yaml
         app_variables = IncidentStore.get_app_variables(app_name)
         commit_id = app_variables["new_commitId"]
-
-        # find the missing incidents
-        missing_incidents = {}
 
         for ruleset in self.cached_violations.keys():
             for violation in self.cached_violations[ruleset].keys():
@@ -586,22 +596,32 @@ class IncidentStore:
                                 app
                             ][file_path]:
                                 if incident not in new_incidents:
-                                    if ruleset not in missing_incidents:
-                                        missing_incidents[ruleset] = {}
-                                    if violation not in missing_incidents[ruleset]:
-                                        missing_incidents[ruleset][violation] = {}
-                                    if app not in missing_incidents[ruleset][violation]:
-                                        missing_incidents[ruleset][violation][app] = {}
+                                    if ruleset not in self.missing_violations:
+                                        self.missing_violations[ruleset] = {}
                                     if (
-                                        file_path
-                                        not in missing_incidents[ruleset][violation][
-                                            app
+                                        violation
+                                        not in self.missing_violations[ruleset]
+                                    ):
+                                        self.missing_violations[ruleset][violation] = {}
+                                    if (
+                                        app
+                                        not in self.missing_violations[ruleset][
+                                            violation
                                         ]
                                     ):
-                                        missing_incidents[ruleset][violation][app][
-                                            file_path
-                                        ] = []
-                                    missing_incidents[ruleset][violation][app][
+                                        self.missing_violations[ruleset][violation][
+                                            app
+                                        ] = {}
+                                    if (
+                                        file_path
+                                        not in self.missing_violations[ruleset][
+                                            violation
+                                        ][app]
+                                    ):
+                                        self.missing_violations[ruleset][violation][
+                                            app
+                                        ][file_path] = []
+                                    self.missing_violations[ruleset][violation][app][
                                         file_path
                                     ].append(
                                         {
@@ -620,21 +640,22 @@ class IncidentStore:
                                         }
                                     )
 
-        return missing_incidents
+        return self.missing_violations
 
-    def find_solved_issues(self, missing_incidents):
+    def find_solved_issues(self):
         """
         Find solved issues from the missing incidents
         """
-        solved_issues = {}
 
         # for every missing incident, find the solved issue
-        for ruleset in missing_incidents.keys():
-            for violation in missing_incidents[ruleset].keys():
-                for app in missing_incidents[ruleset][violation].keys():
+        for ruleset in self.missing_incidents.keys():
+            for violation in self.missing_incidents[ruleset].keys():
+                for app in self.missing_incidents[ruleset][violation].keys():
                     repo_path = IncidentStore.get_repo_path(app)
-                    for file_path in missing_incidents[ruleset][violation][app].keys():
-                        for incident in missing_incidents[ruleset][violation][app][
+                    for file_path in self.missing_incidents[ruleset][violation][
+                        app
+                    ].keys():
+                        for incident in self.missing_incidents[ruleset][violation][app][
                             file_path
                         ]:
                             # find the solved issue
@@ -649,25 +670,28 @@ class IncidentStore:
 
                             diff_exists = git_helper.diff_exists_for_file(file_path)
                             if diff_exists:
-                                if ruleset not in solved_issues:
-                                    solved_issues[ruleset] = {}
-                                if violation not in solved_issues[ruleset]:
-                                    solved_issues[ruleset][violation] = {}
-                                if app not in solved_issues[ruleset][violation]:
-                                    solved_issues[ruleset][violation][app] = {}
+                                if ruleset not in self.solved_violations:
+                                    self.solved_violations[ruleset] = {}
+                                if violation not in self.solved_violations[ruleset]:
+                                    self.solved_violations[ruleset][violation] = {}
+                                if (
+                                    app
+                                    not in self.solved_violations[ruleset][violation]
+                                ):
+                                    self.solved_violations[ruleset][violation][app] = {}
                                 if (
                                     file_path
-                                    not in solved_issues[ruleset][violation][app]
+                                    not in self.solved_violations[ruleset][violation][
+                                        app
+                                    ]
                                 ):
-                                    solved_issues[ruleset][violation][app][
+                                    self.solved_violations[ruleset][violation][app][
                                         file_path
                                     ] = []
-                                solved_issues[ruleset][violation][app][
+                                self.solved_violations[ruleset][violation][app][
                                     file_path
                                 ].append(incident)
-        if solved_issues is not None:
-            self.write_cached_violations(solved_issues, "solved_incidents.yaml")
-        return solved_issues
+        return self.solved_violations
 
     def get_repo_path(app_name):
         """
@@ -692,7 +716,7 @@ class IncidentStore:
             return None
         return repo_dir
 
-    def find_if_solved_issues_exist(solved_issues):
+    def find_if_solved_issues_exist(self):
         """
         Find if solved issues exist
         """
@@ -710,39 +734,47 @@ class IncidentStore:
             return False
         return True
 
-    def get_solved_issue(ruleset, violation):
+    def get_solved_issue(self, ruleset, violation):
         """
         For the given ruleset and violation, return the solved issue(s) if it exists
         """
-        patches = {}
-        # check if solved issues exist
-        if not IncidentStore.find_if_solved_issues_exist():
+        patches = []
+        incidentstore = IncidentStore()
+
+        # Check if solved issues exist
+        if not incidentstore.find_if_solved_issues_exist():
             return None
 
-        # load the solved issues
-        solved_issues = IncidentStore.get_cached_violations("solved_incidents.yaml")
+        # Load the solved issues
+        solved_issues = incidentstore.get_cached_violations("solved_incidents.yaml")
 
-        # check if the ruleset and violation exist
-        for ruleset in solved_issues.keys():
-            if ruleset not in solved_issues:
-                return None
-            for violation in solved_issues[ruleset].keys():
-                if violation not in solved_issues[ruleset]:
-                    return None
-                for app in solved_issues[ruleset][violation].keys():
-                    repo_path = IncidentStore.get_repo_path(app)
-                    for file_path in solved_issues[ruleset][violation][app].keys():
-                        for incident in solved_issues[ruleset][violation][app][
-                            file_path
-                        ]:
-                            git_helper = GitHelper(
-                                incident["repo"],
-                                repo_path,
-                                incident["initial_branch"],
-                                incident["solved_branch"],
+        # Iterate over the solved issues to find the match
+        if ruleset in solved_issues and violation in solved_issues[ruleset]:
+            for app, app_data in solved_issues[ruleset][violation].items():
+                print(f"Found solved issues for {ruleset} - {violation} for app {app}")
+                repo_path = IncidentStore.get_repo_path(app)
+
+                for file_path, incidents in app_data.items():
+                    for incident in incidents:
+                        git_helper = GitHelper(
+                            incident["repo"],
+                            repo_path,
+                            incident["initial_branch"],
+                            incident["solved_branch"],
+                            incident["commitId"],
+                            incident["new_commitId"],
+                        )
+                        patches.append(
+                            git_helper.get_patch_for_file(
+                                file_path,
                                 incident["commitId"],
                                 incident["new_commitId"],
                             )
-                            patches.append(git_helper.get_patch_for_file(file_path))
+                        )
 
+                        # If a match is found, break out of the loop
+                        break  # break out of the loop after finding a match
+                    else:
+                        continue  # Continue to the next iteration of the outer loop if no match found
+                    break  # Break out of the outer loop once a match is found
         return patches

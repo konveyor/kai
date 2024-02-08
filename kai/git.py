@@ -53,16 +53,17 @@ class GitHelper:
         end_commit = self.repository.commit(end_commit_id)
         return start_commit.diff(end_commit, create_patch=True)
 
-    def get_patch_for_file(self, start_commit_id, end_commit_id, file_path):
+    def get_patch_for_file(self, file_path, start_commit_id, end_commit_id):
         if file_path.endswith(".svg"):
             return None
+        print(
+            f"Getting patch for {file_path} between {start_commit_id} and {end_commit_id}"
+        )
         diff_indexes = self.get_patch(start_commit_id, end_commit_id)
         # We need to search through the indexes to find the diff for our file_path
         patch = None
         for diff in diff_indexes:
-            # print(f"'{file_path}' '{diff.a_path}' '{diff.b_path}' ")
             if diff.a_path == file_path or diff.b_path == file_path:
-                # print("Found match")
                 patch = diff.diff
                 patch = patch.decode("utf-8")
                 break
@@ -84,7 +85,7 @@ class GitHelper:
         """
 
         # Get the patch for the file between the two commits
-        patch = self.get_patch_for_file(self.old_commit, self.new_commit, file_path)
+        patch = self.get_patch_for_file(file_path, self.old_commit, self.new_commit)
         # If patch is not None, it means a diff exists for the file
         if patch is not None:
             return True
