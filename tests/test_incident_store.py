@@ -11,9 +11,9 @@ class TestIncidentStore(unittest.TestCase):
     def test_fetch_output_yaml_existing_app_output_yaml(self):
         # Test when the specified app folder and output.yaml exist
         i = IncidentStore()
-        app_name = "kitchensink"
+        app_name = "helloworld-mdb"
         expected_output_yaml_path = os.path.join(
-            "samples/analysis_reports", app_name, "output.yaml"
+            "samples/analysis_reports", app_name, "solved/output.yaml"
         )
         self.assertEqual(i.fetch_output_yaml(app_name), expected_output_yaml_path)
 
@@ -107,6 +107,7 @@ class TestIncidentStore(unittest.TestCase):
                                 },
                                 "line_number": None,
                                 "message": "\n Session replication ensures that client sessions are not disrupted by node failure. Each node in the cluster shares information about ongoing sessions and can take over sessions if another node disappears. In a cloud environment, however, data in the memory of a running container can be wiped out by a restart.\n\n Recommendations\n\n * Review the session replication usage and ensure that it is configured properly.\n * Disable HTTP session clustering and accept its implications.\n * Re-architect the application so that sessions are stored in a cache backing service or a remote data grid.\n\n A remote data grid has the following benefits:\n\n * The application is more scaleable and elastic.\n * The application can survive EAP node failures because a JVM failure does not cause session data loss.\n * Session data can be shared by multiple applications.\n ",
+                                "commitId": None,
                             }
                         ]
                     }
@@ -115,20 +116,17 @@ class TestIncidentStore(unittest.TestCase):
         }
         self.assertEqual(i.cached_violations, expected_cached_violations)
 
-    def test_load_app_cached_violation(self):
+    def test_load_incidentstore_cached_violation(self):
         # Test when the specified app folder and output.yaml exist
-        apps = [
-            "kitchensink",
-            "eap-coolstore-monolith",
-            "helloworld-mdb",
-            "ticket-monster",
-        ]
+        folder_path = "tests/test_data/sample"
         i = IncidentStore()
 
-        i.load_app_cached_violation(apps)
+        i.load_incident_store(folder_path)
         self.assertIsNotNone(i.cached_violations)
         self.assertIsInstance(i.cached_violations, dict)
-        self.assertEqual(len(i.cached_violations), 6)
+        self.assertEqual(len(i.cached_violations), 3)
+
+        i.cleanup()
 
     def test_write_cached_violations(self):
         test_cached_violations = {
@@ -207,18 +205,21 @@ class TestIncidentStore(unittest.TestCase):
             },
         }
 
-        output_directory = "samples/generated_output/incident_store"
-        output_file_path = os.path.join(output_directory, "cached_violations.yaml")
+        output_file_path = (
+            "samples/generated_output/incident_store/test_cached_violations.yaml"
+        )
         i = IncidentStore()
         try:
             # Call the function under test
-            i.write_cached_violations(test_cached_violations)
+            i.write_cached_violations(
+                test_cached_violations, "test_cached_violations.yaml"
+            )
 
             # Check if the file was created
             print(output_file_path)
             self.assertTrue(os.path.exists(output_file_path))
 
-            # Check if the written data matches the expected data
+            # Check if the written datza matches the expected data
             with open(output_file_path, "r") as f:
                 loaded_data = yaml.safe_load(f)
             self.assertEqual(loaded_data, test_cached_violations)
@@ -227,6 +228,26 @@ class TestIncidentStore(unittest.TestCase):
             # Clean up
             if os.path.exists(output_file_path):
                 os.remove(output_file_path)
+
+    def test_find_solved_issues(self):
+        i = IncidentStore()
+        i.load_incident_store("tests/test_data/sample")
+        patches = i.get_solved_issue(
+            "quarkus/springboot", "javaee-pom-to-quarkus-00010"
+        )
+        self.assertIsNotNone(patches)
+        self.assertEquals(len(patches), 1)
+        i.cleanup()
+
+    def test_find_solved_issues_no_solved_issues(self):
+        i = IncidentStore()
+        i.load_incident_store("tests/test_data/sample")
+        patches = i.get_solved_issue(
+            "quarkus/springboot", "javaee-pom-to-quarkus-01010"
+        )
+        self.assertListEqual(patches, [])
+        self.assertEquals(len(patches), 0)
+        i.cleanup()
 
     if __name__ == "__main__":
         unittest.main()

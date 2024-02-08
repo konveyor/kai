@@ -647,16 +647,16 @@ class IncidentStore:
         """
 
         # for every missing incident, find the solved issue
-        for ruleset in self.missing_incidents.keys():
-            for violation in self.missing_incidents[ruleset].keys():
-                for app in self.missing_incidents[ruleset][violation].keys():
+        for ruleset in self.missing_violations.keys():
+            for violation in self.missing_violations[ruleset].keys():
+                for app in self.missing_violations[ruleset][violation].keys():
                     repo_path = IncidentStore.get_repo_path(app)
-                    for file_path in self.missing_incidents[ruleset][violation][
+                    for file_path in self.missing_violations[ruleset][violation][
                         app
                     ].keys():
-                        for incident in self.missing_incidents[ruleset][violation][app][
-                            file_path
-                        ]:
+                        for incident in self.missing_violations[ruleset][violation][
+                            app
+                        ][file_path]:
                             # find the solved issue
                             git_helper = GitHelper(
                                 incident["repo"],
