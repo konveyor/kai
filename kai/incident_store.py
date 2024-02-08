@@ -3,7 +3,6 @@ __all__ = ["Application", "IncidentStore"]
 import copy
 import os
 import pprint
-from collections import defaultdict
 
 import yaml
 
