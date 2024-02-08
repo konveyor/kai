@@ -31,7 +31,7 @@ def load_config():
             except yaml.YAMLError as exc:
                 print(exc)
                 return None
-        return {"model_templates": model_templates}
+    return {"model_templates": model_templates}
 
 
 def load_templates():
