@@ -722,7 +722,7 @@ class IncidentStore:
         """
         Find if solved issues exist
         """
-        # check if file samples/generated_output/incident_store/solved_incidents.yaml exists and is not empty
+        # check if file solved_incidents.yaml exists
         if not os.path.exists(
             "samples/generated_output/incident_store/solved_incidents.yaml"
         ):
@@ -775,8 +775,7 @@ class IncidentStore:
                         )
 
                         # If a match is found, break out of the loop
-                        break  # break out of the loop after finding a match
+                        break
                     else:
-                        continue  # Continue to the next iteration of the outer loop if no match found
-                    break  # Break out of the outer loop once a match is found
+                        continue
         return patches
