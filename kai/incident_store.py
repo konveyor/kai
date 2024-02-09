@@ -210,26 +210,29 @@ class IncidentStore:
             None        - if no common violation
             {}          - if a common violation is found
         """
+
         # if the cached_violations is not loaded, load it
-        if self.cached_violations is None:
-            self.get_cached_violations()
+        if not self.cached_violations:
+            self.cached_violations = self.get_cached_violations(
+                "cached_violations.yaml"
+            )
         # check the loaded cached_violations and see if its empty
         if self.cached_violations is None:
             return None
-        ruleset = self.cached_violations.get(ruleset_name, None)
-        if ruleset is None:
-            print(f"Unable to find cached_violations for ruleset: '{ruleset_name}'")
-            return None
-        entry = ruleset.get(violation_name, None)
-        if entry is None:
-            print(
-                f"Unable to find a match of ruleset: '{ruleset_name}' and violation_name: '{violation_name}'"
-            )
-            return None
-        # print(f"Found a match of ruleset: '{ruleset_name}' and violation_name: '{violation_name}': entry is '{entry}'")
-        # print(f"DeepCopy = {copy.deepcopy(entry)}")
-        # Make   a deepcopy of entries
-        return copy.deepcopy(entry)
+
+        common_entries = []
+
+        # iterate through the cached_violations and find the common entries
+        for ruleset, violations in self.cached_violations.items():
+            if ruleset == ruleset_name:
+                for violation, apps in violations.items():
+                    if violation == violation_name:
+                        for app, file_paths in apps.items():
+                            common_entries.append([ruleset, violation, app, file_paths])
+
+                        break
+                break
+        return common_entries
 
     def cleanup(self):
         """
@@ -425,7 +428,7 @@ class IncidentStore:
 
         output_directory = "samples/generated_output/incident_store"
         output_file_path = os.path.join(output_directory, filename)
-
+        print(f"Loading incident store from file: {filename}\n")
         # check if the file is present
         if not os.path.exists(output_file_path):
             print(f"Error: {output_file_path} does not exist.")

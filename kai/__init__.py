@@ -103,3 +103,18 @@ def patch(ruleset: str, violation: str):
         for patch in patches:
             print(f"Patch: {patch}")
     return patches
+
+
+@app.command()
+def common(ruleset: str, violation: str):
+    """
+    Find common violations for a specific violation
+    """
+    print(f"Finding common violations for {ruleset} - {violation}")
+    incident_store = IncidentStore()
+    violations = incident_store.find_common_violations(ruleset, violation)
+    if violations is None:
+        print(f"No common violations found for {ruleset} - {violation}")
+    for violation in violations:
+        print(f"Violation: {violation}")
+    return violations
