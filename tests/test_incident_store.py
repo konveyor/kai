@@ -249,5 +249,15 @@ class TestIncidentStore(unittest.TestCase):
         self.assertEquals(len(patches), 0)
         i.cleanup()
 
+    def test_find_common_violations(self):
+        i = IncidentStore()
+        i.load_incident_store("tests/test_data/sample")
+        violations = i.find_common_violations(
+            "quarkus/springboot", "javaee-pom-to-quarkus-00010"
+        )
+        self.assertIsNotNone(violations)
+        self.assertEquals(len(violations), 1)
+        i.cleanup()
+
     if __name__ == "__main__":
         unittest.main()
