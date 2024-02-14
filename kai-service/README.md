@@ -1,4 +1,4 @@
-# Konveyor IA Service
+# Konveyor AI Service
 
 This utility provides a service to generate AI prompts based off of a solved example and source that requires updating. It also proxies requests to LLMs, and will likely include additional functionality as required.
 
