@@ -2,6 +2,7 @@
 
 """This module is intended to facilitate using Konveyor with LLMs."""
 
+import json
 import os
 import warnings
 from os import listdir
@@ -10,6 +11,14 @@ from os.path import isfile, join
 import aiohttp
 import yaml
 from aiohttp import web
+
+# TODO: Make openapi spec for everything
+
+# TODO: Repo lives both on client and on server. Determine either A) Best way to
+# rectify differences or B) Only have the code on one and pass stuff between
+# each other
+
+# TODO: Parameter validation
 
 
 def load_config():
@@ -128,9 +137,92 @@ async def proxy_handler(request):
             )
 
 
+async def run_analysis_report():
+    pass
+
+
+async def send_analysis_report():
+    pass
+
+
+def prepopulate_incident_store():
+    """For demo, populate store with already solved examples"""
+    pass
+
+
+def user_gives_which_repo_and_branch(params):
+    """
+    params (json):
+    - repo: The repo to look at
+    - program: 'git' | 'svn' | etc... (let's only support git for now)
+    - branch: Duh
+    """
+
+    # TODO: Clone the repo locally on the server
+
+    pass
+
+
+def user_gives_service_which_incident_to_solve(params):
+    # TODO: Make a streaming version
+
+    """
+    Will need to cache the incident result so that the user, when it accepts
+    or rejects it knows what the heck the user is referencing
+
+    Stateful, stores it
+
+    params (json):
+    - some identifier of the incident that we are looking at
+
+    return (json):
+    - some diff of the code to apply
+    - id of the associated solved incident
+    """
+
+    solved_example = try_and_get_the_fricken_solved_example_maybe()
+    prompt = generate_prompt()
+    llm_result = proxy_handler(prompt)  # Maybe?
+
+    diff = get_diff_from_llm_result()
+    cache_result_id = cache_the_solution_somehow()
+
+    return json.dumps(
+        {
+            "diff": diff,
+            "id": cache_result_id,
+        }
+    )
+
+
+def accept_or_reject_solution(params):
+    """
+    User says which solution and whether to reject or accept it
+
+    params (json):
+    - id: the id of the incident to accept or reject
+    - accept: bool to say yes or no
+
+    return (json):
+    - success: duh
+    """
+
+    id = params["id"]
+    accept = params["accept"]
+
+    if accept:
+        solution = get_solution_from_id(id)
+        put_solution_in_indicent_store(solution)
+
+    return json.dump({"success": True})
+
+
 app = web.Application()
 app.router.add_post("/generate_prompt", generate_prompt)
 app.router.add_route("*", "/proxy", proxy_handler)
 
 if __name__ == "__main__":
+    # TODO: Remove after demo
+    prepopulate_incident_store()
+
     web.run_app(app)
