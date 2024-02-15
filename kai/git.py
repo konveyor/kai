@@ -56,9 +56,6 @@ class GitHelper:
     def get_patch_for_file(self, file_path, start_commit_id, end_commit_id):
         if file_path.endswith(".svg"):
             return None
-        print(
-            f"Getting patch for {file_path} between {start_commit_id} and {end_commit_id}"
-        )
         diff_indexes = self.get_patch(start_commit_id, end_commit_id)
         # We need to search through the indexes to find the diff for our file_path
         patch = None
