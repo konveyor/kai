@@ -519,7 +519,7 @@ class IncidentStore:
         report = IncidentStore.create_temp_cached_violations(app_name, temp_report)
         self.missing_violations = self.get_missing_incidents(app_name, report)
 
-        self.solved_violations = self.find_solved_issues()
+        self.solved_violations = self.find_solved_issues(app_name)
 
         for ruleset in report.keys():
             if ruleset not in cached_violations:
@@ -644,7 +644,7 @@ class IncidentStore:
 
         return self.missing_violations
 
-    def find_solved_issues(self):
+    def find_solved_issues(self, app_name):
         """
         Find solved issues from the missing incidents
         """
@@ -653,46 +653,51 @@ class IncidentStore:
         for ruleset in self.missing_violations.keys():
             for violation in self.missing_violations[ruleset].keys():
                 for app in self.missing_violations[ruleset][violation].keys():
-                    repo_path = IncidentStore.get_repo_path(app)
-                    for file_path in self.missing_violations[ruleset][violation][
-                        app
-                    ].keys():
-                        for incident in self.missing_violations[ruleset][violation][
+                    if app == app_name:
+                        repo_path = IncidentStore.get_repo_path(app)
+                        for file_path in self.missing_violations[ruleset][violation][
                             app
-                        ][file_path]:
-                            # find the solved issue
-                            git_helper = GitHelper(
-                                incident["repo"],
-                                repo_path,
-                                incident["initial_branch"],
-                                incident["solved_branch"],
-                                incident["commitId"],
-                                incident["new_commitId"],
-                            )
+                        ].keys():
+                            for incident in self.missing_violations[ruleset][violation][
+                                app
+                            ][file_path]:
+                                # find the solved issue
+                                git_helper = GitHelper(
+                                    incident["repo"],
+                                    repo_path,
+                                    incident["initial_branch"],
+                                    incident["solved_branch"],
+                                    incident["commitId"],
+                                    incident["new_commitId"],
+                                )
 
-                            diff_exists = git_helper.diff_exists_for_file(file_path)
-                            if diff_exists:
-                                if ruleset not in self.solved_violations:
-                                    self.solved_violations[ruleset] = {}
-                                if violation not in self.solved_violations[ruleset]:
-                                    self.solved_violations[ruleset][violation] = {}
-                                if (
-                                    app
-                                    not in self.solved_violations[ruleset][violation]
-                                ):
-                                    self.solved_violations[ruleset][violation][app] = {}
-                                if (
-                                    file_path
-                                    not in self.solved_violations[ruleset][violation][
+                                diff_exists = git_helper.diff_exists_for_file(file_path)
+                                if diff_exists:
+                                    if ruleset not in self.solved_violations:
+                                        self.solved_violations[ruleset] = {}
+                                    if violation not in self.solved_violations[ruleset]:
+                                        self.solved_violations[ruleset][violation] = {}
+                                    if (
                                         app
-                                    ]
-                                ):
+                                        not in self.solved_violations[ruleset][
+                                            violation
+                                        ]
+                                    ):
+                                        self.solved_violations[ruleset][violation][
+                                            app
+                                        ] = {}
+                                    if (
+                                        file_path
+                                        not in self.solved_violations[ruleset][
+                                            violation
+                                        ][app]
+                                    ):
+                                        self.solved_violations[ruleset][violation][app][
+                                            file_path
+                                        ] = []
                                     self.solved_violations[ruleset][violation][app][
                                         file_path
-                                    ] = []
-                                self.solved_violations[ruleset][violation][app][
-                                    file_path
-                                ].append(incident)
+                                    ].append(incident)
         return self.solved_violations
 
     def get_repo_path(app_name):
