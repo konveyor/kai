@@ -701,15 +701,15 @@ class IncidentStore:
         """
 
         mapping = {
-            "eap-coolstore-monolith": "sample_repos/eap-coolstore-monolith",
-            "ticket-monster": "sample_repos/ticket-monster",
-            "kitchensink": "sample_repos/kitchensink-quarkus",
-            "helloworld-mdb": "sample_repos/helloworld-mdb-quarkus",
-            "bmt": "sample_repos/bmt",
-            "cmt": "sample_repos/cmt",
-            "ejb-remote": "sample_repos/jboss-eap-quickstarts-quarkus",
-            "ejb-security": "sample_repos/jboss-eap-quickstarts",
-            "tasks-jsf": "sample_repos/jboss-eap-quickstarts-quarkus",
+            "eap-coolstore-monolith": "samples/sample_repos/eap-coolstore-monolith",
+            "ticket-monster": "samples/sample_repos/ticket-monster",
+            "kitchensink": "samples/sample_repos/kitchensink-quarkus",
+            "helloworld-mdb": "samples/sample_repos/helloworld-mdb-quarkus",
+            "bmt": "samples/sample_repos/bmt",
+            "cmt": "samples/sample_repos/cmt",
+            "ejb-remote": "samples/sample_repos/jboss-eap-quickstarts-quarkus",
+            "ejb-security": "samples/sample_repos/jboss-eap-quickstarts",
+            "tasks-jsf": "samples/sample_repos/jboss-eap-quickstarts-quarkus",
         }
         return mapping.get(app_name, None)
 
