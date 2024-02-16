@@ -44,4 +44,14 @@ cd helloworld-mdb-quarkus || exit
 git checkout quarkus
 cd ..
 
+git clone https://github.com/konveyor-ecosystem/bmt.git bmt
+cd bmt || exit
+git checkout quarkus
+cd ..
+
+git clone https://github.com/konveyor-ecosystem/cmt.git cmt
+cd bmt || exit
+git checkout quarkus
+cd ..
+
 popd || exit
