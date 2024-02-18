@@ -1,0 +1,49 @@
+## Reasoning
+
+To migrate the Java EE Message Driven Bean (MDB) to Quarkus, we need to address the issue identified by the static code analysis. The `@MessageDriven` annotation is not supported in Quarkus, and we need to use Contexts and Dependency Injection (CDI) instead. Here are the steps we will take:
+
+1. Replace the `@MessageDriven` annotation with `@ApplicationScoped` to define the bean as a CDI managed bean with application scope.
+2. Use MicroProfile Reactive Messaging to handle the JMS messages. This is done by using the `@Incoming` annotation to mark the method that will receive the messages.
+3. Replace the Java Util Logging with Quarkus logging (`io.quarkus.logging.Log`) for consistency with Quarkus standards.
+4. Remove the `MessageListener` interface and its `onMessage` method signature, as it is specific to Java EE MDBs and not required in Quarkus.
+5. The `ActivationConfigProperty` annotations are no longer needed because the configuration will be handled differently in Quarkus, typically through the `application.properties` file.
+6. Update the `pom.xml` file to include the Quarkus Reactive Messaging dependency if it's not already present.
+
+The solved example shows how the MDB is converted to a CDI bean and uses MicroProfile Reactive Messaging to consume messages. We will follow a similar pattern for the input file.
+
+## Updated File
+```java
+package org.jboss.as.quickstarts.mdb;
+
+import io.quarkus.logging.Log;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.eclipse.microprofile.reactive.messaging.Incoming;
+
+/**
+ * <p>
+ * A simple bean that asynchronously receives and processes the messages that are sent to the queue.
+ * </p>
+ *
+ * @author Serge Pagop (spagop@redhat.com)
+ */
+@ApplicationScoped
+public class HelloWorldQueueMDB {
+
+    @Incoming("HELLOWORLDMDBQueue")
+    public void receiveMessage(String messageText) {
+        Log.info("Received Message from queue: " + messageText);
+    }
+}
+```
+
+### Notes on pom.xml and Configuration
+- Ensure that the `quarkus-smallrye-reactive-messaging` dependency is included in the `pom.xml` file.
+- The `application.properties` file should contain the configuration for the message queue, similar to the `ActivationConfigProperty` values from the original Java EE code. For example:
+  ```
+  mp.messaging.incoming.HELLOWORLDMDBQueue.connector=smallrye-jms
+  mp.messaging.incoming.HELLOWORLDMDBQueue.destination=queue/HELLOWORLDMDBQueue
+  ```
+- The `connector` property would depend on the specific JMS connector being used in the Quarkus application.
+- The `destination` property should match the JNDI name of the JMS queue.
+
+By following these steps and making the necessary updates, the Java EE MDB should be successfully migrated to a Quarkus application.
