@@ -7,7 +7,7 @@ import org.eclipse.microprofile.reactive.messaging.Incoming;
 
 /**
  * <p>
- * A simple bean that asynchronously receives and processes the messages that are sent to the queue.
+ * A simple bean that asynchronously receives and processes the messages that are sent to the queue using Quarkus.
  * </p>
  *
  * @author Serge Pagop (spagop@redhat.com)
@@ -16,7 +16,7 @@ import org.eclipse.microprofile.reactive.messaging.Incoming;
 public class HelloWorldQueueMDB {
 
     @Incoming("HELLOWORLDMDBQueue")
-    public void receiveMessage(String messageText) {
-        Log.info("Received Message from queue: " + messageText);
+    public void onMessage(String msg) {
+        Log.info("Received Message from queue: " + msg);
     }
 }

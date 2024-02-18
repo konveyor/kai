@@ -17,16 +17,9 @@
  */
 package org.jboss.as.quickstarts.mdb;
 
-import java.util.logging.Logger;
-import javax.ejb.ActivationConfigProperty;
-import javax.ejb.MessageDriven;
-import javax.jms.JMSException;
-import javax.jms.Message;
-import javax.jms.MessageListener;
-import javax.jms.TextMessage;
-import org.eclipse.microprofile.reactive.messaging.Incoming;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.eclipse.microprofile.reactive.messaging.Incoming;
 
 /**
  * <p>
@@ -36,25 +29,10 @@ import jakarta.enterprise.context.ApplicationScoped;
  * @author Serge Pagop (spagop@redhat.com)
  */
 @ApplicationScoped
-public class HelloWorldQueueMDB implements MessageListener {
+public class HelloWorldQueueMDB {
 
-    private static final Logger LOGGER = Logger.getLogger(HelloWorldQueueMDB.class.toString());
-
-    /**
-     * @see MessageListener#onMessage(Message)
-     */
     @Incoming("HELLOWORLDMDBQueue")
-    public void onMessage(Message rcvMessage) {
-        TextMessage msg = null;
-        try {
-            if (rcvMessage instanceof TextMessage) {
-                msg = (TextMessage) rcvMessage;
-                Log.info("Received Message from queue: " + msg.getText());
-            } else {
-                LOGGER.warning("Message of wrong type: " + rcvMessage.getClass().getName());
-            }
-        } catch (JMSException e) {
-            throw new RuntimeException(e);
-        }
+    public void onMessage(String msg) {
+        Log.info("Received Message from queue: " + msg);
     }
 }
