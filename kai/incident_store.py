@@ -654,7 +654,6 @@ class IncidentStore:
             for violation in self.missing_violations[ruleset].keys():
                 for app in self.missing_violations[ruleset][violation].keys():
                     if app == app_name:
-                        repo_path = IncidentStore.get_repo_path(app)
                         for file_path in self.missing_violations[ruleset][violation][
                             app
                         ].keys():
