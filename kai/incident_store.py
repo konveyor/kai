@@ -18,8 +18,6 @@ class Application:
         repo=None,
         initial_branch=None,
         solved_branch=None,
-        commitId=None,
-        new_commitId=None,
         timestamp=None,
     ):
         self.name = name
@@ -27,32 +25,30 @@ class Application:
         self.repo = repo
         self.initial_branch = initial_branch
         self.solved_branch = solved_branch
-        self.commitId = commitId
-        self.new_commitId = new_commitId
         self.timestamp = timestamp
 
 
 class IncidentStore:
-    def __init__(self):
+    def __init__(self, report_path, output_dir):
         # applications, keyed on App Name
         self.applications = {}
         # cached_violations is defined in comments in self._update_cached_violations
         self.cached_violations = {}
         self.solved_violations = {}
         self.missing_violations = {}
+        self.output_dir = output_dir
+        self.analysis_dir = report_path
         self.pp = pprint.PrettyPrinter(indent=2)
 
     def add_app_to_incident_store(self, app_name, yaml):
         r = Report(yaml).get_report()
-        app_variables = IncidentStore.get_app_variables(app_name)
+        app_variables = self.get_app_variables(app_name)
         a = Application(
             app_name,
             r,
             app_variables.get("repo", None),
             app_variables.get("initial_branch", None),
             app_variables.get("solved_branch", None),
-            app_variables.get("commit_id", None),
-            app_variables.get("new_commitId", None),
             app_variables.get("timestamp", None),
         )
         self.applications[app_name] = a
@@ -77,7 +73,7 @@ class IncidentStore:
             return app
 
     # get the app variables from the app.yaml
-    def get_app_variables(app_name):
+    def get_app_variables(self, app_name):
         # Path to the analysis_reports directory
         analysis_reports_dir = "samples/analysis_reports"
 
@@ -197,7 +193,6 @@ class IncidentStore:
                         "variables": copy.deepcopy(incident.get("variables", {})),
                         "line_number": incident.get("lineNumber", None),
                         "message": incident.get("message", None),
-                        "commitId": a.commitId,
                     }
                     self.cached_violations[ruleset][violation_name][a.name][
                         file_path
@@ -234,10 +229,11 @@ class IncidentStore:
                 break
         return common_entries
 
-    def cleanup(self, output_directory):
+    def cleanup(self):
         """
         Cleanup the incident store
         """
+        output_directory = self.output_dir
         # delete cached_violations.yaml if it exists
         if os.path.exists(f"{output_directory}/cached_violations.yaml"):
             os.remove(f"{output_directory}/cached_violations.yaml")
@@ -251,8 +247,9 @@ class IncidentStore:
         if self.cached_violations is not None:
             self.cached_violations = {}
 
-    def load_incident_store(self, folder_path, output_directory):
+    def load_incident_store(self):
         # check if the folder exists
+        folder_path = self.analysis_dir
         if not os.path.exists(folder_path):
             print(f"Error: {folder_path} does not exist.")
             return None
@@ -264,7 +261,7 @@ class IncidentStore:
         print(f"Loading incident store with applications: {apps}\n")
         if len(apps) != 0:
             # cleanup incident store
-            self.cleanup(output_directory)
+            self.cleanup()
 
         for app in apps:
             # if app is a directory then check if there is a folder called initial
@@ -288,16 +285,10 @@ class IncidentStore:
                 print("finding missing incidents")
                 self.update_incident_store(app)
 
-        self.write_cached_violations(
-            self.cached_violations, "cached_violations.yaml", output_directory
-        )
+        self.write_cached_violations(self.cached_violations, "cached_violations.yaml")
         # write missing incidents to the a new file
-        self.write_cached_violations(
-            self.missing_violations, "missing_incidents.yaml", output_directory
-        )
-        self.write_cached_violations(
-            self.solved_violations, "solved_incidents.yaml", output_directory
-        )
+        self.write_cached_violations(self.missing_violations, "missing_incidents.yaml")
+        self.write_cached_violations(self.solved_violations, "solved_incidents.yaml")
 
     def load_app_cached_violation(self, app, folder):
         """
@@ -318,7 +309,7 @@ class IncidentStore:
         Fetch the output and app yaml for the given application
         """
         # Path to the analysis_reports directory
-        analysis_reports_dir = "samples/analysis_reports"
+        analysis_reports_dir = self.analysis_dir
 
         # Check if the specified app folder exists
         app_folder = os.path.join(analysis_reports_dir, app_name)
@@ -338,10 +329,11 @@ class IncidentStore:
 
         return output_yaml_path
 
-    def write_cached_violations(self, cached_violations, file_name, output_directory):
+    def write_cached_violations(self, cached_violations, file_name):
         """
         Write the cached_violations to a file for later use
         """
+        output_directory = self.output_dir
         dir_path = os.path.dirname(os.path.realpath(__file__))
         parent_dir = os.path.dirname(dir_path)
         os.path.join(parent_dir, output_directory)
@@ -360,7 +352,7 @@ class IncidentStore:
             print(f"Appended cached_violations to {output_file_path}\n")
 
     # determine if new application analysis report is available
-    def is_new_analysis_report_available(application):
+    def is_new_analysis_report_available(self, application):
         # Todo: query hub api for the application
         # if the timestamp is newer than the current timestamp
         # return true
@@ -372,7 +364,7 @@ class IncidentStore:
         # return None
 
         # fetch app.yaml from the analysis_reports directory
-        app_variables = IncidentStore.get_app_variables(application.name)
+        app_variables = self.get_app_variables(application.name)
         if app_variables is not None:
             if app_variables["timestamp"] > application.timestamp:
                 return app_variables["timestamp"]
@@ -424,7 +416,7 @@ class IncidentStore:
         Load the cached_violations from a file
         """
 
-        output_directory = "samples/generated_output/incident_store"
+        output_directory = self.output_dir
         output_file_path = os.path.join(output_directory, filename)
         print(f"Loading incident store from file: {filename}\n")
         # check if the file is present
@@ -445,12 +437,12 @@ class IncidentStore:
 
         return self.cached_violations
 
-    def create_temp_cached_violations(app_name, report):
+    def create_temp_cached_violations(self, app_name, report):
         """
         Create a temporary cached_violations for the given application
 
         """
-        app_variables = IncidentStore.get_app_variables(app_name)
+        app_variables = self.get_app_variables(app_name)
         temp_cached_violations = {}
         for ruleset in report.keys():
             if ruleset not in temp_cached_violations:
@@ -514,7 +506,7 @@ class IncidentStore:
             print(f"Error: output.yaml does not exist for {app_name}.")
             return None
         temp_report = Report(output_yaml).get_report()
-        report = IncidentStore.create_temp_cached_violations(app_name, temp_report)
+        report = self.create_temp_cached_violations(app_name, temp_report)
         self.missing_violations = self.get_missing_incidents(app_name, report)
 
         self.solved_violations = self.find_solved_issues(app_name)
@@ -564,7 +556,6 @@ class IncidentStore:
                                 ].append(incident)
 
         return self.cached_violations
-        print(f"Updated incident store with new issues for application {app_name}\n")
 
     # find the missing incidents from self.cached_violations
     def get_missing_incidents(self, app_name, new_report):
@@ -573,8 +564,7 @@ class IncidentStore:
         """
 
         # get commit_id from app.yaml
-        app_variables = IncidentStore.get_app_variables(app_name)
-        commit_id = app_variables["new_commitId"]
+        app_variables = self.get_app_variables(app_name)
 
         for ruleset in self.cached_violations.keys():
             for violation in self.cached_violations[ruleset].keys():
@@ -628,8 +618,6 @@ class IncidentStore:
                                             "variables": incident["variables"],
                                             "line_number": incident["line_number"],
                                             "message": incident["message"],
-                                            "commitId": app_variables["commit_id"],
-                                            "new_commitId": commit_id,
                                             "repo": app_variables["repo"],
                                             "initial_branch": app_variables[
                                                 "initial_branch"
@@ -720,17 +708,11 @@ class IncidentStore:
         """
         Find if solved issues exist
         """
+        output_directory = self.output_dir
         # check if file solved_incidents.yaml exists
-        if not os.path.exists(
-            "samples/generated_output/incident_store/solved_incidents.yaml"
-        ):
+        if not os.path.exists(f"{output_directory}/solved_incidents.yaml"):
             return False
-        if (
-            os.stat(
-                "samples/generated_output/incident_store/solved_incidents.yaml"
-            ).st_size
-            == 0
-        ):
+        if os.stat(f"{output_directory}/solved_incidents.yaml").st_size == 0:
             return False
         return True
 
@@ -739,14 +721,13 @@ class IncidentStore:
         For the given ruleset and violation, return the solved issue(s) if it exists
         """
         patches = []
-        incidentstore = IncidentStore()
 
         # Check if solved issues exist
-        if not incidentstore.find_if_solved_issues_exist():
+        if not self.find_if_solved_issues_exist():
             return None
 
         # Load the solved issues
-        solved_issues = incidentstore.get_cached_violations("solved_incidents.yaml")
+        solved_issues = self.get_cached_violations("solved_incidents.yaml")
 
         # Iterate over the solved issues to find the match
         if ruleset in solved_issues and violation in solved_issues[ruleset]:
