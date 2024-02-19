@@ -3222,6 +3222,28 @@ quarkus/springboot:
           innerText: "\n            org.jboss.spec.javax.faces\n            jboss-jsf-api_2.3_spec\n\
             \            provided\n        "
           matchingXML: <groupId>org.jboss.spec.javax.faces</groupId><artifactId>jboss-jsf-api_2.3_spec</artifactId><scope>provided</scope>
+    kitchensink:
+      pom.xml:
+      - commitId: 0bdec06d9ce7131b3014745d7267ab788529e2ce
+        initial_branch: '7.1'
+        line_number: 144
+        message: "\n \n JSF Dependencies with groupId `org.jboss.spec.javax.faces`\
+          \ should be replaced with \n \n ```\n <!-- Quarkus MyFaces dependencies\
+          \ --> \n <dependency>\n <groupId>org.apache.myfaces.core.extensions.quarkus</groupId>\n\
+          \ <artifactId>myfaces-quarkus</artifactId>\n <version>4.0.1</version>\n\
+          \ </dependency>\n \n <!-- Quarkus Faces utilities and components extensions\
+          \ -->\n <dependency>\n <groupId>io.quarkiverse.primefaces</groupId>\n <artifactId>quarkus-primefaces</artifactId>\n\
+          \ <version>3.13.1</version>\n </dependency>\n <dependency>\n <groupId>io.quarkiverse.omnifaces</groupId>\n\
+          \ <artifactId>quarkus-omnifaces</artifactId>\n <version>4.2.0</version>\n\
+          \ </dependency>\n ```\n \n "
+        new_commitId: ebc839db9a47dceb68edef597de750a90abf5103
+        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
+        solved_branch: quarkus-3.2
+        variables:
+          data: dependency
+          innerText: "\n            org.jboss.spec.javax.faces\n            jboss-jsf-api_2.3_spec\n\
+            \            provided\n        "
+          matchingXML: <groupId>org.jboss.spec.javax.faces</groupId><artifactId>jboss-jsf-api_2.3_spec</artifactId><scope>provided</scope>
   javaee-pom-to-quarkus-00010:
     bmt:
       pom.xml:
@@ -3574,6 +3596,96 @@ quarkus/springboot:
             \tapp will ne    ed. --><!-- By default that is to put the resulting archive\
             \ into the\r\n\t\t\t'deployments' folder. --><!--\r\n\t\t\thttp://maven.apache.org/guides/mini/guide-building-for-different-environments.html\
             \ --><id>openshift</id><build><plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-war-plugin</artifactId><version>${version.war.plugin}</version><configuration><warName>ROOT</warName></configuration></plugin><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-source-plugin</artifactId><executions><execution><id>attach-sources</id><phase>none</phase></execution></executions></plugin></plugins></build></profile></profiles>"
+    kitchensink:
+      pom.xml:
+      - commitId: 0bdec06d9ce7131b3014745d7267ab788529e2ce
+        initial_branch: '7.1'
+        line_number: 19
+        message: "\n \n Use the Quarkus BOM to omit the version of the different Quarkus\
+          \ dependencies. \n Add the following sections to the `pom.xml` file: \n\n\
+          \ ```xml\n <properties> \n <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>\
+          \ \n <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>\
+          \ \n <quarkus.platform.version>3.1.0.Final</quarkus.platform.version>\n\
+          \ </properties> \n <dependencyManagement> \n <dependencies> \n <dependency>\
+          \ \n <groupId>$</groupId> \n <artifactId>$</artifactId> \n <version>$</version>\
+          \ \n <type>pom</type> \n <scope>import</scope> \n </dependency> \n </dependencies>\
+          \ \n </dependencyManagement> \n ```\n Check the latest Quarkus version available\
+          \ from the `Quarkus - Releases` link below.\n \n "
+        new_commitId: ebc839db9a47dceb68edef597de750a90abf5103
+        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
+        solved_branch: quarkus-3.2
+        variables:
+          data: project
+          innerText: "\n    4.0.0\n    \n        org.jboss.eap.quickstarts\n     \
+            \   quickstart-parent\n        \n        7.4.0.GA\n        ../pom.xml\n\
+            \    \n    kitchensink\n    war\n    Quickstart: kitchensink\n    A starter\
+            \ Jakarta EE web application project for use in JBoss EAP\n\n    \n  \
+            \      \n            Apache License, Version 2.0\n            http://www.apache.org/licenses/LICENSE-2.0.html\n\
+            \            repo\n        \n    \n\n    \n\n        \n\n        \n  \
+            \      \n            jakarta.enterprise\n            jakarta.enterprise.cdi-api\n\
+            \            provided\n        \n\n        \n        \n            junit\n\
+            \            junit\n            test\n        \n\n        \n\n       \
+            \ \n        \n            org.hibernate\n            hibernate-jpamodelgen\n\
+            \            provided\n        \n        \n        \n            com.sun.activation\n\
+            \            jakarta.activation\n            provided\n        \n\n  \
+            \      \n        \n            org.hibernate.validator\n            hibernate-validator\n\
+            \            provided\n        \n        \n        \n            jakarta.validation\n\
+            \            jakarta.validation-api\n            provided\n        \n\n\
+            \        \n        \n            org.hibernate.validator\n           \
+            \ hibernate-validator-annotation-processor\n            provided\n   \
+            \     \n\n        \n        \n            jakarta.persistence\n      \
+            \      jakarta.persistence-api\n            provided\n        \n\n   \
+            \     \n        \n        \n            org.jboss.arquillian.junit\n \
+            \           arquillian-junit-container\n            test\n        \n\n\
+            \        \n            org.jboss.arquillian.protocol\n            arquillian-protocol-servlet\n\
+            \            test\n        \n\n        \n        \n            org.jboss.spec.javax.annotation\n\
+            \            jboss-annotations-api_1.3_spec\n            provided\n  \
+            \      \n\n        \n        \n            org.jboss.spec.javax.ejb\n\
+            \            jboss-ejb-api_3.2_spec\n            provided\n        \n\n\
+            \        \n        \n            org.jboss.spec.javax.faces\n        \
+            \    jboss-jsf-api_2.3_spec\n            provided\n        \n\n      \
+            \  \n        \n            org.jboss.spec.javax.ws.rs\n            jboss-jaxrs-api_2.1_spec\n\
+            \            provided\n        \n\n        \n            org.jboss.spec.javax.xml.bind\n\
+            \            jboss-jaxb-api_2.3_spec\n            provided\n        \n\
+            \n    \n\n    \n        \n        ${project.artifactId}\n    \n"
+          matchingXML: "<modelVersion>4.0.0</modelVersion><parent><groupId>org.jboss.eap.quickstarts</groupId><artifactId>quickstart-parent</artifactId><!--\n\
+            \        Maintain separation between the artifact id and the version to\
+            \ help prevent\n        merge conflicts between commits changing the GA\
+            \ and those changing the V.\n        --><version>7.4.0.GA</version><relativePath>../pom.xml</relativePath></parent><artifactId>kitchensink</artifactId><packaging>war</packaging><name>Quickstart:\
+            \ kitchensink</name><description>A starter Jakarta EE web application\
+            \ project for use in JBoss EAP</description><licenses><license><name>Apache\
+            \ License, Version 2.0</name><url>http://www.apache.org/licenses/LICENSE-2.0.html</url><distribution>repo</distribution></license></licenses><dependencies><!--\
+            \ First declare the APIs we depend on and need for compilation. All\n\
+            \            of them are provided by JBoss EAP --><!-- Import the CDI\
+            \ API, we use provided scope as the API is included in\n            JBoss\
+            \ EAP --><dependency><groupId>jakarta.enterprise</groupId><artifactId>jakarta.enterprise.cdi-api</artifactId><scope>provided</scope></dependency><!--\
+            \ Needed for running tests (you may also use TestNG) --><dependency><groupId>junit</groupId><artifactId>junit</artifactId><scope>test</scope></dependency><!--\
+            \ Now we declare any tools needed --><!-- Annotation processor to generate\
+            \ the JPA metamodel classes for\n            typesafe criteria queries\
+            \ --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-jpamodelgen</artifactId><scope>provided</scope></dependency><!--\
+            \ Jakarta Activation needed for JPA model generation --><dependency><groupId>com.sun.activation</groupId><artifactId>jakarta.activation</artifactId><scope>provided</scope></dependency><!--\
+            \ Bean Validation Implementation \n             Provides portable constraints\
+            \ such as @Email \n             Hibernate Validator is shipped in JBoss\
+            \ EAP --><dependency><groupId>org.hibernate.validator</groupId><artifactId>hibernate-validator</artifactId><scope>provided</scope></dependency><!--\
+            \ hibernate-validator dependencies excluded on server dependency management\
+            \ yet required --><dependency><groupId>jakarta.validation</groupId><artifactId>jakarta.validation-api</artifactId><scope>provided</scope></dependency><!--\
+            \ Annotation processor that raising compilation errors whenever constraint\n\
+            \            annotations are incorrectly used. --><dependency><groupId>org.hibernate.validator</groupId><artifactId>hibernate-validator-annotation-processor</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the JPA API, we use provided scope as the API is included in\n\
+            \            JBoss EAP --><dependency><groupId>jakarta.persistence</groupId><artifactId>jakarta.persistence-api</artifactId><scope>provided</scope></dependency><!--\
+            \ Optional, but highly recommended --><!-- Arquillian allows you to test\
+            \ enterprise code such as EJBs and Transactional(JTA)\n            JPA\
+            \ from JUnit/TestNG --><dependency><groupId>org.jboss.arquillian.junit</groupId><artifactId>arquillian-junit-container</artifactId><scope>test</scope></dependency><dependency><groupId>org.jboss.arquillian.protocol</groupId><artifactId>arquillian-protocol-servlet</artifactId><scope>test</scope></dependency><!--\
+            \ Import the Common Annotations API (JSR-250), we use provided scope\n\
+            \            as the API is included in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.annotation</groupId><artifactId>jboss-annotations-api_1.3_spec</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the EJB API, we use provided scope as the API is included in\n\
+            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ejb</groupId><artifactId>jboss-ejb-api_3.2_spec</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the JSF API, we use provided scope as the API is included in\n\
+            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.faces</groupId><artifactId>jboss-jsf-api_2.3_spec</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the JAX-RS API, we use provided scope as the API is included\n\
+            \            in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ws.rs</groupId><artifactId>jboss-jaxrs-api_2.1_spec</artifactId><scope>provided</scope></dependency><dependency><groupId>org.jboss.spec.javax.xml.bind</groupId><artifactId>jboss-jaxb-api_2.3_spec</artifactId><scope>provided</scope></dependency></dependencies><build><!--\
+            \ Set the name of the WAR, used as the context root when the app is deployed\
+            \ --><finalName>${project.artifactId}</finalName></build>"
   javaee-pom-to-quarkus-00020:
     bmt:
       pom.xml:
@@ -3922,6 +4034,95 @@ quarkus/springboot:
             \tapp will ne    ed. --><!-- By default that is to put the resulting archive\
             \ into the\r\n\t\t\t'deployments' folder. --><!--\r\n\t\t\thttp://maven.apache.org/guides/mini/guide-building-for-different-environments.html\
             \ --><id>openshift</id><build><plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-war-plugin</artifactId><version>${version.war.plugin}</version><configuration><warName>ROOT</warName></configuration></plugin><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-source-plugin</artifactId><executions><execution><id>attach-sources</id><phase>none</phase></execution></executions></plugin></plugins></build></profile></profiles>"
+    kitchensink:
+      pom.xml:
+      - commitId: 0bdec06d9ce7131b3014745d7267ab788529e2ce
+        initial_branch: '7.1'
+        line_number: 19
+        message: "\n \n Use the Quarkus Maven plugin adding the following sections\
+          \ to the `pom.xml` file: \n\n ```xml\n <properties> \n <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>\
+          \ \n <quarkus.platform.version>3.1.0.Final</quarkus.platform.version>\n\
+          \ </properties> \n <build>\n <plugins>\n <plugin>\n <groupId>$</groupId>\n\
+          \ <artifactId>quarkus-maven-plugin</artifactId>\n <version>$</version>\n\
+          \ <extensions>true</extensions>\n <executions>\n <execution>\n <goals>\n\
+          \ <goal>build</goal>\n <goal>generate-code</goal>\n <goal>generate-code-tests</goal>\n\
+          \ </goals>\n </execution>\n </executions>\n </plugin>\n </plugins>\n </build>\n\
+          \ ```\n \n "
+        new_commitId: ebc839db9a47dceb68edef597de750a90abf5103
+        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
+        solved_branch: quarkus-3.2
+        variables:
+          data: project
+          innerText: "\n    4.0.0\n    \n        org.jboss.eap.quickstarts\n     \
+            \   quickstart-parent\n        \n        7.4.0.GA\n        ../pom.xml\n\
+            \    \n    kitchensink\n    war\n    Quickstart: kitchensink\n    A starter\
+            \ Jakarta EE web application project for use in JBoss EAP\n\n    \n  \
+            \      \n            Apache License, Version 2.0\n            http://www.apache.org/licenses/LICENSE-2.0.html\n\
+            \            repo\n        \n    \n\n    \n\n        \n\n        \n  \
+            \      \n            jakarta.enterprise\n            jakarta.enterprise.cdi-api\n\
+            \            provided\n        \n\n        \n        \n            junit\n\
+            \            junit\n            test\n        \n\n        \n\n       \
+            \ \n        \n            org.hibernate\n            hibernate-jpamodelgen\n\
+            \            provided\n        \n        \n        \n            com.sun.activation\n\
+            \            jakarta.activation\n            provided\n        \n\n  \
+            \      \n        \n            org.hibernate.validator\n            hibernate-validator\n\
+            \            provided\n        \n        \n        \n            jakarta.validation\n\
+            \            jakarta.validation-api\n            provided\n        \n\n\
+            \        \n        \n            org.hibernate.validator\n           \
+            \ hibernate-validator-annotation-processor\n            provided\n   \
+            \     \n\n        \n        \n            jakarta.persistence\n      \
+            \      jakarta.persistence-api\n            provided\n        \n\n   \
+            \     \n        \n        \n            org.jboss.arquillian.junit\n \
+            \           arquillian-junit-container\n            test\n        \n\n\
+            \        \n            org.jboss.arquillian.protocol\n            arquillian-protocol-servlet\n\
+            \            test\n        \n\n        \n        \n            org.jboss.spec.javax.annotation\n\
+            \            jboss-annotations-api_1.3_spec\n            provided\n  \
+            \      \n\n        \n        \n            org.jboss.spec.javax.ejb\n\
+            \            jboss-ejb-api_3.2_spec\n            provided\n        \n\n\
+            \        \n        \n            org.jboss.spec.javax.faces\n        \
+            \    jboss-jsf-api_2.3_spec\n            provided\n        \n\n      \
+            \  \n        \n            org.jboss.spec.javax.ws.rs\n            jboss-jaxrs-api_2.1_spec\n\
+            \            provided\n        \n\n        \n            org.jboss.spec.javax.xml.bind\n\
+            \            jboss-jaxb-api_2.3_spec\n            provided\n        \n\
+            \n    \n\n    \n        \n        ${project.artifactId}\n    \n"
+          matchingXML: "<modelVersion>4.0.0</modelVersion><parent><groupId>org.jboss.eap.quickstarts</groupId><artifactId>quickstart-parent</artifactId><!--\n\
+            \        Maintain separation between the artifact id and the version to\
+            \ help prevent\n        merge conflicts between commits changing the GA\
+            \ and those changing the V.\n        --><version>7.4.0.GA</version><relativePath>../pom.xml</relativePath></parent><artifactId>kitchensink</artifactId><packaging>war</packaging><name>Quickstart:\
+            \ kitchensink</name><description>A starter Jakarta EE web application\
+            \ project for use in JBoss EAP</description><licenses><license><name>Apache\
+            \ License, Version 2.0</name><url>http://www.apache.org/licenses/LICENSE-2.0.html</url><distribution>repo</distribution></license></licenses><dependencies><!--\
+            \ First declare the APIs we depend on and need for compilation. All\n\
+            \            of them are provided by JBoss EAP --><!-- Import the CDI\
+            \ API, we use provided scope as the API is included in\n            JBoss\
+            \ EAP --><dependency><groupId>jakarta.enterprise</groupId><artifactId>jakarta.enterprise.cdi-api</artifactId><scope>provided</scope></dependency><!--\
+            \ Needed for running tests (you may also use TestNG) --><dependency><groupId>junit</groupId><artifactId>junit</artifactId><scope>test</scope></dependency><!--\
+            \ Now we declare any tools needed --><!-- Annotation processor to generate\
+            \ the JPA metamodel classes for\n            typesafe criteria queries\
+            \ --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-jpamodelgen</artifactId><scope>provided</scope></dependency><!--\
+            \ Jakarta Activation needed for JPA model generation --><dependency><groupId>com.sun.activation</groupId><artifactId>jakarta.activation</artifactId><scope>provided</scope></dependency><!--\
+            \ Bean Validation Implementation \n             Provides portable constraints\
+            \ such as @Email \n             Hibernate Validator is shipped in JBoss\
+            \ EAP --><dependency><groupId>org.hibernate.validator</groupId><artifactId>hibernate-validator</artifactId><scope>provided</scope></dependency><!--\
+            \ hibernate-validator dependencies excluded on server dependency management\
+            \ yet required --><dependency><groupId>jakarta.validation</groupId><artifactId>jakarta.validation-api</artifactId><scope>provided</scope></dependency><!--\
+            \ Annotation processor that raising compilation errors whenever constraint\n\
+            \            annotations are incorrectly used. --><dependency><groupId>org.hibernate.validator</groupId><artifactId>hibernate-validator-annotation-processor</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the JPA API, we use provided scope as the API is included in\n\
+            \            JBoss EAP --><dependency><groupId>jakarta.persistence</groupId><artifactId>jakarta.persistence-api</artifactId><scope>provided</scope></dependency><!--\
+            \ Optional, but highly recommended --><!-- Arquillian allows you to test\
+            \ enterprise code such as EJBs and Transactional(JTA)\n            JPA\
+            \ from JUnit/TestNG --><dependency><groupId>org.jboss.arquillian.junit</groupId><artifactId>arquillian-junit-container</artifactId><scope>test</scope></dependency><dependency><groupId>org.jboss.arquillian.protocol</groupId><artifactId>arquillian-protocol-servlet</artifactId><scope>test</scope></dependency><!--\
+            \ Import the Common Annotations API (JSR-250), we use provided scope\n\
+            \            as the API is included in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.annotation</groupId><artifactId>jboss-annotations-api_1.3_spec</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the EJB API, we use provided scope as the API is included in\n\
+            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ejb</groupId><artifactId>jboss-ejb-api_3.2_spec</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the JSF API, we use provided scope as the API is included in\n\
+            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.faces</groupId><artifactId>jboss-jsf-api_2.3_spec</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the JAX-RS API, we use provided scope as the API is included\n\
+            \            in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ws.rs</groupId><artifactId>jboss-jaxrs-api_2.1_spec</artifactId><scope>provided</scope></dependency><dependency><groupId>org.jboss.spec.javax.xml.bind</groupId><artifactId>jboss-jaxb-api_2.3_spec</artifactId><scope>provided</scope></dependency></dependencies><build><!--\
+            \ Set the name of the WAR, used as the context root when the app is deployed\
+            \ --><finalName>${project.artifactId}</finalName></build>"
   javaee-pom-to-quarkus-00030:
     bmt:
       pom.xml:
@@ -4262,6 +4463,93 @@ quarkus/springboot:
             \tapp will ne    ed. --><!-- By default that is to put the resulting archive\
             \ into the\r\n\t\t\t'deployments' folder. --><!--\r\n\t\t\thttp://maven.apache.org/guides/mini/guide-building-for-different-environments.html\
             \ --><id>openshift</id><build><plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-war-plugin</artifactId><version>${version.war.plugin}</version><configuration><warName>ROOT</warName></configuration></plugin><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-source-plugin</artifactId><executions><execution><id>attach-sources</id><phase>none</phase></execution></executions></plugin></plugins></build></profile></profiles>"
+    kitchensink:
+      pom.xml:
+      - commitId: 0bdec06d9ce7131b3014745d7267ab788529e2ce
+        initial_branch: '7.1'
+        line_number: 19
+        message: "\n \n Use the Maven Compiler plugin adding the following sections\
+          \ to the `pom.xml` file: \n\n ```xml\n <properties> \n <compiler-plugin.version>3.10.1</compiler-plugin.version>\n\
+          \ <maven.compiler.release>11</maven.compiler.release>\n </properties> \n\
+          \ <build>\n <plugins>\n <plugin>\n <artifactId>maven-compiler-plugin</artifactId>\n\
+          \ <version>$</version>\n <configuration>\n <compilerArgs>\n <arg>-parameters</arg>\n\
+          \ </compilerArgs>\n </configuration>\n </plugin>\n </plugins>\n </build>\n\
+          \ ```\n \n "
+        new_commitId: ebc839db9a47dceb68edef597de750a90abf5103
+        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
+        solved_branch: quarkus-3.2
+        variables:
+          data: project
+          innerText: "\n    4.0.0\n    \n        org.jboss.eap.quickstarts\n     \
+            \   quickstart-parent\n        \n        7.4.0.GA\n        ../pom.xml\n\
+            \    \n    kitchensink\n    war\n    Quickstart: kitchensink\n    A starter\
+            \ Jakarta EE web application project for use in JBoss EAP\n\n    \n  \
+            \      \n            Apache License, Version 2.0\n            http://www.apache.org/licenses/LICENSE-2.0.html\n\
+            \            repo\n        \n    \n\n    \n\n        \n\n        \n  \
+            \      \n            jakarta.enterprise\n            jakarta.enterprise.cdi-api\n\
+            \            provided\n        \n\n        \n        \n            junit\n\
+            \            junit\n            test\n        \n\n        \n\n       \
+            \ \n        \n            org.hibernate\n            hibernate-jpamodelgen\n\
+            \            provided\n        \n        \n        \n            com.sun.activation\n\
+            \            jakarta.activation\n            provided\n        \n\n  \
+            \      \n        \n            org.hibernate.validator\n            hibernate-validator\n\
+            \            provided\n        \n        \n        \n            jakarta.validation\n\
+            \            jakarta.validation-api\n            provided\n        \n\n\
+            \        \n        \n            org.hibernate.validator\n           \
+            \ hibernate-validator-annotation-processor\n            provided\n   \
+            \     \n\n        \n        \n            jakarta.persistence\n      \
+            \      jakarta.persistence-api\n            provided\n        \n\n   \
+            \     \n        \n        \n            org.jboss.arquillian.junit\n \
+            \           arquillian-junit-container\n            test\n        \n\n\
+            \        \n            org.jboss.arquillian.protocol\n            arquillian-protocol-servlet\n\
+            \            test\n        \n\n        \n        \n            org.jboss.spec.javax.annotation\n\
+            \            jboss-annotations-api_1.3_spec\n            provided\n  \
+            \      \n\n        \n        \n            org.jboss.spec.javax.ejb\n\
+            \            jboss-ejb-api_3.2_spec\n            provided\n        \n\n\
+            \        \n        \n            org.jboss.spec.javax.faces\n        \
+            \    jboss-jsf-api_2.3_spec\n            provided\n        \n\n      \
+            \  \n        \n            org.jboss.spec.javax.ws.rs\n            jboss-jaxrs-api_2.1_spec\n\
+            \            provided\n        \n\n        \n            org.jboss.spec.javax.xml.bind\n\
+            \            jboss-jaxb-api_2.3_spec\n            provided\n        \n\
+            \n    \n\n    \n        \n        ${project.artifactId}\n    \n"
+          matchingXML: "<modelVersion>4.0.0</modelVersion><parent><groupId>org.jboss.eap.quickstarts</groupId><artifactId>quickstart-parent</artifactId><!--\n\
+            \        Maintain separation between the artifact id and the version to\
+            \ help prevent\n        merge conflicts between commits changing the GA\
+            \ and those changing the V.\n        --><version>7.4.0.GA</version><relativePath>../pom.xml</relativePath></parent><artifactId>kitchensink</artifactId><packaging>war</packaging><name>Quickstart:\
+            \ kitchensink</name><description>A starter Jakarta EE web application\
+            \ project for use in JBoss EAP</description><licenses><license><name>Apache\
+            \ License, Version 2.0</name><url>http://www.apache.org/licenses/LICENSE-2.0.html</url><distribution>repo</distribution></license></licenses><dependencies><!--\
+            \ First declare the APIs we depend on and need for compilation. All\n\
+            \            of them are provided by JBoss EAP --><!-- Import the CDI\
+            \ API, we use provided scope as the API is included in\n            JBoss\
+            \ EAP --><dependency><groupId>jakarta.enterprise</groupId><artifactId>jakarta.enterprise.cdi-api</artifactId><scope>provided</scope></dependency><!--\
+            \ Needed for running tests (you may also use TestNG) --><dependency><groupId>junit</groupId><artifactId>junit</artifactId><scope>test</scope></dependency><!--\
+            \ Now we declare any tools needed --><!-- Annotation processor to generate\
+            \ the JPA metamodel classes for\n            typesafe criteria queries\
+            \ --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-jpamodelgen</artifactId><scope>provided</scope></dependency><!--\
+            \ Jakarta Activation needed for JPA model generation --><dependency><groupId>com.sun.activation</groupId><artifactId>jakarta.activation</artifactId><scope>provided</scope></dependency><!--\
+            \ Bean Validation Implementation \n             Provides portable constraints\
+            \ such as @Email \n             Hibernate Validator is shipped in JBoss\
+            \ EAP --><dependency><groupId>org.hibernate.validator</groupId><artifactId>hibernate-validator</artifactId><scope>provided</scope></dependency><!--\
+            \ hibernate-validator dependencies excluded on server dependency management\
+            \ yet required --><dependency><groupId>jakarta.validation</groupId><artifactId>jakarta.validation-api</artifactId><scope>provided</scope></dependency><!--\
+            \ Annotation processor that raising compilation errors whenever constraint\n\
+            \            annotations are incorrectly used. --><dependency><groupId>org.hibernate.validator</groupId><artifactId>hibernate-validator-annotation-processor</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the JPA API, we use provided scope as the API is included in\n\
+            \            JBoss EAP --><dependency><groupId>jakarta.persistence</groupId><artifactId>jakarta.persistence-api</artifactId><scope>provided</scope></dependency><!--\
+            \ Optional, but highly recommended --><!-- Arquillian allows you to test\
+            \ enterprise code such as EJBs and Transactional(JTA)\n            JPA\
+            \ from JUnit/TestNG --><dependency><groupId>org.jboss.arquillian.junit</groupId><artifactId>arquillian-junit-container</artifactId><scope>test</scope></dependency><dependency><groupId>org.jboss.arquillian.protocol</groupId><artifactId>arquillian-protocol-servlet</artifactId><scope>test</scope></dependency><!--\
+            \ Import the Common Annotations API (JSR-250), we use provided scope\n\
+            \            as the API is included in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.annotation</groupId><artifactId>jboss-annotations-api_1.3_spec</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the EJB API, we use provided scope as the API is included in\n\
+            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ejb</groupId><artifactId>jboss-ejb-api_3.2_spec</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the JSF API, we use provided scope as the API is included in\n\
+            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.faces</groupId><artifactId>jboss-jsf-api_2.3_spec</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the JAX-RS API, we use provided scope as the API is included\n\
+            \            in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ws.rs</groupId><artifactId>jboss-jaxrs-api_2.1_spec</artifactId><scope>provided</scope></dependency><dependency><groupId>org.jboss.spec.javax.xml.bind</groupId><artifactId>jboss-jaxb-api_2.3_spec</artifactId><scope>provided</scope></dependency></dependencies><build><!--\
+            \ Set the name of the WAR, used as the context root when the app is deployed\
+            \ --><finalName>${project.artifactId}</finalName></build>"
   javaee-pom-to-quarkus-00040:
     bmt:
       pom.xml:
@@ -4598,6 +4886,92 @@ quarkus/springboot:
             \tapp will ne    ed. --><!-- By default that is to put the resulting archive\
             \ into the\r\n\t\t\t'deployments' folder. --><!--\r\n\t\t\thttp://maven.apache.org/guides/mini/guide-building-for-different-environments.html\
             \ --><id>openshift</id><build><plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-war-plugin</artifactId><version>${version.war.plugin}</version><configuration><warName>ROOT</warName></configuration></plugin><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-source-plugin</artifactId><executions><execution><id>attach-sources</id><phase>none</phase></execution></executions></plugin></plugins></build></profile></profiles>"
+    kitchensink:
+      pom.xml:
+      - commitId: 0bdec06d9ce7131b3014745d7267ab788529e2ce
+        initial_branch: '7.1'
+        line_number: 19
+        message: "\n \n Use the Maven Surefire plugin adding the following sections\
+          \ to the `pom.xml` file: \n\n ```xml\n <properties> \n <surefire-plugin.version>3.0.0</compiler-plugin.version>\n\
+          \ </properties> \n <build>\n <plugins>\n <plugin>\n <artifactId>maven-surefire-plugin</artifactId>\n\
+          \ <version>$</version>\n <configuration>\n <systemPropertyVariables>\n <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>\n\
+          \ <maven.home>$</maven.home>\n </systemPropertyVariables>\n </configuration>\n\
+          \ </plugin>\n </plugins>\n </build>\n ```\n \n "
+        new_commitId: ebc839db9a47dceb68edef597de750a90abf5103
+        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
+        solved_branch: quarkus-3.2
+        variables:
+          data: project
+          innerText: "\n    4.0.0\n    \n        org.jboss.eap.quickstarts\n     \
+            \   quickstart-parent\n        \n        7.4.0.GA\n        ../pom.xml\n\
+            \    \n    kitchensink\n    war\n    Quickstart: kitchensink\n    A starter\
+            \ Jakarta EE web application project for use in JBoss EAP\n\n    \n  \
+            \      \n            Apache License, Version 2.0\n            http://www.apache.org/licenses/LICENSE-2.0.html\n\
+            \            repo\n        \n    \n\n    \n\n        \n\n        \n  \
+            \      \n            jakarta.enterprise\n            jakarta.enterprise.cdi-api\n\
+            \            provided\n        \n\n        \n        \n            junit\n\
+            \            junit\n            test\n        \n\n        \n\n       \
+            \ \n        \n            org.hibernate\n            hibernate-jpamodelgen\n\
+            \            provided\n        \n        \n        \n            com.sun.activation\n\
+            \            jakarta.activation\n            provided\n        \n\n  \
+            \      \n        \n            org.hibernate.validator\n            hibernate-validator\n\
+            \            provided\n        \n        \n        \n            jakarta.validation\n\
+            \            jakarta.validation-api\n            provided\n        \n\n\
+            \        \n        \n            org.hibernate.validator\n           \
+            \ hibernate-validator-annotation-processor\n            provided\n   \
+            \     \n\n        \n        \n            jakarta.persistence\n      \
+            \      jakarta.persistence-api\n            provided\n        \n\n   \
+            \     \n        \n        \n            org.jboss.arquillian.junit\n \
+            \           arquillian-junit-container\n            test\n        \n\n\
+            \        \n            org.jboss.arquillian.protocol\n            arquillian-protocol-servlet\n\
+            \            test\n        \n\n        \n        \n            org.jboss.spec.javax.annotation\n\
+            \            jboss-annotations-api_1.3_spec\n            provided\n  \
+            \      \n\n        \n        \n            org.jboss.spec.javax.ejb\n\
+            \            jboss-ejb-api_3.2_spec\n            provided\n        \n\n\
+            \        \n        \n            org.jboss.spec.javax.faces\n        \
+            \    jboss-jsf-api_2.3_spec\n            provided\n        \n\n      \
+            \  \n        \n            org.jboss.spec.javax.ws.rs\n            jboss-jaxrs-api_2.1_spec\n\
+            \            provided\n        \n\n        \n            org.jboss.spec.javax.xml.bind\n\
+            \            jboss-jaxb-api_2.3_spec\n            provided\n        \n\
+            \n    \n\n    \n        \n        ${project.artifactId}\n    \n"
+          matchingXML: "<modelVersion>4.0.0</modelVersion><parent><groupId>org.jboss.eap.quickstarts</groupId><artifactId>quickstart-parent</artifactId><!--\n\
+            \        Maintain separation between the artifact id and the version to\
+            \ help prevent\n        merge conflicts between commits changing the GA\
+            \ and those changing the V.\n        --><version>7.4.0.GA</version><relativePath>../pom.xml</relativePath></parent><artifactId>kitchensink</artifactId><packaging>war</packaging><name>Quickstart:\
+            \ kitchensink</name><description>A starter Jakarta EE web application\
+            \ project for use in JBoss EAP</description><licenses><license><name>Apache\
+            \ License, Version 2.0</name><url>http://www.apache.org/licenses/LICENSE-2.0.html</url><distribution>repo</distribution></license></licenses><dependencies><!--\
+            \ First declare the APIs we depend on and need for compilation. All\n\
+            \            of them are provided by JBoss EAP --><!-- Import the CDI\
+            \ API, we use provided scope as the API is included in\n            JBoss\
+            \ EAP --><dependency><groupId>jakarta.enterprise</groupId><artifactId>jakarta.enterprise.cdi-api</artifactId><scope>provided</scope></dependency><!--\
+            \ Needed for running tests (you may also use TestNG) --><dependency><groupId>junit</groupId><artifactId>junit</artifactId><scope>test</scope></dependency><!--\
+            \ Now we declare any tools needed --><!-- Annotation processor to generate\
+            \ the JPA metamodel classes for\n            typesafe criteria queries\
+            \ --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-jpamodelgen</artifactId><scope>provided</scope></dependency><!--\
+            \ Jakarta Activation needed for JPA model generation --><dependency><groupId>com.sun.activation</groupId><artifactId>jakarta.activation</artifactId><scope>provided</scope></dependency><!--\
+            \ Bean Validation Implementation \n             Provides portable constraints\
+            \ such as @Email \n             Hibernate Validator is shipped in JBoss\
+            \ EAP --><dependency><groupId>org.hibernate.validator</groupId><artifactId>hibernate-validator</artifactId><scope>provided</scope></dependency><!--\
+            \ hibernate-validator dependencies excluded on server dependency management\
+            \ yet required --><dependency><groupId>jakarta.validation</groupId><artifactId>jakarta.validation-api</artifactId><scope>provided</scope></dependency><!--\
+            \ Annotation processor that raising compilation errors whenever constraint\n\
+            \            annotations are incorrectly used. --><dependency><groupId>org.hibernate.validator</groupId><artifactId>hibernate-validator-annotation-processor</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the JPA API, we use provided scope as the API is included in\n\
+            \            JBoss EAP --><dependency><groupId>jakarta.persistence</groupId><artifactId>jakarta.persistence-api</artifactId><scope>provided</scope></dependency><!--\
+            \ Optional, but highly recommended --><!-- Arquillian allows you to test\
+            \ enterprise code such as EJBs and Transactional(JTA)\n            JPA\
+            \ from JUnit/TestNG --><dependency><groupId>org.jboss.arquillian.junit</groupId><artifactId>arquillian-junit-container</artifactId><scope>test</scope></dependency><dependency><groupId>org.jboss.arquillian.protocol</groupId><artifactId>arquillian-protocol-servlet</artifactId><scope>test</scope></dependency><!--\
+            \ Import the Common Annotations API (JSR-250), we use provided scope\n\
+            \            as the API is included in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.annotation</groupId><artifactId>jboss-annotations-api_1.3_spec</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the EJB API, we use provided scope as the API is included in\n\
+            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ejb</groupId><artifactId>jboss-ejb-api_3.2_spec</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the JSF API, we use provided scope as the API is included in\n\
+            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.faces</groupId><artifactId>jboss-jsf-api_2.3_spec</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the JAX-RS API, we use provided scope as the API is included\n\
+            \            in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ws.rs</groupId><artifactId>jboss-jaxrs-api_2.1_spec</artifactId><scope>provided</scope></dependency><dependency><groupId>org.jboss.spec.javax.xml.bind</groupId><artifactId>jboss-jaxb-api_2.3_spec</artifactId><scope>provided</scope></dependency></dependencies><build><!--\
+            \ Set the name of the WAR, used as the context root when the app is deployed\
+            \ --><finalName>${project.artifactId}</finalName></build>"
   javaee-pom-to-quarkus-00050:
     bmt:
       pom.xml:
@@ -4946,6 +5320,95 @@ quarkus/springboot:
             \tapp will ne    ed. --><!-- By default that is to put the resulting archive\
             \ into the\r\n\t\t\t'deployments' folder. --><!--\r\n\t\t\thttp://maven.apache.org/guides/mini/guide-building-for-different-environments.html\
             \ --><id>openshift</id><build><plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-war-plugin</artifactId><version>${version.war.plugin}</version><configuration><warName>ROOT</warName></configuration></plugin><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-source-plugin</artifactId><executions><execution><id>attach-sources</id><phase>none</phase></execution></executions></plugin></plugins></build></profile></profiles>"
+    kitchensink:
+      pom.xml:
+      - commitId: 0bdec06d9ce7131b3014745d7267ab788529e2ce
+        initial_branch: '7.1'
+        line_number: 19
+        message: "\n \n Use the Maven Failsafe plugin adding the following sections\
+          \ to the `pom.xml` file: \n\n ```xml\n <properties> \n <surefire-plugin.version>3.0.0</compiler-plugin.version>\n\
+          \ </properties> \n <build>\n <plugins>\n <plugin>\n <artifactId>maven-failsafe-plugin</artifactId>\n\
+          \ <version>$</version>\n <executions>\n <execution>\n <goals>\n <goals>integration-test</goal>\n\
+          \ <goals>verify</goal>\n </goals>\n <configuration>\n <systemPropertyVariables>\n\
+          \ <native.image.path>$/$-runner</native.image.path>\n <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>\n\
+          \ <maven.home>$</maven.home>\n </systemPropertyVariables>\n </configuration>\n\
+          \ </execution>\n </executions>\n </plugin>\n </plugins>\n </build>\n ```\n\
+          \ \n "
+        new_commitId: ebc839db9a47dceb68edef597de750a90abf5103
+        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
+        solved_branch: quarkus-3.2
+        variables:
+          data: project
+          innerText: "\n    4.0.0\n    \n        org.jboss.eap.quickstarts\n     \
+            \   quickstart-parent\n        \n        7.4.0.GA\n        ../pom.xml\n\
+            \    \n    kitchensink\n    war\n    Quickstart: kitchensink\n    A starter\
+            \ Jakarta EE web application project for use in JBoss EAP\n\n    \n  \
+            \      \n            Apache License, Version 2.0\n            http://www.apache.org/licenses/LICENSE-2.0.html\n\
+            \            repo\n        \n    \n\n    \n\n        \n\n        \n  \
+            \      \n            jakarta.enterprise\n            jakarta.enterprise.cdi-api\n\
+            \            provided\n        \n\n        \n        \n            junit\n\
+            \            junit\n            test\n        \n\n        \n\n       \
+            \ \n        \n            org.hibernate\n            hibernate-jpamodelgen\n\
+            \            provided\n        \n        \n        \n            com.sun.activation\n\
+            \            jakarta.activation\n            provided\n        \n\n  \
+            \      \n        \n            org.hibernate.validator\n            hibernate-validator\n\
+            \            provided\n        \n        \n        \n            jakarta.validation\n\
+            \            jakarta.validation-api\n            provided\n        \n\n\
+            \        \n        \n            org.hibernate.validator\n           \
+            \ hibernate-validator-annotation-processor\n            provided\n   \
+            \     \n\n        \n        \n            jakarta.persistence\n      \
+            \      jakarta.persistence-api\n            provided\n        \n\n   \
+            \     \n        \n        \n            org.jboss.arquillian.junit\n \
+            \           arquillian-junit-container\n            test\n        \n\n\
+            \        \n            org.jboss.arquillian.protocol\n            arquillian-protocol-servlet\n\
+            \            test\n        \n\n        \n        \n            org.jboss.spec.javax.annotation\n\
+            \            jboss-annotations-api_1.3_spec\n            provided\n  \
+            \      \n\n        \n        \n            org.jboss.spec.javax.ejb\n\
+            \            jboss-ejb-api_3.2_spec\n            provided\n        \n\n\
+            \        \n        \n            org.jboss.spec.javax.faces\n        \
+            \    jboss-jsf-api_2.3_spec\n            provided\n        \n\n      \
+            \  \n        \n            org.jboss.spec.javax.ws.rs\n            jboss-jaxrs-api_2.1_spec\n\
+            \            provided\n        \n\n        \n            org.jboss.spec.javax.xml.bind\n\
+            \            jboss-jaxb-api_2.3_spec\n            provided\n        \n\
+            \n    \n\n    \n        \n        ${project.artifactId}\n    \n"
+          matchingXML: "<modelVersion>4.0.0</modelVersion><parent><groupId>org.jboss.eap.quickstarts</groupId><artifactId>quickstart-parent</artifactId><!--\n\
+            \        Maintain separation between the artifact id and the version to\
+            \ help prevent\n        merge conflicts between commits changing the GA\
+            \ and those changing the V.\n        --><version>7.4.0.GA</version><relativePath>../pom.xml</relativePath></parent><artifactId>kitchensink</artifactId><packaging>war</packaging><name>Quickstart:\
+            \ kitchensink</name><description>A starter Jakarta EE web application\
+            \ project for use in JBoss EAP</description><licenses><license><name>Apache\
+            \ License, Version 2.0</name><url>http://www.apache.org/licenses/LICENSE-2.0.html</url><distribution>repo</distribution></license></licenses><dependencies><!--\
+            \ First declare the APIs we depend on and need for compilation. All\n\
+            \            of them are provided by JBoss EAP --><!-- Import the CDI\
+            \ API, we use provided scope as the API is included in\n            JBoss\
+            \ EAP --><dependency><groupId>jakarta.enterprise</groupId><artifactId>jakarta.enterprise.cdi-api</artifactId><scope>provided</scope></dependency><!--\
+            \ Needed for running tests (you may also use TestNG) --><dependency><groupId>junit</groupId><artifactId>junit</artifactId><scope>test</scope></dependency><!--\
+            \ Now we declare any tools needed --><!-- Annotation processor to generate\
+            \ the JPA metamodel classes for\n            typesafe criteria queries\
+            \ --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-jpamodelgen</artifactId><scope>provided</scope></dependency><!--\
+            \ Jakarta Activation needed for JPA model generation --><dependency><groupId>com.sun.activation</groupId><artifactId>jakarta.activation</artifactId><scope>provided</scope></dependency><!--\
+            \ Bean Validation Implementation \n             Provides portable constraints\
+            \ such as @Email \n             Hibernate Validator is shipped in JBoss\
+            \ EAP --><dependency><groupId>org.hibernate.validator</groupId><artifactId>hibernate-validator</artifactId><scope>provided</scope></dependency><!--\
+            \ hibernate-validator dependencies excluded on server dependency management\
+            \ yet required --><dependency><groupId>jakarta.validation</groupId><artifactId>jakarta.validation-api</artifactId><scope>provided</scope></dependency><!--\
+            \ Annotation processor that raising compilation errors whenever constraint\n\
+            \            annotations are incorrectly used. --><dependency><groupId>org.hibernate.validator</groupId><artifactId>hibernate-validator-annotation-processor</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the JPA API, we use provided scope as the API is included in\n\
+            \            JBoss EAP --><dependency><groupId>jakarta.persistence</groupId><artifactId>jakarta.persistence-api</artifactId><scope>provided</scope></dependency><!--\
+            \ Optional, but highly recommended --><!-- Arquillian allows you to test\
+            \ enterprise code such as EJBs and Transactional(JTA)\n            JPA\
+            \ from JUnit/TestNG --><dependency><groupId>org.jboss.arquillian.junit</groupId><artifactId>arquillian-junit-container</artifactId><scope>test</scope></dependency><dependency><groupId>org.jboss.arquillian.protocol</groupId><artifactId>arquillian-protocol-servlet</artifactId><scope>test</scope></dependency><!--\
+            \ Import the Common Annotations API (JSR-250), we use provided scope\n\
+            \            as the API is included in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.annotation</groupId><artifactId>jboss-annotations-api_1.3_spec</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the EJB API, we use provided scope as the API is included in\n\
+            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ejb</groupId><artifactId>jboss-ejb-api_3.2_spec</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the JSF API, we use provided scope as the API is included in\n\
+            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.faces</groupId><artifactId>jboss-jsf-api_2.3_spec</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the JAX-RS API, we use provided scope as the API is included\n\
+            \            in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ws.rs</groupId><artifactId>jboss-jaxrs-api_2.1_spec</artifactId><scope>provided</scope></dependency><dependency><groupId>org.jboss.spec.javax.xml.bind</groupId><artifactId>jboss-jaxb-api_2.3_spec</artifactId><scope>provided</scope></dependency></dependencies><build><!--\
+            \ Set the name of the WAR, used as the context root when the app is deployed\
+            \ --><finalName>${project.artifactId}</finalName></build>"
   javaee-pom-to-quarkus-00060:
     bmt:
       pom.xml:
@@ -5282,6 +5745,92 @@ quarkus/springboot:
             \tapp will ne    ed. --><!-- By default that is to put the resulting archive\
             \ into the\r\n\t\t\t'deployments' folder. --><!--\r\n\t\t\thttp://maven.apache.org/guides/mini/guide-building-for-different-environments.html\
             \ --><id>openshift</id><build><plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-war-plugin</artifactId><version>${version.war.plugin}</version><configuration><warName>ROOT</warName></configuration></plugin><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-source-plugin</artifactId><executions><execution><id>attach-sources</id><phase>none</phase></execution></executions></plugin></plugins></build></profile></profiles>"
+    kitchensink:
+      pom.xml:
+      - commitId: 0bdec06d9ce7131b3014745d7267ab788529e2ce
+        initial_branch: '7.1'
+        line_number: 19
+        message: "\n \n Leverage a Maven profile to run the Quarkus native build adding\
+          \ the following section to the `pom.xml` file: \n\n ```xml\n <profiles>\n\
+          \ <profile>\n <id>native</id>\n <activation>\n <property>\n <name>native</name>\n\
+          \ </property>\n </activation>\n <properties>\n <skipITs>false</skipITs>\n\
+          \ <quarkus.package.type>native</quarkus.package.type>\n </properties>\n\
+          \ </profile>\n </profiles>\n ```\n \n "
+        new_commitId: ebc839db9a47dceb68edef597de750a90abf5103
+        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
+        solved_branch: quarkus-3.2
+        variables:
+          data: project
+          innerText: "\n    4.0.0\n    \n        org.jboss.eap.quickstarts\n     \
+            \   quickstart-parent\n        \n        7.4.0.GA\n        ../pom.xml\n\
+            \    \n    kitchensink\n    war\n    Quickstart: kitchensink\n    A starter\
+            \ Jakarta EE web application project for use in JBoss EAP\n\n    \n  \
+            \      \n            Apache License, Version 2.0\n            http://www.apache.org/licenses/LICENSE-2.0.html\n\
+            \            repo\n        \n    \n\n    \n\n        \n\n        \n  \
+            \      \n            jakarta.enterprise\n            jakarta.enterprise.cdi-api\n\
+            \            provided\n        \n\n        \n        \n            junit\n\
+            \            junit\n            test\n        \n\n        \n\n       \
+            \ \n        \n            org.hibernate\n            hibernate-jpamodelgen\n\
+            \            provided\n        \n        \n        \n            com.sun.activation\n\
+            \            jakarta.activation\n            provided\n        \n\n  \
+            \      \n        \n            org.hibernate.validator\n            hibernate-validator\n\
+            \            provided\n        \n        \n        \n            jakarta.validation\n\
+            \            jakarta.validation-api\n            provided\n        \n\n\
+            \        \n        \n            org.hibernate.validator\n           \
+            \ hibernate-validator-annotation-processor\n            provided\n   \
+            \     \n\n        \n        \n            jakarta.persistence\n      \
+            \      jakarta.persistence-api\n            provided\n        \n\n   \
+            \     \n        \n        \n            org.jboss.arquillian.junit\n \
+            \           arquillian-junit-container\n            test\n        \n\n\
+            \        \n            org.jboss.arquillian.protocol\n            arquillian-protocol-servlet\n\
+            \            test\n        \n\n        \n        \n            org.jboss.spec.javax.annotation\n\
+            \            jboss-annotations-api_1.3_spec\n            provided\n  \
+            \      \n\n        \n        \n            org.jboss.spec.javax.ejb\n\
+            \            jboss-ejb-api_3.2_spec\n            provided\n        \n\n\
+            \        \n        \n            org.jboss.spec.javax.faces\n        \
+            \    jboss-jsf-api_2.3_spec\n            provided\n        \n\n      \
+            \  \n        \n            org.jboss.spec.javax.ws.rs\n            jboss-jaxrs-api_2.1_spec\n\
+            \            provided\n        \n\n        \n            org.jboss.spec.javax.xml.bind\n\
+            \            jboss-jaxb-api_2.3_spec\n            provided\n        \n\
+            \n    \n\n    \n        \n        ${project.artifactId}\n    \n"
+          matchingXML: "<modelVersion>4.0.0</modelVersion><parent><groupId>org.jboss.eap.quickstarts</groupId><artifactId>quickstart-parent</artifactId><!--\n\
+            \        Maintain separation between the artifact id and the version to\
+            \ help prevent\n        merge conflicts between commits changing the GA\
+            \ and those changing the V.\n        --><version>7.4.0.GA</version><relativePath>../pom.xml</relativePath></parent><artifactId>kitchensink</artifactId><packaging>war</packaging><name>Quickstart:\
+            \ kitchensink</name><description>A starter Jakarta EE web application\
+            \ project for use in JBoss EAP</description><licenses><license><name>Apache\
+            \ License, Version 2.0</name><url>http://www.apache.org/licenses/LICENSE-2.0.html</url><distribution>repo</distribution></license></licenses><dependencies><!--\
+            \ First declare the APIs we depend on and need for compilation. All\n\
+            \            of them are provided by JBoss EAP --><!-- Import the CDI\
+            \ API, we use provided scope as the API is included in\n            JBoss\
+            \ EAP --><dependency><groupId>jakarta.enterprise</groupId><artifactId>jakarta.enterprise.cdi-api</artifactId><scope>provided</scope></dependency><!--\
+            \ Needed for running tests (you may also use TestNG) --><dependency><groupId>junit</groupId><artifactId>junit</artifactId><scope>test</scope></dependency><!--\
+            \ Now we declare any tools needed --><!-- Annotation processor to generate\
+            \ the JPA metamodel classes for\n            typesafe criteria queries\
+            \ --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-jpamodelgen</artifactId><scope>provided</scope></dependency><!--\
+            \ Jakarta Activation needed for JPA model generation --><dependency><groupId>com.sun.activation</groupId><artifactId>jakarta.activation</artifactId><scope>provided</scope></dependency><!--\
+            \ Bean Validation Implementation \n             Provides portable constraints\
+            \ such as @Email \n             Hibernate Validator is shipped in JBoss\
+            \ EAP --><dependency><groupId>org.hibernate.validator</groupId><artifactId>hibernate-validator</artifactId><scope>provided</scope></dependency><!--\
+            \ hibernate-validator dependencies excluded on server dependency management\
+            \ yet required --><dependency><groupId>jakarta.validation</groupId><artifactId>jakarta.validation-api</artifactId><scope>provided</scope></dependency><!--\
+            \ Annotation processor that raising compilation errors whenever constraint\n\
+            \            annotations are incorrectly used. --><dependency><groupId>org.hibernate.validator</groupId><artifactId>hibernate-validator-annotation-processor</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the JPA API, we use provided scope as the API is included in\n\
+            \            JBoss EAP --><dependency><groupId>jakarta.persistence</groupId><artifactId>jakarta.persistence-api</artifactId><scope>provided</scope></dependency><!--\
+            \ Optional, but highly recommended --><!-- Arquillian allows you to test\
+            \ enterprise code such as EJBs and Transactional(JTA)\n            JPA\
+            \ from JUnit/TestNG --><dependency><groupId>org.jboss.arquillian.junit</groupId><artifactId>arquillian-junit-container</artifactId><scope>test</scope></dependency><dependency><groupId>org.jboss.arquillian.protocol</groupId><artifactId>arquillian-protocol-servlet</artifactId><scope>test</scope></dependency><!--\
+            \ Import the Common Annotations API (JSR-250), we use provided scope\n\
+            \            as the API is included in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.annotation</groupId><artifactId>jboss-annotations-api_1.3_spec</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the EJB API, we use provided scope as the API is included in\n\
+            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ejb</groupId><artifactId>jboss-ejb-api_3.2_spec</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the JSF API, we use provided scope as the API is included in\n\
+            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.faces</groupId><artifactId>jboss-jsf-api_2.3_spec</artifactId><scope>provided</scope></dependency><!--\
+            \ Import the JAX-RS API, we use provided scope as the API is included\n\
+            \            in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ws.rs</groupId><artifactId>jboss-jaxrs-api_2.1_spec</artifactId><scope>provided</scope></dependency><dependency><groupId>org.jboss.spec.javax.xml.bind</groupId><artifactId>jboss-jaxb-api_2.3_spec</artifactId><scope>provided</scope></dependency></dependencies><build><!--\
+            \ Set the name of the WAR, used as the context root when the app is deployed\
+            \ --><finalName>${project.artifactId}</finalName></build>"
   javaee-pom-to-quarkus-00070:
     bmt:
       pom.xml:
@@ -5320,6 +5869,63 @@ quarkus/springboot:
         new_commitId: 25f00d88f8bceefb223390dcdd656bd5af45146e
         repo: https://github.com/konveyor-ecosystem/cmt.git
         solved_branch: quarkus
+        variables:
+          data: dependency
+          innerText: "\n            jakarta.persistence\n            jakarta.persistence-api\n\
+            \            provided\n        "
+          matchingXML: <groupId>jakarta.persistence</groupId><artifactId>jakarta.persistence-api</artifactId><scope>provided</scope>
+    kitchensink:
+      pom.xml:
+      - commitId: 0bdec06d9ce7131b3014745d7267ab788529e2ce
+        initial_branch: '7.1'
+        line_number: 68
+        message: "\n \n Configure Quarkus 'hibernate-orm` and jakarta persistence.\
+          \ \n Add the `quarkus-hibernate-orm` section and one for your preferred\
+          \ jdbc solution to the `pom.xml` file, eg for postgres: \n\n ```\n <!--\
+          \ Hibernate ORM specific dependencies -->\n <dependency>\n <groupId>io.quarkus</groupId>\n\
+          \ <artifactId>quarkus-hibernate-orm</artifactId>\n </dependency>\n \n <!--\
+          \ JDBC driver dependencies -->\n <dependency>\n <groupId>io.quarkus</groupId>\n\
+          \ <artifactId>quarkus-jdbc-postgresql</artifactId>\n </dependency> \n ```\n\
+          \ \n "
+        new_commitId: ebc839db9a47dceb68edef597de750a90abf5103
+        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
+        solved_branch: quarkus-3.2
+        variables:
+          data: groupId
+          innerText: org.hibernate
+          matchingXML: org.hibernate
+      - commitId: 0bdec06d9ce7131b3014745d7267ab788529e2ce
+        initial_branch: '7.1'
+        line_number: 83
+        message: "\n \n Configure Quarkus 'hibernate-orm` and jakarta persistence.\
+          \ \n Add the `quarkus-hibernate-orm` section and one for your preferred\
+          \ jdbc solution to the `pom.xml` file, eg for postgres: \n\n ```\n <!--\
+          \ Hibernate ORM specific dependencies -->\n <dependency>\n <groupId>io.quarkus</groupId>\n\
+          \ <artifactId>quarkus-hibernate-orm</artifactId>\n </dependency>\n \n <!--\
+          \ JDBC driver dependencies -->\n <dependency>\n <groupId>io.quarkus</groupId>\n\
+          \ <artifactId>quarkus-jdbc-postgresql</artifactId>\n </dependency> \n ```\n\
+          \ \n "
+        new_commitId: ebc839db9a47dceb68edef597de750a90abf5103
+        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
+        solved_branch: quarkus-3.2
+        variables:
+          data: groupId
+          innerText: org.hibernate.validator
+          matchingXML: org.hibernate.validator
+      - commitId: 0bdec06d9ce7131b3014745d7267ab788529e2ce
+        initial_branch: '7.1'
+        line_number: 105
+        message: "\n \n Configure Quarkus 'hibernate-orm` and jakarta persistence.\
+          \ \n Add the `quarkus-hibernate-orm` section and one for your preferred\
+          \ jdbc solution to the `pom.xml` file, eg for postgres: \n\n ```\n <!--\
+          \ Hibernate ORM specific dependencies -->\n <dependency>\n <groupId>io.quarkus</groupId>\n\
+          \ <artifactId>quarkus-hibernate-orm</artifactId>\n </dependency>\n \n <!--\
+          \ JDBC driver dependencies -->\n <dependency>\n <groupId>io.quarkus</groupId>\n\
+          \ <artifactId>quarkus-jdbc-postgresql</artifactId>\n </dependency> \n ```\n\
+          \ \n "
+        new_commitId: ebc839db9a47dceb68edef597de750a90abf5103
+        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
+        solved_branch: quarkus-3.2
         variables:
           data: dependency
           innerText: "\n            jakarta.persistence\n            jakarta.persistence-api\n\

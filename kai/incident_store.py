@@ -6,8 +6,8 @@ import pprint
 
 import yaml
 
-from kai.git import GitHelper
 from kai.report import Report
+from kai.scm import GitDiff
 
 
 class Application:
@@ -662,16 +662,17 @@ class IncidentStore:
                                 app
                             ][file_path]:
                                 # find the solved issue
-                                git_helper = GitHelper(
-                                    incident["repo"],
-                                    repo_path,
-                                    incident["initial_branch"],
-                                    incident["solved_branch"],
-                                    incident["commitId"],
-                                    incident["new_commitId"],
-                                )
+                                scm = GitDiff(IncidentStore.get_repo_path(app))
 
-                                diff_exists = git_helper.diff_exists_for_file(file_path)
+                                diff_exists = scm.diff_exists_for_file(
+                                    scm.get_commit_from_branch(
+                                        incident["initial_branch"]
+                                    ),
+                                    scm.get_commit_from_branch(
+                                        incident["solved_branch"]
+                                    ),
+                                    file_path,
+                                )
                                 if diff_exists:
                                     if ruleset not in self.solved_violations:
                                         self.solved_violations[ruleset] = {}
@@ -718,11 +719,6 @@ class IncidentStore:
         }
         return mapping.get(app_name, None)
 
-        repo_dir = "sample_repos/{app_name}"
-        if not os.path.exists(repo_dir):
-            return None
-        return repo_dir
-
     def find_if_solved_issues_exist(self):
         """
         Find if solved issues exist
@@ -759,23 +755,15 @@ class IncidentStore:
         if ruleset in solved_issues and violation in solved_issues[ruleset]:
             for app, app_data in solved_issues[ruleset][violation].items():
                 print(f"Found solved issues for {ruleset} - {violation} for app {app}")
-                repo_path = IncidentStore.get_repo_path(app)
 
                 for file_path, incidents in app_data.items():
                     for incident in incidents:
-                        git_helper = GitHelper(
-                            incident["repo"],
-                            repo_path,
-                            incident["initial_branch"],
-                            incident["solved_branch"],
-                            incident["commitId"],
-                            incident["new_commitId"],
-                        )
+                        scm = GitDiff(IncidentStore.get_repo_path(app))
                         patches.append(
-                            git_helper.get_patch_for_file(
+                            scm.get_patch_for_file(
+                                scm.get_commit_from_branch(incident["initial_branch"]),
+                                scm.get_commit_from_branch(incident["solved_branch"]),
                                 file_path,
-                                incident["commitId"],
-                                incident["new_commitId"],
                             )
                         )
 

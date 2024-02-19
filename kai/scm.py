@@ -58,3 +58,18 @@ class GitDiff:
 
     def checkout_branch(self, branch_name):
         self.repo.git.checkout(branch_name)
+
+    def diff_exists_for_file(self, old_commit, new_commit, file_path):
+        """
+        Checks if a diff exists for the specified file path between the provided commit IDs.
+        """
+        if file_path.endswith(".svg"):
+            return None
+
+        # Get the patch for the file between the two commits
+        patch = self.get_patch_for_file(old_commit, new_commit, file_path)
+        # If patch is not None, it means a diff exists for the file
+        if patch is not None:
+            return True
+        else:
+            return False
