@@ -80,13 +80,13 @@ def generate(
 
 
 @app.command()
-def load(folder_path: str):
+def load(folder_path: str, output_dir: str):
     """
     Load the incident store with the given applications
     write the cached_violations to a file for later use
     """
     incident_store = IncidentStore()
-    incident_store.load_incident_store(folder_path)
+    incident_store.load_incident_store(folder_path, output_dir)
 
 
 @app.command()

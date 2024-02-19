@@ -234,30 +234,24 @@ class IncidentStore:
                 break
         return common_entries
 
-    def cleanup(self):
+    def cleanup(self, output_directory):
         """
         Cleanup the incident store
         """
         # delete cached_violations.yaml if it exists
-        if os.path.exists(
-            "samples/generated_output/incident_store/cached_violations.yaml"
-        ):
-            os.remove("samples/generated_output/incident_store/cached_violations.yaml")
+        if os.path.exists(f"{output_directory}/cached_violations.yaml"):
+            os.remove(f"{output_directory}/cached_violations.yaml")
         # delete solved_incidents.yaml if it exists
-        if os.path.exists(
-            "samples/generated_output/incident_store/solved_incidents.yaml"
-        ):
-            os.remove("samples/generated_output/incident_store/solved_incidents.yaml")
+        if os.path.exists(f"{output_directory}/solved_incidents.yaml"):
+            os.remove(f"{output_directory}/solved_incidents.yaml")
         # delete missing_incidents.yaml if it exists
-        if os.path.exists(
-            "samples/generated_output/incident_store/missing_incidents.yaml"
-        ):
-            os.remove("samples/generated_output/incident_store/missing_incidents.yaml")
+        if os.path.exists(f"{output_directory}/missing_incidents.yaml"):
+            os.remove(f"{output_directory}/missing_incidents.yaml")
         # clear cached_violations if it is not None
         if self.cached_violations is not None:
             self.cached_violations = {}
 
-    def load_incident_store(self, folder_path):
+    def load_incident_store(self, folder_path, output_directory):
         # check if the folder exists
         if not os.path.exists(folder_path):
             print(f"Error: {folder_path} does not exist.")
@@ -270,7 +264,7 @@ class IncidentStore:
         print(f"Loading incident store with applications: {apps}\n")
         if len(apps) != 0:
             # cleanup incident store
-            self.cleanup()
+            self.cleanup(output_directory)
 
         for app in apps:
             # if app is a directory then check if there is a folder called initial
@@ -294,10 +288,16 @@ class IncidentStore:
                 print("finding missing incidents")
                 self.update_incident_store(app)
 
-        self.write_cached_violations(self.cached_violations, "cached_violations.yaml")
+        self.write_cached_violations(
+            self.cached_violations, "cached_violations.yaml", output_directory
+        )
         # write missing incidents to the a new file
-        self.write_cached_violations(self.missing_violations, "missing_incidents.yaml")
-        self.write_cached_violations(self.solved_violations, "solved_incidents.yaml")
+        self.write_cached_violations(
+            self.missing_violations, "missing_incidents.yaml", output_directory
+        )
+        self.write_cached_violations(
+            self.solved_violations, "solved_incidents.yaml", output_directory
+        )
 
     def load_app_cached_violation(self, app, folder):
         """
@@ -338,12 +338,10 @@ class IncidentStore:
 
         return output_yaml_path
 
-    def write_cached_violations(self, cached_violations, file_name):
+    def write_cached_violations(self, cached_violations, file_name, output_directory):
         """
         Write the cached_violations to a file for later use
         """
-
-        output_directory = "samples/generated_output/incident_store"
         dir_path = os.path.dirname(os.path.realpath(__file__))
         parent_dir = os.path.dirname(dir_path)
         os.path.join(parent_dir, output_directory)

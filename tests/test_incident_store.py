@@ -119,14 +119,15 @@ class TestIncidentStore(unittest.TestCase):
     def test_load_incidentstore_cached_violation(self):
         # Test when the specified app folder and output.yaml exist
         folder_path = "tests/test_data/sample"
+        output_dir = "tests/test_data/incident_store"
         i = IncidentStore()
 
-        i.load_incident_store(folder_path)
+        i.load_incident_store(folder_path, output_dir)
         self.assertIsNotNone(i.cached_violations)
         self.assertIsInstance(i.cached_violations, dict)
         self.assertEqual(len(i.cached_violations), 3)
 
-        i.cleanup()
+        i.cleanup(output_dir)
 
     def test_write_cached_violations(self):
         test_cached_violations = {
@@ -205,18 +206,17 @@ class TestIncidentStore(unittest.TestCase):
             },
         }
 
-        output_file_path = (
-            "samples/generated_output/incident_store/test_cached_violations.yaml"
-        )
+        output_file_path = "tests/test_data/incident_store/test_cached_violations.yaml"
         i = IncidentStore()
         try:
             # Call the function under test
             i.write_cached_violations(
-                test_cached_violations, "test_cached_violations.yaml"
+                test_cached_violations,
+                "test_cached_violations.yaml",
+                "tests/test_data/incident_store",
             )
 
             # Check if the file was created
-            print(output_file_path)
             self.assertTrue(os.path.exists(output_file_path))
 
             # Check if the written datza matches the expected data
@@ -231,33 +231,39 @@ class TestIncidentStore(unittest.TestCase):
 
     def test_find_solved_issues(self):
         i = IncidentStore()
-        i.load_incident_store("tests/test_data/sample")
+        i.load_incident_store(
+            "tests/test_data/sample", "tests/test_data/incident_store"
+        )
         patches = i.get_solved_issue(
             "quarkus/springboot", "javaee-pom-to-quarkus-00010"
         )
         self.assertIsNotNone(patches)
         self.assertEquals(len(patches), 1)
-        i.cleanup()
+        i.cleanup("tests/test_data/incident_store")
 
     def test_find_solved_issues_no_solved_issues(self):
         i = IncidentStore()
-        i.load_incident_store("tests/test_data/sample")
+        i.load_incident_store(
+            "tests/test_data/sample", "tests/test_data/incident_store"
+        )
         patches = i.get_solved_issue(
             "quarkus/springboot", "javaee-pom-to-quarkus-01010"
         )
         self.assertListEqual(patches, [])
         self.assertEquals(len(patches), 0)
-        i.cleanup()
+        i.cleanup("tests/test_data/incident_store")
 
     def test_find_common_violations(self):
         i = IncidentStore()
-        i.load_incident_store("tests/test_data/sample")
+        i.load_incident_store(
+            "tests/test_data/sample", "tests/test_data/incident_store"
+        )
         violations = i.find_common_violations(
             "quarkus/springboot", "javaee-pom-to-quarkus-00010"
         )
         self.assertIsNotNone(violations)
-        self.assertEquals(len(violations), 1)
-        i.cleanup()
+        self.assertEqual(len(violations), 1)
+        i.cleanup("tests/test_data/incident_store")
 
     if __name__ == "__main__":
         unittest.main()
