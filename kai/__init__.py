@@ -80,22 +80,22 @@ def generate(
 
 
 @app.command()
-def load(folder_path: str):
+def load(report_path: str, output_dir: str):
     """
     Load the incident store with the given applications
     write the cached_violations to a file for later use
     """
-    incident_store = IncidentStore()
-    incident_store.load_incident_store(folder_path)
+    incident_store = IncidentStore(report_path, output_dir)
+    incident_store.load_incident_store()
 
 
 @app.command()
-def patch(ruleset: str, violation: str):
+def patch(ruleset: str, violation: str, report_path: str, output_dir: str):
     """
     Generate patches for a specific violation
     """
     print(f"Generating patches for {ruleset} - {violation}")
-    incident_store = IncidentStore()
+    incident_store = IncidentStore(report_path, output_dir)
     patches = incident_store.get_solved_issue(ruleset, violation)
     if len(patches) == 0:
         print(f"No patches found for {ruleset} - {violation}")
@@ -106,12 +106,12 @@ def patch(ruleset: str, violation: str):
 
 
 @app.command()
-def common(ruleset: str, violation: str):
+def common(ruleset: str, violation: str, report_path: str, output_dir: str):
     """
     Find common violations for a specific violation
     """
     print(f"Finding common violations for {ruleset} - {violation}")
-    incident_store = IncidentStore()
+    incident_store = IncidentStore(report_path, output_dir)
     violations = incident_store.find_common_violations(ruleset, violation)
     if violations is None:
         print(f"No common violations found for {ruleset} - {violation}")
