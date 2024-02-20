@@ -91,7 +91,7 @@ def fetch_sample_apps():
     for repo in sample_target_apps:
         # perform analysis
         source_dir = sample_target_apps[repo]
-        analysis = analyze(source_dir, repo, "solved")
+        analyze(source_dir, repo, "solved")
 
 
 def ensure_kantra_bin_exists():
