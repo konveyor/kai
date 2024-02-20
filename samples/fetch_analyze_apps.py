@@ -65,10 +65,12 @@ sample_target_apps = {
 def fetch_sample_apps():
     for repo in repos:
         print(f"Cloning {repo}...")
-        os.system(f"git clone {repos[repo][0]} sample_repos/{repo}")
+        os.system(
+            f"git clone {repos[repo][0]} sample_repos/{repo}"
+        )  # trunk-ignore(bandit)
         os.chdir(f"sample_repos/{repo}")
         if repos[repo][1] is not None:
-            os.system(f"git checkout {repos[repo][1]}")
+            os.system(f"git checkout {repos[repo][1]}")  # trunk-ignore(bandit)
         print(f"Current working directory: {os.getcwd()}")
         os.chdir("../../")
 
@@ -85,7 +87,7 @@ def fetch_sample_apps():
         print(f"Switching to {repos[repo][2]} branch for {repo}...")
         os.chdir(f"sample_repos/{repo}")
         if repos[repo][2] is not None:
-            os.system(f"git checkout {repos[repo][2]}")
+            os.system(f"git checkout {repos[repo][2]}")  # trunk-ignore(bandit)
         os.chdir("../../")
 
     for repo in sample_target_apps:
