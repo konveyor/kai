@@ -12,11 +12,15 @@ import aiohttp
 import yaml
 from aiohttp import web
 
+from kai.incident_store_advanced import PSQLIncidentStore, EmbeddingInstructor
+
 # TODO: Make openapi spec for everything
 
 # TODO: Repo lives both on client and on server. Determine either A) Best way to
 # rectify differences or B) Only have the code on one and pass stuff between
 # each other
+# - can be solved by getting last common commits and then applying a git diff in
+#   the same manner as `git stash apply`
 
 # TODO: Parameter validation
 
@@ -163,7 +167,7 @@ def user_gives_which_repo_and_branch(params):
     pass
 
 
-def user_gives_service_which_incident_to_solve(params):
+def get_incident_solution(params):
     # TODO: Make a streaming version
 
     """
@@ -173,9 +177,14 @@ def user_gives_service_which_incident_to_solve(params):
     Stateful, stores it
 
     params (json):
-    - some identifier of the incident that we are looking at
+    - ruleset_name
+    - violation_name
+    - file_contents
+    - line_number: 0-indexed (let's keep it consistent)
 
     return (json):
+    - previously solved incident (if exists)
+    - context from the llm (high-level, "This is how I'd solve it")
     - some diff of the code to apply
     - id of the associated solved incident
     """
@@ -220,6 +229,11 @@ def accept_or_reject_solution(params):
 app = web.Application()
 app.router.add_post("/generate_prompt", generate_prompt)
 app.router.add_route("*", "/proxy", proxy_handler)
+
+incident_store = PSQLIncidentStore(
+    config_filepath="../kai/database.ini",
+    emb_provider=EmbeddingInstructor(),
+)
 
 if __name__ == "__main__":
     # TODO: Remove after demo
