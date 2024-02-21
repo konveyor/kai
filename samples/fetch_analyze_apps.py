@@ -38,7 +38,7 @@ repos = {
 sample_source_apps = {
     "eap-coolstore-monolith": "sample_repos/eap-coolstore-monolith",
     "ticket-monster": "sample_repos/ticket-monster",
-    "kitchensink": "sample_repos/kitchensink",
+    "kitchensink": "sample_repos/kitchensink/kitchensink",
     "helloworld-mdb": "sample_repos/helloworld-mdb",
     "bmt": "sample_repos/bmt",
     "cmt": "sample_repos/cmt",
@@ -50,7 +50,7 @@ sample_source_apps = {
 sample_target_apps = {
     "eap-coolstore-monolith": "sample_repos/eap-coolstore-monolith",
     "ticket-monster": "sample_repos/ticket-monster",
-    "kitchensink": "sample_repos/kitchensink",
+    "kitchensink": "sample_repos/kitchensink/kitchensink",
     "helloworld-mdb": "sample_repos/helloworld-mdb",
     "bmt": "sample_repos/bmt",
     "cmt": "sample_repos/cmt",
@@ -71,7 +71,6 @@ def fetch_sample_apps():
         os.chdir(f"sample_repos/{repo}")
         if repos[repo][1] is not None:
             os.system(f"git checkout {repos[repo][1]}")  # trunk-ignore(bandit)
-        print(f"Current working directory: {os.getcwd()}")
         os.chdir("../../")
 
         # perform analysis
