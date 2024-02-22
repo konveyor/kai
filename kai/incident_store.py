@@ -441,7 +441,6 @@ class IncidentStore:
         Create a temporary cached_violations for the given application
 
         """
-        app_variables = self.get_app_variables(app_name)
         temp_cached_violations = {}
         for ruleset in report.keys():
             if ruleset not in temp_cached_violations:
