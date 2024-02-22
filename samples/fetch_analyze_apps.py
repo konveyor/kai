@@ -65,9 +65,9 @@ sample_target_apps = {
 def fetch_sample_apps():
     for repo in repos:
         print(f"Cloning {repo}...")
-        subprocess.run(
+        subprocess.run(  # trunk-ignore(bandit)
             ["git", "clone", repos[repo][0], f"sample_repos/{repo}"]
-        )  # trunk-ignore(bandit)
+        )
         os.chdir(f"sample_repos/{repo}")
         if repos[repo][1] is not None:
             os.system(f"git checkout {repos[repo][1]}")  # trunk-ignore(bandit)
