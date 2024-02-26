@@ -643,9 +643,6 @@ class IncidentStore:
                             for incident in self.missing_violations[ruleset][violation][
                                 app
                             ][file_path]:
-                                print(
-                                    f"Finding solved issue for {app} ---------------> {incident}\n"
-                                )
                                 # find the solved issue
                                 scm = GitDiff(IncidentStore.get_repo_path(app))
 
@@ -698,9 +695,9 @@ class IncidentStore:
             "helloworld-mdb": "samples/sample_repos/helloworld-mdb",
             "bmt": "samples/sample_repos/bmt",
             "cmt": "samples/sample_repos/cmt",
-            "ejb-remote": "sample_repos/jboss-eap-quickstarts-quarkus/ejb-remote-to-quarkus-rest",
-            "ejb-security": "sample_repos/jboss-eap-quickstarts-quarkus/ejb-security-to-quarkus-basic-elytron",
-            "tasks-jsf": "sample_repos/jboss-eap-quickstarts-quarkus/tasks-qute",
+            "ejb-remote": "samples/sample_repos/jboss-eap-quickstarts-quarkus",
+            "ejb-security": "samples/sample_repos/jboss-eap-quickstarts-quarkus",
+            "tasks-jsf": "samples/sample_repos/jboss-eap-quickstarts-quarkus",
         }
         return mapping.get(app_name, None)
 
