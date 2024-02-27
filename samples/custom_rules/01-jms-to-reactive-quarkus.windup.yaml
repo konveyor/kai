@@ -1,0 +1,165 @@
+# Can be used
+- category: mandatory
+  customVariables: []
+  description: JMS is not supported in Quarkus
+  effort: 5
+  labels:
+    - konveyor.io/source=java-ee
+    - konveyor.io/target=quarkus
+  links:
+    - title: Quarkus - Guide
+      url: https://quarkus.io/guides
+    - title: Smallrye Reactive - Connectors
+      url: https://smallrye.io/smallrye-reactive-messaging/smallrye-reactive-messaging/3.4/connectors/connectors.html
+  message:
+    "Usage of JMS is not supported in Quarkus. It is recommended to use Quarkus'
+    SmallRye Reactive Messaging instead of JMS.\n Replace the JavaEE/Jakarta JMS dependency
+    with Smallrye Reactive:\n \n ```\n <dependency>\n <groupId>io.quarkus</groupId>\n
+    <artifactId>quarkus-smallrye-reactive-messaging</artifactId>\n </dependency>\n
+    \n ```\n \n Take a look at the Smallrye Reactive Connectors link below to know
+    more about how to interact with different technologies (AMQP, Apache Camel, ...)"
+  ruleID: jms-to-reactive-quarkus-00000
+  when:
+    or:
+      - java.dependency:
+          lowerbound: 0.0.0
+          name: jakarta.jms.jakarta.jms-api
+      - java.dependency:
+          lowerbound: 0.0.0
+          name: javax.jms.javax.jms-api
+      - java.dependency:
+          lowerbound: 0.0.0
+          name: org.jboss.spec.javax.jms.jboss-jms-api_2.0_spec
+# Can be used
+- category: mandatory
+  customVariables: []
+  description: "@MessageDriven - EJBs are not supported in Quarkus"
+  effort: 3
+  labels:
+    - konveyor.io/source=java-ee
+    - konveyor.io/target=quarkus
+  links:
+    - title: Quarkus - Guide
+      url: https://quarkus.io/guides
+  message: |-
+    Enterprise Java Beans (EJBs) are not supported in Quarkus. CDI must be used.
+     Please replace the `@MessageDriven` annotation with a CDI scope annotation like `@ApplicationScoped`.
+  ruleID: jms-to-reactive-quarkus-00010
+  when:
+    or:
+      - java.referenced:
+          location: ANNOTATION
+          pattern: javax.ejb.MessageDriven
+      - java.referenced:
+          location: ANNOTATION
+          pattern: jakarta.ejb.MessageDriven
+# Can be used, although the konveyor rule is not as specific as the windup one
+- category: mandatory
+  customVariables: []
+  description: Configure message listener method with @Incoming
+  effort: 3
+  labels:
+    - konveyor.io/source=java-ee
+    - konveyor.io/target=quarkus
+  links:
+    - title: Quarkus - Guide
+      url: https://quarkus.io/guides
+    - title: Incoming (SmallRye Reactive Messaging API)
+      url: https://smallrye.io/smallrye-reactive-messaging/2.5.0/apidocs/org/eclipse/microprofile/reactive/messaging/Incoming.html
+  message:
+    "The `destinationLookup` property can be migrated by annotating a message
+    handler method (potentially `onMessage`) with the\n `org.eclipse.microprofile.reactive.messaging.Incoming`
+    annotation, indicating the name of the queue as a value:\n \n Before:\n ```\n
+    @MessageDriven(name = \"HelloWorldQueueMDB\", activationConfig = {{\n @ActivationConfigProperty(propertyName
+    = \"destinationLookup\", propertyValue = \"queue/HELLOWORLDMDBQueue\")\n }}\n
+    public class MessageListenerImpl implements MessageListener {{\n public void onMessage(Message
+    msg) {{\n // ...handler code\n }}\n }}\n ```\n \n After:\n ```\n public class
+    MessageListenerImpl implements MessageListener {{\n @Incoming(\"HELLOWORLDMDBQueue\")\n
+    public void onMessage(String message) {{\n // ...handler code\n }}\n }}\n ```"
+  ruleID: jms-to-reactive-quarkus-00020
+  when:
+    or:
+      - java.referenced:
+          location: ANNOTATION
+          pattern: javax.ejb.ActivationConfigProperty
+      - java.referenced:
+          location: ANNOTATION
+          pattern: jakarta.ejb.ActivationConfigProperty
+# Can be used
+- category: mandatory
+  customVariables: []
+  description: JMS' Queue must be replaced with an Emitter
+  effort: 3
+  labels:
+    - konveyor.io/source=java-ee
+    - konveyor.io/target=quarkus
+  links:
+    - title: Quarkus - Guide
+      url: https://quarkus.io/guides
+    - title: Emitter (Microprofile Reactive Streams Messaging)
+      url: https://smallrye.io/smallrye-reactive-messaging/2.0.2/apidocs/org/eclipse/microprofile/reactive/messaging/Emitter.html
+  message:
+    "JMS `Queue`s should be replaced with Micrometer `Emitter`s feeding a Channel.
+    See the following example of migrating\n a Queue to an Emitter:\n \n Before:\n
+    ```\n @Resource(lookup = \"java:/queue/HELLOWORLDMDBQueue\")\n private Queue queue;\n
+    ```\n \n After:\n ```\n @Inject\n @Channel(\"HELLOWORLDMDBQueue\")\n Emitter<String>
+    queueEmitter;\n ```"
+  ruleID: jms-to-reactive-quarkus-00030
+  when:
+    or:
+      - java.referenced:
+          location: FIELD_DECLARATION
+          pattern: javax.jms.Queue
+      - java.referenced:
+          location: FIELD_DECLARATION
+          pattern: jakarta.jms.Queue
+- category: mandatory
+  customVariables: []
+  description: JMS' Topic must be replaced with an Emitter
+  effort: 3
+  labels:
+    - konveyor.io/source=java-ee
+    - konveyor.io/target=quarkus
+  links:
+    - title: Quarkus - Guide
+      url: https://quarkus.io/guides
+    - title: Emitter (Microprofile Reactive Streams Messaging)
+      url: https://smallrye.io/smallrye-reactive-messaging/2.0.2/apidocs/org/eclipse/microprofile/reactive/messaging/Emitter.html
+  message:
+    "JMS `Topic`s should be replaced with Micrometer `Emitter`s feeding a Channel.
+    See the following example of migrating\n a Topic to an Emitter:\n \n Before:\n
+    ```\n @Resource(lookup = \"java:/topic/HELLOWORLDMDBTopic\")\n private Topic topic;\n
+    ```\n \n After:\n ```\n @Inject\n @Channel(\"HELLOWORLDMDBTopic\")\n Emitter<String>
+    topicEmitter;\n ```"
+  ruleID: jms-to-reactive-quarkus-00040
+  when:
+    or:
+      - java.referenced:
+          location: FIELD_DECLARATION
+          pattern: javax.jms.Topic
+      - java.referenced:
+          location: FIELD_DECLARATION
+          pattern: jakarta.jms.Topic
+# Can be used, although probably many matches
+- category: mandatory
+  customVariables: []
+  description: JMS is not supported in Quarkus
+  effort: 5
+  labels:
+    - konveyor.io/source=java-ee
+    - konveyor.io/target=quarkus
+  links:
+    - title: Quarkus - Guide
+      url: https://quarkus.io/guides
+  message:
+    References to JavaEE/JakartaEE JMS elements should be removed and replaced
+    with their Quarkus SmallRye/Microprofile equivalents.
+  ruleID: jms-to-reactive-quarkus-00050
+  when:
+    or:
+      - java.referenced:
+          location: PACKAGE
+          pattern: javax.jms*
+      - java.referenced:
+          location: PACKAGE
+          pattern: jakarta.jms*
