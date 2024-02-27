@@ -52,6 +52,800 @@ cloud-readiness:
           data: distributable
           innerText: ''
           matchingXML: ''
+custom-ruleset:
+  jms-to-reactive-quarkus-00000:
+    cmt:
+      pom.xml:
+      - initial_branch: main
+        line_number: 167
+        message: "Usage of JMS is not supported in Quarkus. It is recommended to use\
+          \ Quarkus' SmallRye Reactive Messaging instead of JMS.\n Replace the JavaEE/Jakarta\
+          \ JMS dependency with Smallrye Reactive:\n \n ```\n <dependency>\n <groupId>io.quarkus</groupId>\n\
+          \ <artifactId>quarkus-smallrye-reactive-messaging</artifactId>\n </dependency>\n\
+          \ \n ```\n \n Take a look at the Smallrye Reactive Connectors link below\
+          \ to know more about how to interact with different technologies (AMQP,\
+          \ Apache Camel, ...)"
+        repo: https://github.com/konveyor-ecosystem/cmt.git
+        solved_branch: quarkus
+        variables:
+          name: org.jboss.spec.javax.jms.jboss-jms-api_2.0_spec
+          version: 2.0.0.Final-redhat-00001
+    helloworld-mdb:
+      pom.xml:
+      - initial_branch: main
+        line_number: 145
+        message: "Usage of JMS is not supported in Quarkus. It is recommended to use\
+          \ Quarkus' SmallRye Reactive Messaging instead of JMS.\n Replace the JavaEE/Jakarta\
+          \ JMS dependency with Smallrye Reactive:\n \n ```\n <dependency>\n <groupId>io.quarkus</groupId>\n\
+          \ <artifactId>quarkus-smallrye-reactive-messaging</artifactId>\n </dependency>\n\
+          \ \n ```\n \n Take a look at the Smallrye Reactive Connectors link below\
+          \ to know more about how to interact with different technologies (AMQP,\
+          \ Apache Camel, ...)"
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          name: org.jboss.spec.javax.jms.jboss-jms-api_2.0_spec
+          version: 2.0.0.Final-redhat-00001
+  jms-to-reactive-quarkus-00010:
+    cmt:
+      src/main/java/org/jboss/as/quickstarts/cmt/mdb/HelloWorldMDB.java:
+      - initial_branch: main
+        line_number: 36
+        message: "Enterprise Java Beans (EJBs) are not supported in Quarkus. CDI must\
+          \ be used.\n Please replace the `@MessageDriven` annotation with a CDI scope\
+          \ annotation like `@ApplicationScoped`."
+        repo: https://github.com/konveyor-ecosystem/cmt.git
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/cmt/mdb/HelloWorldMDB.java
+          kind: Class
+          name: MessageDriven
+          package: org.jboss.as.quickstarts.cmt.mdb
+    eap-coolstore-monolith:
+      src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java:
+      - initial_branch: main
+        line_number: 15
+        message: "Enterprise Java Beans (EJBs) are not supported in Quarkus. CDI must\
+          \ be used.\n Please replace the `@MessageDriven` annotation with a CDI scope\
+          \ annotation like `@ApplicationScoped`."
+        repo: https://github.com/mathianasj/eap-coolstore-monolith.git
+        solved_branch: quarkus-migration
+        variables:
+          file: file:///tmp/source-code/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java
+          kind: Class
+          name: MessageDriven
+          package: com.redhat.coolstore.service
+    helloworld-mdb:
+      src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java:
+      - initial_branch: main
+        line_number: 34
+        message: "Enterprise Java Beans (EJBs) are not supported in Quarkus. CDI must\
+          \ be used.\n Please replace the `@MessageDriven` annotation with a CDI scope\
+          \ annotation like `@ApplicationScoped`."
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java
+          kind: Class
+          name: MessageDriven
+          package: org.jboss.as.quickstarts.mdb
+      src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldTopicMDB.java:
+      - initial_branch: main
+        line_number: 34
+        message: "Enterprise Java Beans (EJBs) are not supported in Quarkus. CDI must\
+          \ be used.\n Please replace the `@MessageDriven` annotation with a CDI scope\
+          \ annotation like `@ApplicationScoped`."
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldTopicMDB.java
+          kind: Class
+          name: MessageDriven
+          package: org.jboss.as.quickstarts.mdb
+  jms-to-reactive-quarkus-00020:
+    cmt:
+      src/main/java/org/jboss/as/quickstarts/cmt/mdb/HelloWorldMDB.java:
+      - initial_branch: main
+        line_number: 37
+        message: "The `destinationLookup` property can be migrated by annotating a\
+          \ message handler method (potentially `onMessage`) with the\n `org.eclipse.microprofile.reactive.messaging.Incoming`\
+          \ annotation, indicating the name of the queue as a value:\n \n Before:\n\
+          \ ```\n @MessageDriven(name = \"HelloWorldQueueMDB\", activationConfig =\
+          \ \n public class MessageListenerImpl implements MessageListener \n }}\n\
+          \ ```\n \n After:\n ```\n public class MessageListenerImpl implements MessageListener\
+          \ \n }}\n ```"
+        repo: https://github.com/konveyor-ecosystem/cmt.git
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/cmt/mdb/HelloWorldMDB.java
+          kind: Class
+          name: MessageDriven
+          package: org.jboss.as.quickstarts.cmt.mdb
+      - initial_branch: main
+        line_number: 38
+        message: "The `destinationLookup` property can be migrated by annotating a\
+          \ message handler method (potentially `onMessage`) with the\n `org.eclipse.microprofile.reactive.messaging.Incoming`\
+          \ annotation, indicating the name of the queue as a value:\n \n Before:\n\
+          \ ```\n @MessageDriven(name = \"HelloWorldQueueMDB\", activationConfig =\
+          \ \n public class MessageListenerImpl implements MessageListener \n }}\n\
+          \ ```\n \n After:\n ```\n public class MessageListenerImpl implements MessageListener\
+          \ \n }}\n ```"
+        repo: https://github.com/konveyor-ecosystem/cmt.git
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/cmt/mdb/HelloWorldMDB.java
+          kind: Class
+          name: MessageDriven
+          package: org.jboss.as.quickstarts.cmt.mdb
+      - initial_branch: main
+        line_number: 39
+        message: "The `destinationLookup` property can be migrated by annotating a\
+          \ message handler method (potentially `onMessage`) with the\n `org.eclipse.microprofile.reactive.messaging.Incoming`\
+          \ annotation, indicating the name of the queue as a value:\n \n Before:\n\
+          \ ```\n @MessageDriven(name = \"HelloWorldQueueMDB\", activationConfig =\
+          \ \n public class MessageListenerImpl implements MessageListener \n }}\n\
+          \ ```\n \n After:\n ```\n public class MessageListenerImpl implements MessageListener\
+          \ \n }}\n ```"
+        repo: https://github.com/konveyor-ecosystem/cmt.git
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/cmt/mdb/HelloWorldMDB.java
+          kind: Class
+          name: MessageDriven
+          package: org.jboss.as.quickstarts.cmt.mdb
+    eap-coolstore-monolith:
+      src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java:
+      - initial_branch: main
+        line_number: 16
+        message: "The `destinationLookup` property can be migrated by annotating a\
+          \ message handler method (potentially `onMessage`) with the\n `org.eclipse.microprofile.reactive.messaging.Incoming`\
+          \ annotation, indicating the name of the queue as a value:\n \n Before:\n\
+          \ ```\n @MessageDriven(name = \"HelloWorldQueueMDB\", activationConfig =\
+          \ \n public class MessageListenerImpl implements MessageListener \n }}\n\
+          \ ```\n \n After:\n ```\n public class MessageListenerImpl implements MessageListener\
+          \ \n }}\n ```"
+        repo: https://github.com/mathianasj/eap-coolstore-monolith.git
+        solved_branch: quarkus-migration
+        variables:
+          file: file:///tmp/source-code/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java
+          kind: Class
+          name: MessageDriven
+          package: com.redhat.coolstore.service
+      - initial_branch: main
+        line_number: 17
+        message: "The `destinationLookup` property can be migrated by annotating a\
+          \ message handler method (potentially `onMessage`) with the\n `org.eclipse.microprofile.reactive.messaging.Incoming`\
+          \ annotation, indicating the name of the queue as a value:\n \n Before:\n\
+          \ ```\n @MessageDriven(name = \"HelloWorldQueueMDB\", activationConfig =\
+          \ \n public class MessageListenerImpl implements MessageListener \n }}\n\
+          \ ```\n \n After:\n ```\n public class MessageListenerImpl implements MessageListener\
+          \ \n }}\n ```"
+        repo: https://github.com/mathianasj/eap-coolstore-monolith.git
+        solved_branch: quarkus-migration
+        variables:
+          file: file:///tmp/source-code/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java
+          kind: Class
+          name: MessageDriven
+          package: com.redhat.coolstore.service
+      - initial_branch: main
+        line_number: 18
+        message: "The `destinationLookup` property can be migrated by annotating a\
+          \ message handler method (potentially `onMessage`) with the\n `org.eclipse.microprofile.reactive.messaging.Incoming`\
+          \ annotation, indicating the name of the queue as a value:\n \n Before:\n\
+          \ ```\n @MessageDriven(name = \"HelloWorldQueueMDB\", activationConfig =\
+          \ \n public class MessageListenerImpl implements MessageListener \n }}\n\
+          \ ```\n \n After:\n ```\n public class MessageListenerImpl implements MessageListener\
+          \ \n }}\n ```"
+        repo: https://github.com/mathianasj/eap-coolstore-monolith.git
+        solved_branch: quarkus-migration
+        variables:
+          file: file:///tmp/source-code/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java
+          kind: Class
+          name: MessageDriven
+          package: com.redhat.coolstore.service
+    helloworld-mdb:
+      src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java:
+      - initial_branch: main
+        line_number: 35
+        message: "The `destinationLookup` property can be migrated by annotating a\
+          \ message handler method (potentially `onMessage`) with the\n `org.eclipse.microprofile.reactive.messaging.Incoming`\
+          \ annotation, indicating the name of the queue as a value:\n \n Before:\n\
+          \ ```\n @MessageDriven(name = \"HelloWorldQueueMDB\", activationConfig =\
+          \ \n public class MessageListenerImpl implements MessageListener \n }}\n\
+          \ ```\n \n After:\n ```\n public class MessageListenerImpl implements MessageListener\
+          \ \n }}\n ```"
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java
+          kind: Class
+          name: MessageDriven
+          package: org.jboss.as.quickstarts.mdb
+      - initial_branch: main
+        line_number: 36
+        message: "The `destinationLookup` property can be migrated by annotating a\
+          \ message handler method (potentially `onMessage`) with the\n `org.eclipse.microprofile.reactive.messaging.Incoming`\
+          \ annotation, indicating the name of the queue as a value:\n \n Before:\n\
+          \ ```\n @MessageDriven(name = \"HelloWorldQueueMDB\", activationConfig =\
+          \ \n public class MessageListenerImpl implements MessageListener \n }}\n\
+          \ ```\n \n After:\n ```\n public class MessageListenerImpl implements MessageListener\
+          \ \n }}\n ```"
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java
+          kind: Class
+          name: MessageDriven
+          package: org.jboss.as.quickstarts.mdb
+      - initial_branch: main
+        line_number: 37
+        message: "The `destinationLookup` property can be migrated by annotating a\
+          \ message handler method (potentially `onMessage`) with the\n `org.eclipse.microprofile.reactive.messaging.Incoming`\
+          \ annotation, indicating the name of the queue as a value:\n \n Before:\n\
+          \ ```\n @MessageDriven(name = \"HelloWorldQueueMDB\", activationConfig =\
+          \ \n public class MessageListenerImpl implements MessageListener \n }}\n\
+          \ ```\n \n After:\n ```\n public class MessageListenerImpl implements MessageListener\
+          \ \n }}\n ```"
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java
+          kind: Class
+          name: MessageDriven
+          package: org.jboss.as.quickstarts.mdb
+      src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldTopicMDB.java:
+      - initial_branch: main
+        line_number: 35
+        message: "The `destinationLookup` property can be migrated by annotating a\
+          \ message handler method (potentially `onMessage`) with the\n `org.eclipse.microprofile.reactive.messaging.Incoming`\
+          \ annotation, indicating the name of the queue as a value:\n \n Before:\n\
+          \ ```\n @MessageDriven(name = \"HelloWorldQueueMDB\", activationConfig =\
+          \ \n public class MessageListenerImpl implements MessageListener \n }}\n\
+          \ ```\n \n After:\n ```\n public class MessageListenerImpl implements MessageListener\
+          \ \n }}\n ```"
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldTopicMDB.java
+          kind: Class
+          name: MessageDriven
+          package: org.jboss.as.quickstarts.mdb
+      - initial_branch: main
+        line_number: 36
+        message: "The `destinationLookup` property can be migrated by annotating a\
+          \ message handler method (potentially `onMessage`) with the\n `org.eclipse.microprofile.reactive.messaging.Incoming`\
+          \ annotation, indicating the name of the queue as a value:\n \n Before:\n\
+          \ ```\n @MessageDriven(name = \"HelloWorldQueueMDB\", activationConfig =\
+          \ \n public class MessageListenerImpl implements MessageListener \n }}\n\
+          \ ```\n \n After:\n ```\n public class MessageListenerImpl implements MessageListener\
+          \ \n }}\n ```"
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldTopicMDB.java
+          kind: Class
+          name: MessageDriven
+          package: org.jboss.as.quickstarts.mdb
+      - initial_branch: main
+        line_number: 37
+        message: "The `destinationLookup` property can be migrated by annotating a\
+          \ message handler method (potentially `onMessage`) with the\n `org.eclipse.microprofile.reactive.messaging.Incoming`\
+          \ annotation, indicating the name of the queue as a value:\n \n Before:\n\
+          \ ```\n @MessageDriven(name = \"HelloWorldQueueMDB\", activationConfig =\
+          \ \n public class MessageListenerImpl implements MessageListener \n }}\n\
+          \ ```\n \n After:\n ```\n public class MessageListenerImpl implements MessageListener\
+          \ \n }}\n ```"
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldTopicMDB.java
+          kind: Class
+          name: MessageDriven
+          package: org.jboss.as.quickstarts.mdb
+  jms-to-reactive-quarkus-00030:
+    cmt:
+      src/main/java/org/jboss/as/quickstarts/cmt/ejb/InvoiceManagerEJB.java:
+      - initial_branch: main
+        line_number: 26
+        message: "JMS `Queue`s should be replaced with Micrometer `Emitter`s feeding\
+          \ a Channel. See the following example of migrating\n a Queue to an Emitter:\n\
+          \ \n Before:\n ```\n @Resource(lookup = \"java:/queue/HELLOWORLDMDBQueue\"\
+          )\n private Queue queue;\n ```\n \n After:\n ```\n @Inject\n @Channel(\"\
+          HELLOWORLDMDBQueue\")\n Emitter<String> queueEmitter;\n ```"
+        repo: https://github.com/konveyor-ecosystem/cmt.git
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/cmt/ejb/InvoiceManagerEJB.java
+          kind: Module
+          name: javax.jms.Queue
+          package: org.jboss.as.quickstarts.cmt.ejb
+      - initial_branch: main
+        line_number: 36
+        message: "JMS `Queue`s should be replaced with Micrometer `Emitter`s feeding\
+          \ a Channel. See the following example of migrating\n a Queue to an Emitter:\n\
+          \ \n Before:\n ```\n @Resource(lookup = \"java:/queue/HELLOWORLDMDBQueue\"\
+          )\n private Queue queue;\n ```\n \n After:\n ```\n @Inject\n @Channel(\"\
+          HELLOWORLDMDBQueue\")\n Emitter<String> queueEmitter;\n ```"
+        repo: https://github.com/konveyor-ecosystem/cmt.git
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/cmt/ejb/InvoiceManagerEJB.java
+          kind: Field
+          name: queue
+          package: org.jboss.as.quickstarts.cmt.ejb
+    helloworld-mdb:
+      src/main/java/org/jboss/as/quickstarts/servlet/HelloWorldMDBServletClient.java:
+      - initial_branch: main
+        line_number: 28
+        message: "JMS `Queue`s should be replaced with Micrometer `Emitter`s feeding\
+          \ a Channel. See the following example of migrating\n a Queue to an Emitter:\n\
+          \ \n Before:\n ```\n @Resource(lookup = \"java:/queue/HELLOWORLDMDBQueue\"\
+          )\n private Queue queue;\n ```\n \n After:\n ```\n @Inject\n @Channel(\"\
+          HELLOWORLDMDBQueue\")\n Emitter<String> queueEmitter;\n ```"
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/servlet/HelloWorldMDBServletClient.java
+          kind: Module
+          name: javax.jms.Queue
+          package: org.jboss.as.quickstarts.servlet
+      - initial_branch: main
+        line_number: 79
+        message: "JMS `Queue`s should be replaced with Micrometer `Emitter`s feeding\
+          \ a Channel. See the following example of migrating\n a Queue to an Emitter:\n\
+          \ \n Before:\n ```\n @Resource(lookup = \"java:/queue/HELLOWORLDMDBQueue\"\
+          )\n private Queue queue;\n ```\n \n After:\n ```\n @Inject\n @Channel(\"\
+          HELLOWORLDMDBQueue\")\n Emitter<String> queueEmitter;\n ```"
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/servlet/HelloWorldMDBServletClient.java
+          kind: Field
+          name: queue
+          package: org.jboss.as.quickstarts.servlet
+  jms-to-reactive-quarkus-00040:
+    eap-coolstore-monolith:
+      src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java:
+      - initial_branch: main
+        line_number: 64
+        message: "JMS `Topic`s should be replaced with Micrometer `Emitter`s feeding\
+          \ a Channel. See the following example of migrating\n a Topic to an Emitter:\n\
+          \ \n Before:\n ```\n @Resource(lookup = \"java:/topic/HELLOWORLDMDBTopic\"\
+          )\n private Topic topic;\n ```\n \n After:\n ```\n @Inject\n @Channel(\"\
+          HELLOWORLDMDBTopic\")\n Emitter<String> topicEmitter;\n ```"
+        repo: https://github.com/mathianasj/eap-coolstore-monolith.git
+        solved_branch: quarkus-migration
+        variables:
+          file: file:///tmp/source-code/src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java
+          kind: Method
+          name: init
+          package: com.redhat.coolstore.service
+      src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java:
+      - initial_branch: main
+        line_number: 8
+        message: "JMS `Topic`s should be replaced with Micrometer `Emitter`s feeding\
+          \ a Channel. See the following example of migrating\n a Topic to an Emitter:\n\
+          \ \n Before:\n ```\n @Resource(lookup = \"java:/topic/HELLOWORLDMDBTopic\"\
+          )\n private Topic topic;\n ```\n \n After:\n ```\n @Inject\n @Channel(\"\
+          HELLOWORLDMDBTopic\")\n Emitter<String> topicEmitter;\n ```"
+        repo: https://github.com/mathianasj/eap-coolstore-monolith.git
+        solved_branch: quarkus-migration
+        variables:
+          file: file:///tmp/source-code/src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java
+          kind: Module
+          name: javax.jms.Topic
+          package: com.redhat.coolstore.service
+      - initial_branch: main
+        line_number: 24
+        message: "JMS `Topic`s should be replaced with Micrometer `Emitter`s feeding\
+          \ a Channel. See the following example of migrating\n a Topic to an Emitter:\n\
+          \ \n Before:\n ```\n @Resource(lookup = \"java:/topic/HELLOWORLDMDBTopic\"\
+          )\n private Topic topic;\n ```\n \n After:\n ```\n @Inject\n @Channel(\"\
+          HELLOWORLDMDBTopic\")\n Emitter<String> topicEmitter;\n ```"
+        repo: https://github.com/mathianasj/eap-coolstore-monolith.git
+        solved_branch: quarkus-migration
+        variables:
+          file: file:///tmp/source-code/src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java
+          kind: Field
+          name: ordersTopic
+          package: com.redhat.coolstore.service
+    helloworld-mdb:
+      src/main/java/org/jboss/as/quickstarts/servlet/HelloWorldMDBServletClient.java:
+      - initial_branch: main
+        line_number: 29
+        message: "JMS `Topic`s should be replaced with Micrometer `Emitter`s feeding\
+          \ a Channel. See the following example of migrating\n a Topic to an Emitter:\n\
+          \ \n Before:\n ```\n @Resource(lookup = \"java:/topic/HELLOWORLDMDBTopic\"\
+          )\n private Topic topic;\n ```\n \n After:\n ```\n @Inject\n @Channel(\"\
+          HELLOWORLDMDBTopic\")\n Emitter<String> topicEmitter;\n ```"
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/servlet/HelloWorldMDBServletClient.java
+          kind: Module
+          name: javax.jms.Topic
+          package: org.jboss.as.quickstarts.servlet
+      - initial_branch: main
+        line_number: 82
+        message: "JMS `Topic`s should be replaced with Micrometer `Emitter`s feeding\
+          \ a Channel. See the following example of migrating\n a Topic to an Emitter:\n\
+          \ \n Before:\n ```\n @Resource(lookup = \"java:/topic/HELLOWORLDMDBTopic\"\
+          )\n private Topic topic;\n ```\n \n After:\n ```\n @Inject\n @Channel(\"\
+          HELLOWORLDMDBTopic\")\n Emitter<String> topicEmitter;\n ```"
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/servlet/HelloWorldMDBServletClient.java
+          kind: Field
+          name: topic
+          package: org.jboss.as.quickstarts.servlet
+  jms-to-reactive-quarkus-00050:
+    cmt:
+      src/main/java/org/jboss/as/quickstarts/cmt/ejb/CustomerManagerEJB.java:
+      - initial_branch: main
+        line_number: 27
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/konveyor-ecosystem/cmt.git
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/cmt/ejb/CustomerManagerEJB.java
+          kind: Module
+          name: javax.jms.JMSException
+          package: org.jboss.as.quickstarts.cmt.ejb
+      src/main/java/org/jboss/as/quickstarts/cmt/ejb/InvoiceManagerEJB.java:
+      - initial_branch: main
+        line_number: 24
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/konveyor-ecosystem/cmt.git
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/cmt/ejb/InvoiceManagerEJB.java
+          kind: Module
+          name: javax.jms.JMSConnectionFactory
+          package: org.jboss.as.quickstarts.cmt.ejb
+      - initial_branch: main
+        line_number: 25
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/konveyor-ecosystem/cmt.git
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/cmt/ejb/InvoiceManagerEJB.java
+          kind: Module
+          name: javax.jms.JMSContext
+          package: org.jboss.as.quickstarts.cmt.ejb
+      - initial_branch: main
+        line_number: 26
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/konveyor-ecosystem/cmt.git
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/cmt/ejb/InvoiceManagerEJB.java
+          kind: Module
+          name: javax.jms.Queue
+          package: org.jboss.as.quickstarts.cmt.ejb
+      src/main/java/org/jboss/as/quickstarts/cmt/ejb/LogMessageManagerEJB.java:
+      - initial_branch: main
+        line_number: 25
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/konveyor-ecosystem/cmt.git
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/cmt/ejb/LogMessageManagerEJB.java
+          kind: Module
+          name: javax.jms.JMSException
+          package: org.jboss.as.quickstarts.cmt.ejb
+      src/main/java/org/jboss/as/quickstarts/cmt/mdb/HelloWorldMDB.java:
+      - initial_branch: main
+        line_number: 23
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/konveyor-ecosystem/cmt.git
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/cmt/mdb/HelloWorldMDB.java
+          kind: Module
+          name: javax.jms.JMSException
+          package: org.jboss.as.quickstarts.cmt.mdb
+      - initial_branch: main
+        line_number: 24
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/konveyor-ecosystem/cmt.git
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/cmt/mdb/HelloWorldMDB.java
+          kind: Module
+          name: javax.jms.Message
+          package: org.jboss.as.quickstarts.cmt.mdb
+      - initial_branch: main
+        line_number: 25
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/konveyor-ecosystem/cmt.git
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/cmt/mdb/HelloWorldMDB.java
+          kind: Module
+          name: javax.jms.MessageListener
+          package: org.jboss.as.quickstarts.cmt.mdb
+      - initial_branch: main
+        line_number: 26
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/konveyor-ecosystem/cmt.git
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/cmt/mdb/HelloWorldMDB.java
+          kind: Module
+          name: javax.jms.TextMessage
+          package: org.jboss.as.quickstarts.cmt.mdb
+    eap-coolstore-monolith:
+      src/main/java/com/redhat/coolstore/rest/CartEndpoint.java:
+      - initial_branch: main
+        line_number: 11
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/mathianasj/eap-coolstore-monolith.git
+        solved_branch: quarkus-migration
+        variables:
+          file: file:///tmp/source-code/src/main/java/com/redhat/coolstore/rest/CartEndpoint.java
+          kind: Module
+          name: javax.jms.JMSDestinationDefinition
+          package: com.redhat.coolstore.rest
+      - initial_branch: main
+        line_number: 12
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/mathianasj/eap-coolstore-monolith.git
+        solved_branch: quarkus-migration
+        variables:
+          file: file:///tmp/source-code/src/main/java/com/redhat/coolstore/rest/CartEndpoint.java
+          kind: Module
+          name: javax.jms.JMSDestinationDefinitions
+          package: com.redhat.coolstore.rest
+      src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java:
+      - initial_branch: main
+        line_number: 7
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/mathianasj/eap-coolstore-monolith.git
+        solved_branch: quarkus-migration
+        variables:
+          file: file:///tmp/source-code/src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java
+          kind: Module
+          name: javax.jms.*
+          package: com.redhat.coolstore.service
+      src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java:
+      - initial_branch: main
+        line_number: 6
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/mathianasj/eap-coolstore-monolith.git
+        solved_branch: quarkus-migration
+        variables:
+          file: file:///tmp/source-code/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java
+          kind: Module
+          name: javax.jms.JMSException
+          package: com.redhat.coolstore.service
+      - initial_branch: main
+        line_number: 7
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/mathianasj/eap-coolstore-monolith.git
+        solved_branch: quarkus-migration
+        variables:
+          file: file:///tmp/source-code/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java
+          kind: Module
+          name: javax.jms.Message
+          package: com.redhat.coolstore.service
+      - initial_branch: main
+        line_number: 8
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/mathianasj/eap-coolstore-monolith.git
+        solved_branch: quarkus-migration
+        variables:
+          file: file:///tmp/source-code/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java
+          kind: Module
+          name: javax.jms.MessageListener
+          package: com.redhat.coolstore.service
+      - initial_branch: main
+        line_number: 9
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/mathianasj/eap-coolstore-monolith.git
+        solved_branch: quarkus-migration
+        variables:
+          file: file:///tmp/source-code/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java
+          kind: Module
+          name: javax.jms.TextMessage
+          package: com.redhat.coolstore.service
+      src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java:
+      - initial_branch: main
+        line_number: 7
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/mathianasj/eap-coolstore-monolith.git
+        solved_branch: quarkus-migration
+        variables:
+          file: file:///tmp/source-code/src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java
+          kind: Module
+          name: javax.jms.JMSContext
+          package: com.redhat.coolstore.service
+      - initial_branch: main
+        line_number: 8
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/mathianasj/eap-coolstore-monolith.git
+        solved_branch: quarkus-migration
+        variables:
+          file: file:///tmp/source-code/src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java
+          kind: Module
+          name: javax.jms.Topic
+          package: com.redhat.coolstore.service
+    helloworld-mdb:
+      src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java:
+      - initial_branch: main
+        line_number: 22
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java
+          kind: Module
+          name: javax.jms.JMSException
+          package: org.jboss.as.quickstarts.mdb
+      - initial_branch: main
+        line_number: 23
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java
+          kind: Module
+          name: javax.jms.Message
+          package: org.jboss.as.quickstarts.mdb
+      - initial_branch: main
+        line_number: 24
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java
+          kind: Module
+          name: javax.jms.MessageListener
+          package: org.jboss.as.quickstarts.mdb
+      - initial_branch: main
+        line_number: 25
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java
+          kind: Module
+          name: javax.jms.TextMessage
+          package: org.jboss.as.quickstarts.mdb
+      src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldTopicMDB.java:
+      - initial_branch: main
+        line_number: 22
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldTopicMDB.java
+          kind: Module
+          name: javax.jms.JMSException
+          package: org.jboss.as.quickstarts.mdb
+      - initial_branch: main
+        line_number: 23
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldTopicMDB.java
+          kind: Module
+          name: javax.jms.Message
+          package: org.jboss.as.quickstarts.mdb
+      - initial_branch: main
+        line_number: 24
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldTopicMDB.java
+          kind: Module
+          name: javax.jms.MessageListener
+          package: org.jboss.as.quickstarts.mdb
+      - initial_branch: main
+        line_number: 25
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldTopicMDB.java
+          kind: Module
+          name: javax.jms.TextMessage
+          package: org.jboss.as.quickstarts.mdb
+      src/main/java/org/jboss/as/quickstarts/servlet/HelloWorldMDBServletClient.java:
+      - initial_branch: main
+        line_number: 24
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/servlet/HelloWorldMDBServletClient.java
+          kind: Module
+          name: javax.jms.Destination
+          package: org.jboss.as.quickstarts.servlet
+      - initial_branch: main
+        line_number: 25
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/servlet/HelloWorldMDBServletClient.java
+          kind: Module
+          name: javax.jms.JMSContext
+          package: org.jboss.as.quickstarts.servlet
+      - initial_branch: main
+        line_number: 26
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/servlet/HelloWorldMDBServletClient.java
+          kind: Module
+          name: javax.jms.JMSDestinationDefinition
+          package: org.jboss.as.quickstarts.servlet
+      - initial_branch: main
+        line_number: 27
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/servlet/HelloWorldMDBServletClient.java
+          kind: Module
+          name: javax.jms.JMSDestinationDefinitions
+          package: org.jboss.as.quickstarts.servlet
+      - initial_branch: main
+        line_number: 28
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/servlet/HelloWorldMDBServletClient.java
+          kind: Module
+          name: javax.jms.Queue
+          package: org.jboss.as.quickstarts.servlet
+      - initial_branch: main
+        line_number: 29
+        message: References to JavaEE/JakartaEE JMS elements should be removed and
+          replaced with their Quarkus SmallRye/Microprofile equivalents.
+        repo: https://github.com/savitharaghunathan/helloworld-mdb
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/src/main/java/org/jboss/as/quickstarts/servlet/HelloWorldMDBServletClient.java
+          kind: Module
+          name: javax.jms.Topic
+          package: org.jboss.as.quickstarts.servlet
 eap7/weblogic/tests/data:
   maven-javax-to-jakarta-00002:
     eap-coolstore-monolith:
@@ -67,17 +861,6 @@ eap7/weblogic/tests/data:
           name: javax.activation.activation
           version: '1.1'
   maven-javax-to-jakarta-00004:
-    kitchensink:
-      pom.xml:
-      - initial_branch: '7.1'
-        line_number: 48
-        message: If you migrate your application to JBoss EAP 7.3, or later, and want
-          to ensure its Maven building, running or testing works as expected, use
-          instead the Jakarta EE dependency - groupId `jakarta.`.
-        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
-        solved_branch: quarkus-3.2
-        variables:
-          matchingText: groupId>javax.enterprise<
     ticket-monster:
       monolith/pom.xml:
       - initial_branch: master
@@ -108,17 +891,6 @@ eap7/weblogic/tests/data:
         variables:
           matchingText: groupId>javax.validation<
   maven-javax-to-jakarta-00006:
-    kitchensink:
-      pom.xml:
-      - initial_branch: '7.1'
-        line_number: 49
-        message: If you migrate your application to JBoss EAP 7.3, or later, and want
-          to ensure its Maven building, running or testing works as expected, use
-          instead the Jakarta EE dependency with artifactId `jakarta.enterprise.cdi-api`
-        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
-        solved_branch: quarkus-3.2
-        variables:
-          matchingText: artifactId>cdi-api<
     ticket-monster:
       monolith/pom.xml:
       - initial_branch: master
@@ -5336,25 +6108,25 @@ eap8/eap7:
           renamed: ws
       monolith/src/main/java/org/jboss/examples/ticketmonster/rest/PerformanceEndpoint.java:
       - initial_branch: master
-        line_number: 7
+        line_number: 15
         message: 'Replace the `javax.` import statement with `jakarta.` '
         repo: https://github.com/jmle/monolith.git
         solved_branch: quarkus
         variables:
           file: file:///tmp/source-code/monolith/src/main/java/org/jboss/examples/ticketmonster/rest/PerformanceEndpoint.java
           kind: Module
-          name: javax.persistence.EntityManager
+          name: javax.persistence.criteria.Root
           package: org.jboss.examples.ticketmonster.rest
           renamed: ''
       - initial_branch: master
-        line_number: 8
+        line_number: 23
         message: 'Replace the `javax.` import statement with `jakarta.` '
         repo: https://github.com/jmle/monolith.git
         solved_branch: quarkus
         variables:
           file: file:///tmp/source-code/monolith/src/main/java/org/jboss/examples/ticketmonster/rest/PerformanceEndpoint.java
           kind: Module
-          name: javax.persistence.NoResultException
+          name: javax.ws.rs.Produces
           package: org.jboss.examples.ticketmonster.rest
           renamed: ''
       - initial_branch: master
@@ -5368,6 +6140,28 @@ eap8/eap7:
           name: javax.ejb.Stateless
           package: org.jboss.examples.ticketmonster.rest
           renamed: ejb
+      - initial_branch: master
+        line_number: 7
+        message: 'Replace the `javax.persistence` import statement with `jakarta.persistence` '
+        repo: https://github.com/jmle/monolith.git
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/monolith/src/main/java/org/jboss/examples/ticketmonster/rest/PerformanceEndpoint.java
+          kind: Module
+          name: javax.persistence.EntityManager
+          package: org.jboss.examples.ticketmonster.rest
+          renamed: persistence
+      - initial_branch: master
+        line_number: 8
+        message: 'Replace the `javax.persistence` import statement with `jakarta.persistence` '
+        repo: https://github.com/jmle/monolith.git
+        solved_branch: quarkus
+        variables:
+          file: file:///tmp/source-code/monolith/src/main/java/org/jboss/examples/ticketmonster/rest/PerformanceEndpoint.java
+          kind: Module
+          name: javax.persistence.NoResultException
+          package: org.jboss.examples.ticketmonster.rest
+          renamed: persistence
       - initial_branch: master
         line_number: 9
         message: 'Replace the `javax.persistence` import statement with `jakarta.persistence` '
@@ -5432,17 +6226,6 @@ eap8/eap7:
           file: file:///tmp/source-code/monolith/src/main/java/org/jboss/examples/ticketmonster/rest/PerformanceEndpoint.java
           kind: Module
           name: javax.persistence.criteria.Predicate
-          package: org.jboss.examples.ticketmonster.rest
-          renamed: persistence
-      - initial_branch: master
-        line_number: 15
-        message: 'Replace the `javax.persistence` import statement with `jakarta.persistence` '
-        repo: https://github.com/jmle/monolith.git
-        solved_branch: quarkus
-        variables:
-          file: file:///tmp/source-code/monolith/src/main/java/org/jboss/examples/ticketmonster/rest/PerformanceEndpoint.java
-          kind: Module
-          name: javax.persistence.criteria.Root
           package: org.jboss.examples.ticketmonster.rest
           renamed: persistence
       - initial_branch: master
@@ -5520,17 +6303,6 @@ eap8/eap7:
           file: file:///tmp/source-code/monolith/src/main/java/org/jboss/examples/ticketmonster/rest/PerformanceEndpoint.java
           kind: Module
           name: javax.ws.rs.PathParam
-          package: org.jboss.examples.ticketmonster.rest
-          renamed: ws
-      - initial_branch: master
-        line_number: 23
-        message: 'Replace the `javax.ws` import statement with `jakarta.ws` '
-        repo: https://github.com/jmle/monolith.git
-        solved_branch: quarkus
-        variables:
-          file: file:///tmp/source-code/monolith/src/main/java/org/jboss/examples/ticketmonster/rest/PerformanceEndpoint.java
-          kind: Module
-          name: javax.ws.rs.Produces
           package: org.jboss.examples.ticketmonster.rest
           renamed: ws
       - initial_branch: master
@@ -7699,19 +8471,6 @@ eap8/eap7:
           matchingText: <property name="javax.
 quarkus/springboot:
   cdi-to-quarkus-00000:
-    kitchensink:
-      pom.xml:
-      - initial_branch: '7.1'
-        line_number: 48
-        message: "\n Dependency `javax.enterprise:cdi-api` has to be replaced with\
-          \ `io.quarkus:quarkus-arc` artifact.\n "
-        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
-        solved_branch: quarkus-3.2
-        variables:
-          data: dependency
-          innerText: "\n            javax.enterprise\n            cdi-api\n      \
-            \      provided\n        "
-          matchingXML: <groupId>javax.enterprise</groupId><artifactId>cdi-api</artifactId><scope>provided</scope>
     ticket-monster:
       monolith/pom.xml:
       - initial_branch: master
@@ -8225,26 +8984,6 @@ quarkus/springboot:
           innerText: "\n            org.jboss.spec.javax.faces\n            jboss-jsf-api_2.3_spec\n\
             \            provided\n        "
           matchingXML: <groupId>org.jboss.spec.javax.faces</groupId><artifactId>jboss-jsf-api_2.3_spec</artifactId><scope>provided</scope>
-    kitchensink:
-      pom.xml:
-      - initial_branch: '7.1'
-        line_number: 135
-        message: "\n \n JSF Dependencies with groupId `org.jboss.spec.javax.faces`\
-          \ should be replaced with \n \n ```\n <!-- Quarkus MyFaces dependencies\
-          \ --> \n <dependency>\n <groupId>org.apache.myfaces.core.extensions.quarkus</groupId>\n\
-          \ <artifactId>myfaces-quarkus</artifactId>\n <version>4.0.1</version>\n\
-          \ </dependency>\n \n <!-- Quarkus Faces utilities and components extensions\
-          \ -->\n <dependency>\n <groupId>io.quarkiverse.primefaces</groupId>\n <artifactId>quarkus-primefaces</artifactId>\n\
-          \ <version>3.13.1</version>\n </dependency>\n <dependency>\n <groupId>io.quarkiverse.omnifaces</groupId>\n\
-          \ <artifactId>quarkus-omnifaces</artifactId>\n <version>4.2.0</version>\n\
-          \ </dependency>\n ```\n \n "
-        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
-        solved_branch: quarkus-3.2
-        variables:
-          data: dependency
-          innerText: "\n            org.jboss.spec.javax.faces\n            jboss-jsf-api_2.2_spec\n\
-            \            provided\n        "
-          matchingXML: <groupId>org.jboss.spec.javax.faces</groupId><artifactId>jboss-jsf-api_2.2_spec</artifactId><scope>provided</scope>
   javaee-pom-to-quarkus-00010:
     bmt:
       pom.xml:
@@ -8589,86 +9328,6 @@ quarkus/springboot:
             \tapp will ne    ed. --><!-- By default that is to put the resulting archive\
             \ into the\r\n\t\t\t'deployments' folder. --><!--\r\n\t\t\thttp://maven.apache.org/guides/mini/guide-building-for-different-environments.html\
             \ --><id>openshift</id><build><plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-war-plugin</artifactId><version>${version.war.plugin}</version><configuration><warName>ROOT</warName></configuration></plugin><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-source-plugin</artifactId><executions><execution><id>attach-sources</id><phase>none</phase></execution></executions></plugin></plugins></build></profile></profiles>"
-    kitchensink:
-      pom.xml:
-      - initial_branch: '7.1'
-        line_number: 20
-        message: "\n \n Use the Quarkus BOM to omit the version of the different Quarkus\
-          \ dependencies. \n Add the following sections to the `pom.xml` file: \n\n\
-          \ ```xml\n <properties> \n <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>\
-          \ \n <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>\
-          \ \n <quarkus.platform.version>3.1.0.Final</quarkus.platform.version>\n\
-          \ </properties> \n <dependencyManagement> \n <dependencies> \n <dependency>\
-          \ \n <groupId>$</groupId> \n <artifactId>$</artifactId> \n <version>$</version>\
-          \ \n <type>pom</type> \n <scope>import</scope> \n </dependency> \n </dependencies>\
-          \ \n </dependencyManagement> \n ```\n Check the latest Quarkus version available\
-          \ from the `Quarkus - Releases` link below.\n \n "
-        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
-        solved_branch: quarkus-3.2
-        variables:
-          data: project
-          innerText: "\n    4.0.0\n    \n        org.jboss.eap.quickstarts\n     \
-            \   quickstart-parent\n        7.1.0.GA\n        ../pom.xml\n    \n  \
-            \  kitchensink\n    war\n    ${qs.name.prefix} kitchensink\n    A starter\
-            \ Java EE web application project for use in JBoss EAP, generated from\
-            \ the jboss-javaee6-webapp archetype\n\n    \n        \n            Apache\
-            \ License, Version 2.0\n            http://www.apache.org/licenses/LICENSE-2.0.html\n\
-            \            repo\n        \n    \n\n    \n\n        \n\n        \n  \
-            \      \n            javax.enterprise\n            cdi-api\n         \
-            \   provided\n        \n\n        \n        \n            junit\n    \
-            \        junit\n            test\n        \n\n        \n\n        \n \
-            \       \n            org.hibernate\n            hibernate-jpamodelgen\n\
-            \            provided\n        \n\n        \n        \n            org.hibernate\n\
-            \            hibernate-validator\n            provided\n            \n\
-            \                \n                    org.slf4j\n                   \
-            \ slf4j-api\n                \n            \n        \n\n        \n  \
-            \      \n            org.hibernate\n            hibernate-validator-annotation-processor\n\
-            \            provided\n        \n\n        \n        \n            org.hibernate.javax.persistence\n\
-            \            hibernate-jpa-2.1-api\n            provided\n        \n\n\
-            \        \n        \n        \n            org.jboss.arquillian.junit\n\
-            \            arquillian-junit-container\n            test\n        \n\n\
-            \        \n            org.jboss.arquillian.protocol\n            arquillian-protocol-servlet\n\
-            \            test\n        \n\n        \n        \n            org.jboss.spec.javax.annotation\n\
-            \            jboss-annotations-api_1.2_spec\n            provided\n  \
-            \      \n\n        \n        \n            org.jboss.spec.javax.ejb\n\
-            \            jboss-ejb-api_3.2_spec\n            provided\n        \n\n\
-            \        \n        \n            org.jboss.spec.javax.faces\n        \
-            \    jboss-jsf-api_2.2_spec\n            provided\n        \n\n      \
-            \  \n        \n            org.jboss.spec.javax.ws.rs\n            jboss-jaxrs-api_2.0_spec\n\
-            \            provided\n        \n\n    \n\n    \n        \n        ${project.artifactId}\n\
-            \    \n"
-          matchingXML: "<modelVersion>4.0.0</modelVersion><parent><groupId>org.jboss.eap.quickstarts</groupId><artifactId>quickstart-parent</artifactId><version>7.1.0.GA</version><relativePath>../pom.xml</relativePath></parent><artifactId>kitchensink</artifactId><packaging>war</packaging><name>${qs.name.prefix}\
-            \ kitchensink</name><description>A starter Java EE web application project\
-            \ for use in JBoss EAP, generated from the jboss-javaee6-webapp archetype</description><licenses><license><name>Apache\
-            \ License, Version 2.0</name><url>http://www.apache.org/licenses/LICENSE-2.0.html</url><distribution>repo</distribution></license></licenses><dependencies><!--\
-            \ First declare the APIs we depend on and need for compilation. All\n\
-            \            of them are provided by JBoss EAP --><!-- Import the CDI\
-            \ API, we use provided scope as the API is included in\n            JBoss\
-            \ EAP --><dependency><groupId>javax.enterprise</groupId><artifactId>cdi-api</artifactId><scope>provided</scope></dependency><!--\
-            \ Needed for running tests (you may also use TestNG) --><dependency><groupId>junit</groupId><artifactId>junit</artifactId><scope>test</scope></dependency><!--\
-            \ Now we declare any tools needed --><!-- Annotation processor to generate\
-            \ the JPA metamodel classes for\n            typesafe criteria queries\
-            \ --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-jpamodelgen</artifactId><scope>provided</scope></dependency><!--\
-            \ Bean Validation Implementation \n             Provides portable constraints\
-            \ such as @Email \n             Hibernate Validator is shipped in JBoss\
-            \ EAP --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-validator</artifactId><scope>provided</scope><exclusions><exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId></exclusion></exclusions></dependency><!--\
-            \ Annotation processor that raising compilation errors whenever constraint\n\
-            \            annotations are incorrectly used. --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-validator-annotation-processor</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the JPA API, we use provided scope as the API is included in\n\
-            \            JBoss EAP --><dependency><groupId>org.hibernate.javax.persistence</groupId><artifactId>hibernate-jpa-2.1-api</artifactId><scope>provided</scope></dependency><!--\
-            \ Optional, but highly recommended --><!-- Arquillian allows you to test\
-            \ enterprise code such as EJBs and Transactional(JTA)\n            JPA\
-            \ from JUnit/TestNG --><dependency><groupId>org.jboss.arquillian.junit</groupId><artifactId>arquillian-junit-container</artifactId><scope>test</scope></dependency><dependency><groupId>org.jboss.arquillian.protocol</groupId><artifactId>arquillian-protocol-servlet</artifactId><scope>test</scope></dependency><!--\
-            \ Import the Common Annotations API (JSR-250), we use provided scope\n\
-            \            as the API is included in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.annotation</groupId><artifactId>jboss-annotations-api_1.2_spec</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the EJB API, we use provided scope as the API is included in\n\
-            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ejb</groupId><artifactId>jboss-ejb-api_3.2_spec</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the JSF API, we use provided scope as the API is included in\n\
-            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.faces</groupId><artifactId>jboss-jsf-api_2.2_spec</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the JAX-RS API, we use provided scope as the API is included\n\
-            \            in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ws.rs</groupId><artifactId>jboss-jaxrs-api_2.0_spec</artifactId><scope>provided</scope></dependency></dependencies><build><!--\
-            \ Set the name of the WAR, used as the context root when the app is deployed\
-            \ --><finalName>${project.artifactId}</finalName></build>"
     ticket-monster:
       monolith/pom.xml:
       - initial_branch: master
@@ -9260,85 +9919,6 @@ quarkus/springboot:
             \tapp will ne    ed. --><!-- By default that is to put the resulting archive\
             \ into the\r\n\t\t\t'deployments' folder. --><!--\r\n\t\t\thttp://maven.apache.org/guides/mini/guide-building-for-different-environments.html\
             \ --><id>openshift</id><build><plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-war-plugin</artifactId><version>${version.war.plugin}</version><configuration><warName>ROOT</warName></configuration></plugin><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-source-plugin</artifactId><executions><execution><id>attach-sources</id><phase>none</phase></execution></executions></plugin></plugins></build></profile></profiles>"
-    kitchensink:
-      pom.xml:
-      - initial_branch: '7.1'
-        line_number: 20
-        message: "\n \n Use the Quarkus Maven plugin adding the following sections\
-          \ to the `pom.xml` file: \n\n ```xml\n <properties> \n <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>\
-          \ \n <quarkus.platform.version>3.1.0.Final</quarkus.platform.version>\n\
-          \ </properties> \n <build>\n <plugins>\n <plugin>\n <groupId>$</groupId>\n\
-          \ <artifactId>quarkus-maven-plugin</artifactId>\n <version>$</version>\n\
-          \ <extensions>true</extensions>\n <executions>\n <execution>\n <goals>\n\
-          \ <goal>build</goal>\n <goal>generate-code</goal>\n <goal>generate-code-tests</goal>\n\
-          \ </goals>\n </execution>\n </executions>\n </plugin>\n </plugins>\n </build>\n\
-          \ ```\n \n "
-        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
-        solved_branch: quarkus-3.2
-        variables:
-          data: project
-          innerText: "\n    4.0.0\n    \n        org.jboss.eap.quickstarts\n     \
-            \   quickstart-parent\n        7.1.0.GA\n        ../pom.xml\n    \n  \
-            \  kitchensink\n    war\n    ${qs.name.prefix} kitchensink\n    A starter\
-            \ Java EE web application project for use in JBoss EAP, generated from\
-            \ the jboss-javaee6-webapp archetype\n\n    \n        \n            Apache\
-            \ License, Version 2.0\n            http://www.apache.org/licenses/LICENSE-2.0.html\n\
-            \            repo\n        \n    \n\n    \n\n        \n\n        \n  \
-            \      \n            javax.enterprise\n            cdi-api\n         \
-            \   provided\n        \n\n        \n        \n            junit\n    \
-            \        junit\n            test\n        \n\n        \n\n        \n \
-            \       \n            org.hibernate\n            hibernate-jpamodelgen\n\
-            \            provided\n        \n\n        \n        \n            org.hibernate\n\
-            \            hibernate-validator\n            provided\n            \n\
-            \                \n                    org.slf4j\n                   \
-            \ slf4j-api\n                \n            \n        \n\n        \n  \
-            \      \n            org.hibernate\n            hibernate-validator-annotation-processor\n\
-            \            provided\n        \n\n        \n        \n            org.hibernate.javax.persistence\n\
-            \            hibernate-jpa-2.1-api\n            provided\n        \n\n\
-            \        \n        \n        \n            org.jboss.arquillian.junit\n\
-            \            arquillian-junit-container\n            test\n        \n\n\
-            \        \n            org.jboss.arquillian.protocol\n            arquillian-protocol-servlet\n\
-            \            test\n        \n\n        \n        \n            org.jboss.spec.javax.annotation\n\
-            \            jboss-annotations-api_1.2_spec\n            provided\n  \
-            \      \n\n        \n        \n            org.jboss.spec.javax.ejb\n\
-            \            jboss-ejb-api_3.2_spec\n            provided\n        \n\n\
-            \        \n        \n            org.jboss.spec.javax.faces\n        \
-            \    jboss-jsf-api_2.2_spec\n            provided\n        \n\n      \
-            \  \n        \n            org.jboss.spec.javax.ws.rs\n            jboss-jaxrs-api_2.0_spec\n\
-            \            provided\n        \n\n    \n\n    \n        \n        ${project.artifactId}\n\
-            \    \n"
-          matchingXML: "<modelVersion>4.0.0</modelVersion><parent><groupId>org.jboss.eap.quickstarts</groupId><artifactId>quickstart-parent</artifactId><version>7.1.0.GA</version><relativePath>../pom.xml</relativePath></parent><artifactId>kitchensink</artifactId><packaging>war</packaging><name>${qs.name.prefix}\
-            \ kitchensink</name><description>A starter Java EE web application project\
-            \ for use in JBoss EAP, generated from the jboss-javaee6-webapp archetype</description><licenses><license><name>Apache\
-            \ License, Version 2.0</name><url>http://www.apache.org/licenses/LICENSE-2.0.html</url><distribution>repo</distribution></license></licenses><dependencies><!--\
-            \ First declare the APIs we depend on and need for compilation. All\n\
-            \            of them are provided by JBoss EAP --><!-- Import the CDI\
-            \ API, we use provided scope as the API is included in\n            JBoss\
-            \ EAP --><dependency><groupId>javax.enterprise</groupId><artifactId>cdi-api</artifactId><scope>provided</scope></dependency><!--\
-            \ Needed for running tests (you may also use TestNG) --><dependency><groupId>junit</groupId><artifactId>junit</artifactId><scope>test</scope></dependency><!--\
-            \ Now we declare any tools needed --><!-- Annotation processor to generate\
-            \ the JPA metamodel classes for\n            typesafe criteria queries\
-            \ --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-jpamodelgen</artifactId><scope>provided</scope></dependency><!--\
-            \ Bean Validation Implementation \n             Provides portable constraints\
-            \ such as @Email \n             Hibernate Validator is shipped in JBoss\
-            \ EAP --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-validator</artifactId><scope>provided</scope><exclusions><exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId></exclusion></exclusions></dependency><!--\
-            \ Annotation processor that raising compilation errors whenever constraint\n\
-            \            annotations are incorrectly used. --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-validator-annotation-processor</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the JPA API, we use provided scope as the API is included in\n\
-            \            JBoss EAP --><dependency><groupId>org.hibernate.javax.persistence</groupId><artifactId>hibernate-jpa-2.1-api</artifactId><scope>provided</scope></dependency><!--\
-            \ Optional, but highly recommended --><!-- Arquillian allows you to test\
-            \ enterprise code such as EJBs and Transactional(JTA)\n            JPA\
-            \ from JUnit/TestNG --><dependency><groupId>org.jboss.arquillian.junit</groupId><artifactId>arquillian-junit-container</artifactId><scope>test</scope></dependency><dependency><groupId>org.jboss.arquillian.protocol</groupId><artifactId>arquillian-protocol-servlet</artifactId><scope>test</scope></dependency><!--\
-            \ Import the Common Annotations API (JSR-250), we use provided scope\n\
-            \            as the API is included in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.annotation</groupId><artifactId>jboss-annotations-api_1.2_spec</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the EJB API, we use provided scope as the API is included in\n\
-            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ejb</groupId><artifactId>jboss-ejb-api_3.2_spec</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the JSF API, we use provided scope as the API is included in\n\
-            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.faces</groupId><artifactId>jboss-jsf-api_2.2_spec</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the JAX-RS API, we use provided scope as the API is included\n\
-            \            in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ws.rs</groupId><artifactId>jboss-jaxrs-api_2.0_spec</artifactId><scope>provided</scope></dependency></dependencies><build><!--\
-            \ Set the name of the WAR, used as the context root when the app is deployed\
-            \ --><finalName>${project.artifactId}</finalName></build>"
     ticket-monster:
       monolith/pom.xml:
       - initial_branch: master
@@ -9921,83 +10501,6 @@ quarkus/springboot:
             \tapp will ne    ed. --><!-- By default that is to put the resulting archive\
             \ into the\r\n\t\t\t'deployments' folder. --><!--\r\n\t\t\thttp://maven.apache.org/guides/mini/guide-building-for-different-environments.html\
             \ --><id>openshift</id><build><plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-war-plugin</artifactId><version>${version.war.plugin}</version><configuration><warName>ROOT</warName></configuration></plugin><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-source-plugin</artifactId><executions><execution><id>attach-sources</id><phase>none</phase></execution></executions></plugin></plugins></build></profile></profiles>"
-    kitchensink:
-      pom.xml:
-      - initial_branch: '7.1'
-        line_number: 20
-        message: "\n \n Use the Maven Compiler plugin adding the following sections\
-          \ to the `pom.xml` file: \n\n ```xml\n <properties> \n <compiler-plugin.version>3.10.1</compiler-plugin.version>\n\
-          \ <maven.compiler.release>11</maven.compiler.release>\n </properties> \n\
-          \ <build>\n <plugins>\n <plugin>\n <artifactId>maven-compiler-plugin</artifactId>\n\
-          \ <version>$</version>\n <configuration>\n <compilerArgs>\n <arg>-parameters</arg>\n\
-          \ </compilerArgs>\n </configuration>\n </plugin>\n </plugins>\n </build>\n\
-          \ ```\n \n "
-        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
-        solved_branch: quarkus-3.2
-        variables:
-          data: project
-          innerText: "\n    4.0.0\n    \n        org.jboss.eap.quickstarts\n     \
-            \   quickstart-parent\n        7.1.0.GA\n        ../pom.xml\n    \n  \
-            \  kitchensink\n    war\n    ${qs.name.prefix} kitchensink\n    A starter\
-            \ Java EE web application project for use in JBoss EAP, generated from\
-            \ the jboss-javaee6-webapp archetype\n\n    \n        \n            Apache\
-            \ License, Version 2.0\n            http://www.apache.org/licenses/LICENSE-2.0.html\n\
-            \            repo\n        \n    \n\n    \n\n        \n\n        \n  \
-            \      \n            javax.enterprise\n            cdi-api\n         \
-            \   provided\n        \n\n        \n        \n            junit\n    \
-            \        junit\n            test\n        \n\n        \n\n        \n \
-            \       \n            org.hibernate\n            hibernate-jpamodelgen\n\
-            \            provided\n        \n\n        \n        \n            org.hibernate\n\
-            \            hibernate-validator\n            provided\n            \n\
-            \                \n                    org.slf4j\n                   \
-            \ slf4j-api\n                \n            \n        \n\n        \n  \
-            \      \n            org.hibernate\n            hibernate-validator-annotation-processor\n\
-            \            provided\n        \n\n        \n        \n            org.hibernate.javax.persistence\n\
-            \            hibernate-jpa-2.1-api\n            provided\n        \n\n\
-            \        \n        \n        \n            org.jboss.arquillian.junit\n\
-            \            arquillian-junit-container\n            test\n        \n\n\
-            \        \n            org.jboss.arquillian.protocol\n            arquillian-protocol-servlet\n\
-            \            test\n        \n\n        \n        \n            org.jboss.spec.javax.annotation\n\
-            \            jboss-annotations-api_1.2_spec\n            provided\n  \
-            \      \n\n        \n        \n            org.jboss.spec.javax.ejb\n\
-            \            jboss-ejb-api_3.2_spec\n            provided\n        \n\n\
-            \        \n        \n            org.jboss.spec.javax.faces\n        \
-            \    jboss-jsf-api_2.2_spec\n            provided\n        \n\n      \
-            \  \n        \n            org.jboss.spec.javax.ws.rs\n            jboss-jaxrs-api_2.0_spec\n\
-            \            provided\n        \n\n    \n\n    \n        \n        ${project.artifactId}\n\
-            \    \n"
-          matchingXML: "<modelVersion>4.0.0</modelVersion><parent><groupId>org.jboss.eap.quickstarts</groupId><artifactId>quickstart-parent</artifactId><version>7.1.0.GA</version><relativePath>../pom.xml</relativePath></parent><artifactId>kitchensink</artifactId><packaging>war</packaging><name>${qs.name.prefix}\
-            \ kitchensink</name><description>A starter Java EE web application project\
-            \ for use in JBoss EAP, generated from the jboss-javaee6-webapp archetype</description><licenses><license><name>Apache\
-            \ License, Version 2.0</name><url>http://www.apache.org/licenses/LICENSE-2.0.html</url><distribution>repo</distribution></license></licenses><dependencies><!--\
-            \ First declare the APIs we depend on and need for compilation. All\n\
-            \            of them are provided by JBoss EAP --><!-- Import the CDI\
-            \ API, we use provided scope as the API is included in\n            JBoss\
-            \ EAP --><dependency><groupId>javax.enterprise</groupId><artifactId>cdi-api</artifactId><scope>provided</scope></dependency><!--\
-            \ Needed for running tests (you may also use TestNG) --><dependency><groupId>junit</groupId><artifactId>junit</artifactId><scope>test</scope></dependency><!--\
-            \ Now we declare any tools needed --><!-- Annotation processor to generate\
-            \ the JPA metamodel classes for\n            typesafe criteria queries\
-            \ --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-jpamodelgen</artifactId><scope>provided</scope></dependency><!--\
-            \ Bean Validation Implementation \n             Provides portable constraints\
-            \ such as @Email \n             Hibernate Validator is shipped in JBoss\
-            \ EAP --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-validator</artifactId><scope>provided</scope><exclusions><exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId></exclusion></exclusions></dependency><!--\
-            \ Annotation processor that raising compilation errors whenever constraint\n\
-            \            annotations are incorrectly used. --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-validator-annotation-processor</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the JPA API, we use provided scope as the API is included in\n\
-            \            JBoss EAP --><dependency><groupId>org.hibernate.javax.persistence</groupId><artifactId>hibernate-jpa-2.1-api</artifactId><scope>provided</scope></dependency><!--\
-            \ Optional, but highly recommended --><!-- Arquillian allows you to test\
-            \ enterprise code such as EJBs and Transactional(JTA)\n            JPA\
-            \ from JUnit/TestNG --><dependency><groupId>org.jboss.arquillian.junit</groupId><artifactId>arquillian-junit-container</artifactId><scope>test</scope></dependency><dependency><groupId>org.jboss.arquillian.protocol</groupId><artifactId>arquillian-protocol-servlet</artifactId><scope>test</scope></dependency><!--\
-            \ Import the Common Annotations API (JSR-250), we use provided scope\n\
-            \            as the API is included in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.annotation</groupId><artifactId>jboss-annotations-api_1.2_spec</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the EJB API, we use provided scope as the API is included in\n\
-            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ejb</groupId><artifactId>jboss-ejb-api_3.2_spec</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the JSF API, we use provided scope as the API is included in\n\
-            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.faces</groupId><artifactId>jboss-jsf-api_2.2_spec</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the JAX-RS API, we use provided scope as the API is included\n\
-            \            in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ws.rs</groupId><artifactId>jboss-jaxrs-api_2.0_spec</artifactId><scope>provided</scope></dependency></dependencies><build><!--\
-            \ Set the name of the WAR, used as the context root when the app is deployed\
-            \ --><finalName>${project.artifactId}</finalName></build>"
     ticket-monster:
       monolith/pom.xml:
       - initial_branch: master
@@ -10574,82 +11077,6 @@ quarkus/springboot:
             \tapp will ne    ed. --><!-- By default that is to put the resulting archive\
             \ into the\r\n\t\t\t'deployments' folder. --><!--\r\n\t\t\thttp://maven.apache.org/guides/mini/guide-building-for-different-environments.html\
             \ --><id>openshift</id><build><plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-war-plugin</artifactId><version>${version.war.plugin}</version><configuration><warName>ROOT</warName></configuration></plugin><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-source-plugin</artifactId><executions><execution><id>attach-sources</id><phase>none</phase></execution></executions></plugin></plugins></build></profile></profiles>"
-    kitchensink:
-      pom.xml:
-      - initial_branch: '7.1'
-        line_number: 20
-        message: "\n \n Use the Maven Surefire plugin adding the following sections\
-          \ to the `pom.xml` file: \n\n ```xml\n <properties> \n <surefire-plugin.version>3.0.0</compiler-plugin.version>\n\
-          \ </properties> \n <build>\n <plugins>\n <plugin>\n <artifactId>maven-surefire-plugin</artifactId>\n\
-          \ <version>$</version>\n <configuration>\n <systemPropertyVariables>\n <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>\n\
-          \ <maven.home>$</maven.home>\n </systemPropertyVariables>\n </configuration>\n\
-          \ </plugin>\n </plugins>\n </build>\n ```\n \n "
-        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
-        solved_branch: quarkus-3.2
-        variables:
-          data: project
-          innerText: "\n    4.0.0\n    \n        org.jboss.eap.quickstarts\n     \
-            \   quickstart-parent\n        7.1.0.GA\n        ../pom.xml\n    \n  \
-            \  kitchensink\n    war\n    ${qs.name.prefix} kitchensink\n    A starter\
-            \ Java EE web application project for use in JBoss EAP, generated from\
-            \ the jboss-javaee6-webapp archetype\n\n    \n        \n            Apache\
-            \ License, Version 2.0\n            http://www.apache.org/licenses/LICENSE-2.0.html\n\
-            \            repo\n        \n    \n\n    \n\n        \n\n        \n  \
-            \      \n            javax.enterprise\n            cdi-api\n         \
-            \   provided\n        \n\n        \n        \n            junit\n    \
-            \        junit\n            test\n        \n\n        \n\n        \n \
-            \       \n            org.hibernate\n            hibernate-jpamodelgen\n\
-            \            provided\n        \n\n        \n        \n            org.hibernate\n\
-            \            hibernate-validator\n            provided\n            \n\
-            \                \n                    org.slf4j\n                   \
-            \ slf4j-api\n                \n            \n        \n\n        \n  \
-            \      \n            org.hibernate\n            hibernate-validator-annotation-processor\n\
-            \            provided\n        \n\n        \n        \n            org.hibernate.javax.persistence\n\
-            \            hibernate-jpa-2.1-api\n            provided\n        \n\n\
-            \        \n        \n        \n            org.jboss.arquillian.junit\n\
-            \            arquillian-junit-container\n            test\n        \n\n\
-            \        \n            org.jboss.arquillian.protocol\n            arquillian-protocol-servlet\n\
-            \            test\n        \n\n        \n        \n            org.jboss.spec.javax.annotation\n\
-            \            jboss-annotations-api_1.2_spec\n            provided\n  \
-            \      \n\n        \n        \n            org.jboss.spec.javax.ejb\n\
-            \            jboss-ejb-api_3.2_spec\n            provided\n        \n\n\
-            \        \n        \n            org.jboss.spec.javax.faces\n        \
-            \    jboss-jsf-api_2.2_spec\n            provided\n        \n\n      \
-            \  \n        \n            org.jboss.spec.javax.ws.rs\n            jboss-jaxrs-api_2.0_spec\n\
-            \            provided\n        \n\n    \n\n    \n        \n        ${project.artifactId}\n\
-            \    \n"
-          matchingXML: "<modelVersion>4.0.0</modelVersion><parent><groupId>org.jboss.eap.quickstarts</groupId><artifactId>quickstart-parent</artifactId><version>7.1.0.GA</version><relativePath>../pom.xml</relativePath></parent><artifactId>kitchensink</artifactId><packaging>war</packaging><name>${qs.name.prefix}\
-            \ kitchensink</name><description>A starter Java EE web application project\
-            \ for use in JBoss EAP, generated from the jboss-javaee6-webapp archetype</description><licenses><license><name>Apache\
-            \ License, Version 2.0</name><url>http://www.apache.org/licenses/LICENSE-2.0.html</url><distribution>repo</distribution></license></licenses><dependencies><!--\
-            \ First declare the APIs we depend on and need for compilation. All\n\
-            \            of them are provided by JBoss EAP --><!-- Import the CDI\
-            \ API, we use provided scope as the API is included in\n            JBoss\
-            \ EAP --><dependency><groupId>javax.enterprise</groupId><artifactId>cdi-api</artifactId><scope>provided</scope></dependency><!--\
-            \ Needed for running tests (you may also use TestNG) --><dependency><groupId>junit</groupId><artifactId>junit</artifactId><scope>test</scope></dependency><!--\
-            \ Now we declare any tools needed --><!-- Annotation processor to generate\
-            \ the JPA metamodel classes for\n            typesafe criteria queries\
-            \ --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-jpamodelgen</artifactId><scope>provided</scope></dependency><!--\
-            \ Bean Validation Implementation \n             Provides portable constraints\
-            \ such as @Email \n             Hibernate Validator is shipped in JBoss\
-            \ EAP --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-validator</artifactId><scope>provided</scope><exclusions><exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId></exclusion></exclusions></dependency><!--\
-            \ Annotation processor that raising compilation errors whenever constraint\n\
-            \            annotations are incorrectly used. --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-validator-annotation-processor</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the JPA API, we use provided scope as the API is included in\n\
-            \            JBoss EAP --><dependency><groupId>org.hibernate.javax.persistence</groupId><artifactId>hibernate-jpa-2.1-api</artifactId><scope>provided</scope></dependency><!--\
-            \ Optional, but highly recommended --><!-- Arquillian allows you to test\
-            \ enterprise code such as EJBs and Transactional(JTA)\n            JPA\
-            \ from JUnit/TestNG --><dependency><groupId>org.jboss.arquillian.junit</groupId><artifactId>arquillian-junit-container</artifactId><scope>test</scope></dependency><dependency><groupId>org.jboss.arquillian.protocol</groupId><artifactId>arquillian-protocol-servlet</artifactId><scope>test</scope></dependency><!--\
-            \ Import the Common Annotations API (JSR-250), we use provided scope\n\
-            \            as the API is included in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.annotation</groupId><artifactId>jboss-annotations-api_1.2_spec</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the EJB API, we use provided scope as the API is included in\n\
-            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ejb</groupId><artifactId>jboss-ejb-api_3.2_spec</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the JSF API, we use provided scope as the API is included in\n\
-            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.faces</groupId><artifactId>jboss-jsf-api_2.2_spec</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the JAX-RS API, we use provided scope as the API is included\n\
-            \            in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ws.rs</groupId><artifactId>jboss-jaxrs-api_2.0_spec</artifactId><scope>provided</scope></dependency></dependencies><build><!--\
-            \ Set the name of the WAR, used as the context root when the app is deployed\
-            \ --><finalName>${project.artifactId}</finalName></build>"
     ticket-monster:
       monolith/pom.xml:
       - initial_branch: master
@@ -11237,85 +11664,6 @@ quarkus/springboot:
             \tapp will ne    ed. --><!-- By default that is to put the resulting archive\
             \ into the\r\n\t\t\t'deployments' folder. --><!--\r\n\t\t\thttp://maven.apache.org/guides/mini/guide-building-for-different-environments.html\
             \ --><id>openshift</id><build><plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-war-plugin</artifactId><version>${version.war.plugin}</version><configuration><warName>ROOT</warName></configuration></plugin><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-source-plugin</artifactId><executions><execution><id>attach-sources</id><phase>none</phase></execution></executions></plugin></plugins></build></profile></profiles>"
-    kitchensink:
-      pom.xml:
-      - initial_branch: '7.1'
-        line_number: 20
-        message: "\n \n Use the Maven Failsafe plugin adding the following sections\
-          \ to the `pom.xml` file: \n\n ```xml\n <properties> \n <surefire-plugin.version>3.0.0</compiler-plugin.version>\n\
-          \ </properties> \n <build>\n <plugins>\n <plugin>\n <artifactId>maven-failsafe-plugin</artifactId>\n\
-          \ <version>$</version>\n <executions>\n <execution>\n <goals>\n <goals>integration-test</goal>\n\
-          \ <goals>verify</goal>\n </goals>\n <configuration>\n <systemPropertyVariables>\n\
-          \ <native.image.path>$/$-runner</native.image.path>\n <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>\n\
-          \ <maven.home>$</maven.home>\n </systemPropertyVariables>\n </configuration>\n\
-          \ </execution>\n </executions>\n </plugin>\n </plugins>\n </build>\n ```\n\
-          \ \n "
-        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
-        solved_branch: quarkus-3.2
-        variables:
-          data: project
-          innerText: "\n    4.0.0\n    \n        org.jboss.eap.quickstarts\n     \
-            \   quickstart-parent\n        7.1.0.GA\n        ../pom.xml\n    \n  \
-            \  kitchensink\n    war\n    ${qs.name.prefix} kitchensink\n    A starter\
-            \ Java EE web application project for use in JBoss EAP, generated from\
-            \ the jboss-javaee6-webapp archetype\n\n    \n        \n            Apache\
-            \ License, Version 2.0\n            http://www.apache.org/licenses/LICENSE-2.0.html\n\
-            \            repo\n        \n    \n\n    \n\n        \n\n        \n  \
-            \      \n            javax.enterprise\n            cdi-api\n         \
-            \   provided\n        \n\n        \n        \n            junit\n    \
-            \        junit\n            test\n        \n\n        \n\n        \n \
-            \       \n            org.hibernate\n            hibernate-jpamodelgen\n\
-            \            provided\n        \n\n        \n        \n            org.hibernate\n\
-            \            hibernate-validator\n            provided\n            \n\
-            \                \n                    org.slf4j\n                   \
-            \ slf4j-api\n                \n            \n        \n\n        \n  \
-            \      \n            org.hibernate\n            hibernate-validator-annotation-processor\n\
-            \            provided\n        \n\n        \n        \n            org.hibernate.javax.persistence\n\
-            \            hibernate-jpa-2.1-api\n            provided\n        \n\n\
-            \        \n        \n        \n            org.jboss.arquillian.junit\n\
-            \            arquillian-junit-container\n            test\n        \n\n\
-            \        \n            org.jboss.arquillian.protocol\n            arquillian-protocol-servlet\n\
-            \            test\n        \n\n        \n        \n            org.jboss.spec.javax.annotation\n\
-            \            jboss-annotations-api_1.2_spec\n            provided\n  \
-            \      \n\n        \n        \n            org.jboss.spec.javax.ejb\n\
-            \            jboss-ejb-api_3.2_spec\n            provided\n        \n\n\
-            \        \n        \n            org.jboss.spec.javax.faces\n        \
-            \    jboss-jsf-api_2.2_spec\n            provided\n        \n\n      \
-            \  \n        \n            org.jboss.spec.javax.ws.rs\n            jboss-jaxrs-api_2.0_spec\n\
-            \            provided\n        \n\n    \n\n    \n        \n        ${project.artifactId}\n\
-            \    \n"
-          matchingXML: "<modelVersion>4.0.0</modelVersion><parent><groupId>org.jboss.eap.quickstarts</groupId><artifactId>quickstart-parent</artifactId><version>7.1.0.GA</version><relativePath>../pom.xml</relativePath></parent><artifactId>kitchensink</artifactId><packaging>war</packaging><name>${qs.name.prefix}\
-            \ kitchensink</name><description>A starter Java EE web application project\
-            \ for use in JBoss EAP, generated from the jboss-javaee6-webapp archetype</description><licenses><license><name>Apache\
-            \ License, Version 2.0</name><url>http://www.apache.org/licenses/LICENSE-2.0.html</url><distribution>repo</distribution></license></licenses><dependencies><!--\
-            \ First declare the APIs we depend on and need for compilation. All\n\
-            \            of them are provided by JBoss EAP --><!-- Import the CDI\
-            \ API, we use provided scope as the API is included in\n            JBoss\
-            \ EAP --><dependency><groupId>javax.enterprise</groupId><artifactId>cdi-api</artifactId><scope>provided</scope></dependency><!--\
-            \ Needed for running tests (you may also use TestNG) --><dependency><groupId>junit</groupId><artifactId>junit</artifactId><scope>test</scope></dependency><!--\
-            \ Now we declare any tools needed --><!-- Annotation processor to generate\
-            \ the JPA metamodel classes for\n            typesafe criteria queries\
-            \ --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-jpamodelgen</artifactId><scope>provided</scope></dependency><!--\
-            \ Bean Validation Implementation \n             Provides portable constraints\
-            \ such as @Email \n             Hibernate Validator is shipped in JBoss\
-            \ EAP --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-validator</artifactId><scope>provided</scope><exclusions><exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId></exclusion></exclusions></dependency><!--\
-            \ Annotation processor that raising compilation errors whenever constraint\n\
-            \            annotations are incorrectly used. --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-validator-annotation-processor</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the JPA API, we use provided scope as the API is included in\n\
-            \            JBoss EAP --><dependency><groupId>org.hibernate.javax.persistence</groupId><artifactId>hibernate-jpa-2.1-api</artifactId><scope>provided</scope></dependency><!--\
-            \ Optional, but highly recommended --><!-- Arquillian allows you to test\
-            \ enterprise code such as EJBs and Transactional(JTA)\n            JPA\
-            \ from JUnit/TestNG --><dependency><groupId>org.jboss.arquillian.junit</groupId><artifactId>arquillian-junit-container</artifactId><scope>test</scope></dependency><dependency><groupId>org.jboss.arquillian.protocol</groupId><artifactId>arquillian-protocol-servlet</artifactId><scope>test</scope></dependency><!--\
-            \ Import the Common Annotations API (JSR-250), we use provided scope\n\
-            \            as the API is included in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.annotation</groupId><artifactId>jboss-annotations-api_1.2_spec</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the EJB API, we use provided scope as the API is included in\n\
-            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ejb</groupId><artifactId>jboss-ejb-api_3.2_spec</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the JSF API, we use provided scope as the API is included in\n\
-            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.faces</groupId><artifactId>jboss-jsf-api_2.2_spec</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the JAX-RS API, we use provided scope as the API is included\n\
-            \            in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ws.rs</groupId><artifactId>jboss-jaxrs-api_2.0_spec</artifactId><scope>provided</scope></dependency></dependencies><build><!--\
-            \ Set the name of the WAR, used as the context root when the app is deployed\
-            \ --><finalName>${project.artifactId}</finalName></build>"
     ticket-monster:
       monolith/pom.xml:
       - initial_branch: master
@@ -11894,82 +12242,6 @@ quarkus/springboot:
             \tapp will ne    ed. --><!-- By default that is to put the resulting archive\
             \ into the\r\n\t\t\t'deployments' folder. --><!--\r\n\t\t\thttp://maven.apache.org/guides/mini/guide-building-for-different-environments.html\
             \ --><id>openshift</id><build><plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-war-plugin</artifactId><version>${version.war.plugin}</version><configuration><warName>ROOT</warName></configuration></plugin><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-source-plugin</artifactId><executions><execution><id>attach-sources</id><phase>none</phase></execution></executions></plugin></plugins></build></profile></profiles>"
-    kitchensink:
-      pom.xml:
-      - initial_branch: '7.1'
-        line_number: 20
-        message: "\n \n Leverage a Maven profile to run the Quarkus native build adding\
-          \ the following section to the `pom.xml` file: \n\n ```xml\n <profiles>\n\
-          \ <profile>\n <id>native</id>\n <activation>\n <property>\n <name>native</name>\n\
-          \ </property>\n </activation>\n <properties>\n <skipITs>false</skipITs>\n\
-          \ <quarkus.package.type>native</quarkus.package.type>\n </properties>\n\
-          \ </profile>\n </profiles>\n ```\n \n "
-        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
-        solved_branch: quarkus-3.2
-        variables:
-          data: project
-          innerText: "\n    4.0.0\n    \n        org.jboss.eap.quickstarts\n     \
-            \   quickstart-parent\n        7.1.0.GA\n        ../pom.xml\n    \n  \
-            \  kitchensink\n    war\n    ${qs.name.prefix} kitchensink\n    A starter\
-            \ Java EE web application project for use in JBoss EAP, generated from\
-            \ the jboss-javaee6-webapp archetype\n\n    \n        \n            Apache\
-            \ License, Version 2.0\n            http://www.apache.org/licenses/LICENSE-2.0.html\n\
-            \            repo\n        \n    \n\n    \n\n        \n\n        \n  \
-            \      \n            javax.enterprise\n            cdi-api\n         \
-            \   provided\n        \n\n        \n        \n            junit\n    \
-            \        junit\n            test\n        \n\n        \n\n        \n \
-            \       \n            org.hibernate\n            hibernate-jpamodelgen\n\
-            \            provided\n        \n\n        \n        \n            org.hibernate\n\
-            \            hibernate-validator\n            provided\n            \n\
-            \                \n                    org.slf4j\n                   \
-            \ slf4j-api\n                \n            \n        \n\n        \n  \
-            \      \n            org.hibernate\n            hibernate-validator-annotation-processor\n\
-            \            provided\n        \n\n        \n        \n            org.hibernate.javax.persistence\n\
-            \            hibernate-jpa-2.1-api\n            provided\n        \n\n\
-            \        \n        \n        \n            org.jboss.arquillian.junit\n\
-            \            arquillian-junit-container\n            test\n        \n\n\
-            \        \n            org.jboss.arquillian.protocol\n            arquillian-protocol-servlet\n\
-            \            test\n        \n\n        \n        \n            org.jboss.spec.javax.annotation\n\
-            \            jboss-annotations-api_1.2_spec\n            provided\n  \
-            \      \n\n        \n        \n            org.jboss.spec.javax.ejb\n\
-            \            jboss-ejb-api_3.2_spec\n            provided\n        \n\n\
-            \        \n        \n            org.jboss.spec.javax.faces\n        \
-            \    jboss-jsf-api_2.2_spec\n            provided\n        \n\n      \
-            \  \n        \n            org.jboss.spec.javax.ws.rs\n            jboss-jaxrs-api_2.0_spec\n\
-            \            provided\n        \n\n    \n\n    \n        \n        ${project.artifactId}\n\
-            \    \n"
-          matchingXML: "<modelVersion>4.0.0</modelVersion><parent><groupId>org.jboss.eap.quickstarts</groupId><artifactId>quickstart-parent</artifactId><version>7.1.0.GA</version><relativePath>../pom.xml</relativePath></parent><artifactId>kitchensink</artifactId><packaging>war</packaging><name>${qs.name.prefix}\
-            \ kitchensink</name><description>A starter Java EE web application project\
-            \ for use in JBoss EAP, generated from the jboss-javaee6-webapp archetype</description><licenses><license><name>Apache\
-            \ License, Version 2.0</name><url>http://www.apache.org/licenses/LICENSE-2.0.html</url><distribution>repo</distribution></license></licenses><dependencies><!--\
-            \ First declare the APIs we depend on and need for compilation. All\n\
-            \            of them are provided by JBoss EAP --><!-- Import the CDI\
-            \ API, we use provided scope as the API is included in\n            JBoss\
-            \ EAP --><dependency><groupId>javax.enterprise</groupId><artifactId>cdi-api</artifactId><scope>provided</scope></dependency><!--\
-            \ Needed for running tests (you may also use TestNG) --><dependency><groupId>junit</groupId><artifactId>junit</artifactId><scope>test</scope></dependency><!--\
-            \ Now we declare any tools needed --><!-- Annotation processor to generate\
-            \ the JPA metamodel classes for\n            typesafe criteria queries\
-            \ --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-jpamodelgen</artifactId><scope>provided</scope></dependency><!--\
-            \ Bean Validation Implementation \n             Provides portable constraints\
-            \ such as @Email \n             Hibernate Validator is shipped in JBoss\
-            \ EAP --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-validator</artifactId><scope>provided</scope><exclusions><exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId></exclusion></exclusions></dependency><!--\
-            \ Annotation processor that raising compilation errors whenever constraint\n\
-            \            annotations are incorrectly used. --><dependency><groupId>org.hibernate</groupId><artifactId>hibernate-validator-annotation-processor</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the JPA API, we use provided scope as the API is included in\n\
-            \            JBoss EAP --><dependency><groupId>org.hibernate.javax.persistence</groupId><artifactId>hibernate-jpa-2.1-api</artifactId><scope>provided</scope></dependency><!--\
-            \ Optional, but highly recommended --><!-- Arquillian allows you to test\
-            \ enterprise code such as EJBs and Transactional(JTA)\n            JPA\
-            \ from JUnit/TestNG --><dependency><groupId>org.jboss.arquillian.junit</groupId><artifactId>arquillian-junit-container</artifactId><scope>test</scope></dependency><dependency><groupId>org.jboss.arquillian.protocol</groupId><artifactId>arquillian-protocol-servlet</artifactId><scope>test</scope></dependency><!--\
-            \ Import the Common Annotations API (JSR-250), we use provided scope\n\
-            \            as the API is included in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.annotation</groupId><artifactId>jboss-annotations-api_1.2_spec</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the EJB API, we use provided scope as the API is included in\n\
-            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ejb</groupId><artifactId>jboss-ejb-api_3.2_spec</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the JSF API, we use provided scope as the API is included in\n\
-            \            JBoss EAP --><dependency><groupId>org.jboss.spec.javax.faces</groupId><artifactId>jboss-jsf-api_2.2_spec</artifactId><scope>provided</scope></dependency><!--\
-            \ Import the JAX-RS API, we use provided scope as the API is included\n\
-            \            in JBoss EAP --><dependency><groupId>org.jboss.spec.javax.ws.rs</groupId><artifactId>jboss-jaxrs-api_2.0_spec</artifactId><scope>provided</scope></dependency></dependencies><build><!--\
-            \ Set the name of the WAR, used as the context root when the app is deployed\
-            \ --><finalName>${project.artifactId}</finalName></build>"
     ticket-monster:
       monolith/pom.xml:
       - initial_branch: master
@@ -12256,40 +12528,6 @@ quarkus/springboot:
           innerText: "\n            jakarta.persistence\n            jakarta.persistence-api\n\
             \            provided\n        "
           matchingXML: <groupId>jakarta.persistence</groupId><artifactId>jakarta.persistence-api</artifactId><scope>provided</scope>
-    kitchensink:
-      pom.xml:
-      - initial_branch: '7.1'
-        line_number: 65
-        message: "\n \n Configure Quarkus 'hibernate-orm` and jakarta persistence.\
-          \ \n Add the `quarkus-hibernate-orm` section and one for your preferred\
-          \ jdbc solution to the `pom.xml` file, eg for postgres: \n\n ```\n <!--\
-          \ Hibernate ORM specific dependencies -->\n <dependency>\n <groupId>io.quarkus</groupId>\n\
-          \ <artifactId>quarkus-hibernate-orm</artifactId>\n </dependency>\n \n <!--\
-          \ JDBC driver dependencies -->\n <dependency>\n <groupId>io.quarkus</groupId>\n\
-          \ <artifactId>quarkus-jdbc-postgresql</artifactId>\n </dependency> \n ```\n\
-          \ \n "
-        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
-        solved_branch: quarkus-3.2
-        variables:
-          data: groupId
-          innerText: org.hibernate
-          matchingXML: org.hibernate
-      - initial_branch: '7.1'
-        line_number: 96
-        message: "\n \n Configure Quarkus 'hibernate-orm` and jakarta persistence.\
-          \ \n Add the `quarkus-hibernate-orm` section and one for your preferred\
-          \ jdbc solution to the `pom.xml` file, eg for postgres: \n\n ```\n <!--\
-          \ Hibernate ORM specific dependencies -->\n <dependency>\n <groupId>io.quarkus</groupId>\n\
-          \ <artifactId>quarkus-hibernate-orm</artifactId>\n </dependency>\n \n <!--\
-          \ JDBC driver dependencies -->\n <dependency>\n <groupId>io.quarkus</groupId>\n\
-          \ <artifactId>quarkus-jdbc-postgresql</artifactId>\n </dependency> \n ```\n\
-          \ \n "
-        repo: https://github.com/tqvarnst/jboss-eap-quickstarts.git
-        solved_branch: quarkus-3.2
-        variables:
-          data: groupId
-          innerText: org.hibernate.javax.persistence
-          matchingXML: org.hibernate.javax.persistence
     ticket-monster:
       monolith/pom.xml:
       - initial_branch: master
