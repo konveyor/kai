@@ -699,7 +699,11 @@ class IncidentStore:
             "ejb-security": "samples/sample_repos/jboss-eap-quickstarts-quarkus",
             "tasks-jsf": "samples/sample_repos/jboss-eap-quickstarts-quarkus",
         }
-        return mapping.get(app_name, None)
+
+        basedir = os.path.dirname(os.path.realpath(__file__))
+        parent_dir = os.path.dirname(basedir)
+        path = mapping.get(app_name, None)
+        return os.path.join(parent_dir, path)
 
     def find_if_solved_issues_exist(self):
         """
