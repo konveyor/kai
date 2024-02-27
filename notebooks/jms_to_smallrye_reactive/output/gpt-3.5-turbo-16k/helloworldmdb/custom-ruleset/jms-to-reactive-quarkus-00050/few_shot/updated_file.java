@@ -17,12 +17,12 @@
  */
 package org.jboss.as.quickstarts.mdb;
 
-import io.quarkus.logging.Log;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.jms.JMSException;
-import jakarta.jms.Message;
-import jakarta.jms.MessageListener;
-import jakarta.jms.TextMessage;
+import java.util.logging.Logger;
+
+import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
+
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
 
 /**
@@ -33,13 +33,19 @@ import org.eclipse.microprofile.reactive.messaging.Incoming;
  * @author Serge Pagop (spagop@redhat.com)
  */
 @ApplicationScoped
-public class HelloWorldQueueMDB implements MessageListener {
+public class HelloWorldQueueMDB {
+
+    private static final Logger LOGGER = Logger.getLogger(HelloWorldQueueMDB.class.toString());
+
+    @Inject
+    @ConfigProperty(name = "queue.name")
+    String queueName;
 
     /**
      * @see MessageListener#onMessage(Message)
      */
-    @Incoming("HELLOWORLDMDBQueue")
-    public void onMessage(String msg) {
-        Log.info("Received Message from queue: " + msg);
+    @Incoming("queue/HELLOWORLDMDBQueue")
+    public void onMessage(String message) {
+        LOGGER.info("Received Message from queue: " + message);
     }
 }

@@ -1,4 +1,3 @@
-
 /*
  * JBoss, Home of Professional Open Source
  * Copyright 2015, Red Hat, Inc. and/or its affiliates, and individual
@@ -17,29 +16,19 @@
  */
 package org.jboss.as.quickstarts.mdb;
 
-import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.jms.JMSException;
-import jakarta.jms.Message;
-import jakarta.jms.MessageListener;
-import jakarta.jms.TextMessage;
+import io.smallrye.reactive.messaging.annotations.Merge;
+import org.jboss.logging.Logger;
+
 import org.eclipse.microprofile.reactive.messaging.Incoming;
 
-/**
- * <p>
- * A simple Message Driven Bean that asynchronously receives and processes the messages that are sent to the queue.
- * </p>
- *
- * @author Serge Pagop (spagop@redhat.com)
- */
 @ApplicationScoped
-public class HelloWorldQueueMDB implements MessageListener {
+public class HelloWorldQueueMDB {
+     private static final Logger LOGGER = Logger.getLogger(HelloWorldQueueMDB.class.toString());
 
-    /**
-     * @see MessageListener#onMessage(Message)
-     */
     @Incoming("HELLOWORLDMDBQueue")
-    public void onMessage(String msg) {
-        Log.info("Received Message from queue: " + msg);
+    @Merge
+    public void onMessage(String message) {
+        LOGGER.info("Received Message from queue: " + message);
     }
 }

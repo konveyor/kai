@@ -1,11 +1,4 @@
-## Reasoning
-1. The issue found from static code analysis is that the `@MessageDriven` annotation is not supported in Quarkus and needs to be replaced with a CDI scope annotation like `@ApplicationScoped`.
-2. Looking at the solved example, we can see that the `@MessageDriven` annotation was replaced with `@ApplicationScoped`.
-3. We need to update the import statements to use the correct annotations for Quarkus. The import statements for `@MessageDriven`, `@ActivationConfigProperty`, `@Message`, `@MessageListener`, and `@TextMessage` should be replaced with the corresponding imports for Quarkus.
-4. We need to update the method signature of the `onMessage` method to match the Quarkus equivalent. In the solved example, the method signature was changed to accept a `String` parameter instead of a `Message` parameter.
 
-## Updated File
-```java
 /*
  * JBoss, Home of Professional Open Source
  * Copyright 2015, Red Hat, Inc. and/or its affiliates, and individual
@@ -24,13 +17,13 @@
  */
 package org.jboss.as.quickstarts.mdb;
 
-import io.quarkus.logging.Log;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.jms.JMSException;
-import jakarta.jms.Message;
-import jakarta.jms.MessageListener;
-import jakarta.jms.TextMessage;
+import java.util.logging.Logger;
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.MessageListener;
+import javax.jms.TextMessage;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
+import io.quarkus.logging.Log;
 
 /**
  * <p>
@@ -39,15 +32,25 @@ import org.eclipse.microprofile.reactive.messaging.Incoming;
  *
  * @author Serge Pagop (spagop@redhat.com)
  */
-@ApplicationScoped
 public class HelloWorldQueueMDB implements MessageListener {
+
+    private static final Logger LOGGER = Logger.getLogger(HelloWorldQueueMDB.class.toString());
 
     /**
      * @see MessageListener#onMessage(Message)
      */
     @Incoming("HELLOWORLDMDBQueue")
-    public void onMessage(String msg) {
-        Log.info("Received Message from queue: " + msg);
+    public void onMessage(Message rcvMessage) {
+        TextMessage msg = null;
+        try {
+            if (rcvMessage instanceof TextMessage) {
+                msg = (TextMessage) rcvMessage;
+                LOGGER.info("Received Message from queue: " + msg.getText());
+            } else {
+                LOGGER.warning("Message of wrong type: " + rcvMessage.getClass().getName());
+            }
+        } catch (JMSException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
-```
