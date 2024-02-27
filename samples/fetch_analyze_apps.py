@@ -76,7 +76,7 @@ def fetch_sample_apps():
         # perform analysis
     for repo in sample_source_apps:
         source_dir = sample_source_apps[repo]
-        # analyze(source_dir, repo, "initial")
+        analyze(source_dir, repo, "initial")
 
     # switch to quarkus branch and perform analysis again
     # skip jboss-eap-quickstarts
@@ -92,7 +92,7 @@ def fetch_sample_apps():
     for repo in sample_target_apps:
         # perform analysis
         source_dir = sample_target_apps[repo]
-        # analyze(source_dir, repo, "solved")
+        analyze(source_dir, repo, "solved")
 
 
 def ensure_kantra_bin_exists():
