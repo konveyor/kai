@@ -1,0 +1,25 @@
+## Reasoning
+1. The issue found from static code analysis is that the `@MessageDriven` annotation is not supported in Quarkus and needs to be replaced with a CDI scope annotation like `@ApplicationScoped`.
+2. In the solved example, the `@MessageDriven` annotation in the `HelloWorldMDB` class was replaced with `@ApplicationScoped`.
+3. The `MessageListener` interface is no longer needed in Quarkus, so it can be removed.
+4. The `LOGGER` instance can be replaced with Quarkus' logging API, such as `io.quarkus.logging.Log`.
+5. The `onMessage` method can be updated to use the `@Incoming` annotation to specify the incoming message channel and the method parameter can be changed to `String` to match the message type.
+6. The `TextMessage` class and the `JMSException` class can be removed as they are not needed in Quarkus.
+
+## Updated File
+```java
+package org.jboss.as.quickstarts.mdb;
+
+import io.quarkus.logging.Log;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.eclipse.microprofile.reactive.messaging.Incoming;
+
+@ApplicationScoped
+public class HelloWorldQueueMDB {
+
+    @Incoming("HELLOWORLDMDBQueue")
+    public void onMessage(String msg) {
+        Log.info("Received Message from queue: " + msg);
+    }
+}
+```
