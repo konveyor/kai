@@ -1,0 +1,19 @@
+### Reasoning:
+The issue found in the static code analysis is that EJBs are not supported in Quarkus and CDI must be used instead.The @MessageDriven annotation needs to be replaced with a CDI scope annotation like @ApplicationScoped.
+### Updated file 1
+src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java:package org.jboss.as.quickstarts.mdb;
+
+import org.eclipse.microprofile.reactive.messaging.Incoming;
+import io.quarkus.logging.Log;
+import jakarta.enterprise.context.ApplicationScoped;
+
+@ApplicationScoped
+public class HelloWorldQueueMDB {
+
+    private static final Logger LOGGER = Logger.getLogger(HelloWorldQueueMDB.class.toString());
+
+    @Incoming("HELLOWORLDMDBQueue")
+    public void onMessage(String msg) {
+        Log.info("Received Message from queue: " + msg);
+    }
+}

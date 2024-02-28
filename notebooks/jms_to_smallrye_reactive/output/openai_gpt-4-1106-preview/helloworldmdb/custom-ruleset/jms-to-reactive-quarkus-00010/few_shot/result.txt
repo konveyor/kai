@@ -1,0 +1,58 @@
+## Reasoning
+
+To migrate the Java EE Message Driven Bean (MDB) to Quarkus, we need to address the issue that Quarkus does not support EJBs, and we should use CDI (Contexts and Dependency Injection) instead. The `@MessageDriven` annotation is specific to EJBs and must be replaced with a CDI scope annotation. In this case, we will use `@ApplicationScoped` to indicate that the bean should be application-scoped, which means there will be only one instance of it during the application's lifecycle.
+
+Additionally, we will replace the JMS `MessageListener` interface and `onMessage` method with the MicroProfile Reactive Messaging approach, which is the Quarkus way of handling messaging. We will use the `@Incoming` annotation to mark the method that will be called when a message arrives.
+
+We will also replace the `Logger` from `java.util.logging` with Quarkus' `Log` class for logging purposes.
+
+The `activationConfig` properties used in the `@MessageDriven` annotation will be replaced by application properties that will be defined in the `application.properties` file of the Quarkus application.
+
+Here are the steps we will follow:
+
+1. Replace the `@MessageDriven` annotation with `@ApplicationScoped`.
+2. Remove the `MessageListener` interface and the `onMessage` method signature.
+3. Add the `@Incoming` annotation to the method that will handle the incoming messages.
+4. Replace the `Logger` with `Log` from Quarkus.
+5. Remove the unused imports related to JMS and EJB.
+6. Add necessary dependencies to the `pom.xml` file if they are not already present, such as `quarkus-smallrye-reactive-messaging-jms` for JMS support in Quarkus.
+
+## Updated File
+
+```java
+package org.jboss.as.quickstarts.mdb;
+
+import io.quarkus.logging.Log;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.eclipse.microprofile.reactive.messaging.Incoming;
+
+/**
+ * <p>
+ * A simple bean that asynchronously receives and processes the messages that are sent to the queue using Quarkus.
+ * </p>
+ *
+ * @author Serge Pagop (spagop@redhat.com)
+ */
+@ApplicationScoped
+public class HelloWorldQueueMDB {
+
+    @Incoming("helloworld-queue")
+    public void onMessage(String msg) {
+        Log.info("Received Message from queue: " + msg);
+    }
+}
+```
+
+### Notes for `pom.xml` and `application.properties`:
+
+- Ensure that the `quarkus-smallrye-reactive-messaging-jms` dependency is added to the `pom.xml` file.
+- Configure the JMS connector in the `application.properties` file, for example:
+
+```properties
+# Configure the JMS connector
+mp.messaging.incoming.helloworld-queue.connector=smallrye-jms
+mp.messaging.incoming.helloworld-queue.destination=HELLOWORLDMDBQueue
+mp.messaging.incoming.helloworld-queue.acknowledge-mode=AUTO_ACKNOWLEDGE
+```
+
+These configurations replace the `activationConfig` properties from the original Java EE MDB. The `destination` property should match the JMS queue name used in the original `@MessageDriven` configuration.

@@ -1,0 +1,56 @@
+### Reasoning:
+The input file name is 'src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java'.The issue found from static code analysis of the Java EE code which needs to be fixed to migrate to Quarkus is:  'Enterprise Java Beans (EJBs) are not supported in Quarkus. CDI must be used. Please replace the `@MessageDriven` annotation with a CDI scope annotation like `@ApplicationScoped`.'The solved example filename is 'src/main/java/org/jboss/as/quickstarts/cmt/mdb/HelloWorldMDB.java'.The solved example Git diff shows that the @MessageDriven annotation was replaced with the @ApplicationScoped annotation.To migrate the input file to Quarkus, we need to replace the `@MessageDriven` annotation with the `@ApplicationScoped` annotation.The updated file name will be 'src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java'.The updated file contents will be:```java
+package org.jboss.as.quickstarts.mdb;
+
+import java.util.logging.Logger;
+import org.eclipse.microprofile.reactive.messaging.Incoming;
+import io.quarkus.logging.Log;
+import jakarta.enterprise.context.ApplicationScoped;
+
+/**
+ * <p>
+ * A simple Message Driven Bean that asynchronously receives and processes the messages that are sent to the queue.
+ * </p>
+ *
+ * @author Serge Pagop (spagop@redhat.com)
+ */
+@ApplicationScoped
+public class HelloWorldQueueMDB {
+   private static final Logger LOGGER = Logger.getLogger(HelloWorldQueueMDB.class.toString());
+   
+
+   /**
+    * @see MessageListener#onMessage(Message)
+    */
+   public void onMessage(String msg) {
+       Log.info("Received Message from queue: " + msg);
+   }
+}
+```
+### Updated file 1
+src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java:package org.jboss.as.quickstarts.mdb;
+
+import java.util.logging.Logger;
+import org.eclipse.microprofile.reactive.messaging.Incoming;
+import io.quarkus.logging.Log;
+import jakarta.enterprise.context.ApplicationScoped;
+
+/**
+ * <p>
+ * A simple Message Driven Bean that asynchronously receives and processes the messages that are sent to the queue.
+ * </p>
+ *
+ * @author Serge Pagop (spagop@redhat.com)
+ */
+@ApplicationScoped
+public class HelloWorldQueueMDB {
+   private static final Logger LOGGER = Logger.getLogger(HelloWorldQueueMDB.class.toString());
+   
+
+   /**
+    * @see MessageListener#onMessage(Message)
+    */
+   public void onMessage(String msg) {
+       Log.info("Received Message from queue: " + msg);
+   }
+}

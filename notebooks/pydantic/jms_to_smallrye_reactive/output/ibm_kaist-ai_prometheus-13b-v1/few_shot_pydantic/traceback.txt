@@ -1,0 +1,92 @@
+Invalid json output: Thank you for providing the input. I have reviewed the static code analysis output and the provided solved example. Based on the analysis, the issue is that the code is using Enterprise Java Beans (EJBs) which are not supported in Quarkus. CDI must be used instead.
+
+To address this issue, I suggest replacing the `@MessageDriven` annotation with a CDI scope annotation like `@ApplicationScoped`. This will ensure that the bean is properly scoped and will allow it to be used in the Quarkus application.
+
+Here is the updated code with the suggested changes:
+```diff
+package org.jboss.as.quickstarts.mdb;
+
+import java.util.logging.Logger;
+import org.eclipse.microprofile.reactive.messaging.Incoming;
+
+import org.eclipse.microprofile.cdi.ApplicationScoped;
+
+public class HelloWorldQueueMDB implements MessageListener {
+
+    private static final Logger LOGGER = Logger.getLogger(HelloWorldQueueMDB.class.toString());
+
+    @Incoming("CMTQueue")
+    public void onMessage(String msg) {
+        Log.info("Received Message from queue: " + msg);
+    }
+}
+```
+Please note that the `import` statements have been updated to reflect the new dependencies required by Quarkus. Additionally, the `Log` class has been used instead of `Logger` to log messages, as it is the recommended logging mechanism in Quarkus.
+
+I hope this helps you in updating your code to Quarkus. If you have any further questions or concerns, please let me know.Traceback (most recent call last):
+  File "/home/jason/Documents/src/github.com/konveyor-ecosystem/kai/env/lib64/python3.12/site-packages/langchain_core/output_parsers/json.py", line 212, in parse_result
+    return parse_json_markdown(text)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jason/Documents/src/github.com/konveyor-ecosystem/kai/env/lib64/python3.12/site-packages/langchain_core/output_parsers/json.py", line 157, in parse_json_markdown
+    parsed = parser(json_str)
+             ^^^^^^^^^^^^^^^^
+  File "/home/jason/Documents/src/github.com/konveyor-ecosystem/kai/env/lib64/python3.12/site-packages/langchain_core/output_parsers/json.py", line 125, in parse_partial_json
+    return json.loads(s, strict=strict)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.12/json/__init__.py", line 359, in loads
+    return cls(**kw).decode(s)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.12/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.12/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/tmp/ipykernel_441045/4085299693.py", line 129, in <module>
+    result = chain.invoke(template_args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jason/Documents/src/github.com/konveyor-ecosystem/kai/env/lib64/python3.12/site-packages/langchain/chains/base.py", line 163, in invoke
+    raise e
+  File "/home/jason/Documents/src/github.com/konveyor-ecosystem/kai/env/lib64/python3.12/site-packages/langchain/chains/base.py", line 153, in invoke
+    self._call(inputs, run_manager=run_manager)
+  File "/home/jason/Documents/src/github.com/konveyor-ecosystem/kai/env/lib64/python3.12/site-packages/langchain/chains/llm.py", line 104, in _call
+    return self.create_outputs(response)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jason/Documents/src/github.com/konveyor-ecosystem/kai/env/lib64/python3.12/site-packages/langchain/chains/llm.py", line 261, in create_outputs
+    self.output_key: self.output_parser.parse_result(generation),
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jason/Documents/src/github.com/konveyor-ecosystem/kai/env/lib64/python3.12/site-packages/langchain_core/output_parsers/pydantic.py", line 21, in parse_result
+    json_object = super().parse_result(result)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jason/Documents/src/github.com/konveyor-ecosystem/kai/env/lib64/python3.12/site-packages/langchain_core/output_parsers/json.py", line 215, in parse_result
+    raise OutputParserException(msg, llm_output=text) from e
+langchain_core.exceptions.OutputParserException: Invalid json output: Thank you for providing the input. I have reviewed the static code analysis output and the provided solved example. Based on the analysis, the issue is that the code is using Enterprise Java Beans (EJBs) which are not supported in Quarkus. CDI must be used instead.
+
+To address this issue, I suggest replacing the `@MessageDriven` annotation with a CDI scope annotation like `@ApplicationScoped`. This will ensure that the bean is properly scoped and will allow it to be used in the Quarkus application.
+
+Here is the updated code with the suggested changes:
+```diff
+package org.jboss.as.quickstarts.mdb;
+
+import java.util.logging.Logger;
+import org.eclipse.microprofile.reactive.messaging.Incoming;
+
+import org.eclipse.microprofile.cdi.ApplicationScoped;
+
+public class HelloWorldQueueMDB implements MessageListener {
+
+    private static final Logger LOGGER = Logger.getLogger(HelloWorldQueueMDB.class.toString());
+
+    @Incoming("CMTQueue")
+    public void onMessage(String msg) {
+        Log.info("Received Message from queue: " + msg);
+    }
+}
+```
+Please note that the `import` statements have been updated to reflect the new dependencies required by Quarkus. Additionally, the `Log` class has been used instead of `Logger` to log messages, as it is the recommended logging mechanism in Quarkus.
+
+I hope this helps you in updating your code to Quarkus. If you have any further questions or concerns, please let me know.

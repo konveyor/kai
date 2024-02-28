@@ -1,0 +1,14 @@
+### Reasoning:
+The issue found from static code analysis of the Java EE code which needs to be fixed to migrate to Quarkus is: "Enterprise Java Beans (EJBs) are not supported in Quarkus. CDI must be used. Please replace the `@MessageDriven` annotation with a CDI scope annotation like `@ApplicationScoped`."
+### Updated file 1
+src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java:import io.quarkus.logging.Log;
+import jakarta.enterprise.context.ApplicationScoped;
+
+@ApplicationScoped
+public class HelloWorldQueueMDB {
+
+   @Incoming("CMTQueue")
+   public void onMessage(String msg) {
+       Log.info("Received Message: " + msg);
+   }
+}

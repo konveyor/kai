@@ -1,0 +1,44 @@
+### Reasoning:
+The issue found from static analysis of the Java EE code is that Enterprise Java Beans (EJBs) are not supported in Quarkus. CDI must be used. Please replace the @MessageDriven annotation with a CDI scope annotation like @ApplicationScoped.The solved example shows what changes we made in past to address a similar problem. Please consider this heavily in your response.The input file name is "src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java".The input line number of the issue first appearing in the Java EE code source code example below is 34.The input source code file contents for "src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java" is as follows:
+### Updated file 1
+src/main/java/org/jboss/as/quickstarts/cmt/mdb/HelloWorldMDB.java:package org.jboss.as.quickstarts.cmt.mdb;
+
+import java.util.logging.Logger;
+import org.eclipse.microprofile.reactive.messaging.Incoming;
+
+import javax.ejb.ActivationConfigProperty;
+import javax.ejb.MessageDriven;
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.MessageListener;
+import javax.jms.TextMessage;
+
+/**
+ * <p>
+ * A simple Message Driven Bean that asynchronously receives and processes the messages that are sent to the queue.
+ * </p>
+ *
+ * @author Serge Pagop (spagop@redhat.com)
+ */
+@ApplicationScoped
+public class HelloWorldMDB {
+
+    private static final Logger LOGGER = Logger.getLogger(HelloWorldMDB.class.toString());
+
+    /**
+     * @see MessageListener#onMessage(Message)
+     */
+    public void onMessage(Message rcvMessage) {
+        TextMessage msg = null;
+        try {
+            if (rcvMessage instanceof TextMessage) {
+                msg = (TextMessage) rcvMessage;
+                LOGGER.info("Received Message: " + msg.getText());
+            } else {
+                LOGGER.warning("Message of wrong type: " + rcvMessage.getClass().getName());
+            }
+        } catch (JMSException e) {
+            throw new RuntimeException(e);
+        }
+    }
+}

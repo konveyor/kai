@@ -1,0 +1,92 @@
+
+
+## Reasoning
+
+1. The first step is to identify the issue that needs to be addressed. The issue is that the `@MessageDriven` annotation is not supported in Quarkus, and CDI must be used instead.
+2. To address this issue, we need to replace the `@MessageDriven` annotation with a CDI scope annotation, such as `@ApplicationScoped`.
+3. The next step is to update the imports to use the correct packages for CDI. This includes removing the import for `javax.ejb.MessageDriven` and adding imports for `jakarta.enterprise.context.ApplicationScoped` and `io.quarkus.logging.Log`.
+4. After updating the imports, we need to update the code to use the CDI annotations and logging mechanism. This includes removing the `onMessage` method and adding a new method that uses the `@Incoming` annotation to receive messages from the queue.
+5. Finally, we need to update the `pom.xml` file to include the necessary dependencies for CDI and Quarkus. This includes adding the `quarkus-cdi` and `quarkus-logging-json` dependencies.
+
+## Updated File
+
+```java
+package org.jboss.as.quickstarts.mdb;
+
+import io.quarkus.logging.Log;
+import jakarta.enterprise.context.ApplicationScoped;
+
+/**
+ * <p>
+ * A simple Message Driven Bean that asynchronously receives and processes the messages that are sent to the queue.
+ * </p>
+ *
+ * @author Serge Pagop (spagop@redhat.com)
+ */
+@ApplicationScoped
+public class HelloWorldQueueMDB {
+
+    private static final Logger LOGGER = Logger.getLogger(HelloWorldQueueMDB.class.toString());
+
+    /**
+     * @see MessageListener#onMessage(Message)
+     */
+    @Incoming("CMTQueue")
+    public void onMessage(String msg) {
+        Log.info("Received Message from queue: " + msg);
+    }
+}
+```
+
+## pom.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.jboss.as.quickstarts</groupId>
+    <artifactId>mdb</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>Quarkus Quickstart</name>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-cdi</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-logging-json</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-maven-plugin</artifactId>
+                <version>${quarkus.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>build</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
+```

@@ -1,0 +1,31 @@
+
+## Reasoning
+
+1. The first step is to identify the issue that needs to be addressed. The issue is that Enterprise Java Beans (EJBs) are not supported in Quarkus, and CDI must be used instead. Therefore, we need to replace the `@MessageDriven` annotation with a CDI scope annotation like `@ApplicationScoped`.
+2. The next step is to review the solved example provided in the `HelloWorldMDB.java` file. The example shows how to replace the `@MessageDriven` annotation with the `@ApplicationScoped` annotation and how to use the `@Incoming` annotation to receive messages from the queue.
+3. We need to apply the same changes to the `HelloWorldQueueMDB.java` file. We need to replace the `@MessageDriven` annotation with the `@ApplicationScoped` annotation and add the `@Incoming` annotation to receive messages from the queue.
+4. We also need to update the imports to use the correct packages for CDI and reactive messaging.
+5. Finally, we need to update the `pom.xml` file to include the necessary dependencies for CDI and reactive messaging.
+
+## Updated File
+
+```java
+package org.jboss.as.quickstarts.mdb;
+
+import java.util.logging.Logger;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import org.eclipse.microprofile.reactive.messaging.Incoming;
+import org.jboss.as.quickstarts.mdb.HelloWorldQueueMDB;
+
+@ApplicationScoped
+public class HelloWorldQueueMDB {
+
+   private static final Logger LOGGER = Logger.getLogger(HelloWorldQueueMDB.class.toString());
+
+   @Incoming("CMTQueue")
+   public void onMessage(String msg) {
+       LOGGER.info("Received Message from queue: " + msg);
+   }
+}
+```
