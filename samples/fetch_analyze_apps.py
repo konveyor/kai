@@ -114,7 +114,7 @@ def analyze(source_dir, name, target):
     full_output_dir = os.path.join(os.getcwd(), f"analysis_reports/{name}/{target}")
     ensure_output_dir_exists(full_output_dir)
     print(f"Analyzing '{source_dir}', will write output to '{full_output_dir}'")
-    cmd = f'time ./bin/kantra analyze -i {source_dir} -t "quarkus" -t "jakarta-ee" -t "jakarta-ee8+" -t "jakarta-ee9+" -t "cloud-readiness" -o {full_output_dir} --overwrite'
+    cmd = f'time ./bin/kantra analyze -i {source_dir} -t "quarkus" -t "jakarta-ee" -t "jakarta-ee8+" -t "jakarta-ee9+" -t "cloud-readiness" --rules custom_rules/01-jms-to-reactive-quarkus.windup.yaml -o {full_output_dir} --overwrite'
     subprocess.run(cmd, shell=True)  # trunk-ignore(bandit)
 
 

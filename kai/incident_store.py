@@ -123,7 +123,6 @@ class IncidentStore:
                             variables: {}
                             line_number: int
                             message: str
-                            commitId: str
                         } ]
                     }
                }
@@ -442,7 +441,6 @@ class IncidentStore:
         Create a temporary cached_violations for the given application
 
         """
-        app_variables = self.get_app_variables(app_name)
         temp_cached_violations = {}
         for ruleset in report.keys():
             if ruleset not in temp_cached_violations:
@@ -484,7 +482,6 @@ class IncidentStore:
                         "variables": copy.deepcopy(incident.get("variables", {})),
                         "line_number": incident.get("lineNumber", None),
                         "message": incident.get("message", None),
-                        "commitId": app_variables["new_commitId"],
                     }
                     temp_cached_violations[ruleset][violation_name][app_name][
                         file_path
@@ -694,15 +691,19 @@ class IncidentStore:
         mapping = {
             "eap-coolstore-monolith": "samples/sample_repos/eap-coolstore-monolith",
             "ticket-monster": "samples/sample_repos/ticket-monster",
-            "kitchensink": "samples/sample_repos/kitchensink-quarkus",
-            "helloworld-mdb": "samples/sample_repos/helloworld-mdb-quarkus",
+            "kitchensink": "samples/sample_repos/kitchensink",
+            "helloworld-mdb": "samples/sample_repos/helloworld-mdb",
             "bmt": "samples/sample_repos/bmt",
             "cmt": "samples/sample_repos/cmt",
             "ejb-remote": "samples/sample_repos/jboss-eap-quickstarts-quarkus",
-            "ejb-security": "samples/sample_repos/jboss-eap-quickstarts",
+            "ejb-security": "samples/sample_repos/jboss-eap-quickstarts-quarkus",
             "tasks-jsf": "samples/sample_repos/jboss-eap-quickstarts-quarkus",
         }
-        return mapping.get(app_name, None)
+
+        basedir = os.path.dirname(os.path.realpath(__file__))
+        parent_dir = os.path.dirname(basedir)
+        path = mapping.get(app_name, None)
+        return os.path.join(parent_dir, path)
 
     def find_if_solved_issues_exist(self):
         """

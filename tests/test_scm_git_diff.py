@@ -171,3 +171,23 @@ class TestGitDiff(unittest.TestCase):
         patch_starts_with = "@@ -16,14 +16,10 @@"
         self.assertTrue(patch.startswith(patch_starts_with))
         self.assertTrue("+@ApplicationScoped" in patch)
+
+    def test_diff_exists_for_file(self):
+        cmt_path = self.get_cmt_repo_path()
+        gd = GitDiff(cmt_path)
+        old_commit = gd.get_commit_from_branch("main").hexsha
+        gd.checkout_branch("quarkus")
+        new_commit = gd.get_commit_from_branch("quarkus").hexsha
+        file_path = (
+            "src/main/java/org/jboss/as/quickstarts/cmt/ejb/CustomerManagerEJB.java"
+        )
+        self.assertTrue(gd.diff_exists_for_file(old_commit, new_commit, file_path))
+
+    def test_diff_exists_for_file_no_diff(self):
+        cmt_path = self.get_cmt_repo_path()
+        gd = GitDiff(cmt_path)
+        old_commit = gd.get_commit_from_branch("main").hexsha
+        gd.checkout_branch("quarkus")
+        new_commit = gd.get_commit_from_branch("quarkus").hexsha
+        file_path = "src/main/webapp/customer.xhtml"
+        self.assertFalse(gd.diff_exists_for_file(old_commit, new_commit, file_path))
