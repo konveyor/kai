@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 # TODO: Rip comments from analyzer-lsp and paste here
 
@@ -16,7 +17,7 @@ class Incident:
   message: str
   code_snip: str
   line_number: int | None
-  variables: dict
+  variables: dict[str, Any]
 
 
 @dataclass

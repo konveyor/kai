@@ -154,17 +154,17 @@ def prepopulate_incident_store():
     pass
 
 
-def user_gives_which_repo_and_branch(params):
-    """
-    params (json):
-    - repo: The repo to look at
-    - program: 'git' | 'svn' | etc... (let's only support git for now)
-    - branch: Duh
-    """
+# def user_gives_which_repo_and_branch(params):
+#     """
+#     params (json):
+#     - repo: The repo to look at
+#     - program: 'git' | 'svn' | etc... (let's only support git for now)
+#     - branch: Duh
+#     """
 
-    # TODO: Clone the repo locally on the server
+#     # TODO: Clone the repo locally on the server
 
-    pass
+#     pass
 
 
 def get_incident_solution(params):
@@ -202,6 +202,9 @@ def get_incident_solution(params):
             "id": cache_result_id,
         }
     )
+
+
+
 
 
 def accept_or_reject_solution(params):

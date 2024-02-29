@@ -4,6 +4,8 @@ import random
 from configparser import ConfigParser
 from enum import Enum
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+import datetime
 
 import psycopg2
 from psycopg2.extensions import connection
@@ -165,6 +167,15 @@ def embedding_playground(conn: connection, embp: EmbeddingProvider) -> None:
         break
 
 
+@dataclass
+class Application:
+  application_id: int | None = None
+  application_name: str
+  repo_uri: str
+  current_branch: str
+  current_commit: str
+  generated_at: datetime.datetime
+
 # TODO: Potentially create a Redis version of the incident store as well?
 class PSQLIncidentStore:
   def __init__(
@@ -211,41 +222,77 @@ class PSQLIncidentStore:
         # Containerize? "CREATE EXTENSION IF NOT EXISTS vector;" Only works as
         # superuser
 
-        cur.execute("""
-          CREATE TABLE IF NOT EXISTS solved_incidents (
-            incident_id SERIAL PRIMARY KEY,
-            app_name       TEXT NOT NULL,
-            ruleset_name   TEXT NOT NULL,
-            violation_name TEXT NOT NULL,
-            incident_uri   TEXT NOT NULL,
-            incident_snip  TEXT NOT NULL, 
-            incident_diff  TEXT NOT NULL
-          );
-        """)
+        # TODO: along with analyzer_types.py, we should really use something
+        # like openapi to nail down the spec and autogenerate the types
 
-        # TODO: Put the embedding name in the table name?
-        # - https://www.psycopg.org/docs/sql.html
-        cur.execute(f"""
-          CREATE TABLE IF NOT EXISTS embeddings (
-            embedding_id SERIAL PRIMARY KEY,
-            incident_id  INT,
-            embedding    vector(%s),
-            FOREIGN KEY (incident_id)
-              REFERENCES solved_incidents(incident_id)
-          );
-        """, (self.emb_provider.get_dimension(),))
-
-        # TODO: Flesh this out
-        cur.execute("""
-          CREATE TABLE IF NOT EXISTS pending_solutions (
-            id SERIAL PRIMARY KEY,
-            placeholder TEXT
-          );
-        """)
+        cur.execute(
+          open("schema.sql", "r").read(), 
+          (self.emb_provider.get_dimension(),)
+        )
     except (psycopg2.DatabaseError, Exception) as error:
       print(error)
 
-  
+  def insert_and_update_from_report(self, app: Application, output_yaml_path: str):
+    # load app.yaml
+    # load output.yaml
+    # create entries if not exists
+    # reference the old-new matrix
+    #           old
+    #         | NO     | YES
+    # --------|--------+-----------------------------
+    # new NO  | -      | update (SOLVED, embeddings)
+    #     YES | insert | update (line number, etc...)
+
+    # self.conn.autocommit = False
+    # """CREATE TABLE new_table_name (LIKE old_table_name INCLUDING ALL);"""
+
+    with self.conn.cursor() as cur:
+      app_id = app.application_id
+      app_name = app.application_name
+
+      if app.application_id is not None:
+        cur.execute(
+          "SELECT COUNT(*) FROM applications WHERE application_id = %s AND application_name = %s;",
+          (app_id, app_name,))
+        
+        count = cur.fetchone()[0]
+
+        if count != 1:
+          raise Exception("Key error for application_id and application_name.")
+      else:
+        cur.execute(
+          "SELECT COUNT(*) FROM applications WHERE application_name = %s;",
+          (app_name,))
+        
+        count = cur.fetchone()[0]
+        
+        if count >= 2:
+          raise Exception(f"More than one application with name '{app_name}'. Specify further with application_id.")
+        elif count == 1:
+          cur.execute(
+            "SELECT application_id FROM applications WHERE application_name = %s;",
+            (app_name,))
+          app_id = cur.fetchone()[0]
+        else:
+          cur.execute(
+            """INSERT INTO applications(application_name, repo_uri, current_branch, current_commit, generated_at) 
+            VALUES (%s, %s, %s, %s, %s) RETURNING application_id;""",
+            (app_name, app.repo_uri, app.current_branch, app.current_commit, app.generated_at,)
+          )
+          app_id = cur.fetchone()[0]
+
+
+    # self.conn.autocommit = True
+
+  # Automatic vs manual solution acceptance
+
+
+  def accept_solution_from_id(self, incident_id: int, solution_id: int | None,):
+    pass
+
+  def accept_solution_from_diff():
+    pass
+
   # TODO: Batch requests as a performance optimization
   def insert_solved_incident(self, *, 
     app_name: str, ruleset_name: str, violation_name: str, incident_uri: str,
