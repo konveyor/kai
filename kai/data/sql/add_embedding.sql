@@ -1,0 +1,1 @@
+ALTER TABLE accepted_solutions ADD COLUMN IF NOT EXISTS embedding vector(%s); 

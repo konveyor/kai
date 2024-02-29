@@ -1,18 +1,31 @@
 #!/usr/bin/python3
 
+# FIXME: This code should live in 'kai-service' but I couldn't get it to import
+# the required `kai` modules. Someone smarter than me may be able to fix this.
+# For now, I just copied this code wholesale. - jsussman
+
+# TODO: Evaluate the viability of making this a django app - jsussman
+
 """This module is intended to facilitate using Konveyor with LLMs."""
 
+import datetime
 import json
 import os
 import warnings
 from os import listdir
 from os.path import isfile, join
+import asyncio
 
 import aiohttp
-import yaml
 from aiohttp import web
+from aiohttp.web import Response
+from aiohttp.web_request import Request
+import yaml
+import jsonschema
 
-from ..kai.incident_store_advanced import PSQLIncidentStore, EmbeddingNone
+from report import Report
+from incident_store_advanced import PSQLIncidentStore, EmbeddingNone, Application
+from prompt_builder import PromptBuilder
 
 # TODO: Make openapi spec for everything
 
@@ -26,13 +39,6 @@ from ..kai.incident_store_advanced import PSQLIncidentStore, EmbeddingNone
 
 
 routes = web.RouteTableDef()
-
-incident_store = PSQLIncidentStore(
-    config_filepath="../kai/database.ini",
-    config_section="postgresql",
-    emb_provider=EmbeddingNone,
-)
-
 
 def load_config():
     """Load the configuration from a yaml conf file."""
@@ -155,25 +161,58 @@ async def proxy_handler(request):
 async def run_analysis_report():
     pass
 
+
+@routes.post('/dummy_json_request')
+async def post_dummy_json_request(request: Request):
+    print(f"post_dummy_json_request recv'd: {request}")
+
+    request_json: dict = await request.json()
+
+    return web.json_response({'feeling': 'OK!'})
+
+
 @routes.post('/load_analysis_report')
-async def load_analysis_report(request):
-    print(request)
-    print(type(request))
+async def post_load_analysis_report(request: Request):
+    schema: dict = json.loads(open("data/jsonschema/post_load_analysis_report.json").read())
+    request_json: dict = await request.json()
 
-    request_json = await request.json()
+    try:
+        jsonschema.validate(instance=request_json, schema=schema)
+    except jsonschema.ValidationError as err:
+        raise web.HTTPUnprocessableEntity(text=f"{err}")
 
-    print(f"{request_json=}")
+    request_json['application'].setdefault('application_id')
+
+    application = Application(**request_json["application"])
+    path_to_report: str = request_json["path_to_report"]
+    report = Report(path_to_report)
+
+    count = incident_store.insert_and_update_from_report(application, report)
+
+    return web.json_response({
+        'number_new_incidents':      count[0],
+        'number_unsolved_incidents': count[1],
+        'number_solved_incidents':   count[2],
+    })
 
 
+# FIXME: Dangerous! Remove before deploying!
+@routes.post('/drop_tables')
+async def post_drop_tables(request: Request):
+    conn = incident_store.conn
+    with conn.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS applications CASCADE;")
+        cur.execute("DROP TABLE IF EXISTS rulesets CASCADE;")
+        cur.execute("DROP TABLE IF EXISTS violations CASCADE;")
+        cur.execute("DROP TABLE IF EXISTS accepted_solutions CASCADE;")
+        cur.execute("DROP TABLE IF EXISTS incidents CASCADE;")
+        cur.execute("DROP TABLE IF EXISTS potential_solutions CASCADE;")
+
+    return web.Response(text="Ok")
 
 
-
-def prepopulate_incident_store():
-    """For demo, populate store with already solved examples"""
-    pass
-
-
-def get_incident_solution(params):
+@routes.post('/get_incident_solution')
+async def post_get_incident_solution(request: Request):
     # TODO: Make a streaming version
 
     """
@@ -183,6 +222,7 @@ def get_incident_solution(params):
     Stateful, stores it
 
     params (json):
+    - application_name
     - ruleset_name
     - violation_name
     - file_contents
@@ -238,13 +278,34 @@ def accept_or_reject_solution(params):
 app = web.Application()
 app.add_routes(routes)
 
-incident_store = PSQLIncidentStore(
-    config_filepath="../kai/database.ini",
-    emb_provider=EmbeddingInstructor(),
-)
+incident_store: PSQLIncidentStore
+prompt_builder: PromptBuilder
 
 if __name__ == "__main__":
-    # TODO: Remove after demo
-    prepopulate_incident_store()
+    incident_store = PSQLIncidentStore(
+        config_filepath="../kai/database.ini",
+        config_section="postgresql",
+        emb_provider=EmbeddingNone(),
+        drop_tables=True,
+    )
+
+    old_cmt_commit = 'c0267672ffab448735100996f5ad8ed814c38847'
+    old_cmt_time   = 1708003534
+    old_cmt_report_path ='/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/samples/analysis_reports/cmt/initial/output.yaml'
+    old_cmt_report      = Report(old_cmt_report_path)
+    new_cmt_commit = '25f00d88f8bceefb223390dcdd656bd5af45146e'
+    new_cmt_time   = 1708003640
+    new_cmt_report_path = '/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/samples/analysis_reports/cmt/solved/output.yaml'
+    new_cmt_report      = Report(new_cmt_report_path)
+    cmt_uri_origin = 'https://github.com/konveyor-ecosystem/cmt.git'
+    cmt_uri_local  = 'file:///home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/samples/sample_repos/cmt'
+
+    old_cmt_application = Application(None, 'cmt', cmt_uri_origin, cmt_uri_local, 'main',    old_cmt_commit, datetime.datetime.fromtimestamp(old_cmt_time))
+    new_cmt_application = Application(None, 'cmt', cmt_uri_origin, cmt_uri_local, 'quarkus', new_cmt_commit, datetime.datetime.fromtimestamp(new_cmt_time))
+
+    incident_store.insert_and_update_from_report(old_cmt_application, old_cmt_report)
+    # input("> ")
+    incident_store.insert_and_update_from_report(new_cmt_application, new_cmt_report)
 
     web.run_app(app)
+
