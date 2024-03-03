@@ -1,0 +1,56 @@
+## Reasoning
+
+To migrate the `Resources.java` file from Java EE to Quarkus, we need to address the issue identified by the static code analysis. The issue is related to the use of `@PersistenceContext` and `@Produces` annotations for injecting an `EntityManager`. In Quarkus, the `EntityManager` is automatically produced when the datasource is configured, so we don't need to use `@Produces` for it.
+
+Here are the steps we will take to update the file:
+
+1. **Remove `@Produces` Annotation for `EntityManager`:** Since Quarkus handles the creation of `EntityManager` beans automatically, we do not need to produce it manually. We will remove the `@Produces` annotation from the `EntityManager` field.
+
+2. **Update Imports:** We will replace the `javax` imports with `jakarta` imports as Quarkus uses Jakarta EE APIs.
+
+3. **Remove `@RequestScoped` Annotation for `FacesContext`:** In Quarkus, we don't need to define the scope for `FacesContext` producer method as it is request-scoped by default.
+
+4. **Update `pom.xml`:** We need to ensure that the `pom.xml` file includes the Quarkus dependencies and that any Java EE dependencies are removed or replaced with their Jakarta EE equivalents.
+
+5. **Code Cleanup:** We will remove any unnecessary comments or annotations that are not relevant to Quarkus.
+
+Now, let's update the file according to these steps.
+
+## Updated File
+```java
+package org.jboss.as.quickstarts.greeter;
+
+import java.util.logging.Logger;
+
+import jakarta.enterprise.inject.spi.InjectionPoint;
+import jakarta.faces.context.FacesContext;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+
+public class Resources {
+
+    // Inject an entity manager provided by Quarkus
+    @Inject
+    private EntityManager em;
+
+    public EntityManager getEm() {
+        return em;
+    }
+
+    public Logger getLogger(InjectionPoint ip) {
+        String category = ip.getMember().getDeclaringClass().getName();
+        return Logger.getLogger(category);
+    }
+
+    public FacesContext getFacesContext() {
+        return FacesContext.getCurrentInstance();
+    }
+
+}
+```
+
+Please note that we have removed the `@Produces` annotation from the `EntityManager` field and replaced it with `@Inject`. We have also updated the imports to use `jakarta` instead of `javax`. The `@RequestScoped` annotation for the `FacesContext` producer method has been removed as it is not necessary in Quarkus.
+
+In the `pom.xml`, you would need to ensure that you have the Quarkus dependencies for JPA and Faces, such as `quarkus-hibernate-orm-panache` and `quarkus-myfaces` if you are using JSF. You would also remove any Java EE dependencies that are no longer needed.
+
+Remember to test the application thoroughly after making these changes to ensure that everything works as expected in the new Quarkus environment.
