@@ -2,9 +2,8 @@
 
 import os
 import subprocess  # trunk-ignore(bandit)
-import sys
 
-from config import repos, sample_source_apps, sample_target_apps
+from config import repos
 
 
 # clone the sample apps in the sample_repos directory

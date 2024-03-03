@@ -20,6 +20,13 @@ For example, [analyzer-lsp Rules](https://github.com/konveyor/analyzer-lsp/blob/
 2. `source env/bin/activate`
 3. `pip install -r ./requirements.txt`
 
+#### Ensure you have the source code for the sample applications checked out locally
+
+1. `cd ./samples`
+2. `./fetch_apps.py`
+   - This will checkout the sample app source code to: `./samples/sample_repos`
+     - This directory is in .gitignore
+
 ### (OPTIONAL) Run an analysis of a sample app (example for MacOS)
 
 Note: We have checked in analysis runs for all sample applications so you do NOT need to run analysis yourself. The instructions below are ONLY if you want to recreate, this is NOT required
