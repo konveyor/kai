@@ -1,0 +1,58 @@
+## Reasoning
+
+1. The first step is to understand the issue found from static code analysis. The issue is that Enterprise Java Beans (EJBs) are not supported in Quarkus, and the `@MessageDriven` annotation used in the Java EE code needs to be replaced with a CDI scope annotation.
+2. In the solved example provided, the `@MessageDriven` annotation was replaced with `@ApplicationScoped` and `@Incoming` annotation. The `@ApplicationScoped` annotation is used to define a CDI bean with application scope, and the `@Incoming` annotation is used to define a message handler.
+3. In the input Java EE code, the `@MessageDriven` annotation is used to define a message-driven bean that listens to a message queue. To achieve the same functionality in Quarkus, we will replace the `@MessageDriven` annotation with `@ApplicationScoped` and `@Incoming` annotations.
+4. The `@ActivationConfigProperty` annotations used in the Java EE code to configure the message queue and acknowledge mode will need to be replaced with Quarkus configuration properties.
+5. The `MessageListener` interface and its `onMessage` method will be replaced with a method annotated with `@Incoming` and a String parameter to receive the message.
+6. The `javax.jms` dependencies will need to be removed from the `pom.xml` file as Quarkus provides its own messaging implementation.
+
+## Updated File
+
+```java
+package org.jboss.as.quickstarts.mdb;
+
+import io.quarkus.logging.Log;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
+import jakarta.inject.Inject;
+import org.jboss.shrine.api.events.OrderEvent;
+
+/**
+ * A simple Message Driven Bean that asynchronously receives and processes the messages that are sent to the queue.
+ *
+ * @author Serge Pagop (spagop@redhat.com)
+ */
+@ApplicationScoped
+public class HelloWorldQueueMDB {
+
+    @Inject
+    Log log;
+
+    public void onMessage(@Observes OrderEvent event) {
+        log.info("Received Message from queue: " + event.getMessage());
+    }
+}
+```
+
+## pom.xml
+
+```xml
+<dependencies>
+    <dependency>
+        <groupId>io.quarkus</groupId>
+        <artifactId>quarkus-reactive-messaging-amqp</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>io.quarkus</groupId>
+        <artifactId>quarkus-smallrye-event-notifications</artifactId>
+    </dependency>
+</dependencies>
+```
+
+## Configuration
+
+```properties
+quarkus.reactive-messaging.amqp.url=amqp://localhost:5672/quarkus
+quarkus.reactive-messaging.amqp.queue.name=HELLOWORLDMDBQueue
+```

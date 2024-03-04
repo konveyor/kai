@@ -1,0 +1,34 @@
+### Reasoning:
+The given Java EE file uses `@MessageDriven` annotation which is not supported in Quarkus. Instead, we need to use CDI scopes such as `@ApplicationScoped` and `@Inject` to achieve similar functionality.First, we need to remove the `@MessageDriven` annotation and its related properties from the class definition.Next, we need to replace the `MessageListener` interface implementation with a method annotated with `@Incoming` from `io.quarkus.reactive.messaging.Incoming`.We also need to replace the `javax.jms.Message` and `javax.jms.TextMessage` imports with their Quarkus equivalents `io.quarkus.reactive.messaging.Message` and `java.lang.String` respectively.Lastly, we need to inject the dependency of the message source using `@Inject` annotation.Here is the updated file contents:
+### Updated file 1
+src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java:import io.quarkus.logging.Log;
+import io.quarkus.reactive.messaging.Incoming;
+import javax.inject.Inject;
+import org.eclipse.microprofile.reactive.messaging.Message;
+
+@ApplicationScoped
+public class HelloWorldQueueMDB {
+	@Inject
+    Message<String> message;
+
+    public void onMessage() {
+        Log.info("Received Message from queue: ", message.get().getPayload());
+    }
+}### Reasoning:
+The given Java EE file uses `@MessageDriven` annotation which is not supported in Quarkus. Instead, we need to use CDI scopes such as `@ApplicationScoped` and `@Inject` to achieve similar functionality.To migrate the Java EE file to Quarkus, we need to replace the `@MessageDriven` annotation with `@ApplicationScoped` and remove the `MessageListener` interface implementation.Additionally, we need to replace the `javax.jms.Message` and `javax.jms.TextMessage` imports with their Quarkus equivalents `io.quarkus.reactive.messaging.Incoming` and `String` respectively.We also need to remove the `javax.ejb.ActivationConfigProperty` annotations and their related properties as they are not needed in Quarkus.Lastly, we need to update the `pom.xml` file to remove the dependencies related to `javax.ejb-api` and `javax.jms-api`.
+### Updated file 1
+src/main/java/org/jboss/as/quickstarts/mdb/HelloWorldQueueMDB.java:import io.quarkus.logging.Log;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import io.quarkus.reactive.messaging.Incoming;
+
+@ApplicationScoped
+public class HelloWorldQueueMDB {
+	@Inject
+    Log log;
+
+    @Incoming("HELLOWORLDMDBQueue")
+    public void onMessage(String msg) {
+        log.info("Received Message from queue: " + msg);
+    }
+}

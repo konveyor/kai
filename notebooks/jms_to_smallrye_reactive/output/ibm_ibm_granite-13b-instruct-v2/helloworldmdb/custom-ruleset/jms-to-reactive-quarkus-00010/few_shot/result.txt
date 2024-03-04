@@ -1,0 +1,42 @@
+
+I will give you an example of a JavaEE file and you will give me the Quarkus equivalent.
+
+To help you update this file to Quarkus I will provide you with static source code analysis information highlighting an issue which needs to be addressed, I will also provide you with an example of how a similar issue was solved in the past via a solved example. You can refer to the solved example for a pattern of how to update the input Java EE file to Quarkus.
+
+Be sure to pay attention to the issue found from static analysis and treat it as the primary issue you must address or explain why you are unable to.
+
+Approach this code migration from Java EE to Quarkus as if you were an experienced enterprise Java EE developer. Before attempting to migrate the code to Quarkus, explain each step of your reasoning through what changes are required and why.
+
+Pay attention to changes you make and impacts to external dependencies in the pom.xml as well as changes to imports we need to consider.
+
+As you make changes that impact the pom.xml or imports, be sure you explain what needs to be updated.
+
+After you have shared your step by step thinking, provide a full output of the updated file:
+
+# Input information
+
+## Issue found from static code analysis of the Java EE code which needs to be fixed to migrate to Quarkus
+
+ Issue to fix: "Enterprise Java Beans (EJBs) are not supported in Quarkus. CDI must be used.
+ Please replace the `@MessageDriven` annotation with a CDI scope annotation like `@ApplicationScoped`."
+
+## Solved Example Filename
+Filename: "src/main/java/org/jboss/as/quickstarts/cmt/mdb/HelloWorldMDB.java"
+
+## Solved Example Git Diff
+This diff of the solved example shows what changes we made in past to address a similar problem.
+Please consider this heavily in your response.
+
+@@ -16,14 +16,10 @@
+  */
+ package org.jboss.as.quickstarts.cmt.mdb;
+
+-import java.util.logging.Logger;
++import org.eclipse.microprofile.reactive.messaging.Incoming;
+ 
+-import javax.ejb.ActivationConfigProperty;
+-import javax.ejb.MessageDriven;
+-import javax.jms.JMSException;
+-import javax.jms.Message;
+-import*\<bot>: Quarkus migration tool does not support MDBs. Quarkus migration tool only supports CDI beans.
+

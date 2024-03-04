@@ -1,0 +1,70 @@
+
+### Reasoning
+
+1. The first step is to identify the issue with the code. The issue is that the code uses Enterprise Java Beans (EJBs) which are not supported in Quarkus. CDI must be used instead.
+2. The next step is to look at the solved example to see how a similar issue was addressed. The solved example shows that the `@MessageDriven` annotation was replaced with a CDI scope annotation like `@ApplicationScoped`.
+3. The next step is to apply the same solution to the input file. The `@MessageDriven` annotation is replaced with `@ApplicationScoped`.
+4. The next step is to look at the imports to see if any changes are needed. The import for `javax.ejb.MessageDriven` is removed and the import for `io.quarkus.logging.Log` is added.
+5. The next step is to look at the pom.xml to see if any changes are needed. The dependency for `org.jboss.spec.javax.ejb:jboss-ejb-api_3.2_spec` is removed and the dependency for `io.quarkus:quarkus-arc` is added.
+6. The next step is to look at the code to see if any changes are needed. The `onMessage` method is updated to use the `Log` class instead of the `Logger` class.
+
+### Updated File
+
+```java
+/*
+ * JBoss, Home of Professional Open Source
+ * Copyright 2015, Red Hat, Inc. and/or its affiliates, and individual
+ * contributors by the @authors tag. See the copyright.txt in the
+ * distribution for a full listing of individual contributors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.jboss.as.quickstarts.mdb;
+
+import java.util.logging.Logger;
+import jakarta.enterprise.context.ApplicationScoped;
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.MessageListener;
+import javax.jms.TextMessage;
+
+import io.quarkus.logging.Log;
+
+/**
+ * <p>
+ * A simple Message Driven Bean that asynchronously receives and processes the messages that are sent to the queue.
+ * </p>
+ *
+ * @author Serge Pagop (spagop@redhat.com)
+ */
+@ApplicationScoped
+public class HelloWorldQueueMDB implements MessageListener {
+
+   private static final Logger LOGGER = Logger.getLogger(HelloWorldQueueMDB.class.toString());
+
+   /**
+    * @see MessageListener#onMessage(Message)
+    */
+   public void onMessage(Message rcvMessage) {
+       TextMessage msg = null;
+       try {
+           if (rcvMessage instanceof TextMessage) {
+               msg = (TextMessage) rcvMessage;
+               Log.info("Received Message from queue: " + msg.getText());
+           } else {
+               Log.warning("Message of wrong type: " + rcvMessage.getClass().getName());
+           }
+       } catch (JMSException e) {
+           throw new RuntimeException(e);
+       }
+   }
+}
+```

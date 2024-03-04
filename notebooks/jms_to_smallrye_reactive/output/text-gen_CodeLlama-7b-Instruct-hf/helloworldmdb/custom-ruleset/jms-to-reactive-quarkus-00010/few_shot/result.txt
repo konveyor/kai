@@ -1,0 +1,67 @@
+
+## Reasoning
+
+To migrate this Java EE code to Quarkus, we need to replace the `@MessageDriven` annotation with a CDI scope annotation like `@ApplicationScoped`.
+
+Here's the reasoning for each step:
+
+1. Replace the `@MessageDriven` annotation with `@ApplicationScoped`.
+
+This is because Quarkus does not support EJBs, so we need to use CDI instead. `@ApplicationScoped` is a CDI scope annotation that ensures that the bean is created once and shared across all requests.
+
+2. Remove the `javax.jms.Queue` import and add the `io.quarkus.reactive.messaging.Incoming` import.
+
+This is because Quarkus provides a reactive messaging API that we can use instead of the JMS API. We need to remove the `javax.jms.Queue` import because it is not supported in Quarkus, and add the `io.quarkus.reactive.messaging.Incoming` import to use the reactive messaging API.
+
+3. Replace the `MessageListener` interface with the `io.quarkus.reactive.messaging.Message` interface.
+
+This is because the `MessageListener` interface is not supported in Quarkus, and we need to use the `io.quarkus.reactive.messaging.Message` interface instead.
+
+4. Remove the `onMessage` method and add a `onMessage` method that takes a `String` parameter.
+
+This is because the `onMessage` method in the original code takes a `Message` parameter, but we need to change it to take a `String` parameter because the `io.quarkus.reactive.messaging.Message` interface only provides a `String` payload.
+
+5. Remove the `LOGGER` field and add a `Log` field.
+
+This is because Quarkus provides a logging API that we can use instead of the `java.util.logging.Logger` class. We need to remove the `LOGGER` field because it is not supported in Quarkus, and add the `Log` field to use the logging API.
+
+6. Remove the `LOGGER.info` and `LOGGER.warning` statements and add `Log.info` and `Log.warning` statements.
+
+This is because Quarkus provides a logging API that we can use instead of the `java.util.logging.Logger` class. We need to remove the `LOGGER.info` and `LOGGER.warning` statements because they are not supported in Quarkus, and add the `Log.info` and `Log.warning` statements to use the logging API.
+
+## Updated File
+
+Here's the updated file for Quarkus:
+```java
+/*
+ * JBoss, Home of Professional Open Source
+ * Copyright 2015, Red Hat, Inc. and/or its affiliates, and individual
+ * contributors by the @authors tag. See the copyright.txt in the
+ * distribution for a full listing of individual contributors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.jboss.as.quickstarts.mdb;
+
+import io.quarkus.logging.Log;
+import io.quarkus.reactive.messaging.Incoming;
+
+import javax.enterprise.context.ApplicationScoped;
+
+@ApplicationScoped
+public class HelloWorldQueueMDB {
+
+   @Incoming("HELLOWORLDMDBQueue")
+   public void onMessage(String msg) {
+       Log.info("Received Message from queue: " + msg);
+   }
+}
+```
