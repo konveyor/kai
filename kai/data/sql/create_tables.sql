@@ -35,8 +35,11 @@ CREATE TABLE IF NOT EXISTS accepted_solutions (
   solution_id         SERIAL PRIMARY KEY,
   generated_at        TIMESTAMP DEFAULT current_timestamp,
   solution_big_diff   TEXT NOT NULL,
-  solution_small_diff TEXT NOT NULL
-  -- embedding           vector(%s)
+  solution_small_diff TEXT NOT NULL,
+  solution_original_code TEXT NOT NULL,
+  solution_updated_code TEXT NOT NULL
+  -- small_diff_embedding           vector(%s)
+  -- original_code_embedding           vector(%s)
 );
 
 CREATE TABLE IF NOT EXISTS incidents (
@@ -48,6 +51,7 @@ CREATE TABLE IF NOT EXISTS incidents (
   incident_line       INT NOT NULL,
   incident_variables  JSONB NOT NULL,
   solution_id         INT REFERENCES accepted_solutions
+  -- incident_snip_embedding vector(%s)
 );
 
 CREATE TABLE IF NOT EXISTS potential_solutions (

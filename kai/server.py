@@ -15,6 +15,7 @@ import warnings
 from os import listdir
 from os.path import isfile, join
 import asyncio
+from typing import Callable, Any
 
 import aiohttp
 from aiohttp import web
@@ -23,9 +24,11 @@ from aiohttp.web_request import Request
 import yaml
 import jsonschema
 
+from psycopg2.extras import DictRow
+
 from report import Report
-from incident_store_advanced import PSQLIncidentStore, EmbeddingNone, Application
-from prompt_builder import PromptBuilder
+from incident_store_advanced import PSQLIncidentStore, EmbeddingInstructor, Application
+from prompt_builder import CONFIG_IBM, PromptBuilder
 
 # TODO: Make openapi spec for everything
 
@@ -39,6 +42,36 @@ from prompt_builder import PromptBuilder
 
 
 routes = web.RouteTableDef()
+
+
+# def post_json(func: Callable[[dict], Any], schema_name: str):
+#     async def wrapped_handler(request: Request):
+#         schema: dict = json.loads(open(f"data/jsonschema/{schema_name}.json").read())
+#         request_json: dict = await request.json()
+
+#         try:
+#             jsonschema.validate(instance=request_json, schema=schema)
+#         except jsonschema.ValidationError as err:
+#             raise web.HTTPUnprocessableEntity(text=f"{err}")
+        
+#         # TODO: Make better
+#         try:
+#             result = func(request_json)
+#         except web.HTTPException
+#         except Exception as err:
+#             return web.HTTPException(text=f"{err}")
+
+#         if isinstance(result, dict):
+#             return web.json_response(result)
+#         elif isinstance(result, list):
+#             return web.json_response(result)
+#         elif isinstance(result, str):
+#             return web.Response(text=result)
+#         else:
+#             return web.Response(text=str(result))
+    
+#     return wrapped_handler
+
 
 def load_config():
     """Load the configuration from a yaml conf file."""
@@ -171,6 +204,7 @@ async def post_dummy_json_request(request: Request):
     return web.json_response({'feeling': 'OK!'})
 
 
+
 @routes.post('/load_analysis_report')
 async def post_load_analysis_report(request: Request):
     schema: dict = json.loads(open("data/jsonschema/post_load_analysis_report.json").read())
@@ -196,19 +230,18 @@ async def post_load_analysis_report(request: Request):
     })
 
 
-# FIXME: Dangerous! Remove before deploying!
-@routes.post('/drop_tables')
-async def post_drop_tables(request: Request):
-    conn = incident_store.conn
-    with conn.cursor() as cur:
-        cur.execute("DROP TABLE IF EXISTS applications CASCADE;")
-        cur.execute("DROP TABLE IF EXISTS rulesets CASCADE;")
-        cur.execute("DROP TABLE IF EXISTS violations CASCADE;")
-        cur.execute("DROP TABLE IF EXISTS accepted_solutions CASCADE;")
-        cur.execute("DROP TABLE IF EXISTS incidents CASCADE;")
-        cur.execute("DROP TABLE IF EXISTS potential_solutions CASCADE;")
-
-    return web.Response(text="Ok")
+# # FIXME: Dangerous! Remove before deploying!
+# @routes.post('/drop_tables')
+# async def post_drop_tables(request: Request):
+#     conn = incident_store.conn
+#     with conn.cursor() as cur:
+#         cur.execute("DROP TABLE IF EXISTS applications CASCADE;")
+#         cur.execute("DROP TABLE IF EXISTS rulesets CASCADE;")
+#         cur.execute("DROP TABLE IF EXISTS violations CASCADE;")
+#         cur.execute("DROP TABLE IF EXISTS accepted_solutions CASCADE;")
+#         cur.execute("DROP TABLE IF EXISTS incidents CASCADE;")
+#         cur.execute("DROP TABLE IF EXISTS potential_solutions CASCADE;")
+#     return web.Response(text="Ok")
 
 
 @routes.post('/get_incident_solution')
@@ -222,11 +255,15 @@ async def post_get_incident_solution(request: Request):
     Stateful, stores it
 
     params (json):
-    - application_name
-    - ruleset_name
-    - violation_name
-    - file_contents
+    - application_name (str)
+    - ruleset_name (str)
+    - violation_name (str)
+    - incident_snip (str)
+    - incident_variables (list)
+    - file_name (str)
+    - file_contents (str)
     - line_number: 0-indexed (let's keep it consistent)
+    - analysis_message (str)
 
     return (json):
     - previously solved incident (if exists)
@@ -235,7 +272,58 @@ async def post_get_incident_solution(request: Request):
     - id of the associated solved incident
     """
 
-    solved_example = try_and_get_the_fricken_solved_example_maybe()
+    print(f"post_get_incident_solution recv'd: {request}")
+
+    request_json: dict = await request.json()
+
+    application_name: str = request_json['application_name']
+    ruleset_name: str = request_json['ruleset_name']
+    violation_name: str = request_json['violation_name']
+    incident_snip: str = request_json['incident_snip']
+    incident_vars: dict = request_json['incident_variables']
+    file_name: str = request_json['file_name']
+    file_contents: str = request_json['file_contents']
+    line_number: str = request_json['line_number']
+    analysis_message: str = request_json['analysis_message']
+
+    # Gather context
+    # First, let's see if there's an "exact" match
+
+
+    solved_incident, match_type = incident_store.get_fuzzy_similar_incident(
+        violation_name, ruleset_name, incident_snip, incident_vars
+    )
+
+    if not isinstance(solved_incident, dict):
+        raise Exception("solved_example not a dict")
+
+    pb_vars = {
+        'src_file_name': file_name,
+        'src_file_contents': file_contents,
+        'analysis_line_number': line_number,
+        'analysis_message': analysis_message,
+    }
+
+    if bool(solved_incident):
+        solved_example = incident_store.select_accepted_solution(
+            solved_incident['solution_id']
+        )
+        pb_vars['solved_example_diff']      = solved_example['solution_small_diff']
+        pb_vars['solved_example_file_name'] = solved_incident['incident_uri']
+
+    pb = PromptBuilder(CONFIG_IBM, pb_vars)
+
+    resp = {
+        # 'solved_example': solved_example,
+        # 'match_type': match_type,
+        'pb_vars': pb_vars,
+        'prompt': pb.build_prompt()
+    }
+
+    print(resp)
+
+    return web.json_response(resp)
+
     prompt = generate_prompt()
     llm_result = proxy_handler(prompt)  # Maybe?
 
@@ -248,9 +336,6 @@ async def post_get_incident_solution(request: Request):
             "id": cache_result_id,
         }
     )
-
-
-
 
 
 def accept_or_reject_solution(params):
@@ -279,14 +364,16 @@ app = web.Application()
 app.add_routes(routes)
 
 incident_store: PSQLIncidentStore
-prompt_builder: PromptBuilder
 
 if __name__ == "__main__":
+    reset_it = False
+
+    # TODO: Make this all config-based
     incident_store = PSQLIncidentStore(
         config_filepath="../kai/database.ini",
         config_section="postgresql",
-        emb_provider=EmbeddingNone(),
-        drop_tables=True,
+        emb_provider=EmbeddingInstructor(model='hkunlp/instructor-base'),
+        drop_tables=reset_it,
     )
 
     old_cmt_commit = 'c0267672ffab448735100996f5ad8ed814c38847'
@@ -303,9 +390,11 @@ if __name__ == "__main__":
     old_cmt_application = Application(None, 'cmt', cmt_uri_origin, cmt_uri_local, 'main',    old_cmt_commit, datetime.datetime.fromtimestamp(old_cmt_time))
     new_cmt_application = Application(None, 'cmt', cmt_uri_origin, cmt_uri_local, 'quarkus', new_cmt_commit, datetime.datetime.fromtimestamp(new_cmt_time))
 
-    incident_store.insert_and_update_from_report(old_cmt_application, old_cmt_report)
-    # input("> ")
-    incident_store.insert_and_update_from_report(new_cmt_application, new_cmt_report)
+    if reset_it:
+        incident_store.insert_and_update_from_report(old_cmt_application, old_cmt_report)
+        incident_store.insert_and_update_from_report(new_cmt_application, new_cmt_report)
+
+    print("serving!")
 
     web.run_app(app)
 

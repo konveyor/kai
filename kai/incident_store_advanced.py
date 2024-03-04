@@ -34,6 +34,7 @@ class TrimStrategy(Enum):
   TRIM_BACK  = 2
   TRIM_BOTH  = 3
 
+
 def trim_list(toks: list, max_len: int, trim_strategy: TrimStrategy=TrimStrategy.TRIM_BOTH) -> list:
   if len(toks) > max_len:
     num_to_trim = len(toks)-max_len
@@ -56,7 +57,7 @@ def trim_list(toks: list, max_len: int, trim_strategy: TrimStrategy=TrimStrategy
 
 class EmbeddingProvider(ABC):
   @abstractmethod
-  def get_embedding(self,inp: str) -> list | None:
+  def get_embedding(self, inp: str) -> list | None:
     pass
 
   @abstractmethod
@@ -248,6 +249,9 @@ def supply_cursor_if_none(func):
 
 
 # TODO: Potentially create a Redis version of the incident store as well?
+
+# TODO: Migrate this whole app to Django and use their native ORM stuff. Seems
+# to be much cleaner than rolling it by hand - jsussman
 class PSQLIncidentStore:
   def __init__(
     self, *, drop_tables: bool=False, config_filepath: str=None, 
@@ -301,8 +305,10 @@ class PSQLIncidentStore:
           cur.execute(open("data/sql/drop_tables.sql", "r").read())
 
         cur.execute(open("data/sql/create_tables.sql", "r").read())
-        cur.execute(open("data/sql/add_embedding.sql", "r").read(), 
-                    (self.emb_provider.get_dimension(),))
+
+        dim = self.emb_provider.get_dimension()
+        for q in open("data/sql/add_embedding.sql", "r").readlines():
+          cur.execute(q, (dim,))
 
     except (psycopg2.DatabaseError, Exception) as error:
       print(f"Error initializing PSQLIncidentStore: {error}")
@@ -419,7 +425,7 @@ class PSQLIncidentStore:
     cur.execute(
       """INSERT INTO violations(violation_name, ruleset_id, category, labels)
       VALUES (%s, %s, %s, %s) RETURNING *;""",
-      (violation_name, ruleset_id, category, json.dumps(labels))
+      (violation_name, ruleset_id, category, json.dumps(sorted(labels)))
     )
 
     return cur.fetchone()
@@ -431,11 +437,19 @@ class PSQLIncidentStore:
     incident_line: int, incident_variables: dict, solution_id: int = None, 
     cur: DictCursor = None
   ) -> DictRow:
+    # if isinstance(incident_variables, str):
+    #   incident_variables = json.loads(incident_variables)
+    # if not isinstance(incident_variables, list):
+    #   raise Exception(f"incident_variables must be of type list. Got type '{type(incident_variables)}'")
+
+    print(f"inserting {(violation_id, application_id, incident_uri, incident_line, json.dumps(incident_variables), solution_id,)}")
+
     cur.execute(
-      """INSERT INTO incidents(violation_id, application_id, incident_uri, incident_snip, incident_line, incident_variables, solution_id)
-      VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING *;""",
-      (violation_id, application_id, incident_uri, incident_snip, incident_line, 
-       json.dumps(incident_variables), solution_id)
+      """INSERT INTO incidents(violation_id, application_id, incident_uri, incident_snip, incident_line, incident_variables, solution_id, incident_snip_embedding)
+      VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING *;""",
+      (
+        violation_id, application_id, incident_uri, incident_snip, incident_line, 
+        json.dumps(incident_variables), solution_id, str(self.emb_provider.get_embedding(incident_snip)))
     )
 
     return cur.fetchone()
@@ -444,15 +458,166 @@ class PSQLIncidentStore:
   @supply_cursor_if_none
   def insert_accepted_solution(
     self, generated_at: datetime.datetime, solution_big_diff: str, 
-    solution_small_diff: str, embedding: list, cur: DictCursor = None 
+    solution_small_diff: str, solution_original_code: str, 
+    solution_updated_code: str, cur: DictCursor = None 
   ):
+    print(f"insertint accepted sln {(generated_at)}")
+    small_diff_embedding = str(self.emb_provider.get_embedding(solution_small_diff))
+    original_code_embedding = str(self.emb_provider.get_embedding(solution_original_code))
     cur.execute(
-      """INSERT INTO accepted_solutions(generated_at, solution_big_diff, solution_small_diff, embedding) 
-      VALUES (%s, %s, %s, %s) RETURNING *;""",
-      (generated_at, solution_big_diff, solution_small_diff, str(embedding))
+      """INSERT INTO accepted_solutions(generated_at, solution_big_diff, 
+      solution_small_diff, solution_original_code, solution_updated_code, 
+      small_diff_embedding, original_code_embedding) 
+      VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING *;""",
+      (
+        generated_at, solution_big_diff, solution_small_diff, 
+        solution_original_code, solution_updated_code, small_diff_embedding, 
+        original_code_embedding)
     )
 
     return cur.fetchone()
+
+
+  @supply_cursor_if_none
+  def select_accepted_solution(
+    self, solution_id: int, cur: DictCursor = None
+  ):
+    cur.execute(
+      "SELECT * FROM accepted_solutions WHERE solution_id = %s;",
+      (solution_id,)
+    )
+
+    return cur.fetchone()
+
+  @supply_cursor_if_none
+  def get_fuzzy_similar_incident(
+    self, violation_name: str, ruleset_name: str, incident_snip: str, 
+    incident_vars: dict, cur: DictCursor = None
+  ):
+    """
+    Returns tuple[DictRow | None, str] - First element is the match if it exists
+    - Second element is whether it is an exact match or not. Values can be:
+      - 'exact': exact match. From the same violation and has the same
+        variables. Filtered using similarity search
+      - 'variables_mismatch': From the same violation but does not have the same
+        variables.
+      - 'similarity_only': Not from the same violation, only based on snip
+        similarity search
+      - 'unseen_violation': We haven't seen this violation before. Same result
+        as 'similarity_only'
+      - 'ambiguous_violation': violation_name and ruleset_name did not uniquely
+        identify a violation. Same result as 'similarity_only'
+    """
+
+    # # Pseudo-code
+    # this_violation = get_violation_from_params()
+    # if this_violation_dne:
+    #   return get_snip_with_highest_embedding_similarity_from_all_violations(), 'similarity_only'
+
+    # this_violation_slns = get_solutions_for_this_violation()
+
+    # if len(this_violation_slns) == 0:
+    #   return get_snip_with_highest_embedding_similarity_from_all_violations(), 'similarity_only'
+
+    # # The violation we are looking at has at least one solution
+    # filter_on_vars = this_violation_slns.filter_exact(inp_vars)
+
+    # if len(filter_on_vars) == 0:
+    #   return get_snip_with_highest_embedding_similarity_from_all_solutions(), 'variables_mismatch'
+    # if len(filter_on_vars) == 1:
+    #   return filter_on_vars[0], 'exact'
+    # if len(filter_on_vars) > 1:
+    #   return get_snip_with_highest_embedding_similarity_from_filtered_set(), 'exact'
+
+    print('get_fuzzy_similar_incident')
+
+
+    emb = self.emb_provider.get_embedding(incident_snip)
+    emb_str = str(emb)
+
+    incident_vars_str = json.dumps(incident_vars)
+
+    def highest_embedding_similarity_from_all():
+      cur.execute('SELECT * FROM incidents ORDER BY incident_snip_embedding <-> %s LIMIT 1;', (emb_str,))
+      return dict(cur.fetchone())
+
+    cur.execute(
+      """
+      SELECT v.*
+      FROM violations v
+      JOIN rulesets r ON v.ruleset_id = r.ruleset_id
+      WHERE v.violation_name = %s
+      AND r.ruleset_name = %s;
+      """,
+      (violation_name, ruleset_name)
+    )
+
+    violation_query = cur.fetchall()
+
+    if len(violation_query) > 1:
+      print("Ambiguous violation based on ruleset_name and violation_name")
+      return highest_embedding_similarity_from_all(), 'ambiguous_violation'
+    if len(violation_query) == 0:
+      print(f"No violations matched: {ruleset_name=} {violation_name=}")
+      return highest_embedding_similarity_from_all(), 'unseen_violation'
+    
+    violation = violation_query[0]
+
+    cur.execute("""
+      SELECT COUNT(*)
+      FROM incidents
+      WHERE violation_id = %s
+      AND solution_id IS NOT NULL;
+      """,
+      (violation['violation_id'],)
+    )
+
+    number_of_slns = cur.fetchone()[0]
+    if number_of_slns == 0:
+      print(f"No solutions for violation: {ruleset_name=} {violation_name=}")
+      return highest_embedding_similarity_from_all(), 'similarity_only'
+
+    cur.execute("""
+      SELECT *
+      FROM incidents
+      WHERE violation_id = %s
+      AND solution_id IS NOT NULL
+      AND incident_variables <@ %s
+      AND incident_variables @> %s;
+      """,
+      (violation['violation_id'], incident_vars_str, incident_vars_str)
+    )
+
+    exact_variables_query = cur.fetchall()
+
+    if len(exact_variables_query) == 1:
+      return dict(exact_variables_query[0]), 'exact'
+    elif len(exact_variables_query) == 0:
+      cur.execute("""
+        SELECT *
+        FROM incidents
+        WHERE violation_id = %s
+        AND solution_id IS NOT NULL
+        ORDER BY incident_snip_embedding <-> %s
+        LIMIT 1;
+        """,
+        (violation['violation_id'], emb_str,)
+      )
+      return dict(cur.fetchone()), 'variables_mismatch'
+    else:
+      cur.execute("""
+        SELECT *
+        FROM incidents
+        WHERE violation_id = %s
+        AND solution_id IS NOT NULL
+        AND incident_variables <@ %s
+        AND incident_variables @> %s
+        ORDER BY incident_snip_embedding <-> %s
+        LIMIT 1;
+        """,
+        (violation['violation_id'], incident_vars_str, incident_vars_str, emb_str,)
+      )
+      return dict(cur.fetchone()), 'exact'
 
 
   def insert_and_update_from_report(self, app: Application, report: Report):
@@ -460,7 +625,7 @@ class PSQLIncidentStore:
     Returns: (number_new_incidents, number_unsolved_incidents,
     number_solved_incidents): tuple[int, int, int]
     """
-    # FIXME: Only does stuff within the same application
+    # FIXME: Only does stuff within the same application. Maybe fixed?
 
     # create entries if not exists
     # reference the old-new matrix
@@ -574,7 +739,7 @@ class PSQLIncidentStore:
 
       self.conn.autocommit = False
       for ni in new_incidents:
-        self.insert_incident(ni[2], ni[3], ni[4], ni[5], ni[6], ni[7], None)
+        self.insert_incident(ni['violation_id'], ni['application_id'], ni['incident_uri'], ni['incident_snip'], ni['incident_line'], ni['incident_variables'], None, cur)
       self.conn.commit()
       cur.fetchall()
       self.conn.autocommit = True
@@ -613,14 +778,24 @@ class PSQLIncidentStore:
 
       self.conn.autocommit = False
       for si in solved_incidents:
-        big_diff = repo.git.diff(old_commit, new_commit)
-        # file_path = pathlib.Path(os.path.join(repo_path, unquote(urlparse(si[3]).path).removeprefix('/tmp/source-code'))).as_uri()
         file_path = os.path.join(repo_path, unquote(urlparse(si[4]).path).removeprefix('/tmp/source-code/'))
+        big_diff = repo.git.diff(old_commit, new_commit)
+        
+        try:
+          original_code = repo.git.show(f"{old_commit}:{file_path}")
+        except:
+          original_code = ""
+
+        try:
+          updated_code = repo.git.show(f"{new_commit}:{file_path}")
+        except:
+          updated_code = ""
+
+        # file_path = pathlib.Path(os.path.join(repo_path, unquote(urlparse(si[3]).path).removeprefix('/tmp/source-code'))).as_uri()
         small_diff = repo.git.diff(old_commit, new_commit, "--", file_path)
-        embedding = self.emb_provider.get_embedding(small_diff)
 
         sln = self.insert_accepted_solution(
-          app.generated_at, big_diff, small_diff, embedding, cur
+          app.generated_at, big_diff, small_diff, original_code, updated_code, cur
         )
 
         cur.execute(
