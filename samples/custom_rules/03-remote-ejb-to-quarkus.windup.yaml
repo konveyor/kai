@@ -1,0 +1,32 @@
+- category: mandatory
+  customVariables: []
+  description: Remote EJBs are not supported in Quarkus
+  effort: 1
+  labels:
+  - konveyor.io/source=java-ee
+  - konveyor.io/source=jakarta-ee
+  - konveyor.io/target=quarkus
+  links:
+  - title: Jakarta RESTful Web Services
+    url: https://jakarta.ee/specifications/restful-ws/
+  message: |-
+    Remote EJBs are not supported in Quarkus, and therefore its use must be removed and replaced with REST functionality. In order to do this:
+     1. Replace the `@Remote` annotation on the class with a `@jakarta.ws.rs.Path("<endpoint>")` annotation. An endpoint must be added to the annotation in place of `<endpoint>` to specify the actual path to the REST service.
+     2. Remove `@Stateless` annotations if present. Given that REST services are stateless by nature, it makes it unnecessary.
+     3. For every public method on the EJB being converted, do the following:
+     - Annotate the method with `@jakarta.ws.rs.GET`
+     - Annotate the method with `@jakarta.ws.rs.Path("<endpoint>")` and give it a proper endpoint path. As a rule of thumb, the method name can be used as endpoint, for instance:
+     ```
+     @Path("/increment")
+     public void increment() {{ ... }}
+     ```
+     - Add `@jakarta.ws.rs.QueryParam("<param-name>")` to any method parameters if needed, where `<param-name>` is a name for the parameter.
+  ruleID: remote-ejb-to-quarkus-00000
+  when:
+    or:
+    - java.referenced:
+        location: ANNOTATION
+        pattern: javax.ejb.Remote
+    - java.referenced:
+        location: ANNOTATION
+        pattern: jakarta.ejb.Remote

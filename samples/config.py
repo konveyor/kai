@@ -9,17 +9,12 @@ repos = {
         "main",
         "quarkus-3.2",
     ],
-    "ticket-monster": ["https://github.com/jmle/monolith.git", "master", "quarkus"],
-    "jboss-eap-quickstarts": [
-        "https://github.com/jboss-developer/jboss-eap-quickstarts",
-        "7.4.x",
-        None,
-    ],
-    "jboss-eap-quickstarts-quarkus": [
-        "https://github.com/christophermay07/quarkus-migrations",
-        "main",
-        "main",
-    ],
+    ###
+    # Commenting ticket-monster out until we know we want to add this in as an example
+    # Analyzing ticket-monster is adding ~20-60 mins extra time on analysis runs and at
+    # moment we are leaning towards using CoolStore instead of TicketMonster as an example
+    ##
+    # "ticket-monster": ["https://github.com/jmle/monolith.git", "master", "quarkus"],
     "helloworld-mdb": [
         "https://github.com/savitharaghunathan/helloworld-mdb.git",
         "main",
@@ -33,44 +28,40 @@ repos = {
         "quarkus",
     ],
     "greeter": ["https://github.com/konveyor-ecosystem/greeter.git", "main", "quarkus"],
-}
-
-_sample_source_apps = {
-    "cmt": "sample_repos/cmt",
-    "greeter": "sample_repos/greeter",
-    "helloworld-mdb": "sample_repos/helloworld-mdb",
-    "bmt": "sample_repos/bmt",
-}
-
-_sample_target_apps = {
-    "cmt": "sample_repos/cmt",
-    "greeter": "sample_repos/greeter",
-    "helloworld-mdb": "sample_repos/helloworld-mdb",
-    "bmt": "sample_repos/bmt",
+    "ejb-remote": [
+        "https://github.com/konveyor-ecosystem/ejb-remote.git",
+        "main",
+        "quarkus",
+    ],
+    "ejb-security": [
+        "https://github.com/konveyor-ecosystem/ejb-security.git",
+        "main",
+        "quarkus",
+    ],
 }
 
 sample_source_apps = {
     "eap-coolstore-monolith": "sample_repos/eap-coolstore-monolith",
-    "ticket-monster": "sample_repos/ticket-monster",
+    # "ticket-monster": "sample_repos/ticket-monster",
     "kitchensink": "sample_repos/kitchensink/kitchensink",
     "helloworld-mdb": "sample_repos/helloworld-mdb",
     "bmt": "sample_repos/bmt",
     "cmt": "sample_repos/cmt",
-    "ejb-remote": "sample_repos/jboss-eap-quickstarts/ejb-remote",
-    "ejb-security": "sample_repos/jboss-eap-quickstarts/ejb-security",
+    "ejb-remote": "sample_repos/ejb-remote",
+    "ejb-security": "sample_repos/ejb-security",
     "tasks-qute": "sample_repos/tasks-qute",
     "greeter": "sample_repos/greeter",
 }
 
 sample_target_apps = {
     "eap-coolstore-monolith": "sample_repos/eap-coolstore-monolith",
-    "ticket-monster": "sample_repos/ticket-monster",
+    # "ticket-monster": "sample_repos/ticket-monster",
     "kitchensink": "sample_repos/kitchensink/kitchensink",
     "helloworld-mdb": "sample_repos/helloworld-mdb",
     "bmt": "sample_repos/bmt",
     "cmt": "sample_repos/cmt",
-    "ejb-remote": "sample_repos/jboss-eap-quickstarts-quarkus/ejb-remote-to-quarkus-rest",
-    "ejb-security": "sample_repos/jboss-eap-quickstarts-quarkus/ejb-security-to-quarkus-basic-elytron",
+    "ejb-remote": "sample_repos/ejb-remote",
+    "ejb-security": "sample_repos/ejb-security",
     "tasks-qute": "sample_repos/tasks-qute",
     "greeter": "sample_repos/greeter",
 }
