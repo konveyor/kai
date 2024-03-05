@@ -35,6 +35,20 @@ repos = {
     "greeter": ["https://github.com/konveyor-ecosystem/greeter.git", "main", "quarkus"],
 }
 
+_sample_source_apps = {
+    "cmt": "sample_repos/cmt",
+    "greeter": "sample_repos/greeter",
+    "helloworld-mdb": "sample_repos/helloworld-mdb",
+    "bmt": "sample_repos/bmt",
+}
+
+_sample_target_apps = {
+    "cmt": "sample_repos/cmt",
+    "greeter": "sample_repos/greeter",
+    "helloworld-mdb": "sample_repos/helloworld-mdb",
+    "bmt": "sample_repos/bmt",
+}
+
 sample_source_apps = {
     "eap-coolstore-monolith": "sample_repos/eap-coolstore-monolith",
     "ticket-monster": "sample_repos/ticket-monster",

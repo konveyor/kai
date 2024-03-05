@@ -7,7 +7,6 @@ from config import repos
 
 
 # clone the sample apps in the sample_repos directory
-# skip jboss-eap-quickstarts-quarkus
 def fetch_sample_apps():
     for repo in repos:
         print(f"Cloning {repo}...")
@@ -16,6 +15,7 @@ def fetch_sample_apps():
         )
         os.chdir(f"sample_repos/{repo}")
         if repos[repo][1] is not None:
+            print(f"Debug: git checkout {repos[repo][1]}")
             os.system(f"git checkout {repos[repo][1]}")  # trunk-ignore(bandit)
         os.chdir("../../")
 
