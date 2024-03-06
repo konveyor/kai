@@ -1,0 +1,1 @@
+window.version = "latest";

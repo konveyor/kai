@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-#apps=("cmt" "bmt" "greeter" "tasks-qute")
-apps=("greeter")
+apps=("cmt" "bmt" "greeter" "tasks-qute")
 
 for src_name in "${apps[@]}"; do
 	src_dir=${PWD}/../../../samples/sample_repos/${src_name}

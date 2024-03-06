@@ -35,20 +35,7 @@ repos = {
     ],
 }
 
-sample_source_apps = {
-    "eap-coolstore-monolith": "sample_repos/eap-coolstore-monolith",
-    "ticket-monster": "sample_repos/ticket-monster",
-    "kitchensink": "sample_repos/kitchensink/kitchensink",
-    "helloworld-mdb": "sample_repos/helloworld-mdb",
-    "bmt": "sample_repos/bmt",
-    "cmt": "sample_repos/cmt",
-    "ejb-remote": "sample_repos/ejb-remote",
-    "ejb-security": "sample_repos/ejb-security",
-    "tasks-qute": "sample_repos/tasks-qute",
-    "greeter": "sample_repos/greeter",
-}
-
-sample_target_apps = {
+sample_apps = {
     "eap-coolstore-monolith": "sample_repos/eap-coolstore-monolith",
     "ticket-monster": "sample_repos/ticket-monster",
     "kitchensink": "sample_repos/kitchensink/kitchensink",
