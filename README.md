@@ -20,19 +20,27 @@ For example, [analyzer-lsp Rules](https://github.com/konveyor/analyzer-lsp/blob/
 2. `source env/bin/activate`
 3. `pip install -r ./requirements.txt`
 
-### Run an analysis of a sample app (example for MacOS)
+#### Ensure you have the source code for the sample applications checked out locally
+
+1. `cd ./samples`
+2. `./fetch_apps.py`
+   - This will checkout the sample app source code to: `./samples/sample_repos`
+     - This directory is in .gitignore
+
+### (OPTIONAL) Run an analysis of a sample app (example for MacOS)
+
+Note: We have checked in analysis runs for all sample applications so you do NOT need to run analysis yourself. The instructions below are ONLY if you want to recreate, this is NOT required
 
 1. Install [podman](https://podman.io/) so you can run [Kantra](https://github.com/konveyor/kantra) for static code analysis
 1. `cd samples`
-1. `./fetch_sample_apps.sh` # this will git clone example source code apps
+1. `./fetch_apps.py` # this will git clone example source code apps
 1. `cd macos`
 1. `./restart_podman_machine.sh` # setups the podman VM on MacOS so it will mount the host filesystem into the VM
 1. `./get_latest_kantra_cli.sh` # fetches 'kantra' our analyzer tool and stores it in ../bin
 1. `cd ..`
-1. `./analyze_coolstore.sh` # Analyzes 'eap-coolstore-monolith' directory and writes an analysis output to [analysis_reports/eap-coolstore-monolith/output.yaml](/samples/analysis_reports/eap-coolstore-monolith/output.yaml)
-   - There are a few other scripts in this directory to analyze other samples
+1. `./analyze_apps.py` # Analyzes all sample apps we know about, in both the 'initial' and 'solved' states, expect this to run for ~2-3 hours.
 
-We plan to keep latest versions of static code analyis committed to this repo in [samples/analysis_reports](samples/analysis_reports)
+Analysis data will be stored in: `samples/analysis_reports/{APP_NAME}/<initial|solved>/output.yaml`
 
 ## Contributing
 

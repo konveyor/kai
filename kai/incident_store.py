@@ -688,6 +688,7 @@ class IncidentStore:
         Get the repo path
         """
 
+        # TODO:  This mapping data should be moved out of the code, consider moving to a config file
         mapping = {
             "eap-coolstore-monolith": "samples/sample_repos/eap-coolstore-monolith",
             "ticket-monster": "samples/sample_repos/ticket-monster",
@@ -695,9 +696,10 @@ class IncidentStore:
             "helloworld-mdb": "samples/sample_repos/helloworld-mdb",
             "bmt": "samples/sample_repos/bmt",
             "cmt": "samples/sample_repos/cmt",
-            "ejb-remote": "samples/sample_repos/jboss-eap-quickstarts-quarkus",
-            "ejb-security": "samples/sample_repos/jboss-eap-quickstarts-quarkus",
-            "tasks-jsf": "samples/sample_repos/jboss-eap-quickstarts-quarkus",
+            "ejb-remote": "samples/sample_repos/ejb-remote",
+            "ejb-security": "samples/sample_repos/ejb-security",
+            "tasks-qute": "samples/sample_repos/tasks-qute",
+            "greeter": "samples/sample_repos/greeter",
         }
 
         basedir = os.path.dirname(os.path.realpath(__file__))

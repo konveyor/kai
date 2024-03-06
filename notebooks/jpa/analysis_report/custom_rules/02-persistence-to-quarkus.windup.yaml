@@ -1,0 +1,85 @@
+- category: optional
+  customVariables: []
+  description: Move persistence config to a properties file
+  effort: 1
+  labels:
+    - konveyor.io/source=java-ee
+    - konveyor.io/source=jakarta-ee
+    - konveyor.io/target=quarkus
+  links:
+    - title: Using Hibernate ORM and Jakarta persistence
+      url: https://quarkus.io/guides/hibernate-orm#persistence-xml
+  message:
+    "It is recommended to move persistence related configuration from an XML
+    file to a properties one.\n This allows centralization of the configuration in
+    Quarkus. Check the link for more information.\n \n \n Datasource and persistence
+    configurations in XML can be substituted with a single centralized properties
+    file. Here is an example of a translation:\n \n The following datasource configuration:\n
+    ```\n <datasources xmlns=\"http://www.jboss.org/ironjacamar/schema\"\n xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n
+    xsi:schemaLocation=\"http://www.jboss.org/ironjacamar/schema http://docs.jboss.org/ironjacamar/schema/datasources_1_0.xsd\">\n
+    <!-- The datasource is bound into JNDI at this location. We reference\n this in
+    META-INF/persistence.xml -->\n <datasource jndi-name=\"java:jboss/datasources/TasksJsfQuickstartDS\"\n
+    pool-name=\"tasks-jsf-quickstart\" enabled=\"true\"\n use-java-context=\"true\">\n
+    <connection-url>jdbc:h2:mem:tasks-jsf-quickstart;DB_CLOSE_ON_EXIT=FALSE;DB_CLOSE_DELAY=-1</connection-url>\n
+    <driver>h2</driver>\n <security>\n <user-name>sa</user-name>\n <password>sa</password>\n
+    </security>\n </datasource>\n </datasources>\n ```\n along with the following
+    persistence configuration:\n ```\n <persistence version=\"2.1\"\n xmlns=\"http://xmlns.jcp.org/xml/ns/persistence\"
+    xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n xsi:schemaLocation=\"\n
+    http://xmlns.jcp.org/xml/ns/persistence\n http://xmlns.jcp.org/xml/ns/persistence/persistence_2_1.xsd\">\n
+    <persistence-unit name=\"primary\">\n <!-- We use a different datasource for tests,
+    so as to not overwrite\n production data. This is an unmanaged data source, backed
+    by H2, an in memory\n database. Production applications should use a managed datasource.
+    -->\n <!-- The datasource is deployed as WEB-INF/test-ds.xml,\n you can find it
+    in the source at src/test/resources/test-ds.xml -->\n <jta-data-source>java:jboss/datasources/TasksJsfQuickstartDS</jta-data-source>\n
+    <properties>\n <!-- Properties for Hibernate -->\n <property name=\"hibernate.hbm2ddl.auto\"
+    value=\"create-drop\" />\n <property name=\"hibernate.show_sql\" value=\"false\"
+    />\n </properties>\n </persistence-unit>\n </persistence>\n ```\n can be translated
+    to:\n ```\n quarkus.datasource.jdbc.url=jdbc:h2:mem:tasks-jsf-quickstart;DB_CLOSE_ON_EXIT=FALSE;DB_CLOSE_DELAY=-1\n
+    quarkus.datasource.db-kind=h2\n quarkus.datasource.username=sa\n quarkus.datasource.password=sa\n\n
+    quarkus.hibernate-orm.database.generation=drop-and-create\n ```"
+  ruleID: persistence-to-quarkus-00000
+  when:
+    or:
+      - builtin.file:
+          pattern: persistence\.xml
+      - builtin.file:
+          pattern: .*-ds\.xml
+- category: potential
+  customVariables: []
+  description: "@Produces cannot annotate an EntityManager"
+  effort: 1
+  labels:
+    - konveyor.io/source=java-ee
+    - konveyor.io/source=jakarta-ee
+    - konveyor.io/target=quarkus
+  links:
+    - title: Using Hibernate ORM and Jakarta persistence
+      url: https://quarkus.io/guides/hibernate-orm#persistence-xml
+    - title: Setting up and configuring Hibernate ORM
+      url: https://quarkus.io/guides/hibernate-orm#setting-up-and-configuring-hibernate-orm
+  message:
+    "In JavaEE/JakartaEE, using `@PersistenceContext` was needed in order to
+    inject a data source. Quarkus, on the other hand,\n will create the bean automatically
+    just by correctly setting up your datasource. This makes having a `@Produces`
+    annotation\n on the `EntityManager` illegal in Quarkus.\n \n If you are using
+    a `@Produces` annotation for your EntityManager, and it is not needed after configuring
+    your datasource, remove it and `@Inject` the EntityManager.\n Otherwise, if the
+    producer is still needed, please create a qualification for your produced `EntityManager`,
+    as well as every injection point for the EM.\n \n For instance, you can create
+    an `ExtendedContext` qualifier:\n ```\n @Qualifier\n @Target({{ ElementType.TYPE,
+    ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER }})\n @Retention(RetentionPolicy.RUNTIME)\n
+    public @interface ExtendedContext {{ ... }}\n ```\n and then inject your entity
+    managers:\n ```\n @ExtendedContext\n public EntityManager getEm() {{\n return
+    em;\n }}\n ```"
+  ruleID: persistence-to-quarkus-00011
+  when:
+    and:
+      - java.referenced:
+          location: IMPORT
+          pattern: javax.enterprise.inject.Produces
+        as: file
+        ignore: true
+      - java.referenced:
+          location: IMPORT
+          pattern: javax.persistence.EntityManager
+        from: file
