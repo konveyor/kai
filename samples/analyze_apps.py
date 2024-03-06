@@ -4,13 +4,13 @@ import os
 import subprocess  # trunk-ignore(bandit)
 import sys
 
-from config import repos, sample_source_apps, sample_target_apps
+from config import repos, sample_apps
 
 
 def analyze_apps():
     # perform analysis
-    for repo in sample_source_apps:
-        source_dir = sample_source_apps[repo]
+    for repo in sample_apps:
+        source_dir = sample_apps[repo]
         analyze(source_dir, repo, "initial")
 
     for repo in repos:
@@ -20,9 +20,9 @@ def analyze_apps():
             os.system(f"git checkout {repos[repo][2]}")  # trunk-ignore(bandit)
         os.chdir("../../")
 
-    for repo in sample_target_apps:
+    for repo in sample_apps:
         # perform analysis
-        source_dir = sample_target_apps[repo]
+        source_dir = sample_apps[repo]
         analyze(source_dir, repo, "solved")
 
     # Our incident_store will expect a app.yaml to exist alongside the
