@@ -22,6 +22,7 @@ def fetch_sample_apps():
         if repos[repo][1] is not None:
             print(f"Debug: git checkout {repos[repo][1]}")
             os.system(f"git checkout {repos[repo][1]}")  # trunk-ignore(bandit)
+            os.system(f"git checkout {repos[repo][2]}")  # trunk-ignore(bandit)
         os.chdir("../../")
 
 
