@@ -51,7 +51,7 @@ class GitDiff:
         return commits_for_file
 
     def get_commit_from_branch(self, branch_name):
-        return self.repo.heads[branch_name].commit
+        return self.repo.heads[str(branch_name)].commit
 
     def get_branches(self):
         return self.repo.heads
