@@ -7,18 +7,13 @@ import sys
 from config import repos, sample_source_apps, sample_target_apps
 
 
-# skip jboss-eap-quickstarts-quarkus
 def analyze_apps():
     # perform analysis
     for repo in sample_source_apps:
         source_dir = sample_source_apps[repo]
         analyze(source_dir, repo, "initial")
 
-    # switch to quarkus branch and perform analysis again
-    # skip jboss-eap-quickstarts
     for repo in repos:
-        if repo == "jboss-eap-quickstarts":
-            continue
         print(f"Switching to {repos[repo][2]} branch for {repo}...")
         os.chdir(f"sample_repos/{repo}")
         if repos[repo][2] is not None:
@@ -29,6 +24,28 @@ def analyze_apps():
         # perform analysis
         source_dir = sample_target_apps[repo]
         analyze(source_dir, repo, "solved")
+
+    # Our incident_store will expect a app.yaml to exist alongside the
+    # analysis reports.  This app.yaml will contain the initial and solved branch info
+    for repo in repos:
+        data = repos[repo]
+        url = data[0]
+        initial_branch = data[1]
+        solved_branch = data[2]
+        update_app_yaml(f"analysis_reports/{repo}", url, initial_branch, solved_branch)
+
+
+def update_app_yaml(output_dir, url, initial_branch, solved_branch):
+    if not os.path.isdir(output_dir):
+        sys.exit(
+            f"Output directory for app.yaml seems wrong, `{output_dir}` does not exist"
+        )
+    app_yaml = os.path.join(output_dir, "app.yaml")
+
+    with open(app_yaml, "w") as f:
+        f.write(f"initial_branch: {initial_branch}\n")
+        f.write(f"solved_branch: {solved_branch}\n")
+        f.write(f"repo: {url}\n")
 
 
 def ensure_kantra_bin_exists():
