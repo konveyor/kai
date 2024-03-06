@@ -6,7 +6,7 @@ repos = {
     ],
     "kitchensink": [
         "https://github.com/tqvarnst/jboss-eap-quickstarts.git",
-        "main",
+        "7.1",
         "quarkus-3.2",
     ],
     ###
@@ -14,7 +14,7 @@ repos = {
     # Analyzing ticket-monster is adding ~20-60 mins extra time on analysis runs and at
     # moment we are leaning towards using CoolStore instead of TicketMonster as an example
     ##
-    # "ticket-monster": ["https://github.com/jmle/monolith.git", "master", "quarkus"],
+    "ticket-monster": ["https://github.com/jmle/monolith.git", "master", "quarkus"],
     "helloworld-mdb": [
         "https://github.com/savitharaghunathan/helloworld-mdb.git",
         "main",
@@ -42,7 +42,7 @@ repos = {
 
 sample_source_apps = {
     "eap-coolstore-monolith": "sample_repos/eap-coolstore-monolith",
-    # "ticket-monster": "sample_repos/ticket-monster",
+    "ticket-monster": "sample_repos/ticket-monster",
     "kitchensink": "sample_repos/kitchensink/kitchensink",
     "helloworld-mdb": "sample_repos/helloworld-mdb",
     "bmt": "sample_repos/bmt",
@@ -55,7 +55,7 @@ sample_source_apps = {
 
 sample_target_apps = {
     "eap-coolstore-monolith": "sample_repos/eap-coolstore-monolith",
-    # "ticket-monster": "sample_repos/ticket-monster",
+    "ticket-monster": "sample_repos/ticket-monster",
     "kitchensink": "sample_repos/kitchensink/kitchensink",
     "helloworld-mdb": "sample_repos/helloworld-mdb",
     "bmt": "sample_repos/bmt",

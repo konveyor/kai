@@ -10,9 +10,13 @@ from config import repos
 def fetch_sample_apps():
     for repo in repos:
         print(f"Cloning {repo}...")
-        subprocess.run(  # trunk-ignore(bandit)
+        gitCloneStatus = subprocess.run(  # trunk-ignore(bandit)
             ["git", "clone", repos[repo][0], f"sample_repos/{repo}"]
         )
+        if gitCloneStatus.returncode != 0:
+            print(f"Error cloning {repo}")
+            print(f"*** Skipping the clone of {repo}")
+            continue
         os.chdir(f"sample_repos/{repo}")
         if repos[repo][1] is not None:
             print(f"Debug: git checkout {repos[repo][1]}")
@@ -21,4 +25,17 @@ def fetch_sample_apps():
 
 
 if __name__ == "__main__":
+    # Recommendation:   Don't run this script while VSCode is open and has
+    # 'kai' loaded.  I (John M.) spent hours debugging why this script on
+    # occasion would fail to checkout the files, looked like a race condition
+    # where sometimes we couldn't do a git checkout as the repo name already
+    # existed as a directory with just a few files under 'target' similar to
+    # below:
+    #   https://gist.github.com/jwmatthews/6becd1b46237352ad9cdaf74f11a7cd4
+    # finally realized, while the 'kai' source code was open in VSCode the Java
+    # analyzer was continuing to analyzing the sample apps, and as I was
+    # deleting/checking them out for testing, there was a potential race of
+    # VSCode, doing a partial compile and updating a few files under target.
+    #
+    # To move forward, I'll close VSCode before running this script
     fetch_sample_apps()
