@@ -1,0 +1,74 @@
+## Reasoning
+
+To migrate the given Java EE code to Quarkus, we need to address the issue identified by the static code analysis. The analysis points out that Quarkus does not support Remote EJBs, and we need to replace them with REST functionality. Here are the steps we will follow:
+
+1. **Replace `@Remote` with `@Path`:** Since Quarkus does not support Remote EJBs, we will replace the `@Remote` annotation with the JAX-RS `@Path` annotation to expose the bean as a RESTful resource.
+
+2. **Remove `@Stateless`:** The `@Stateful` annotation will be removed because REST services are inherently stateless, and Quarkus manages the lifecycle of REST resources differently than Java EE manages EJBs.
+
+3. **Annotate methods with REST annotations:** Each public method in the EJB will be annotated with `@GET` and `@Path` to expose them as RESTful endpoints. If there are parameters in the methods, we will annotate them with `@QueryParam`.
+
+4. **Update `pom.xml`:** We will need to ensure that the Quarkus RESTEasy extension is included in the `pom.xml` file to enable RESTful services in Quarkus. This might involve adding the dependency `quarkus-resteasy` or `quarkus-resteasy-jackson` if JSON serialization/deserialization is needed.
+
+5. **Update imports:** We will update the imports to use the `jakarta.ws.rs` package instead of the `javax.ws.rs` package, as Quarkus has moved to Jakarta EE APIs.
+
+Now, let's proceed with the code migration.
+
+## Updated File
+```java
+package org.jboss.as.quickstarts.ejb.remote.stateful;
+
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+
+/**
+ * CounterBean is now a JAX-RS resource that provides RESTful endpoints to increment,
+ * decrement, and get the current count.
+ */
+@Path("/counter")
+public class CounterBean {
+
+    private int count = 0;
+
+    @GET
+    @Path("/increment")
+    @Produces(MediaType.TEXT_PLAIN)
+    public void increment() {
+        this.count++;
+    }
+
+    @GET
+    @Path("/decrement")
+    @Produces(MediaType.TEXT_PLAIN)
+    public void decrement() {
+        this.count--;
+    }
+
+    @GET
+    @Path("/count")
+    @Produces(MediaType.TEXT_PLAIN)
+    public int getCount() {
+        return this.count;
+    }
+}
+```
+
+### Notes:
+- We have added `@Produces(MediaType.TEXT_PLAIN)` to indicate the response type of the RESTful service. This is necessary because JAX-RS needs to know what type of response to send back to the client.
+- The `@Stateful` annotation has been removed as it is not applicable in the context of RESTful services in Quarkus.
+- The `@Remote` interface `RemoteCounter` is no longer needed because we are directly exposing the methods as REST endpoints.
+- The `@Remote` annotation has been replaced with `@Path("/counter")` to define the base path for the RESTful service.
+- Each method now has its own `@Path` to define the specific endpoint for that operation.
+- We have not added `@QueryParam` annotations because the original EJB methods did not have parameters. If they did, we would need to add `@QueryParam` to handle those.
+
+### pom.xml Dependency (if not already present):
+```xml
+<dependency>
+    <groupId>io.quarkus</groupId>
+    <artifactId>quarkus-resteasy</artifactId>
+</dependency>
+```
+
+This dependency is required to enable RESTEasy in Quarkus, which provides the JAX-RS implementation. If the application also needs to return JSON responses, you might need to add `quarkus-resteasy-jackson` or `quarkus-resteasy-jsonb` as well.

@@ -1,0 +1,68 @@
+## Reasoning
+
+When migrating from Java EE to Quarkus, we need to consider the following:
+
+1. **EJB Replacement**: Quarkus does not support Enterprise JavaBeans (EJBs) as they are known in Java EE. Instead, Quarkus uses CDI (Contexts and Dependency Injection) beans. We will need to replace the `@Stateful` and `@Remote` annotations with appropriate CDI annotations.
+
+2. **Interface Removal**: In Quarkus, the use of remote interfaces is generally not required. We can directly annotate the bean class with `@ApplicationScoped` to denote that it is a CDI managed bean with a scope that lasts the entire application execution.
+
+3. **Dependency Updates**: We need to ensure that the `pom.xml` file includes the Quarkus dependencies and possibly remove any Java EE specific dependencies that are no longer needed.
+
+4. **Imports**: Since we are changing annotations, we will need to update the import statements to reflect the new annotations we are using from the CDI API.
+
+Let's go through the migration step by step:
+
+- Replace `@Stateful` with `@ApplicationScoped` to indicate that the bean is managed by CDI and has an application scope.
+- Remove the `@Remote` annotation as it is not needed in Quarkus.
+- The interface `RemoteCounter` can be removed if it's only used by this bean, and its methods can be declared directly in the `CounterBean` class.
+- Update the `pom.xml` to include the Quarkus dependencies such as `quarkus-cdi`.
+
+## Updated File
+
+```java
+package org.jboss.as.quickstarts.ejb.remote.stateful;
+
+import javax.enterprise.context.ApplicationScoped;
+
+/**
+ * A simple counter bean that can increment and decrement a count.
+ * This is a Quarkus version of the previous Java EE stateful bean.
+ */
+@ApplicationScoped
+public class CounterBean {
+
+    private int count = 0;
+
+    public void increment() {
+        this.count++;
+    }
+
+    public void decrement() {
+        this.count--;
+    }
+
+    public int getCount() {
+        return this.count;
+    }
+}
+```
+
+## pom.xml Changes
+
+You will need to add the Quarkus CDI dependency to your `pom.xml` file:
+
+```xml
+<dependency>
+    <groupId>io.quarkus</groupId>
+    <artifactId>quarkus-arc</artifactId>
+</dependency>
+```
+
+Make sure to remove any EJB or other Java EE specific dependencies that are no longer needed after the migration to Quarkus.
+
+## Additional Notes
+
+- If the `RemoteCounter` interface is used elsewhere, you would need to refactor those usages as well.
+- If the application relies on EJB-specific features like passivation/activation or remote method invocation, you will need to find alternative solutions in Quarkus, as these are not supported out of the box.
+- If the application uses JNDI lookups to obtain the reference to the EJB, this will also need to be refactored since CDI beans are typically injected directly and do not require JNDI lookups.
+- Testing is crucial after migration to ensure that the application behaves as expected in the new environment.

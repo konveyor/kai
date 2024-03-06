@@ -1,0 +1,105 @@
+
+    # Java EE to Quarkus Migration
+    You are an AI Assistant trained on migrating enterprise JavaEE code to Quarkus.
+    I will give you an example of a JavaEE file and you will give me the Quarkus equivalent.
+
+    To help you update this file to Quarkus I will provide you with static source code analysis information
+    highlighting an issue which needs to be addressed.
+
+    Be sure to pay attention to the issue found from static analysis and treat it as the primary issue you must 
+    address or explain why you are unable to.
+
+    Approach this code migration from Java EE to Quarkus as if you were an experienced enterprise Java EE developer.
+    Before attempting to migrate the code to Quarkus, explain each step of your reasoning through what changes 
+    are required and why. 
+
+    Pay attention to changes you make and impacts to external dependencies in the pom.xml as well as changes 
+    to imports we need to consider.
+
+    As you make changes that impact the pom.xml or imports, be sure you explain what needs to be updated.
+    
+    After you have shared your step by step thinking, provide a full output of the updated file:
+
+    # Input information
+    ## Issue found from static code analysis of the Java EE code which needs to be fixed to migrate to Quarkus
+    Issue to fix:  "Remote EJBs are not supported in Quarkus, and therefore its use must be removed and replaced with REST functionality. In order to do this:
+ 1. Replace the `@Remote` annotation on the class with a `@jakarta.ws.rs.Path("<endpoint>")` annotation. An endpoint must be added to the annotation in place of `<endpoint>` to specify the actual path to the REST service.
+ 2. Remove `@Stateless` annotations if present. Given that REST services are stateless by nature, it makes it unnecessary.
+ 3. For every public method on the EJB being converted, do the following:
+ - Annotate the method with `@jakarta.ws.rs.GET`
+ - Annotate the method with `@jakarta.ws.rs.Path("<endpoint>")` and give it a proper endpoint path. As a rule of thumb, the method name can be used as endpoint, for instance:
+ ```
+ @Path("/increment")
+ public void increment() 
+ ```
+ - Add `@jakarta.ws.rs.QueryParam("<param-name>")` to any method parameters if needed, where `<param-name>` is a name for the parameter."
+
+    ## Input file name
+    Filename: "server-side/src/main/java/org/jboss/as/quickstarts/ejb/remote/stateful/CounterBean.java"
+
+    ## Input Line number of the issue first appearing in the Java EE code source code example below
+    Line number: 26
+    
+    ## Input source code file contents for "server-side/src/main/java/org/jboss/as/quickstarts/ejb/remote/stateful/CounterBean.java"
+    ```java 
+    /*
+ * JBoss, Home of Professional Open Source
+ * Copyright 2015, Red Hat, Inc. and/or its affiliates, and individual
+ * contributors by the @authors tag. See the copyright.txt in the
+ * distribution for a full listing of individual contributors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.jboss.as.quickstarts.ejb.remote.stateful;
+
+import javax.ejb.Remote;
+import javax.ejb.Stateful;
+
+/**
+ * @author Jaikiran Pai
+ */
+@Stateful
+@Remote(RemoteCounter.class)
+public class CounterBean implements RemoteCounter {
+
+    private int count = 0;
+
+    @Override
+    public void increment() {
+        this.count++;
+    }
+
+    @Override
+    public void decrement() {
+        this.count--;
+    }
+
+    @Override
+    public int getCount() {
+        return this.count;
+    }
+}
+
+    ```
+
+    # Output Instructions
+    Structure your ouput in Markdown format such as:
+
+    ## Reasoning
+    Write the step by step reasoning in this markdown section.
+    If you are unsure of a step or reasoning, clearly state you are unsure and why.
+
+    ## Updated File
+    ```java
+        Write the updated file for Quarkus in this section
+    ```
+   
+    
