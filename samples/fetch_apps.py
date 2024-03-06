@@ -2,6 +2,7 @@
 
 import os
 import subprocess  # trunk-ignore(bandit)
+import sys
 
 from config import repos
 
@@ -15,8 +16,8 @@ def fetch_sample_apps():
         )
         if gitCloneStatus.returncode != 0:
             print(f"Error cloning {repo}")
-            print(f"*** Skipping the clone of {repo}")
-            continue
+            print(f"*** Exiting since we couldnt clone '{repo}'")
+            sys.exit(1)
         os.chdir(f"sample_repos/{repo}")
         if repos[repo][1] is not None:
             print(f"Debug: git checkout {repos[repo][1]}")

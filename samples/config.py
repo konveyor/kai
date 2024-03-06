@@ -9,11 +9,6 @@ repos = {
         "7.1",
         "quarkus-3.2",
     ],
-    ###
-    # Commenting ticket-monster out until we know we want to add this in as an example
-    # Analyzing ticket-monster is adding ~20-60 mins extra time on analysis runs and at
-    # moment we are leaning towards using CoolStore instead of TicketMonster as an example
-    ##
     "ticket-monster": ["https://github.com/jmle/monolith.git", "master", "quarkus"],
     "helloworld-mdb": [
         "https://github.com/savitharaghunathan/helloworld-mdb.git",

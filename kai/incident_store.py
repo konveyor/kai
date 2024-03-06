@@ -696,9 +696,8 @@ class IncidentStore:
             "helloworld-mdb": "samples/sample_repos/helloworld-mdb",
             "bmt": "samples/sample_repos/bmt",
             "cmt": "samples/sample_repos/cmt",
-            # TODO:  Check the below ejb-remote & ejb-security paths, these are pointing to the full quickstart directory
-            "ejb-remote": "samples/sample_repos/jboss-eap-quickstarts-quarkus",
-            "ejb-security": "samples/sample_repos/jboss-eap-quickstarts-quarkus",
+            "ejb-remote": "samples/sample_repos/ejb-remote",
+            "ejb-security": "samples/sample_repos/ejb-security",
             "tasks-qute": "samples/sample_repos/tasks-qute",
             "greeter": "samples/sample_repos/greeter",
         }
