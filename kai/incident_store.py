@@ -3,8 +3,8 @@ __all__ = ["Application", "IncidentStore"]
 import copy
 import os
 import pprint
-from typing import Any, Optional
 from dataclasses import dataclass
+from typing import Optional
 
 import yaml
 
@@ -15,12 +15,13 @@ from kai.scm import GitDiff
 
 # TODO: Make this more like the real n -> n+1 problem
 
+
 @dataclass
 class Application:
     name: str
     report: dict
     repo: Optional[str] = None
-    initial_branch: Optional[str] = None # shouldn't it be current branch?
+    initial_branch: Optional[str] = None  # shouldn't it be current branch?
     solved_branch: Optional[str] = None
     timestamp: Optional[int] = None
 
@@ -62,7 +63,7 @@ class IncidentStore:
 
     # TODO: query hub api for the application
     def get_app_from_konveyor_hub(self, app_name: str):
-        return None # For now, return None always - jsussman
+        return None  # For now, return None always - jsussman
 
     # get the app variables from the app.yaml
     def get_app_variables(self, app_name: str):
@@ -295,7 +296,7 @@ class IncidentStore:
         # self.write_cached_violations(self.cached_violations, "cached_violations.yaml")
         return self.cached_violations
 
-    def fetch_output_yaml(self, app_name: str, folder: str="solved") -> str:
+    def fetch_output_yaml(self, app_name: str, folder: str = "solved") -> str:
         """
         Fetch the output and app yaml for the given application
         """

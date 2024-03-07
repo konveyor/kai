@@ -8,27 +8,25 @@
 
 """This module is intended to facilitate using Konveyor with LLMs."""
 
+import asyncio
 import datetime
 import json
 import os
 import warnings
 from os import listdir
 from os.path import isfile, join
-import asyncio
-from typing import Callable, Any
+from typing import Any, Callable
 
 import aiohttp
+import jsonschema
+import yaml
 from aiohttp import web
 from aiohttp.web import Response
 from aiohttp.web_request import Request
-import yaml
-import jsonschema
-
-from psycopg2.extras import DictRow
-
-from report import Report
-from incident_store_advanced import PSQLIncidentStore, EmbeddingInstructor, Application
+from incident_store_advanced import Application, EmbeddingInstructor, PSQLIncidentStore
 from prompt_builder import CONFIG_IBM, PromptBuilder
+from psycopg2.extras import DictRow
+from report import Report
 
 # TODO: Make openapi spec for everything
 
@@ -53,7 +51,7 @@ routes = web.RouteTableDef()
 #             jsonschema.validate(instance=request_json, schema=schema)
 #         except jsonschema.ValidationError as err:
 #             raise web.HTTPUnprocessableEntity(text=f"{err}")
-        
+
 #         # TODO: Make better
 #         try:
 #             result = func(request_json)
@@ -69,7 +67,7 @@ routes = web.RouteTableDef()
 #             return web.Response(text=result)
 #         else:
 #             return web.Response(text=str(result))
-    
+
 #     return wrapped_handler
 
 
@@ -195,19 +193,20 @@ async def run_analysis_report():
     pass
 
 
-@routes.post('/dummy_json_request')
+@routes.post("/dummy_json_request")
 async def post_dummy_json_request(request: Request):
     print(f"post_dummy_json_request recv'd: {request}")
 
     request_json: dict = await request.json()
 
-    return web.json_response({'feeling': 'OK!'})
+    return web.json_response({"feeling": "OK!"})
 
 
-
-@routes.post('/load_analysis_report')
+@routes.post("/load_analysis_report")
 async def post_load_analysis_report(request: Request):
-    schema: dict = json.loads(open("data/jsonschema/post_load_analysis_report.json").read())
+    schema: dict = json.loads(
+        open("data/jsonschema/post_load_analysis_report.json").read()
+    )
     request_json: dict = await request.json()
 
     try:
@@ -215,7 +214,7 @@ async def post_load_analysis_report(request: Request):
     except jsonschema.ValidationError as err:
         raise web.HTTPUnprocessableEntity(text=f"{err}")
 
-    request_json['application'].setdefault('application_id')
+    request_json["application"].setdefault("application_id")
 
     application = Application(**request_json["application"])
     path_to_report: str = request_json["path_to_report"]
@@ -223,11 +222,13 @@ async def post_load_analysis_report(request: Request):
 
     count = incident_store.insert_and_update_from_report(application, report)
 
-    return web.json_response({
-        'number_new_incidents':      count[0],
-        'number_unsolved_incidents': count[1],
-        'number_solved_incidents':   count[2],
-    })
+    return web.json_response(
+        {
+            "number_new_incidents": count[0],
+            "number_unsolved_incidents": count[1],
+            "number_solved_incidents": count[2],
+        }
+    )
 
 
 # # FIXME: Dangerous! Remove before deploying!
@@ -244,7 +245,7 @@ async def post_load_analysis_report(request: Request):
 #     return web.Response(text="Ok")
 
 
-@routes.post('/get_incident_solution')
+@routes.post("/get_incident_solution")
 async def post_get_incident_solution(request: Request):
     # TODO: Make a streaming version
 
@@ -266,29 +267,33 @@ async def post_get_incident_solution(request: Request):
     - analysis_message (str)
 
     return (json):
-    - previously solved incident (if exists)
-    - context from the llm (high-level, "This is how I'd solve it")
-    - some diff of the code to apply
-    - id of the associated solved incident
+    - llm_output:
     """
 
     print(f"post_get_incident_solution recv'd: {request}")
 
+    schema: dict = json.loads(
+        open("data/jsonschema/post_get_incident_solution.json").read()
+    )
     request_json: dict = await request.json()
 
-    application_name: str = request_json['application_name']
-    ruleset_name: str = request_json['ruleset_name']
-    violation_name: str = request_json['violation_name']
-    incident_snip: str = request_json['incident_snip']
-    incident_vars: dict = request_json['incident_variables']
-    file_name: str = request_json['file_name']
-    file_contents: str = request_json['file_contents']
-    line_number: str = request_json['line_number']
-    analysis_message: str = request_json['analysis_message']
+    try:
+        jsonschema.validate(instance=request_json, schema=schema)
+    except jsonschema.ValidationError as err:
+        raise web.HTTPUnprocessableEntity(text=f"{err}")
+
+    application_name: str = request_json["application_name"]
+    ruleset_name: str = request_json["ruleset_name"]
+    violation_name: str = request_json["violation_name"]
+    incident_snip: str = request_json["incident_snip"]
+    incident_vars: dict = request_json["incident_variables"]
+    file_name: str = request_json["file_name"]
+    file_contents: str = request_json["file_contents"]
+    line_number: int = request_json["line_number"]
+    analysis_message: str = request_json.get("analysis_message", "")
 
     # Gather context
     # First, let's see if there's an "exact" match
-
 
     solved_incident, match_type = incident_store.get_fuzzy_similar_incident(
         violation_name, ruleset_name, incident_snip, incident_vars
@@ -298,44 +303,29 @@ async def post_get_incident_solution(request: Request):
         raise Exception("solved_example not a dict")
 
     pb_vars = {
-        'src_file_name': file_name,
-        'src_file_contents': file_contents,
-        'analysis_line_number': line_number,
-        'analysis_message': analysis_message,
+        "src_file_name": file_name,
+        "src_file_contents": file_contents,
+        "analysis_line_number": str(line_number),
+        "analysis_message": analysis_message,
     }
 
     if bool(solved_incident):
         solved_example = incident_store.select_accepted_solution(
-            solved_incident['solution_id']
+            solved_incident["solution_id"]
         )
-        pb_vars['solved_example_diff']      = solved_example['solution_small_diff']
-        pb_vars['solved_example_file_name'] = solved_incident['incident_uri']
+        pb_vars["solved_example_diff"] = solved_example["solution_small_diff"]
+        pb_vars["solved_example_file_name"] = solved_incident["incident_uri"]
 
     pb = PromptBuilder(CONFIG_IBM, pb_vars)
+    pb.build_prompt()
 
     resp = {
-        # 'solved_example': solved_example,
-        # 'match_type': match_type,
-        'pb_vars': pb_vars,
-        'prompt': pb.build_prompt()
+        "llm_output": "placeholder",
     }
 
     print(resp)
 
     return web.json_response(resp)
-
-    prompt = generate_prompt()
-    llm_result = proxy_handler(prompt)  # Maybe?
-
-    diff = get_diff_from_llm_result()
-    cache_result_id = cache_the_solution_somehow()
-
-    return json.dumps(
-        {
-            "diff": diff,
-            "id": cache_result_id,
-        }
-    )
 
 
 def accept_or_reject_solution(params):
@@ -372,29 +362,48 @@ if __name__ == "__main__":
     incident_store = PSQLIncidentStore(
         config_filepath="../kai/database.ini",
         config_section="postgresql",
-        emb_provider=EmbeddingInstructor(model='hkunlp/instructor-base'),
+        emb_provider=EmbeddingInstructor(model="hkunlp/instructor-base"),
         drop_tables=reset_it,
     )
 
-    old_cmt_commit = 'c0267672ffab448735100996f5ad8ed814c38847'
-    old_cmt_time   = 1708003534
-    old_cmt_report_path ='/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/samples/analysis_reports/cmt/initial/output.yaml'
-    old_cmt_report      = Report(old_cmt_report_path)
-    new_cmt_commit = '25f00d88f8bceefb223390dcdd656bd5af45146e'
-    new_cmt_time   = 1708003640
-    new_cmt_report_path = '/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/samples/analysis_reports/cmt/solved/output.yaml'
-    new_cmt_report      = Report(new_cmt_report_path)
-    cmt_uri_origin = 'https://github.com/konveyor-ecosystem/cmt.git'
-    cmt_uri_local  = 'file:///home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/samples/sample_repos/cmt'
+    old_cmt_commit = "c0267672ffab448735100996f5ad8ed814c38847"
+    old_cmt_time = 1708003534
+    old_cmt_report_path = "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/samples/analysis_reports/cmt/initial/output.yaml"
+    old_cmt_report = Report(old_cmt_report_path)
+    new_cmt_commit = "25f00d88f8bceefb223390dcdd656bd5af45146e"
+    new_cmt_time = 1708003640
+    new_cmt_report_path = "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/samples/analysis_reports/cmt/solved/output.yaml"
+    new_cmt_report = Report(new_cmt_report_path)
+    cmt_uri_origin = "https://github.com/konveyor-ecosystem/cmt.git"
+    cmt_uri_local = "file:///home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/samples/sample_repos/cmt"
 
-    old_cmt_application = Application(None, 'cmt', cmt_uri_origin, cmt_uri_local, 'main',    old_cmt_commit, datetime.datetime.fromtimestamp(old_cmt_time))
-    new_cmt_application = Application(None, 'cmt', cmt_uri_origin, cmt_uri_local, 'quarkus', new_cmt_commit, datetime.datetime.fromtimestamp(new_cmt_time))
+    old_cmt_application = Application(
+        None,
+        "cmt",
+        cmt_uri_origin,
+        cmt_uri_local,
+        "main",
+        old_cmt_commit,
+        datetime.datetime.fromtimestamp(old_cmt_time),
+    )
+    new_cmt_application = Application(
+        None,
+        "cmt",
+        cmt_uri_origin,
+        cmt_uri_local,
+        "quarkus",
+        new_cmt_commit,
+        datetime.datetime.fromtimestamp(new_cmt_time),
+    )
 
     if reset_it:
-        incident_store.insert_and_update_from_report(old_cmt_application, old_cmt_report)
-        incident_store.insert_and_update_from_report(new_cmt_application, new_cmt_report)
+        incident_store.insert_and_update_from_report(
+            old_cmt_application, old_cmt_report
+        )
+        incident_store.insert_and_update_from_report(
+            new_cmt_application, new_cmt_report
+        )
 
     print("serving!")
 
     web.run_app(app)
-

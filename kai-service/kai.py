@@ -12,7 +12,7 @@ import aiohttp
 import yaml
 from aiohttp import web
 
-from ..kai.incident_store_advanced import PSQLIncidentStore, EmbeddingNone
+# from ..kai.incident_store_advanced import PSQLIncidentStore, EmbeddingNone
 
 # TODO: Make openapi spec for everything
 
@@ -27,11 +27,11 @@ from ..kai.incident_store_advanced import PSQLIncidentStore, EmbeddingNone
 
 routes = web.RouteTableDef()
 
-incident_store = PSQLIncidentStore(
-    config_filepath="../kai/database.ini",
-    config_section="postgresql",
-    emb_provider=EmbeddingNone,
-)
+# incident_store = PSQLIncidentStore(
+#     config_filepath="../kai/database.ini",
+#     config_section="postgresql",
+#     emb_provider=EmbeddingNone,
+# )
 
 
 def load_config():
@@ -155,7 +155,8 @@ async def proxy_handler(request):
 async def run_analysis_report():
     pass
 
-@routes.post('/load_analysis_report')
+
+@routes.post("/load_analysis_report")
 async def load_analysis_report(request):
     print(request)
     print(type(request))
@@ -163,9 +164,6 @@ async def load_analysis_report(request):
     request_json = await request.json()
 
     print(f"{request_json=}")
-
-
-
 
 
 def prepopulate_incident_store():
@@ -210,9 +208,6 @@ def get_incident_solution(params):
     )
 
 
-
-
-
 def accept_or_reject_solution(params):
     """
     User says which solution and whether to reject or accept it
@@ -238,10 +233,10 @@ def accept_or_reject_solution(params):
 app = web.Application()
 app.add_routes(routes)
 
-incident_store = PSQLIncidentStore(
-    config_filepath="../kai/database.ini",
-    emb_provider=EmbeddingInstructor(),
-)
+# incident_store = PSQLIncidentStore(
+#     config_filepath="../kai/database.ini",
+#     emb_provider=EmbeddingInstructor(),
+# )
 
 if __name__ == "__main__":
     # TODO: Remove after demo
