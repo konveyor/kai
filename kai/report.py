@@ -7,7 +7,7 @@ import yaml
 from io import StringIO
 
 class Report:
-    def __init__(self, path_to_report):
+    def __init__(self, path_to_report: str):
         self.path_to_report = path_to_report
         self.workaround_counter_for_missing_ruleset_name = 0
         ## We expect that self._read_report() will be the last statement
@@ -15,7 +15,7 @@ class Report:
         self.report = self._read_report()
 
     @staticmethod
-    def get_cleaned_file_path(uri):
+    def get_cleaned_file_path(uri: str):
         file_path = uri.replace("file:///tmp/source-code/", "")
         return file_path
     
@@ -58,7 +58,7 @@ class Report:
                             impacted_files[file_path].append(current_entry) 
         return impacted_files
     
-    def _reformat_report(self, report):
+    def _reformat_report(self, report: dict):
         new_report = {}
         # Reformat from a List to a Dict where the key is the name
         for item in report:
@@ -72,7 +72,7 @@ class Report:
     def _read_report(self):
         print(f"Reading report from {self.path_to_report}")
         with open(self.path_to_report, 'r') as f:
-            report = yaml.safe_load(f)
+            report: dict = yaml.safe_load(f)
         report = self._reformat_report(report)
         return report
     

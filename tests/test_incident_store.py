@@ -264,5 +264,6 @@ class TestIncidentStore(unittest.TestCase):
         self.assertEqual(len(violations), 1)
         self.incident_store.cleanup()
 
-    if __name__ == "__main__":
-        unittest.main()
+
+if __name__ == "__main__":
+    unittest.main()

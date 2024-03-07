@@ -12,13 +12,26 @@ import aiohttp
 import yaml
 from aiohttp import web
 
+# from ..kai.incident_store_advanced import PSQLIncidentStore, EmbeddingNone
+
 # TODO: Make openapi spec for everything
 
 # TODO: Repo lives both on client and on server. Determine either A) Best way to
 # rectify differences or B) Only have the code on one and pass stuff between
 # each other
+# - can be solved by getting last common commits and then applying a git diff in
+#   the same manner as `git stash apply`
 
 # TODO: Parameter validation
+
+
+routes = web.RouteTableDef()
+
+# incident_store = PSQLIncidentStore(
+#     config_filepath="../kai/database.ini",
+#     config_section="postgresql",
+#     emb_provider=EmbeddingNone,
+# )
 
 
 def load_config():
@@ -61,6 +74,7 @@ def load_template(model_name):
     return list(model_templates.items())[0][1]
 
 
+@routes.post("/generate_prompt")
 async def generate_prompt(request):
     """Generates a prompt based on input using the specified template."""
     try:
@@ -94,6 +108,7 @@ async def generate_prompt(request):
         return web.json_response({"error": str(e)}, status=400)
 
 
+@routes.route("*", "/proxy")
 async def proxy_handler(request):
     """Proxies a streaming request to an LLM."""
     upstream_url = request.query.get("upstream_url")
@@ -141,8 +156,14 @@ async def run_analysis_report():
     pass
 
 
-async def send_analysis_report():
-    pass
+@routes.post("/load_analysis_report")
+async def load_analysis_report(request):
+    print(request)
+    print(type(request))
+
+    request_json = await request.json()
+
+    print(f"{request_json=}")
 
 
 def prepopulate_incident_store():
@@ -150,20 +171,7 @@ def prepopulate_incident_store():
     pass
 
 
-def user_gives_which_repo_and_branch(params):
-    """
-    params (json):
-    - repo: The repo to look at
-    - program: 'git' | 'svn' | etc... (let's only support git for now)
-    - branch: Duh
-    """
-
-    # TODO: Clone the repo locally on the server
-
-    pass
-
-
-def user_gives_service_which_incident_to_solve(params):
+def get_incident_solution(params):
     # TODO: Make a streaming version
 
     """
@@ -173,9 +181,14 @@ def user_gives_service_which_incident_to_solve(params):
     Stateful, stores it
 
     params (json):
-    - some identifier of the incident that we are looking at
+    - ruleset_name
+    - violation_name
+    - file_contents
+    - line_number: 0-indexed (let's keep it consistent)
 
     return (json):
+    - previously solved incident (if exists)
+    - context from the llm (high-level, "This is how I'd solve it")
     - some diff of the code to apply
     - id of the associated solved incident
     """
@@ -218,8 +231,12 @@ def accept_or_reject_solution(params):
 
 
 app = web.Application()
-app.router.add_post("/generate_prompt", generate_prompt)
-app.router.add_route("*", "/proxy", proxy_handler)
+app.add_routes(routes)
+
+# incident_store = PSQLIncidentStore(
+#     config_filepath="../kai/database.ini",
+#     emb_provider=EmbeddingInstructor(),
+# )
 
 if __name__ == "__main__":
     # TODO: Remove after demo

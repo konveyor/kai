@@ -3,35 +3,33 @@ __all__ = ["Application", "IncidentStore"]
 import copy
 import os
 import pprint
+from dataclasses import dataclass
+from typing import Optional
 
 import yaml
 
 from kai.report import Report
 from kai.scm import GitDiff
 
+# TODO: Add types to this entire file - jsussman
 
+# TODO: Make this more like the real n -> n+1 problem
+
+
+@dataclass
 class Application:
-    def __init__(
-        self,
-        name,
-        report,
-        repo=None,
-        initial_branch=None,
-        solved_branch=None,
-        timestamp=None,
-    ):
-        self.name = name
-        self.report = report
-        self.repo = repo
-        self.initial_branch = initial_branch
-        self.solved_branch = solved_branch
-        self.timestamp = timestamp
+    name: str
+    report: dict
+    repo: Optional[str] = None
+    initial_branch: Optional[str] = None  # shouldn't it be current branch?
+    solved_branch: Optional[str] = None
+    timestamp: Optional[int] = None
 
 
 class IncidentStore:
-    def __init__(self, report_path, output_dir):
+    def __init__(self, report_path: str, output_dir: str):
         # applications, keyed on App Name
-        self.applications = {}
+        self.applications: dict[str, Application] = {}
         # cached_violations is defined in comments in self._update_cached_violations
         self.cached_violations = {}
         self.solved_violations = {}
@@ -40,9 +38,12 @@ class IncidentStore:
         self.analysis_dir = report_path
         self.pp = pprint.PrettyPrinter(indent=2)
 
-    def add_app_to_incident_store(self, app_name, yaml):
-        r = Report(yaml).get_report()
+    def add_app_to_incident_store(self, app_name: str, path_to_report: str):
+        r = Report(path_to_report).get_report()
         app_variables = self.get_app_variables(app_name)
+        if app_variables is None:
+            raise Exception(f"Unable to get app_variables for app_name '{app_name}'.")
+
         a = Application(
             app_name,
             r,
@@ -54,26 +55,18 @@ class IncidentStore:
         self.applications[app_name] = a
         self._update_cached_violations(a)
 
-    def get_app_from_incident_store(self, app_name):
+    def get_app_from_incident_store(self, app_name: str):
         return self.applications[app_name]
 
     def get_app_names_from_incident_store(self):
         return self.applications.keys()
 
-    # todo query hub api for the application
-    def get_app_from_konveyor_hub(self, name):
-        # query hub api for the application
-        # return the application
-        if self.applications[name] is None:
-            return None
-        else:
-            app = self.applications[name]
-            # todo: query hub api for the application
-            # populate the application with the hub api data
-            return app
+    # TODO: query hub api for the application
+    def get_app_from_konveyor_hub(self, app_name: str):
+        return None  # For now, return None always - jsussman
 
     # get the app variables from the app.yaml
-    def get_app_variables(self, app_name):
+    def get_app_variables(self, app_name: str):
         # Path to the analysis_reports directory
         analysis_reports_dir = "samples/analysis_reports"
 
@@ -95,7 +88,7 @@ class IncidentStore:
 
         # Load contents of app.yaml
         with open(app_yaml_path, "r") as app_yaml_file:
-            app_data = yaml.safe_load(app_yaml_file)
+            app_data: dict = yaml.safe_load(app_yaml_file)
 
         return app_data
 
@@ -289,7 +282,7 @@ class IncidentStore:
         self.write_cached_violations(self.missing_violations, "missing_incidents.yaml")
         self.write_cached_violations(self.solved_violations, "solved_incidents.yaml")
 
-    def load_app_cached_violation(self, app, folder):
+    def load_app_cached_violation(self, app: str, folder):
         """
         Load the incident store with the given applications
         """
@@ -303,7 +296,7 @@ class IncidentStore:
         # self.write_cached_violations(self.cached_violations, "cached_violations.yaml")
         return self.cached_violations
 
-    def fetch_output_yaml(self, app_name, folder="solved"):
+    def fetch_output_yaml(self, app_name: str, folder: str = "solved") -> str:
         """
         Fetch the output and app yaml for the given application
         """
