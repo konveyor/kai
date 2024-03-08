@@ -24,6 +24,7 @@ from aiohttp import web
 from aiohttp.web import Response
 from aiohttp.web_request import Request
 from incident_store_advanced import Application, EmbeddingInstructor, PSQLIncidentStore
+from langchain.chat_models import ChatOpenAI
 from prompt_builder import CONFIG_IBM, PromptBuilder
 from psycopg2.extras import DictRow
 from report import Report
@@ -317,10 +318,20 @@ async def post_get_incident_solution(request: Request):
         pb_vars["solved_example_file_name"] = solved_incident["incident_uri"]
 
     pb = PromptBuilder(CONFIG_IBM, pb_vars)
-    pb.build_prompt()
+    prompt = pb.build_prompt()
+    if isinstance(prompt, list):
+        raise Exception(f"Did not supply proper variables. Need at least {prompt}")
+
+    # FIXME: Should we still use langchain? We need to support multiple
+    # different models
+    llm = ChatOpenAI(streaming=True)
+
+    llm_output = ""
+    for chunk in llm.stream(prompt):
+        llm_output += chunk.content
 
     resp = {
-        "llm_output": "placeholder",
+        "llm_output": llm_output,
     }
 
     print(resp)
@@ -370,10 +381,12 @@ if __name__ == "__main__":
     old_cmt_time = 1708003534
     old_cmt_report_path = "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/samples/analysis_reports/cmt/initial/output.yaml"
     old_cmt_report = Report(old_cmt_report_path)
+
     new_cmt_commit = "25f00d88f8bceefb223390dcdd656bd5af45146e"
     new_cmt_time = 1708003640
     new_cmt_report_path = "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/samples/analysis_reports/cmt/solved/output.yaml"
     new_cmt_report = Report(new_cmt_report_path)
+
     cmt_uri_origin = "https://github.com/konveyor-ecosystem/cmt.git"
     cmt_uri_local = "file:///home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/samples/sample_repos/cmt"
 
@@ -395,6 +408,25 @@ if __name__ == "__main__":
         new_cmt_commit,
         datetime.datetime.fromtimestamp(new_cmt_time),
     )
+
+    # old_helloworld_mdb_quarkus_commit = ""
+    # old_helloworld_mdb_quarkus_time = ""
+    # old_helloworld_mdb_quarkus_report_path = ""
+    # old_helloworld_mdb_quarkus_report = Report(old_helloworld_mdb_quarkus_report_path)
+
+    # new_helloworld_mdb_quarkus_commit = ""
+    # new_helloworld_mdb_quarkus_time = ""
+    # new_helloworld_mdb_quarkus_report_path = ""
+    # new_helloworld_mdb_quarkus_report = Report(old_helloworld_mdb_quarkus_report_path)
+
+    # helloworld_mdb_quarkus_origin = ""
+    # helloworld_mdb_quarkus_local = ""
+
+    # old_helloworld_mdb_quarkus_applicaiton = Application(
+    #     None,
+    #     "helloworld-mdb-quarkus",
+    #     helloworld_mdb_quarkus_origin,
+    # )
 
     if reset_it:
         incident_store.insert_and_update_from_report(
