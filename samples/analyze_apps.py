@@ -67,7 +67,11 @@ def analyze(source_dir, name, target):
     full_output_dir = os.path.join(os.getcwd(), f"analysis_reports/{name}/{target}")
     ensure_output_dir_exists(full_output_dir)
     print(f"Analyzing '{source_dir}', will write output to '{full_output_dir}'")
-    cmd = f'time ./bin/kantra analyze -i {source_dir} -m source-only -t "quarkus" -t "jakarta-ee" -t "jakarta-ee8+" -t "jakarta-ee9+" -t "cloud-readiness" --rules ./custom_rules -o {full_output_dir} --overwrite'
+    #
+    # "-m source-only" will skip processing of dependencies, and will be
+    # quicker but it may impact some rules so they don't execut as we imagine
+    #
+    cmd = f'time ./bin/kantra analyze -i {source_dir} -t "quarkus" -t "jakarta-ee" -t "jakarta-ee8+" -t "jakarta-ee9+" -t "cloud-readiness" --rules ./custom_rules -o {full_output_dir} --overwrite'
     subprocess.run(cmd, shell=True)  # trunk-ignore(bandit)
 
 
