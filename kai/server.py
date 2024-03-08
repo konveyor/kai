@@ -381,12 +381,16 @@ if __name__ == "__main__":
 
     old_cmt_commit = "c0267672ffab448735100996f5ad8ed814c38847"
     old_cmt_time = 1708003534
-    old_cmt_report_path = f"{base_path}/../samples/analysis_reports/cmt/initial/output.yaml"
+    old_cmt_report_path = (
+        f"{base_path}/../samples/analysis_reports/cmt/initial/output.yaml"
+    )
     old_cmt_report = Report(old_cmt_report_path)
 
     new_cmt_commit = "25f00d88f8bceefb223390dcdd656bd5af45146e"
     new_cmt_time = 1708003640
-    new_cmt_report_path = f"{base_path}/../samples/analysis_reports/cmt/solved/output.yaml"
+    new_cmt_report_path = (
+        f"{base_path}/../samples/analysis_reports/cmt/solved/output.yaml"
+    )
     new_cmt_report = Report(new_cmt_report_path)
 
     cmt_uri_origin = "https://github.com/konveyor-ecosystem/cmt.git"
