@@ -28,6 +28,9 @@ import torch
 from report import Report
 
 
+BASE_PATH = os.path.dirname(__file__)
+
+
 class TrimStrategy(Enum):
   NONE       = 0
   TRIM_FRONT = 1
@@ -77,15 +80,15 @@ class EmbeddingNone(EmbeddingProvider):
 
   def get_embedding(self, inp: str) -> list | None:
     return [0]
-  
+
 
   def get_max_tokens(self) -> int:
     return self.max_tokens
-  
+
 
   def get_dimension(self) -> int:
     return self.dimension
-  
+
 
 class EmbeddingOpenAI(EmbeddingProvider):
   """
@@ -115,7 +118,7 @@ class EmbeddingOpenAI(EmbeddingProvider):
     }
 
     response: requests.Response = requests.post(
-      'https://api.openai.com/v1/embeddings', 
+      'https://api.openai.com/v1/embeddings',
       json=data, headers=headers
     )
 
@@ -124,12 +127,12 @@ class EmbeddingOpenAI(EmbeddingProvider):
       return None
 
     return response.json()['data'][0]['embedding']
-  
-  
+
+
   def get_max_tokens(self) -> int:
     return self.max_tokens
-  
-  
+
+
   def get_dimension(self) -> int:
     return self.dimension
 
@@ -139,7 +142,7 @@ class EmbeddingInstructor(EmbeddingProvider):
   - link: https://huggingface.co/hkunlp/instructor-xl
   """
   def __init__(self, model: str='hkunlp/instructor-large') -> None:
-    # It appears instructor cuts off all tokens after the 512 mark automatically 
+    # It appears instructor cuts off all tokens after the 512 mark automatically
 
     self.max_tokens = 512 # TODO: find out
     self.dimension  = 768
@@ -158,7 +161,7 @@ class EmbeddingInstructor(EmbeddingProvider):
 
   def get_dimension(self) -> int:
     return self.dimension
-  
+
   def get_max_tokens(self) -> int:
     return self.max_tokens
 
@@ -182,7 +185,7 @@ def embedding_playground(conn: connection, embp: EmbeddingProvider) -> None:
         inp = input("> ")
         emb = embp.get_embedding(inp)
         cur.execute(f"""
-          INSERT INTO {table_name}(the_text, embedding) 
+          INSERT INTO {table_name}(the_text, embedding)
           VALUES (%s, %s)
         """, (inp, str(emb),))
 
@@ -229,7 +232,7 @@ class Application:
       current_commit=row['current_commit'],
       generated_at=row['generated_at'],
     )
-  
+
 
 def supply_cursor_if_none(func):
   @wraps(func)
@@ -254,8 +257,8 @@ def supply_cursor_if_none(func):
 # to be much cleaner than rolling it by hand - jsussman
 class PSQLIncidentStore:
   def __init__(
-    self, *, drop_tables: bool=False, config_filepath: str=None, 
-    config_section: str=None, config: dict=None, 
+    self, *, drop_tables: bool=False, config_filepath: str=None,
+    config_section: str=None, config: dict=None,
     emb_provider: EmbeddingProvider=None,
   ):
     # Config parsing. Either comes from a dict or a .ini file
@@ -267,15 +270,15 @@ class PSQLIncidentStore:
       raise Exception("config_filepath and config_section must both be set if using .ini file.")
     if not (cf_none ^ cd_none):
       raise Exception("Must provide either config .ini or config dict.")
-    
+
     if not cf_none:
       parser = ConfigParser()
       parser.read(config_filepath)
 
       config = {}
       if not parser.has_section(config_section):
-        raise Exception(f"Section {config_section} not found in file {config_section}.")
-      
+        raise Exception(f"Section {config_section} not found in file {config_filepath}")
+
       for p in parser.items(config_section):
         config[p[0]] = p[1]
 
@@ -283,10 +286,10 @@ class PSQLIncidentStore:
     # Embedding provider
     if emb_provider is None:
       raise Exception("emb_provider must not be None")
-    
+
     self.emb_provider = emb_provider
 
-    
+
     try:
       with psycopg2.connect(cursor_factory=DictCursor, **config) as conn:
         print('Connected to the PostgreSQL server.')
@@ -302,12 +305,12 @@ class PSQLIncidentStore:
         # like openapi to nail down the spec and autogenerate the types
 
         if drop_tables:
-          cur.execute(open("data/sql/drop_tables.sql", "r").read())
+          cur.execute(open(f"{BASE_PATH}/data/sql/drop_tables.sql", "r").read())
 
-        cur.execute(open("data/sql/create_tables.sql", "r").read())
+        cur.execute(open(f"{BASE_PATH}/data/sql/create_tables.sql", "r").read())
 
         dim = self.emb_provider.get_dimension()
-        for q in open("data/sql/add_embedding.sql", "r").readlines():
+        for q in open(f"{BASE_PATH}/data/sql/add_embedding.sql", "r").readlines():
           cur.execute(q, (dim,))
 
     except (psycopg2.DatabaseError, Exception) as error:
@@ -318,7 +321,7 @@ class PSQLIncidentStore:
   def select_application(self, app_id: int, app_name: str = None, cur: DictCursor = None) -> list[DictRow]:
     if app_id is None and app_name is None:
       return []
-        
+
     if app_id is not None:
       cur.execute(
         "SELECT * FROM applications WHERE application_id = %s;",
@@ -338,14 +341,14 @@ class PSQLIncidentStore:
   @supply_cursor_if_none
   def insert_application(self, app: Application, cur: DictCursor = None) -> DictRow:
     cur.execute(
-      """INSERT INTO applications(application_name, repo_uri_origin, repo_uri_local, current_branch, current_commit, generated_at) 
+      """INSERT INTO applications(application_name, repo_uri_origin, repo_uri_local, current_branch, current_commit, generated_at)
       VALUES (%s, %s, %s, %s, %s, %s) RETURNING *;""",
       app.as_tuple()[1:]
     )
 
     return cur.fetchone()
 
-  
+
   @supply_cursor_if_none
   def update_application(self, application_id: int, app: Application, cur: DictCursor = None) -> DictRow:
     cur.execute(
@@ -358,12 +361,12 @@ class PSQLIncidentStore:
         generated_at = %s
       WHERE application_id = %s
       RETURNING *;""",
-      (app.application_name, app.repo_uri_origin, app.repo_uri_local, 
+      (app.application_name, app.repo_uri_origin, app.repo_uri_local,
        app.current_branch, app.current_commit, app.generated_at, application_id)
     )
 
     return cur.fetchone()
-  
+
 
   @supply_cursor_if_none
   def select_ruleset(self, ruleset_id: int = None, ruleset_name: str = None, cur: DictCursor = None) -> list[DictRow]:
@@ -381,11 +384,11 @@ class PSQLIncidentStore:
         # (ruleset_name, application_id,)
         (ruleset_name,)
       )
-    else: 
+    else:
       raise Exception("At least one of ruleset_id or ruleset_name must be not None.")
 
     return cur.fetchall()
-  
+
 
   @supply_cursor_if_none
   def insert_ruleset(self, ruleset_name: str, tags: list[str], cur: DictCursor = None) -> DictRow:
@@ -414,12 +417,12 @@ class PSQLIncidentStore:
         "SELECT * FROM violations WHERE violation_name = %s AND ruleset_id = %s;",
         (violation_name, ruleset_id,)
       )
-    else: 
+    else:
       raise Exception("At least one of violation_id or (violation_name, ruleset_id) must be not None.")
 
     return cur.fetchall()
-  
-  
+
+
   @supply_cursor_if_none
   def insert_violation(self, violation_name: str, ruleset_id: int, category: str, labels: list[str], cur: DictCursor = None) -> DictRow:
     cur.execute(
@@ -429,12 +432,12 @@ class PSQLIncidentStore:
     )
 
     return cur.fetchone()
-  
+
 
   @supply_cursor_if_none
   def insert_incident(
-    self, violation_id: int, application_id: int, incident_uri: str, incident_snip: str, 
-    incident_line: int, incident_variables: dict, solution_id: int = None, 
+    self, violation_id: int, application_id: int, incident_uri: str, incident_snip: str,
+    incident_line: int, incident_variables: dict, solution_id: int = None,
     cur: DictCursor = None
   ) -> DictRow:
     # if isinstance(incident_variables, str):
@@ -448,30 +451,30 @@ class PSQLIncidentStore:
       """INSERT INTO incidents(violation_id, application_id, incident_uri, incident_snip, incident_line, incident_variables, solution_id, incident_snip_embedding)
       VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING *;""",
       (
-        violation_id, application_id, incident_uri, incident_snip, incident_line, 
+        violation_id, application_id, incident_uri, incident_snip, incident_line,
         json.dumps(incident_variables), solution_id, str(self.emb_provider.get_embedding(incident_snip)))
     )
 
     return cur.fetchone()
-  
-  
+
+
   @supply_cursor_if_none
   def insert_accepted_solution(
-    self, generated_at: datetime.datetime, solution_big_diff: str, 
-    solution_small_diff: str, solution_original_code: str, 
-    solution_updated_code: str, cur: DictCursor = None 
+    self, generated_at: datetime.datetime, solution_big_diff: str,
+    solution_small_diff: str, solution_original_code: str,
+    solution_updated_code: str, cur: DictCursor = None
   ):
     print(f"insertint accepted sln {(generated_at)}")
     small_diff_embedding = str(self.emb_provider.get_embedding(solution_small_diff))
     original_code_embedding = str(self.emb_provider.get_embedding(solution_original_code))
     cur.execute(
-      """INSERT INTO accepted_solutions(generated_at, solution_big_diff, 
-      solution_small_diff, solution_original_code, solution_updated_code, 
-      small_diff_embedding, original_code_embedding) 
+      """INSERT INTO accepted_solutions(generated_at, solution_big_diff,
+      solution_small_diff, solution_original_code, solution_updated_code,
+      small_diff_embedding, original_code_embedding)
       VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING *;""",
       (
-        generated_at, solution_big_diff, solution_small_diff, 
-        solution_original_code, solution_updated_code, small_diff_embedding, 
+        generated_at, solution_big_diff, solution_small_diff,
+        solution_original_code, solution_updated_code, small_diff_embedding,
         original_code_embedding)
     )
 
@@ -491,7 +494,7 @@ class PSQLIncidentStore:
 
   @supply_cursor_if_none
   def get_fuzzy_similar_incident(
-    self, violation_name: str, ruleset_name: str, incident_snip: str, 
+    self, violation_name: str, ruleset_name: str, incident_snip: str,
     incident_vars: dict, cur: DictCursor = None
   ):
     """
@@ -560,7 +563,7 @@ class PSQLIncidentStore:
     if len(violation_query) == 0:
       print(f"No violations matched: {ruleset_name=} {violation_name=}")
       return highest_embedding_similarity_from_all(), 'unseen_violation'
-    
+
     violation = violation_query[0]
 
     cur.execute("""
@@ -714,9 +717,9 @@ class PSQLIncidentStore:
               """INSERT INTO incidents_temp(violation_id, application_id, incident_uri, incident_snip, incident_line, incident_variables)
               VALUES (%s, %s, %s, %s, %s, %s);""",
               (
-                violation['violation_id'], application['application_id'], 
-                incident.get('uri', ''), incident.get('codeSnip', ''), 
-                incident.get('lineNumber', 0), 
+                violation['violation_id'], application['application_id'],
+                incident.get('uri', ''), incident.get('codeSnip', ''),
+                incident.get('lineNumber', 0),
                 json.dumps(incident.get('variables', {}))
               )
             )
@@ -725,11 +728,11 @@ class PSQLIncidentStore:
       cur.execute(
         """SELECT i.incident_id AS incidents_id, it.incident_id AS incidents_temp_id, it.violation_id, it.application_id, it.incident_uri, it.incident_snip, it.incident_line, it.incident_variables
         FROM incidents_temp it
-        LEFT JOIN incidents i ON it.violation_id = i.violation_id 
+        LEFT JOIN incidents i ON it.violation_id = i.violation_id
                               AND it.application_id = i.application_id
-                              AND it.incident_uri = i.incident_uri 
-                              AND it.incident_snip = i.incident_snip 
-                              AND it.incident_line = i.incident_line 
+                              AND it.incident_uri = i.incident_uri
+                              AND it.incident_snip = i.incident_snip
+                              AND it.incident_line = i.incident_line
                               AND it.incident_variables = i.incident_variables
         WHERE i.incident_id IS NULL;"""
       )
@@ -748,11 +751,11 @@ class PSQLIncidentStore:
       cur.execute(
         """SELECT i.incident_id AS incidents_id, it.incident_id AS incidents_temp_id, i.violation_id, i.application_id, i.incident_uri, i.incident_snip, i.incident_line, i.incident_variables
         FROM incidents i
-        JOIN incidents_temp it ON i.violation_id = it.violation_id 
+        JOIN incidents_temp it ON i.violation_id = it.violation_id
                                 AND it.application_id = i.application_id
-                                AND i.incident_uri = it.incident_uri 
-                                AND i.incident_snip = it.incident_snip 
-                                AND i.incident_line = it.incident_line 
+                                AND i.incident_uri = it.incident_uri
+                                AND i.incident_snip = it.incident_snip
+                                AND i.incident_line = it.incident_line
                                 AND i.incident_variables = it.incident_variables;"""
       )
 
@@ -765,9 +768,9 @@ class PSQLIncidentStore:
         FROM incidents i
         LEFT JOIN incidents_temp it ON i.violation_id = it.violation_id
                                     AND it.application_id = i.application_id
-                                    AND i.incident_uri = it.incident_uri 
-                                    AND i.incident_snip = it.incident_snip 
-                                    AND i.incident_line = it.incident_line 
+                                    AND i.incident_uri = it.incident_uri
+                                    AND i.incident_snip = it.incident_snip
+                                    AND i.incident_line = it.incident_line
                                     AND i.incident_variables = it.incident_variables
         WHERE it.incident_id IS NULL;"""
       )
@@ -780,7 +783,7 @@ class PSQLIncidentStore:
       for si in solved_incidents:
         file_path = os.path.join(repo_path, unquote(urlparse(si[4]).path).removeprefix('/tmp/source-code/'))
         big_diff = repo.git.diff(old_commit, new_commit)
-        
+
         try:
           original_code = repo.git.show(f"{old_commit}:{file_path}")
         except:
@@ -821,8 +824,9 @@ class PSQLIncidentStore:
 
 
 if __name__ == '__main__':
+
   psqlis = PSQLIncidentStore(
-    config_filepath='database.ini', 
+    config_filepath='database.ini',
     config_section='postgresql',
     emb_provider=EmbeddingNone()
   )
@@ -832,14 +836,14 @@ if __name__ == '__main__':
   new_cmt_commit = '25f00d88f8bceefb223390dcdd656bd5af45146e'
   new_cmt_time   = datetime.datetime.fromtimestamp(1708003640)
   cmt_uri_origin = 'https://github.com/konveyor-ecosystem/cmt.git'
-  cmt_uri_local  = 'file:///home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/samples/sample_repos/cmt'
+  cmt_uri_local  = f'file://{BASE_PATH}/samples/sample_repos/cmt'
 
   old_cmt_application = Application(None, 'cmt', cmt_uri_origin, cmt_uri_local, 'main',    old_cmt_commit, old_cmt_time)
   new_cmt_application = Application(None, 'cmt', cmt_uri_origin, cmt_uri_local, 'quarkus', new_cmt_commit, new_cmt_time)
 
-  old_cmt_report = Report('/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/samples/analysis_reports/cmt/initial/output.yaml')
-  new_cmt_report = Report('/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/samples/analysis_reports/cmt/solved/output.yaml')
-  
+  old_cmt_report = Report(f'{BASE_PATH}/samples/analysis_reports/cmt/initial/output.yaml')
+  new_cmt_report = Report(f'{BASE_PATH}/samples/analysis_reports/cmt/solved/output.yaml')
+
   psqlis.insert_and_update_from_report(old_cmt_application, old_cmt_report)
   input("INSPECT!!")
   psqlis.insert_and_update_from_report(new_cmt_application, new_cmt_report)
