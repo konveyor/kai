@@ -15,6 +15,7 @@ import psycopg2
 import requests
 import tiktoken
 import torch
+import yaml
 from git import Repo
 from InstructorEmbedding import INSTRUCTOR
 from psycopg2.extensions import connection
