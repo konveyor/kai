@@ -521,6 +521,19 @@ class PSQLIncidentStore:
         original_code_embedding = str(
             self.emb_provider.get_embedding(solution_original_code)
         )
+
+        # Encode the strings using the appropriate encoding method
+        solution_big_diff = solution_big_diff.encode("utf-8", "ignore").decode("utf-8")
+        solution_small_diff = solution_small_diff.encode("utf-8", "ignore").decode(
+            "utf-8"
+        )
+        solution_original_code = solution_original_code.encode(
+            "utf-8", "ignore"
+        ).decode("utf-8")
+        solution_updated_code = solution_updated_code.encode("utf-8", "ignore").decode(
+            "utf-8"
+        )
+
         cur.execute(
             """INSERT INTO accepted_solutions(generated_at, solution_big_diff, 
       solution_small_diff, solution_original_code, solution_updated_code, 
@@ -936,68 +949,66 @@ class PSQLIncidentStore:
         print(f"Loading incident store with applications: {apps}\n")
 
         for app in apps:
-            if app != "kitchensink":
-                continue
-            else:
-                # if app is a directory then check if there is a folder called initial
+
+            # if app is a directory then check if there is a folder called initial
+            print(f"Loading application {app}\n")
+            app_path = os.path.join(folder_path, app)
+            if os.path.isdir(app_path):
+                initial_folder = os.path.join(app_path, "initial")
+                if not os.path.exists(initial_folder):
+                    print(f"Error: {initial_folder} does not exist.")
+                    return None
+                # check if the folder is empty
+                if not os.listdir(initial_folder):
+                    print(f"Error: No analysis report found in {initial_folder}.")
+                    return None
+                report_path = os.path.join(initial_folder, "output.yaml")
+
+                repo_path = self.get_repo_path(app)
+                repo = Repo(repo_path)
+                app_v = self.get_app_variables(app)
+                initial_branch = app_v["initial_branch"]
+                repo.git.checkout(initial_branch)
+                commit = repo.head.commit
+
+                app_initial = Application(
+                    application_id=None,
+                    application_name=app,
+                    repo_uri_origin=repo.remotes.origin.url,
+                    repo_uri_local=repo_path,
+                    current_branch=initial_branch,
+                    current_commit=commit.hexsha,
+                    generated_at=datetime.datetime.now(),
+                )
+
                 print(f"Loading application {app}\n")
-                app_path = os.path.join(folder_path, app)
-                if os.path.isdir(app_path):
-                    initial_folder = os.path.join(app_path, "initial")
-                    if not os.path.exists(initial_folder):
-                        print(f"Error: {initial_folder} does not exist.")
-                        return None
-                    # check if the folder is empty
-                    if not os.listdir(initial_folder):
-                        print(f"Error: No analysis report found in {initial_folder}.")
-                        return None
-                    report_path = os.path.join(initial_folder, "output.yaml")
 
-                    repo_path = self.get_repo_path(app)
-                    repo = Repo(repo_path)
-                    app_v = self.get_app_variables(app)
-                    initial_branch = app_v["initial_branch"]
-                    repo.git.checkout(initial_branch)
-                    commit = repo.head.commit
+                self.insert_and_update_from_report(app_initial, Report(report_path))
+                print(f"Loaded application - initial {app}\n")
 
-                    app_initial = Application(
-                        application_id=None,
-                        application_name=app,
-                        repo_uri_origin=repo.remotes.origin.url,
-                        repo_uri_local=repo_path,
-                        current_branch=initial_branch,
-                        current_commit=commit.hexsha,
-                        generated_at=datetime.datetime.now(),
-                    )
-
-                    print(f"Loading application {app}\n")
-
-                    self.insert_and_update_from_report(app_initial, Report(report_path))
-                    print(f"Loaded application - initial {app}\n")
-
-                    solved_folder = os.path.join(app_path, "solved")
-                    if not os.path.exists(solved_folder):
-                        print(f"Error: {solved_folder} does not exist.")
-                        return None
-                    # check if the folder is empty
-                    if not os.listdir(solved_folder):
-                        print(f"Error: No analysis report found in {solved_folder}.")
-                        return None
-                    report_path = os.path.join(solved_folder, "output.yaml")
-                    solved_branch = self.get_app_variables(app)["solved_branch"]
-                    repo.git.checkout(solved_branch)
-                    commit = repo.head.commit
-                    app_solved = Application(
-                        application_id=None,
-                        application_name=app,
-                        repo_uri_origin=repo.remotes.origin.url,
-                        repo_uri_local=repo_path,
-                        current_branch=solved_branch,
-                        current_commit=commit.hexsha,
-                        generated_at=datetime.datetime.now(),
-                    )
-                    self.insert_and_update_from_report(app_solved, Report(report_path))
-                    print(f"Loaded application - solved {app}\n")
+                solved_folder = os.path.join(app_path, "solved")
+                if not os.path.exists(solved_folder):
+                    print(f"Error: {solved_folder} does not exist.")
+                    return None
+                # check if the folder is empty
+                if not os.listdir(solved_folder):
+                    print(f"Error: No analysis report found in {solved_folder}.")
+                    return None
+                report_path = os.path.join(solved_folder, "output.yaml")
+                solved_branch = self.get_app_variables(app)["solved_branch"]
+                repo.git.checkout(solved_branch)
+                commit = repo.head.commit
+                app_solved = Application(
+                    application_id=None,
+                    application_name=app,
+                    repo_uri_origin=repo.remotes.origin.url,
+                    repo_uri_local=repo_path,
+                    current_branch=solved_branch,
+                    current_commit=commit.hexsha,
+                    generated_at=datetime.datetime.now(),
+                )
+                self.insert_and_update_from_report(app_solved, Report(report_path))
+                print(f"Loaded application - solved {app}\n")
 
     def get_repo_path(self, app_name):
         """
