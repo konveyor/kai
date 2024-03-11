@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS vector;
+
 CREATE TABLE IF NOT EXISTS applications (
   application_id   SERIAL PRIMARY KEY,
   application_name TEXT NOT NULL,

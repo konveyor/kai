@@ -369,9 +369,11 @@ incident_store: PSQLIncidentStore
 if __name__ == "__main__":
     reset_it = False
 
+    base_path = os.path.dirname(__file__)
+
     # TODO: Make this all config-based
     incident_store = PSQLIncidentStore(
-        config_filepath="../kai/database.ini",
+        config_filepath=f"{base_path}/../kai/database.ini",
         config_section="postgresql",
         emb_provider=EmbeddingInstructor(model="hkunlp/instructor-base"),
         drop_tables=reset_it,
@@ -379,16 +381,20 @@ if __name__ == "__main__":
 
     old_cmt_commit = "c0267672ffab448735100996f5ad8ed814c38847"
     old_cmt_time = 1708003534
-    old_cmt_report_path = "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/samples/analysis_reports/cmt/initial/output.yaml"
+    old_cmt_report_path = (
+        f"{base_path}/../samples/analysis_reports/cmt/initial/output.yaml"
+    )
     old_cmt_report = Report(old_cmt_report_path)
 
     new_cmt_commit = "25f00d88f8bceefb223390dcdd656bd5af45146e"
     new_cmt_time = 1708003640
-    new_cmt_report_path = "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/samples/analysis_reports/cmt/solved/output.yaml"
+    new_cmt_report_path = (
+        f"{base_path}/../samples/analysis_reports/cmt/solved/output.yaml"
+    )
     new_cmt_report = Report(new_cmt_report_path)
 
     cmt_uri_origin = "https://github.com/konveyor-ecosystem/cmt.git"
-    cmt_uri_local = "file:///home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/samples/sample_repos/cmt"
+    cmt_uri_local = f"file://{base_path}/../samples/sample_repos/cmt"
 
     old_cmt_application = Application(
         None,
