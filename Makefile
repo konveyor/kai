@@ -4,3 +4,5 @@ run-postgres:
 run-server:
 	python ./kai/server.py
 
+load-data:
+	python ./kai/incident_store_advanced.py --config_filepath ./kai/database.ini

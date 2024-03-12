@@ -1,3 +1,4 @@
+import argparse
 import datetime
 import json
 import os
@@ -15,6 +16,7 @@ import psycopg2
 import requests
 import tiktoken
 import torch
+import yaml
 from git import Repo
 from InstructorEmbedding import INSTRUCTOR
 from psycopg2.extensions import connection
@@ -487,8 +489,11 @@ class PSQLIncidentStore:
         # if not isinstance(incident_variables, list):
         #   raise Exception(f"incident_variables must be of type list. Got type '{type(incident_variables)}'")
 
+        vars_str = json.dumps(incident_variables)
+        truncated_vars = (vars_str[:75] + "...") if len(vars_str) > 75 else vars_str
+
         print(
-            f"inserting {(violation_id, application_id, incident_uri, incident_line, json.dumps(incident_variables), solution_id,)}"
+            f"Inserting incident {(violation_id, application_id, incident_uri, incident_line, truncated_vars, solution_id,)}"
         )
 
         cur.execute(
@@ -518,11 +523,25 @@ class PSQLIncidentStore:
         solution_updated_code: str,
         cur: DictCursor = None,
     ):
-        print(f"insertint accepted sln {(generated_at)}")
+        print(f"Inserting accepted solution {((generated_at))}")
         small_diff_embedding = str(self.emb_provider.get_embedding(solution_small_diff))
         original_code_embedding = str(
             self.emb_provider.get_embedding(solution_original_code)
         )
+
+        # Encode the strings using the appropriate encoding method
+        # to avoid unicode errors TODO: validate if this is the right way to do it
+        solution_big_diff = solution_big_diff.encode("utf-8", "ignore").decode("utf-8")
+        solution_small_diff = solution_small_diff.encode("utf-8", "ignore").decode(
+            "utf-8"
+        )
+        solution_original_code = solution_original_code.encode(
+            "utf-8", "ignore"
+        ).decode("utf-8")
+        solution_updated_code = solution_updated_code.encode("utf-8", "ignore").decode(
+            "utf-8"
+        )
+
         cur.execute(
             """INSERT INTO accepted_solutions(generated_at, solution_big_diff,
       solution_small_diff, solution_original_code, solution_updated_code,
@@ -806,15 +825,24 @@ class PSQLIncidentStore:
 
             # incidents_temp - incidents
             cur.execute(
-                """SELECT i.incident_id AS incidents_id, it.incident_id AS incidents_temp_id, it.violation_id, it.application_id, it.incident_uri, it.incident_snip, it.incident_line, it.incident_variables
-        FROM incidents_temp it
-        LEFT JOIN incidents i ON it.violation_id = i.violation_id
-                              AND it.application_id = i.application_id
-                              AND it.incident_uri = i.incident_uri
-                              AND it.incident_snip = i.incident_snip
-                              AND it.incident_line = i.incident_line
-                              AND it.incident_variables = i.incident_variables
-        WHERE i.incident_id IS NULL;"""
+                """WITH filtered_incidents_temp AS (
+    SELECT * FROM incidents_temp WHERE application_id = %s
+),
+filtered_incidents AS (
+    SELECT * FROM incidents WHERE application_id = %s
+)
+SELECT fit.incident_id AS incidents_temp_id, fi.incident_id AS incidents_id, fit.violation_id, fit.application_id, fit.incident_uri, fit.incident_snip, fit.incident_line, fit.incident_variables
+FROM filtered_incidents_temp fit
+LEFT JOIN filtered_incidents fi ON fit.violation_id = fi.violation_id
+                                AND fit.incident_uri = fi.incident_uri
+                                AND fit.incident_snip = fi.incident_snip
+                                AND fit.incident_line = fi.incident_line
+                                AND fit.incident_variables = fi.incident_variables
+WHERE fi.incident_id IS NULL;""",
+                (
+                    application["application_id"],
+                    application["application_id"],
+                ),
             )
 
             new_incidents = cur.fetchall()
@@ -838,14 +866,25 @@ class PSQLIncidentStore:
 
             # incidents `intersect` incidents_temp
             cur.execute(
-                """SELECT i.incident_id AS incidents_id, it.incident_id AS incidents_temp_id, i.violation_id, i.application_id, i.incident_uri, i.incident_snip, i.incident_line, i.incident_variables
-        FROM incidents i
-        JOIN incidents_temp it ON i.violation_id = it.violation_id
-                                AND it.application_id = i.application_id
-                                AND i.incident_uri = it.incident_uri
-                                AND i.incident_snip = it.incident_snip
-                                AND i.incident_line = it.incident_line
-                                AND i.incident_variables = it.incident_variables;"""
+                """-- incidents `intersect` incidents_temp with application_id match first
+WITH filtered_incidents AS (
+    SELECT * FROM incidents WHERE application_id = %s
+),
+filtered_incidents_temp AS (
+    SELECT * FROM incidents_temp WHERE application_id = %s
+)
+SELECT fi.incident_id AS incidents_id, fit.incident_id AS incidents_temp_id, fi.violation_id, fi.application_id, fi.incident_uri, fi.incident_snip, fi.incident_line, fi.incident_variables
+FROM filtered_incidents fi
+JOIN filtered_incidents_temp fit ON fi.violation_id = fit.violation_id
+                                  AND fi.incident_uri = fit.incident_uri
+                                  AND fi.incident_snip = fit.incident_snip
+                                  AND fi.incident_line = fit.incident_line
+                                  AND fi.incident_variables = fit.incident_variables;
+""",
+                (
+                    application["application_id"],
+                    application["application_id"],
+                ),
             )
 
             unsolved_incidents = cur.fetchall()
@@ -853,15 +892,24 @@ class PSQLIncidentStore:
 
             # incidents - incidents_temp
             cur.execute(
-                """SELECT i.incident_id AS incidents_id, it.incident_id AS incidents_temp_id, i.violation_id, i.application_id, i.incident_uri, i.incident_snip, i.incident_line, i.incident_variables
-        FROM incidents i
-        LEFT JOIN incidents_temp it ON i.violation_id = it.violation_id
-                                    AND it.application_id = i.application_id
-                                    AND i.incident_uri = it.incident_uri
-                                    AND i.incident_snip = it.incident_snip
-                                    AND i.incident_line = it.incident_line
-                                    AND i.incident_variables = it.incident_variables
-        WHERE it.incident_id IS NULL;"""
+                """WITH filtered_incidents AS (
+    SELECT * FROM incidents WHERE application_id = %s
+),
+filtered_incidents_temp AS (
+    SELECT * FROM incidents_temp WHERE application_id = %s
+)
+SELECT fi.incident_id AS incidents_id, fit.incident_id AS incidents_temp_id, fi.violation_id, fi.application_id, fi.incident_uri, fi.incident_snip, fi.incident_line, fi.incident_variables
+FROM filtered_incidents fi
+LEFT JOIN filtered_incidents_temp fit ON fi.violation_id = fit.violation_id
+                                      AND fi.incident_uri = fit.incident_uri
+                                      AND fi.incident_snip = fit.incident_snip
+                                      AND fi.incident_line = fit.incident_line
+                                      AND fi.incident_variables = fit.incident_variables
+WHERE fit.incident_id IS NULL;""",
+                (
+                    application["application_id"],
+                    application["application_id"],
+                ),
             )
 
             solved_incidents = cur.fetchall()
@@ -925,51 +973,162 @@ class PSQLIncidentStore:
     def accept_solution_from_diff():
         pass
 
+    def load_store(self):
+        # fetch the output.yaml files from the analysis_reports/initial directory
+        path = "samples/analysis_reports"
+        basedir = os.path.dirname(os.path.realpath(__file__))
+        parent_dir = os.path.dirname(basedir)
+        folder_path = os.path.join(parent_dir, path)
+
+        if not os.path.exists(folder_path):
+            print(f"Error: {folder_path} does not exist.")
+            return None
+        # check if the folder is empty
+        if not os.listdir(folder_path):
+            print(f"Error: {folder_path} is empty.")
+            return None
+        apps = os.listdir(folder_path)
+        print(f"Loading incident store with applications: {apps}\n")
+
+        for app in apps:
+
+            # if app is a directory then check if there is a folder called initial
+            print(f"Loading application {app}\n")
+            app_path = os.path.join(folder_path, app)
+            if os.path.isdir(app_path):
+                initial_folder = os.path.join(app_path, "initial")
+                if not os.path.exists(initial_folder):
+                    print(f"Error: {initial_folder} does not exist.")
+                    return None
+                # check if the folder is empty
+                if not os.listdir(initial_folder):
+                    print(f"Error: No analysis report found in {initial_folder}.")
+                    return None
+                report_path = os.path.join(initial_folder, "output.yaml")
+
+                repo_path = self.get_repo_path(app)
+                repo = Repo(repo_path)
+                app_v = self.get_app_variables(folder_path, app)
+                initial_branch = app_v["initial_branch"]
+                repo.git.checkout(initial_branch)
+                commit = repo.head.commit
+
+                app_initial = Application(
+                    application_id=None,
+                    application_name=app,
+                    repo_uri_origin=repo.remotes.origin.url,
+                    repo_uri_local=repo_path,
+                    current_branch=initial_branch,
+                    current_commit=commit.hexsha,
+                    generated_at=datetime.datetime.now(),
+                )
+
+                print(f"Loading application {app}\n")
+
+                self.insert_and_update_from_report(app_initial, Report(report_path))
+                print(f"Loaded application - initial {app}\n")
+
+                # input(f"After inserting initial for {app}...")
+
+                solved_folder = os.path.join(app_path, "solved")
+                if not os.path.exists(solved_folder):
+                    print(f"Error: {solved_folder} does not exist.")
+                    return None
+                # check if the folder is empty
+                if not os.listdir(solved_folder):
+                    print(f"Error: No analysis report found in {solved_folder}.")
+                    return None
+                report_path = os.path.join(solved_folder, "output.yaml")
+                solved_branch = self.get_app_variables(folder_path, app)[
+                    "solved_branch"
+                ]
+                repo.git.checkout(solved_branch)
+                commit = repo.head.commit
+                app_solved = Application(
+                    application_id=None,
+                    application_name=app,
+                    repo_uri_origin=repo.remotes.origin.url,
+                    repo_uri_local=repo_path,
+                    current_branch=solved_branch,
+                    current_commit=commit.hexsha,
+                    generated_at=datetime.datetime.now(),
+                )
+                self.insert_and_update_from_report(app_solved, Report(report_path))
+                # input(f"After inserting solved for {app}...")
+
+                print(f"Loaded application - solved {app}\n")
+
+    def get_repo_path(self, app_name):
+        """
+        Get the repo path
+        """
+
+        # TODO:  This mapping data should be moved out of the code, consider moving to a config file
+        mapping = {
+            "eap-coolstore-monolith": "samples/sample_repos/eap-coolstore-monolith",
+            "ticket-monster": "samples/sample_repos/ticket-monster",
+            "kitchensink": "samples/sample_repos/kitchensink",
+            "helloworld-mdb": "samples/sample_repos/helloworld-mdb",
+            "bmt": "samples/sample_repos/bmt",
+            "cmt": "samples/sample_repos/cmt",
+            "ejb-remote": "samples/sample_repos/ejb-remote",
+            "ejb-security": "samples/sample_repos/ejb-security",
+            "tasks-qute": "samples/sample_repos/tasks-qute",
+            "greeter": "samples/sample_repos/greeter",
+        }
+
+        basedir = os.path.dirname(os.path.realpath(__file__))
+        parent_dir = os.path.dirname(basedir)
+        path = mapping.get(app_name, None)
+        return os.path.join(parent_dir, path)
+
+    def get_app_variables(self, path: str, app_name: str):
+
+        if not os.path.exists(path):
+            print(
+                f"Error: {app_name} does not exist in the analysis_reports directory."
+            )
+            return None
+
+        # Path to the app.yaml file
+        app_yaml_path = os.path.join(path, app_name, "app.yaml")
+        # Check if app.yaml exists for the specified app
+        if not os.path.exists(app_yaml_path):
+            print(f"Error: app.yaml does not exist for {app_name}.")
+            return None
+
+        # Load contents of app.yaml
+        with open(app_yaml_path, "r") as app_yaml_file:
+            app_data: dict = yaml.safe_load(app_yaml_file)
+
+        return app_data
+
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Process some parameters.")
+    parser.add_argument(
+        "--config_filepath",
+        type=str,
+        default="database.ini",
+        help="Path to the config file.",
+    )
+    parser.add_argument(
+        "--config_section",
+        type=str,
+        default="postgresql",
+        help="Config section in the config file.",
+    )
+    parser.add_argument(
+        "--drop_tables", type=str, default="False", help="Whether to drop tables."
+    )
+
+    args = parser.parse_args()
 
     psqlis = PSQLIncidentStore(
-        config_filepath="database.ini",
-        config_section="postgresql",
+        config_filepath=args.config_filepath,
+        config_section=args.config_section,
         emb_provider=EmbeddingNone(),
+        drop_tables=args.drop_tables,
     )
 
-    old_cmt_commit = "c0267672ffab448735100996f5ad8ed814c38847"
-    old_cmt_time = datetime.datetime.fromtimestamp(1708003534)
-    new_cmt_commit = "25f00d88f8bceefb223390dcdd656bd5af45146e"
-    new_cmt_time = datetime.datetime.fromtimestamp(1708003640)
-    cmt_uri_origin = "https://github.com/konveyor-ecosystem/cmt.git"
-    cmt_uri_local = f"file://{BASE_PATH}/samples/sample_repos/cmt"
-
-    old_cmt_application = Application(
-        None, "cmt", cmt_uri_origin, cmt_uri_local, "main", old_cmt_commit, old_cmt_time
-    )
-    new_cmt_application = Application(
-        None,
-        "cmt",
-        cmt_uri_origin,
-        cmt_uri_local,
-        "quarkus",
-        new_cmt_commit,
-        new_cmt_time,
-    )
-
-    old_cmt_report = Report(
-        f"{BASE_PATH}/samples/analysis_reports/cmt/initial/output.yaml"
-    )
-    new_cmt_report = Report(
-        f"{BASE_PATH}/samples/analysis_reports/cmt/solved/output.yaml"
-    )
-
-    psqlis.insert_and_update_from_report(old_cmt_application, old_cmt_report)
-    input("INSPECT!!")
-    psqlis.insert_and_update_from_report(new_cmt_application, new_cmt_report)
-
-    # for ruleset_name, ruleset_dict in report.get_report().items():
-    #   print(f"report_dict mapping: {type(ruleset_name)} -> {type(ruleset_dict)}")
-
-    #   for violation_name, violation_dict in ruleset_dict['violations'].items():
-    #     print(f"{violation_name=} {violation_dict.keys()}")
-    #   print()
-
-    # embedding_playground(psqlis.conn, psqlis.emb_provider)
+    psqlis.load_store()
