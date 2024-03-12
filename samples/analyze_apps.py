@@ -8,11 +8,20 @@ from config import repos, sample_apps
 
 
 def analyze_apps():
+    # Ensure we are on the initial branch for each repo
+    for repo in repos:
+        print(f"Switching to {repos[repo][1]} branch for {repo}...")
+        os.chdir(f"sample_repos/{repo}")
+        if repos[repo][1] is not None:
+            os.system(f"git checkout {repos[repo][1]}")  # trunk-ignore(bandit)
+        os.chdir("../../")
+
     # perform analysis
     for repo in sample_apps:
         source_dir = sample_apps[repo]
         analyze(source_dir, repo, "initial")
 
+    # Ensure we are on the solved branch for each repo
     for repo in repos:
         print(f"Switching to {repos[repo][2]} branch for {repo}...")
         os.chdir(f"sample_repos/{repo}")
