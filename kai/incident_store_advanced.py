@@ -1,3 +1,4 @@
+import argparse
 import datetime
 import json
 import os
@@ -974,7 +975,11 @@ WHERE fit.incident_id IS NULL;""",
 
     def load_store(self):
         # fetch the output.yaml files from the analysis_reports/initial directory
-        folder_path = "../samples/analysis_reports"
+        path = "samples/analysis_reports"
+        basedir = os.path.dirname(os.path.realpath(__file__))
+        parent_dir = os.path.dirname(basedir)
+        folder_path = os.path.join(parent_dir, path)
+
         if not os.path.exists(folder_path):
             print(f"Error: {folder_path} does not exist.")
             return None
@@ -1003,7 +1008,7 @@ WHERE fit.incident_id IS NULL;""",
 
                 repo_path = self.get_repo_path(app)
                 repo = Repo(repo_path)
-                app_v = self.get_app_variables(app)
+                app_v = self.get_app_variables(folder_path, app)
                 initial_branch = app_v["initial_branch"]
                 repo.git.checkout(initial_branch)
                 commit = repo.head.commit
@@ -1034,7 +1039,9 @@ WHERE fit.incident_id IS NULL;""",
                     print(f"Error: No analysis report found in {solved_folder}.")
                     return None
                 report_path = os.path.join(solved_folder, "output.yaml")
-                solved_branch = self.get_app_variables(app)["solved_branch"]
+                solved_branch = self.get_app_variables(folder_path, app)[
+                    "solved_branch"
+                ]
                 repo.git.checkout(solved_branch)
                 commit = repo.head.commit
                 app_solved = Application(
@@ -1075,21 +1082,16 @@ WHERE fit.incident_id IS NULL;""",
         path = mapping.get(app_name, None)
         return os.path.join(parent_dir, path)
 
-    def get_app_variables(self, app_name: str):
-        # Path to the analysis_reports directory
-        analysis_reports_dir = "../samples/analysis_reports"
+    def get_app_variables(self, path: str, app_name: str):
 
-        # Check if the specified app folder exists
-        app_folder = os.path.join(analysis_reports_dir, app_name)
-        if not os.path.exists(app_folder):
+        if not os.path.exists(path):
             print(
                 f"Error: {app_name} does not exist in the analysis_reports directory."
             )
             return None
 
         # Path to the app.yaml file
-        app_yaml_path = os.path.join(app_folder, "app.yaml")
-
+        app_yaml_path = os.path.join(path, app_name, "app.yaml")
         # Check if app.yaml exists for the specified app
         if not os.path.exists(app_yaml_path):
             print(f"Error: app.yaml does not exist for {app_name}.")
@@ -1103,12 +1105,30 @@ WHERE fit.incident_id IS NULL;""",
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Process some parameters.")
+    parser.add_argument(
+        "--config_filepath",
+        type=str,
+        default="database.ini",
+        help="Path to the config file.",
+    )
+    parser.add_argument(
+        "--config_section",
+        type=str,
+        default="postgresql",
+        help="Config section in the config file.",
+    )
+    parser.add_argument(
+        "--drop_tables", type=str, default="False", help="Whether to drop tables."
+    )
+
+    args = parser.parse_args()
 
     psqlis = PSQLIncidentStore(
-        config_filepath="database.ini",
-        config_section="postgresql",
+        config_filepath=args.config_filepath,
+        config_section=args.config_section,
         emb_provider=EmbeddingNone(),
-        drop_tables=True,
+        drop_tables=args.drop_tables,
     )
 
     psqlis.load_store()
