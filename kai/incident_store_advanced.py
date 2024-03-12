@@ -488,8 +488,11 @@ class PSQLIncidentStore:
         # if not isinstance(incident_variables, list):
         #   raise Exception(f"incident_variables must be of type list. Got type '{type(incident_variables)}'")
 
+        vars_str = json.dumps(incident_variables)
+        truncated_vars = (vars_str[:75] + "...") if len(vars_str) > 75 else vars_str
+
         print(
-            f"inserting {(violation_id, application_id, incident_uri, incident_line, json.dumps(incident_variables), solution_id,)}"
+            f"Inserting incident {(violation_id, application_id, incident_uri, incident_line, truncated_vars, solution_id,)}"
         )
 
         cur.execute(
@@ -519,7 +522,7 @@ class PSQLIncidentStore:
         solution_updated_code: str,
         cur: DictCursor = None,
     ):
-        print(f"insertint accepted sln {(generated_at)}")
+        print(f"Inserting accepted solution {((generated_at))}")
         small_diff_embedding = str(self.emb_provider.get_embedding(solution_small_diff))
         original_code_embedding = str(
             self.emb_provider.get_embedding(solution_original_code)
@@ -821,15 +824,24 @@ class PSQLIncidentStore:
 
             # incidents_temp - incidents
             cur.execute(
-                """SELECT i.incident_id AS incidents_id, it.incident_id AS incidents_temp_id, it.violation_id, it.application_id, it.incident_uri, it.incident_snip, it.incident_line, it.incident_variables
-        FROM incidents_temp it
-        LEFT JOIN incidents i ON it.violation_id = i.violation_id
-                              AND it.application_id = i.application_id
-                              AND it.incident_uri = i.incident_uri
-                              AND it.incident_snip = i.incident_snip
-                              AND it.incident_line = i.incident_line
-                              AND it.incident_variables = i.incident_variables
-        WHERE i.incident_id IS NULL;"""
+                """WITH filtered_incidents_temp AS (
+    SELECT * FROM incidents_temp WHERE application_id = %s
+),
+filtered_incidents AS (
+    SELECT * FROM incidents WHERE application_id = %s
+)
+SELECT fit.incident_id AS incidents_temp_id, fi.incident_id AS incidents_id, fit.violation_id, fit.application_id, fit.incident_uri, fit.incident_snip, fit.incident_line, fit.incident_variables
+FROM filtered_incidents_temp fit
+LEFT JOIN filtered_incidents fi ON fit.violation_id = fi.violation_id
+                                AND fit.incident_uri = fi.incident_uri
+                                AND fit.incident_snip = fi.incident_snip
+                                AND fit.incident_line = fi.incident_line
+                                AND fit.incident_variables = fi.incident_variables
+WHERE fi.incident_id IS NULL;""",
+                (
+                    application["application_id"],
+                    application["application_id"],
+                ),
             )
 
             new_incidents = cur.fetchall()
@@ -853,14 +865,25 @@ class PSQLIncidentStore:
 
             # incidents `intersect` incidents_temp
             cur.execute(
-                """SELECT i.incident_id AS incidents_id, it.incident_id AS incidents_temp_id, i.violation_id, i.application_id, i.incident_uri, i.incident_snip, i.incident_line, i.incident_variables
-        FROM incidents i
-        JOIN incidents_temp it ON i.violation_id = it.violation_id
-                                AND it.application_id = i.application_id
-                                AND i.incident_uri = it.incident_uri
-                                AND i.incident_snip = it.incident_snip
-                                AND i.incident_line = it.incident_line
-                                AND i.incident_variables = it.incident_variables;"""
+                """-- incidents `intersect` incidents_temp with application_id match first
+WITH filtered_incidents AS (
+    SELECT * FROM incidents WHERE application_id = %s
+),
+filtered_incidents_temp AS (
+    SELECT * FROM incidents_temp WHERE application_id = %s
+)
+SELECT fi.incident_id AS incidents_id, fit.incident_id AS incidents_temp_id, fi.violation_id, fi.application_id, fi.incident_uri, fi.incident_snip, fi.incident_line, fi.incident_variables
+FROM filtered_incidents fi
+JOIN filtered_incidents_temp fit ON fi.violation_id = fit.violation_id
+                                  AND fi.incident_uri = fit.incident_uri
+                                  AND fi.incident_snip = fit.incident_snip
+                                  AND fi.incident_line = fit.incident_line
+                                  AND fi.incident_variables = fit.incident_variables;
+""",
+                (
+                    application["application_id"],
+                    application["application_id"],
+                ),
             )
 
             unsolved_incidents = cur.fetchall()
@@ -868,15 +891,24 @@ class PSQLIncidentStore:
 
             # incidents - incidents_temp
             cur.execute(
-                """SELECT i.incident_id AS incidents_id, it.incident_id AS incidents_temp_id, i.violation_id, i.application_id, i.incident_uri, i.incident_snip, i.incident_line, i.incident_variables
-        FROM incidents i
-        LEFT JOIN incidents_temp it ON i.violation_id = it.violation_id
-                                    AND it.application_id = i.application_id
-                                    AND i.incident_uri = it.incident_uri
-                                    AND i.incident_snip = it.incident_snip
-                                    AND i.incident_line = it.incident_line
-                                    AND i.incident_variables = it.incident_variables
-        WHERE it.incident_id IS NULL;"""
+                """WITH filtered_incidents AS (
+    SELECT * FROM incidents WHERE application_id = %s
+),
+filtered_incidents_temp AS (
+    SELECT * FROM incidents_temp WHERE application_id = %s
+)
+SELECT fi.incident_id AS incidents_id, fit.incident_id AS incidents_temp_id, fi.violation_id, fi.application_id, fi.incident_uri, fi.incident_snip, fi.incident_line, fi.incident_variables
+FROM filtered_incidents fi
+LEFT JOIN filtered_incidents_temp fit ON fi.violation_id = fit.violation_id
+                                      AND fi.incident_uri = fit.incident_uri
+                                      AND fi.incident_snip = fit.incident_snip
+                                      AND fi.incident_line = fit.incident_line
+                                      AND fi.incident_variables = fit.incident_variables
+WHERE fit.incident_id IS NULL;""",
+                (
+                    application["application_id"],
+                    application["application_id"],
+                ),
             )
 
             solved_incidents = cur.fetchall()
@@ -991,6 +1023,8 @@ class PSQLIncidentStore:
                 self.insert_and_update_from_report(app_initial, Report(report_path))
                 print(f"Loaded application - initial {app}\n")
 
+                # input(f"After inserting initial for {app}...")
+
                 solved_folder = os.path.join(app_path, "solved")
                 if not os.path.exists(solved_folder):
                     print(f"Error: {solved_folder} does not exist.")
@@ -1013,6 +1047,8 @@ class PSQLIncidentStore:
                     generated_at=datetime.datetime.now(),
                 )
                 self.insert_and_update_from_report(app_solved, Report(report_path))
+                # input(f"After inserting solved for {app}...")
+
                 print(f"Loaded application - solved {app}\n")
 
     def get_repo_path(self, app_name):
@@ -1072,6 +1108,7 @@ if __name__ == "__main__":
         config_filepath="database.ini",
         config_section="postgresql",
         emb_provider=EmbeddingNone(),
+        drop_tables=True,
     )
 
     psqlis.load_store()
