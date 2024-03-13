@@ -8,11 +8,20 @@ from config import repos, sample_apps
 
 
 def analyze_apps():
+    # Ensure we are on the initial branch for each repo
+    for repo in repos:
+        print(f"Switching to {repos[repo][1]} branch for {repo}...")
+        os.chdir(f"sample_repos/{repo}")
+        if repos[repo][1] is not None:
+            os.system(f"git checkout {repos[repo][1]}")  # trunk-ignore(bandit)
+        os.chdir("../../")
+
     # perform analysis
     for repo in sample_apps:
         source_dir = sample_apps[repo]
         analyze(source_dir, repo, "initial")
 
+    # Ensure we are on the solved branch for each repo
     for repo in repos:
         print(f"Switching to {repos[repo][2]} branch for {repo}...")
         os.chdir(f"sample_repos/{repo}")
@@ -69,7 +78,7 @@ def analyze(source_dir, name, target):
     print(f"Analyzing '{source_dir}', will write output to '{full_output_dir}'")
     #
     # "-m source-only" will skip processing of dependencies, and will be
-    # quicker but it may impact some rules so they don't execut as we imagine
+    # quicker but it may impact some rules so they don't execute as we imagine
     #
     cmd = f'time ./bin/kantra analyze -i {source_dir} -t "quarkus" -t "jakarta-ee" -t "jakarta-ee8+" -t "jakarta-ee9+" -t "cloud-readiness" --rules {os.path.dirname(__file__)}/custom_rules -o {full_output_dir} --overwrite'
     subprocess.run(cmd, shell=True)  # trunk-ignore(bandit)
