@@ -206,7 +206,7 @@ async def post_change_model(request: Request):
     pass
 
 
-def get_incident_solution(request_json: dict):
+def get_incident_solution(request_json: dict, stream: bool = False):
     schema: dict = json.loads(
         open(os.path.join(JSONSCHEMA_DIR, "post_get_incident_solution.json")).read()
     )
@@ -257,7 +257,10 @@ def get_incident_solution(request_json: dict):
     if isinstance(prompt, list):
         raise Exception(f"Did not supply proper variables. Need at least {prompt}")
 
-    return model_provider.stream(prompt)
+    if stream:
+        return model_provider.stream(prompt)
+    else:
+        return model_provider.invoke(prompt)
 
 
 @routes.post("/get_incident_solution")
@@ -285,9 +288,7 @@ async def post_get_incident_solution(request: Request):
 
     print(f"post_get_incident_solution recv'd: {request}")
 
-    llm_output = ""
-    for chunk in get_incident_solution(await request.json()):
-        llm_output += chunk.content
+    llm_output = get_incident_solution(await request.json(), False).content
 
     return web.json_response(
         {
@@ -307,7 +308,7 @@ async def ws_get_incident_solution(request: Request):
         try:
             json_request = json.loads(msg.data)
 
-            for chunk in get_incident_solution(json_request):
+            for chunk in get_incident_solution(json_request, True):
                 await ws.send_str(
                     json.dumps(
                         {
@@ -349,8 +350,9 @@ if __name__ == "__main__":
         drop_tables=False,
     )
 
-    # model_provider = IBMGraniteModel()
-    model_provider = OpenAIModel()
+    model_provider = IBMGraniteModel()
+    # model_provider = IBMLlamaModel()
+    # model_provider = OpenAIModel()
 
     web.run_app(app)
 

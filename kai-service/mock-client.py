@@ -182,16 +182,18 @@ async def main():
 Please replace the `@MessageDriven` annotation with a CDI scope annotation like `@ApplicationScoped`.""",
         }
 
-        # async with session.post("/get_incident_solution", json=x) as resp:
-        #     print(resp.status)
+        async with session.post("/get_incident_solution", json=x) as resp:
+            print(resp.status)
 
-        #     # print(await resp.text())
+            # print(await resp.text())
 
-        #     resp_json: dict = await resp.json()
+            resp_json: dict = await resp.json()
 
-        #     print(resp_json["llm_output"])
+            print(resp_json["llm_output"])
 
         # llm_output = ''
+
+        input("input...")
 
         async with session.ws_connect("/ws/get_incident_solution") as ws:
             await ws.send_json(x)
