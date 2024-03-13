@@ -66,17 +66,33 @@ class Section:
     Simple data class containing the template and the variables for a section
     """
 
-    def __init__(self, file_path: str):
-        self.file_path = file_path
-        self.template = open(file_path).read()
+    def __init__(
+        self,
+        *,
+        file_path: str = None,
+        template: str = None,
+        default_vars: dict[str, str] = {}
+    ):
+        if file_path is None == template is None:
+            raise Exception("Must provide one of: file_path, template")
+
+        if file_path is not None:
+            self.file_path = file_path
+            self.template = open(file_path).read()
+        else:
+            self.file_path = "/dev/null"
+            self.template = template
 
         itr = string.Formatter().parse(self.template)
         self.vars = [v[1] for v in itr if v[1] is not None]
+        self.default_vars = default_vars
 
     def __hash__(self):
         return hash((self.file_path, self.template))
 
     def is_valid(self, vars_dict: dict[str, str]):
+        vars_dict = self.default_vars | vars_dict
+
         for v in self.vars:
             if v not in vars_dict:
                 return False
@@ -84,6 +100,8 @@ class Section:
         return True
 
     def format(self, vars_dict: dict[str, str]):
+        vars_dict = self.default_vars | vars_dict
+
         return self.template.format(**vars_dict)
 
 
@@ -142,16 +160,35 @@ class Config:
 
 
 T_DIR = path.join(path.dirname(__file__), "data/templates")
-S_PREAMBLE = Section(path.join(T_DIR, "preamble.txt"))
-S_SOLVED_EXAMPLE_DIFF = Section(path.join(T_DIR, "solved_example_diff.txt"))
-S_SOLVED_EXAMPLE_FILE = Section(path.join(T_DIR, "solved_example_file.txt"))
-S_SOLVED_EXAMPLE_NONE = Section(path.join(T_DIR, "solved_example_none.txt"))
-S_INPUT_FILE = Section(path.join(T_DIR, "input_file.txt"))
-S_OUTPUT_INSTRUCTIONS = Section(path.join(T_DIR, "output_instructions.txt"))
+S_PREAMBLE = Section(file_path=path.join(T_DIR, "preamble.txt"))
+S_SOLVED_EXAMPLE_DIFF = Section(file_path=path.join(T_DIR, "solved_example_diff.txt"))
+S_SOLVED_EXAMPLE_FILE = Section(file_path=path.join(T_DIR, "solved_example_file.txt"))
+S_SOLVED_EXAMPLE_NONE = Section(file_path=path.join(T_DIR, "solved_example_none.txt"))
+S_INPUT_FILE = Section(file_path=path.join(T_DIR, "input_file.txt"))
+S_OUTPUT_INSTRUCTIONS = Section(file_path=path.join(T_DIR, "output_instructions.txt"))
+
+# TODO: Allow for internal variable overrides. Chaining prompt builders?
+
+S_LLAMA_BEGIN = Section(
+    template="""
+<s>[INST] <<SYS>>
+{llama_sys}
+<</SYS>>
+""",
+    default_vars={
+        "llama_sys": "You are an AI Assistant trained on migrating enterprise JavaEE code to Quarkus."
+    },
+)
+
+S_LLAMA_END = Section(
+    template="""
+[/INST]
+"""
+)
 
 
 # NOTE: May need to do something like foo: AtLeastOneOf([bar, baz]) or something
-CONFIG_IBM = Config(
+CONFIG_IBM_GRANITE = Config(
     [
         SectionGraph(S_PREAMBLE, False, {}),
         SectionGraph(
@@ -167,7 +204,22 @@ CONFIG_IBM = Config(
 )
 
 
-# CONFIG_OPENAI = Config ...
+CONFIG_IBM_LLAMA = Config(
+    [
+        SectionGraph(S_LLAMA_BEGIN, False, {}),
+        SectionGraph(S_PREAMBLE, False, {}),
+        SectionGraph(
+            S_SOLVED_EXAMPLE_NONE,
+            False,
+            {
+                S_SOLVED_EXAMPLE_NONE: [S_SOLVED_EXAMPLE_DIFF, S_SOLVED_EXAMPLE_FILE],
+            },
+        ),
+        SectionGraph(S_INPUT_FILE, False, {}),
+        SectionGraph(S_OUTPUT_INSTRUCTIONS, False, {}),
+        SectionGraph(S_LLAMA_END, False, {}),
+    ]
+)
 
 
 # TODO: Make custom configs easier to define

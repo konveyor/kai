@@ -4,8 +4,6 @@
 # the required `kai` modules. Someone smarter than me may be able to fix this.
 # For now, I just copied this code wholesale. - jsussman
 
-# TODO: Evaluate the viability of making this a django app - jsussman
-
 """This module is intended to facilitate using Konveyor with LLMs."""
 
 import json
@@ -22,8 +20,8 @@ from aiohttp import web
 from aiohttp.web import Response
 from aiohttp.web_request import Request
 from incident_store_advanced import Application, EmbeddingNone, PSQLIncidentStore
-from langchain_openai import ChatOpenAI
-from prompt_builder import CONFIG_IBM, PromptBuilder
+from model_provider import IBMGraniteModel, IBMLlamaModel, ModelProvider, OpenAIModel
+from prompt_builder import PromptBuilder
 from report import Report
 
 # TODO: Make openapi spec for everything
@@ -34,8 +32,6 @@ from report import Report
 # - can be solved by getting last common commits and then applying a git diff in
 #   the same manner as `git stash apply`
 
-# TODO: Parameter validation
-
 
 routes = web.RouteTableDef()
 
@@ -43,35 +39,6 @@ JSONSCHEMA_DIR = os.path.join(
     os.path.dirname(__file__),
     "data/jsonschema/",
 )
-
-
-# def post_json(func: Callable[[dict], Any], schema_name: str):
-#     async def wrapped_handler(request: Request):
-#         schema: dict = json.loads(open(f"data/jsonschema/{schema_name}.json").read())
-#         request_json: dict = await request.json()
-
-#         try:
-#             jsonschema.validate(instance=request_json, schema=schema)
-#         except jsonschema.ValidationError as err:
-#             raise web.HTTPUnprocessableEntity(text=f"{err}")
-
-#         # TODO: Make better
-#         try:
-#             result = func(request_json)
-#         except web.HTTPException
-#         except Exception as err:
-#             return web.HTTPException(text=f"{err}")
-
-#         if isinstance(result, dict):
-#             return web.json_response(result)
-#         elif isinstance(result, list):
-#             return web.json_response(result)
-#         elif isinstance(result, str):
-#             return web.Response(text=result)
-#         else:
-#             return web.Response(text=str(result))
-
-#     return wrapped_handler
 
 
 def load_config():
@@ -285,20 +252,16 @@ def get_incident_solution(request_json: dict):
         pb_vars["solved_example_diff"] = solved_example["solution_small_diff"]
         pb_vars["solved_example_file_name"] = solved_incident["incident_uri"]
 
-    pb = PromptBuilder(CONFIG_IBM, pb_vars)
+    pb = PromptBuilder(model_provider.get_prompt_builder_config(), pb_vars)
     prompt = pb.build_prompt()
     if isinstance(prompt, list):
         raise Exception(f"Did not supply proper variables. Need at least {prompt}")
 
-    llm = ChatOpenAI(streaming=True)
-
-    return llm.stream(prompt)
+    return model_provider.stream(prompt)
 
 
 @routes.post("/get_incident_solution")
 async def post_get_incident_solution(request: Request):
-    # TODO: Make a streaming version
-
     """
     Will need to cache the incident result so that the user, when it accepts
     or rejects it knows what the heck the user is referencing
@@ -368,32 +331,11 @@ async def ws_get_incident_solution(request: Request):
     return ws
 
 
-def accept_or_reject_solution(params):
-    """
-    User says which solution and whether to reject or accept it
-
-    params (json):
-    - id: the id of the incident to accept or reject
-    - accept: bool to say yes or no
-
-    return (json):
-    - success: duh
-    """
-
-    id = params["id"]
-    accept = params["accept"]
-
-    if accept:
-        solution = get_solution_from_id(id)
-        put_solution_in_indicent_store(solution)
-
-    return json.dump({"success": True})
-
-
 app = web.Application()
 app.add_routes(routes)
 
 incident_store: PSQLIncidentStore
+model_provider: ModelProvider
 
 if __name__ == "__main__":
     base_path = os.path.dirname(__file__)
@@ -407,4 +349,60 @@ if __name__ == "__main__":
         drop_tables=False,
     )
 
+    # model_provider = IBMGraniteModel()
+    model_provider = OpenAIModel()
+
     web.run_app(app)
+
+
+# NOTE: Dead code blocks. Keeping in tree for now just in case we decide to
+# implement these functions
+
+# def post_json(func: Callable[[dict], Any], schema_name: str):
+#     async def wrapped_handler(request: Request):
+#         schema: dict = json.loads(open(f"data/jsonschema/{schema_name}.json").read())
+#         request_json: dict = await request.json()
+
+#         try:
+#             jsonschema.validate(instance=request_json, schema=schema)
+#         except jsonschema.ValidationError as err:
+#             raise web.HTTPUnprocessableEntity(text=f"{err}")
+
+#         # TODO: Make better
+#         try:
+#             result = func(request_json)
+#         except web.HTTPException
+#         except Exception as err:
+#             return web.HTTPException(text=f"{err}")
+
+#         if isinstance(result, dict):
+#             return web.json_response(result)
+#         elif isinstance(result, list):
+#             return web.json_response(result)
+#         elif isinstance(result, str):
+#             return web.Response(text=result)
+#         else:
+#             return web.Response(text=str(result))
+
+#     return wrapped_handler
+
+# def accept_or_reject_solution(params):
+#     """
+#     User says which solution and whether to reject or accept it
+
+#     params (json):
+#     - id: the id of the incident to accept or reject
+#     - accept: bool to say yes or no
+
+#     return (json):
+#     - success: duh
+#     """
+
+#     id = params["id"]
+#     accept = params["accept"]
+
+#     if accept:
+#         solution = get_solution_from_id(id)
+#         put_solution_in_indicent_store(solution)
+
+#     return json.dump({"success": True})
