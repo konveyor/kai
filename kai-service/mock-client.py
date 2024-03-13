@@ -1,5 +1,6 @@
 # Mock a client doing client things
 import asyncio
+import json
 
 import aiohttp
 
@@ -181,14 +182,28 @@ async def main():
 Please replace the `@MessageDriven` annotation with a CDI scope annotation like `@ApplicationScoped`.""",
         }
 
-        async with session.post("/get_incident_solution", json=x) as resp:
-            print(resp.status)
+        # async with session.post("/get_incident_solution", json=x) as resp:
+        #     print(resp.status)
 
-            # print(await resp.text())
+        #     # print(await resp.text())
 
-            resp_json: dict = await resp.json()
+        #     resp_json: dict = await resp.json()
 
-            print(resp_json["llm_output"])
+        #     print(resp_json["llm_output"])
+
+        # llm_output = ''
+
+        async with session.ws_connect("/ws/get_incident_solution") as ws:
+            await ws.send_json(x)
+
+            async for msg in ws:
+                if msg.type == aiohttp.WSMsgType.TEXT:
+                    json_result = msg.json()
+                    print(json_result["content"], end="")
+                elif msg.type == aiohttp.WSMsgType.ERROR:
+                    break
+
+        # print(llm_output)
 
 
 asyncio.run(main())

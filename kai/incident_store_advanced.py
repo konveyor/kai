@@ -621,7 +621,11 @@ class PSQLIncidentStore:
 
         def highest_embedding_similarity_from_all():
             cur.execute(
-                "SELECT * FROM incidents ORDER BY incident_snip_embedding <-> %s LIMIT 1;",
+                """
+                SELECT * 
+                FROM incidents 
+                WHERE solution_id IS NOT NULL
+                ORDER BY incident_snip_embedding <-> %s LIMIT 1;""",
                 (emb_str,),
             )
             return dict(cur.fetchone())
