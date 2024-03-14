@@ -71,15 +71,19 @@ class TestIncidentStoreAdvanced(unittest.TestCase):
     @classmethod
     def is_docker_available(cls):
         return (
-            subprocess.run(["docker", "--version"], capture_output=True).returncode
-            == 0  # trunk-ignore(bandit)
+            subprocess.run(
+                ["docker", "--version"], capture_output=True
+            ).returncode  # trunk-ignore(bandit)
+            == 0
         )
 
     @classmethod
     def is_podman_available(cls):
         return (
-            subprocess.run(["podman", "--version"], capture_output=True).returncode
-            == 0  # trunk-ignore(bandit)
+            subprocess.run(
+                ["podman", "--version"], capture_output=True
+            ).returncode  # trunk-ignore(bandit)
+            == 0
         )
 
     @classmethod
