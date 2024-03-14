@@ -190,5 +190,21 @@ Please replace the `@MessageDriven` annotation with a CDI scope annotation like 
 
             print(resp_json["llm_output"])
 
+        # llm_output = ''
+
+        input("input...")
+
+        async with session.ws_connect("/ws/get_incident_solution") as ws:
+            await ws.send_json(x)
+
+            async for msg in ws:
+                if msg.type == aiohttp.WSMsgType.TEXT:
+                    json_result = msg.json()
+                    print(json_result["content"], end="")
+                elif msg.type == aiohttp.WSMsgType.ERROR:
+                    break
+
+        # print(llm_output)
+
 
 asyncio.run(main())
