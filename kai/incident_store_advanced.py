@@ -2,65 +2,21 @@ import argparse
 import datetime
 import json
 import os
-import random
-from abc import ABC, abstractmethod
 from configparser import ConfigParser
 from dataclasses import dataclass
-from enum import Enum
 from functools import wraps
 from inspect import signature
 from urllib.parse import unquote, urlparse
 
-import numpy
 import psycopg2
-import requests
-import tiktoken
-import torch
 import yaml
-from embedding_provider import (
-    EmbeddingInstructor,
-    EmbeddingNone,
-    EmbeddingOpenAI,
-    EmbeddingProvider,
-)
+from embedding_provider import EmbeddingNone, EmbeddingProvider
 from git import Repo
-from InstructorEmbedding import INSTRUCTOR
 from psycopg2.extensions import connection
 from psycopg2.extras import DictCursor, DictRow
 from report import Report
 
 BASE_PATH = os.path.dirname(__file__)
-
-
-class TrimStrategy(Enum):
-    NONE = 0
-    TRIM_FRONT = 1
-    TRIM_BACK = 2
-    TRIM_BOTH = 3
-
-
-def trim_list(
-    toks: list, max_len: int, trim_strategy: TrimStrategy = TrimStrategy.TRIM_BOTH
-) -> list:
-    if len(toks) > max_len:
-        num_to_trim = len(toks) - max_len
-
-        match trim_strategy:
-            case TrimStrategy.NONE:
-                raise Exception(
-                    f"With NONE trim strategy, too many tokens to embed ({len(toks)} > {max_len})!"
-                )
-            case TrimStrategy.TRIM_FRONT:
-                toks = toks[num_to_trim:]
-            case TrimStrategy.TRIM_BACK:
-                toks = toks[:-num_to_trim]
-            case TrimStrategy.TRIM_BOTH:
-                n_front = num_to_trim // 2
-                n_back = num_to_trim - n_front
-
-                toks = toks[n_front:-n_back]
-
-    return toks
 
 
 @dataclass
@@ -788,12 +744,12 @@ WHERE fit.incident_id IS NULL;""",
 
                 try:
                     original_code = repo.git.show(f"{old_commit}:{file_path}")
-                except:
+                except Exception:
                     original_code = ""
 
                 try:
                     updated_code = repo.git.show(f"{new_commit}:{file_path}")
-                except:
+                except Exception:
                     updated_code = ""
 
                 # file_path = pathlib.Path(os.path.join(repo_path, unquote(urlparse(si[3]).path).removeprefix('/tmp/source-code'))).as_uri()

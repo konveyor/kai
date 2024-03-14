@@ -12,14 +12,7 @@ from genai.schema import (
     TextGenerationParameters,
     TextGenerationReturnOptions,
 )
-from langchain.chains import LLMChain
-from langchain.prompts import PromptTemplate
-from langchain_core.messages import (
-    BaseMessage,
-    BaseMessageChunk,
-    HumanMessage,
-    SystemMessage,
-)
+from langchain_core.messages import BaseMessage, BaseMessageChunk
 from langchain_openai import ChatOpenAI
 
 """

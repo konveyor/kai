@@ -11,16 +11,14 @@ import os
 import warnings
 from os import listdir
 from os.path import isfile, join
-from typing import Any, Callable
 
 import aiohttp
 import jsonschema
 import yaml
 from aiohttp import web
-from aiohttp.web import Response
 from aiohttp.web_request import Request
 from incident_store_advanced import Application, EmbeddingNone, PSQLIncidentStore
-from model_provider import IBMGraniteModel, IBMLlamaModel, ModelProvider, OpenAIModel
+from model_provider import IBMGraniteModel, ModelProvider
 from prompt_builder import PromptBuilder
 from report import Report
 
@@ -182,7 +180,7 @@ async def post_load_analysis_report(request: Request):
     try:
         jsonschema.validate(instance=request_json, schema=schema)
     except jsonschema.ValidationError as err:
-        raise web.HTTPUnprocessableEntity(text=f"{err}")
+        raise web.HTTPUnprocessableEntity(text=f"{err}") from err
 
     request_json["application"].setdefault("application_id")
 
@@ -214,9 +212,10 @@ def get_incident_solution(request_json: dict, stream: bool = False):
     try:
         jsonschema.validate(instance=request_json, schema=schema)
     except jsonschema.ValidationError as err:
-        raise web.HTTPUnprocessableEntity(text=f"{err}")
+        raise web.HTTPUnprocessableEntity(text=f"{err}") from err
 
     application_name: str = request_json["application_name"]
+    application_name = application_name  # NOTE: To please trunk error, remove me
     ruleset_name: str = request_json["ruleset_name"]
     violation_name: str = request_json["violation_name"]
     incident_snip: str = request_json["incident_snip"]

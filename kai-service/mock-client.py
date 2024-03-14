@@ -1,6 +1,5 @@
 # Mock a client doing client things
 import asyncio
-import json
 
 import aiohttp
 

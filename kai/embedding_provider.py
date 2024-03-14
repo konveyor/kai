@@ -1,27 +1,44 @@
-import argparse
-import datetime
-import json
-import os
 import random
 from abc import ABC, abstractmethod
-from configparser import ConfigParser
-from dataclasses import dataclass
 from enum import Enum
-from functools import wraps
-from inspect import signature
-from urllib.parse import unquote, urlparse
 
 import numpy
-import psycopg2
 import requests
 import tiktoken
-import torch
-import yaml
-from git import Repo
 from InstructorEmbedding import INSTRUCTOR
+from psycopg2 import sql
 from psycopg2.extensions import connection
-from psycopg2.extras import DictCursor, DictRow
-from report import Report
+
+
+class TrimStrategy(Enum):
+    NONE = 0
+    TRIM_FRONT = 1
+    TRIM_BACK = 2
+    TRIM_BOTH = 3
+
+
+def trim_list(
+    toks: list, max_len: int, trim_strategy: TrimStrategy = TrimStrategy.TRIM_BOTH
+) -> list:
+    if len(toks) > max_len:
+        num_to_trim = len(toks) - max_len
+
+        match trim_strategy:
+            case TrimStrategy.NONE:
+                raise Exception(
+                    f"With NONE trim strategy, too many tokens to embed ({len(toks)} > {max_len})!"
+                )
+            case TrimStrategy.TRIM_FRONT:
+                toks = toks[num_to_trim:]
+            case TrimStrategy.TRIM_BACK:
+                toks = toks[:-num_to_trim]
+            case TrimStrategy.TRIM_BOTH:
+                n_front = num_to_trim // 2
+                n_back = num_to_trim - n_front
+
+                toks = toks[n_front:-n_back]
+
+    return toks
 
 
 class EmbeddingProvider(ABC):
@@ -79,9 +96,18 @@ class EmbeddingOpenAI(EmbeddingProvider):
 
         data = {"input": dec, "model": "text-embedding-3-small"}
 
-        response: requests.Response = requests.post(
-            "https://api.openai.com/v1/embeddings", json=data, headers=headers
-        )
+        response: requests.Response
+
+        try:
+            response = requests.post(
+                "https://api.openai.com/v1/embeddings",
+                json=data,
+                headers=headers,
+                timeout=50,
+            )
+        except requests.Timeout:
+            print("Error: timout after 50 seconds")
+            return None
 
         if response.status_code != 200:
             print("Error:", response.status_code, response.text)
@@ -127,19 +153,24 @@ class EmbeddingInstructor(EmbeddingProvider):
 
 
 def embedding_playground(conn: connection, embp: EmbeddingProvider) -> None:
-    table_name = "".join(random.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(30))
+    crypto_gen = random.SystemRandom()
+    table_name = "".join(
+        crypto_gen.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(30)
+    )
 
     with conn.cursor() as cur:
         # I know, string interpolation in SQL. But this is a playground, not for
         # production!
         cur.execute(
-            f"""
+            sql.SQL(
+                """
     CREATE TABLE IF NOT EXISTS {table_name} (
       id SERIAL PRIMARY KEY,
       the_text TEXT,
       embedding vector(%s)
     )
-    """,
+    """
+            ).format(table_name=table_name),
             (embp.get_dimension(),),
         )
 
@@ -147,11 +178,11 @@ def embedding_playground(conn: connection, embp: EmbeddingProvider) -> None:
             try:
                 inp = input("> ")
                 emb = embp.get_embedding(inp)
+
                 cur.execute(
-                    f"""
-          INSERT INTO {table_name}(the_text, embedding)
-          VALUES (%s, %s)
-        """,
+                    sql.SQL(
+                        "INSERT INTO {table_name} (the_text, embedding) VALUES (%s, %s);"
+                    ).format(table_name=table_name),
                     (
                         inp,
                         str(emb),
@@ -159,7 +190,9 @@ def embedding_playground(conn: connection, embp: EmbeddingProvider) -> None:
                 )
 
                 cur.execute(
-                    f"SELECT the_text FROM {table_name} ORDER BY embedding <=> %s LIMIT 25;",
+                    sql.SQL(
+                        "SELECT the_text FROM {table_name} ORDER BY embedding <=> %s LIMIT 25;"
+                    ).format(table_name=table_name),
                     (str(emb),),
                 )
 

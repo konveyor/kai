@@ -1,4 +1,3 @@
-import os
 import string
 from dataclasses import dataclass
 from enum import Enum
@@ -71,7 +70,7 @@ class Section:
         *,
         file_path: str = None,
         template: str = None,
-        default_vars: dict[str, str] = {}
+        default_vars: dict[str, str] = None
     ):
         if file_path is None == template is None:
             raise Exception("Must provide one of: file_path, template")
@@ -85,7 +84,7 @@ class Section:
 
         itr = string.Formatter().parse(self.template)
         self.vars = [v[1] for v in itr if v[1] is not None]
-        self.default_vars = default_vars
+        self.default_vars = {} if default_vars is None else default_vars
 
     def __hash__(self):
         return hash((self.file_path, self.template))
@@ -224,9 +223,9 @@ CONFIG_IBM_LLAMA = Config(
 
 # TODO: Make custom configs easier to define
 class PromptBuilder:
-    def __init__(self, config: Config, vars: dict[str, str] = {}):
+    def __init__(self, config: Config, vars: dict[str, str] = None):
         self.config = config
-        self.vars = vars
+        self.vars = vars if vars is not None else {}
 
         self.root_required_vars = set()
 
@@ -258,7 +257,7 @@ class PromptBuilder:
 
 
 if __name__ == "__main__":
-    pb = PromptBuilder(CONFIG_IBM)
+    pb = PromptBuilder(CONFIG_IBM_GRANITE)
 
     print(pb.build_prompt())
     input()
