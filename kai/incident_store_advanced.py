@@ -976,7 +976,7 @@ WHERE fit.incident_id IS NULL;""",
 
     def load_store(self, path: str):
         # fetch the output.yaml files from the analysis_reports/initial directory
-        # path = "samples/analysis_reports"
+
         basedir = os.path.dirname(os.path.realpath(__file__))
         parent_dir = os.path.dirname(basedir)
         folder_path = os.path.join(parent_dir, path)
