@@ -14,7 +14,8 @@ from embedding_provider import EmbeddingNone, EmbeddingProvider
 from git import Repo
 from psycopg2.extensions import connection
 from psycopg2.extras import DictCursor, DictRow
-from report import Report
+
+from kai.report import Report
 
 BASE_PATH = os.path.dirname(__file__)
 
@@ -791,9 +792,9 @@ WHERE fit.incident_id IS NULL;""",
     def accept_solution_from_diff():
         pass
 
-    def load_store(self):
+    def load_store(self, path: str):
         # fetch the output.yaml files from the analysis_reports/initial directory
-        path = "samples/analysis_reports"
+
         basedir = os.path.dirname(os.path.realpath(__file__))
         parent_dir = os.path.dirname(basedir)
         folder_path = os.path.join(parent_dir, path)
@@ -939,7 +940,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--drop_tables", type=str, default="False", help="Whether to drop tables."
     )
-
+    parser.add_argument(
+        "--analysis_dir_path",
+        type=str,
+        default="samples/analysis_reports",
+        help="path to analysis reports folder",
+    )
     args = parser.parse_args()
 
     psqlis = PSQLIncidentStore(
@@ -948,5 +954,5 @@ if __name__ == "__main__":
         emb_provider=EmbeddingNone(),
         drop_tables=args.drop_tables,
     )
-
-    psqlis.load_store()
+    path = args.analysis_dir_path
+    psqlis.load_store(path)
