@@ -1,4 +1,4 @@
-import subprocess
+import subprocess  # trunk-ignore(bandit)
 import time
 import unittest
 
@@ -24,7 +24,7 @@ class TestIncidentStoreAdvanced(unittest.TestCase):
 
     @classmethod
     def start_container_with_docker(cls):
-        subprocess.run(
+        subprocess.run(  # trunk-ignore(bandit)
             [
                 "docker",
                 "run",
@@ -47,7 +47,7 @@ class TestIncidentStoreAdvanced(unittest.TestCase):
 
     @classmethod
     def start_container_with_podman(cls):
-        subprocess.run(
+        subprocess.run(  # trunk-ignore(bandit)
             [
                 "podman",
                 "run",
@@ -71,13 +71,15 @@ class TestIncidentStoreAdvanced(unittest.TestCase):
     @classmethod
     def is_docker_available(cls):
         return (
-            subprocess.run(["docker", "--version"], capture_output=True).returncode == 0
+            subprocess.run(["docker", "--version"], capture_output=True).returncode
+            == 0  # trunk-ignore(bandit)
         )
 
     @classmethod
     def is_podman_available(cls):
         return (
-            subprocess.run(["podman", "--version"], capture_output=True).returncode == 0
+            subprocess.run(["podman", "--version"], capture_output=True).returncode
+            == 0  # trunk-ignore(bandit)
         )
 
     @classmethod
@@ -86,7 +88,7 @@ class TestIncidentStoreAdvanced(unittest.TestCase):
         attempts = 0
         while conn is None and attempts < 10:
             try:
-                conn = psycopg2.connect(
+                conn = psycopg2.connect(  # trunk-ignore(bandit)
                     dbname="kai",
                     user="kai",
                     password="dog8code",
@@ -101,15 +103,15 @@ class TestIncidentStoreAdvanced(unittest.TestCase):
     def tearDownClass(cls):
         # Stop and remove the PostgreSQL container based on available runtime
         if cls.is_docker_available():
-            subprocess.run(["docker", "stop", "kai_test"])
-            subprocess.run(["docker", "rm", "kai_test"])
+            subprocess.run(["docker", "stop", "kai_test"])  # trunk-ignore(bandit)
+            subprocess.run(["docker", "rm", "kai_test"])  # trunk-ignore(bandit)
         elif cls.is_podman_available():
-            subprocess.run(["podman", "stop", "kai_test"])
-            subprocess.run(["podman", "rm", "kai_test"])
+            subprocess.run(["podman", "stop", "kai_test"])  # trunk-ignore(bandit)
+            subprocess.run(["podman", "rm", "kai_test"])  # trunk-ignore(bandit)
 
     def test_database_connection(self):
         # Test database connection
-        conn = psycopg2.connect(
+        conn = psycopg2.connect(  # trunk-ignore(bandit)
             dbname="kai", user="kai", password="dog8code", host="localhost", port=5432
         )
         self.assertIsNotNone(conn)
@@ -133,7 +135,7 @@ class TestIncidentStoreAdvanced(unittest.TestCase):
         self.assertIsNotNone(psqlis)
         psqlis.load_store("tests/test_data/sample")
         # Connect to the database
-        conn = psycopg2.connect(
+        conn = psycopg2.connect(  # trunk-ignore(bandit)
             dbname="kai", user="kai", password="dog8code", host="localhost", port=5432
         )
         cursor = conn.cursor()
