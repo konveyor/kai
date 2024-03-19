@@ -18,7 +18,13 @@ For example, [analyzer-lsp Rules](https://github.com/konveyor/analyzer-lsp/blob/
 
 1. `python3 -m venv env`
 2. `source env/bin/activate`
-3. `pip install -r ./requirements.txt`
+3. Install requirements based on what OS you are on
+
+- For Linux:
+  - `pip install -r ./requirements.txt`
+- For MacOs
+  - `pip install -r ./requirements.txt.mac_python_3_12`
+    - Tested with python 3.12.3 from 'brew'
 
 #### Ensure you have the source code for the sample applications checked out locally
 
