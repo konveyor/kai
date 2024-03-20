@@ -8,6 +8,9 @@ from os import path
 
 
 """
+TODO Honestly, upon further evaluation this is bad and I feel bad about making
+it :( - jsussman
+
 TODO Right now, `PromptBuilder` is very basic. I want to extend this. Here's my
 thoughts with some unsolved problems.
 
