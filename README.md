@@ -1,6 +1,6 @@
 # Konveyor AI (kai)
 
-Konveyor AI (kai) is Konveyor's approach to easing modernization of application source code to a new target by leveraging LLMs with guidance from static code analysis.
+Konveyor AI (kai) is Konveyor's approach to easing modernization of application source code to a new target by leveraging LLMs with guidance from static code analysis augmented with data in Konveyor that helps to learn how an Organization solved a similar problem in the past.g
 
 Pronounciation of 'kai': https://www.howtopronounce.com/kai
 
@@ -10,7 +10,43 @@ Our approach is to use static code analysis to find the areas in source code tha
 
 This approach does _not_ require fine-tuning of LLMs, we augment a LLMs knowledge via the prompt, similar to approaches with [RAG](https://arxiv.org/abs/2005.11401) by leveraging external data from inside of Konveyor and from Analysis Rules to aid the LLM in constructing better results.
 
-For example, [analyzer-lsp Rules](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md) such as these ([Java EE to Quarkus rulesets](https://github.com/konveyor/rulesets/tree/main/default/generated/quarkus)) are leveraged to aid guiding a LLM to update a legacy Java EE application to Quarkus.
+For example, [analyzer-lsp Rules](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md) such as these ([Java EE to Quarkus rulesets](https://github.com/konveyor/rulesets/tree/main/default/generated/quarkus)) are leveraged to aid guiding a LLM to update a legacy Java EE application to Quarkus
+
+Note: For purposes of this initial protype we are using an example of Java EE to Quarkus. That is an arbitrary choice to show viability of this approach. The code and the approach will work on other targets that Konveyor has rules for.
+
+#### What happens technically to make this work?
+
+- [Konveyor](konveyor.io) contains information related to an Organization's Application Portfolio, a view into all of the applications an Organization is managing. This view includes a history of analysis information over time, access to each applications source repositories, and metadata that tracks work in-progress/completed in regard to each application being migrated to a given technology.
+
+- When 'Konveyor AI' wants to fix a specific issue in a given application, it will mine data in Konveyor to extract 2 sources of information to inject into a given LLM prompt.
+
+  1.  Static Code Analysis
+
+      - We pinpoint where to begin work by leveraging static code analysis to guide us
+      - The static code analysis is informed via a collection of crowd sourced knowledge contained in our [rulesets](https://github.com/konveyor/rulesets/tree/main) plus augmented via [custom-rules](https://github.com/konveyor-ecosystem/kai/tree/main/samples/custom_rules)
+      - We include in the prompt Analysis metadata information to give the LLM more context [such as](https://github.com/konveyor-ecosystem/kai/blob/main/example/analysis/coolstore/output.yaml#L2789)
+
+            remote-ejb-to-quarkus-00000:
+              description: Remote EJBs are not supported in Quarkus
+              incidents:
+              - uri: file:///tmp/source-code/src/main/java/com/redhat/coolstore/service/ShippingService.java
+              message: "Remote EJBs are not supported in Quarkus, and therefore its use must be removed and replaced with REST functionality. In order to do this:\n 1. Replace the `@Remote` annotation on the class with a `@jakarta.ws.rs.Path(\"<endpoint>\")` annotation. An endpoint must be added to the annotation in place of `<endpoint>` to specify the actual path to the REST service.\n 2. Remove `@Stateless` annotations if present. Given that REST services are stateless by nature, it makes it unnecessary.\n 3. For every public method on the EJB being converted, do the following:\n - Annotate the method with `@jakarta.ws.rs.GET`\n - Annotate the method with `@jakarta.ws.rs.Path(\"<endpoint>\")` and give it a proper endpoint path. As a rule of thumb... <snip for readability>"
+
+              lineNumber: 12
+              variables:
+                file: file:///tmp/source-code/src/main/java/com/redhat/coolstore/service/ShippingService.java
+                kind: Class
+                name: Stateless
+                package: com.redhat.coolstore.service
+
+              - url: https://jakarta.ee/specifications/restful-ws/
+                title: Jakarta RESTful Web Services
+
+  1.  Solved Examples - these are source code diffs that show a LLM how a similar problem was seen in another application the Organization has and how that Organization decided to fix it.
+
+      - We mine data Konveyor has stored from the Application Hub to search for when other applications have fixed the same rule violations and learn how they fixed it and pass that info into the prompt to aid the LLM
+      - This ability to leverage how the issue was seen and fixed in the past helps to give the LLM extra context to give a higher quality result.
+      - This is an [early prompt we created](https://github.com/konveyor-ecosystem/kai/blob/main/notebooks/jms_to_smallrye_reactive/output/gpt-4-1106-preview/helloworldmdb/custom-ruleset/jms-to-reactive-quarkus-00050/few_shot/template.txt) to help give a feel of this in action and the [result we got back from a LLM](https://github.com/konveyor-ecosystem/kai/blob/main/notebooks/jms_to_smallrye_reactive/output/gpt-4-1106-preview/helloworldmdb/custom-ruleset/jms-to-reactive-quarkus-00050/few_shot/result.txt)
 
 ## Demo
 
@@ -24,7 +60,7 @@ For example, [analyzer-lsp Rules](https://github.com/konveyor/analyzer-lsp/blob/
       - This information was obtained by running [Kantra](https://github.com/konveyor/kantra) (Konveyor's static code analyzer) with these [custom-rules](https://github.com/konveyor-ecosystem/kai/tree/main/samples/custom_rules)
         - Full output from [Kantra](https://github.com/konveyor/kantra) is checked into the git repo here: [example/analysis/coolstore/markdown/](example/analysis/coolstore/markdown/)
 
-#### What happens in our Demo?
+#### What are the general steps of the demo?
 
 1. We launch VSCode with out Kai VS Code extension which is a [modified version of the MTA VSCode Plugin](https://github.com/hhpatel14/rhamt-vscode-extension/tree/kai-2-29)
 2. We open a git checkout of a sample application: [coolstore](https://github.com/konveyor-ecosystem/coolstore)
@@ -34,40 +70,8 @@ For example, [analyzer-lsp Rules](https://github.com/konveyor/analyzer-lsp/blob/
 6. We click 'Generate Fix' in VSCode on a given file/issue and wait ~45 seconds for the Kai backend to generate a fix
 7. We view the suggested fix as a 'Diff' in VSCode
 8. We accept the generated fix
-9. The file in question has now been updated an move onto next issue
-
-We start with a sample application and run Konveyor's static code analysis 2. We
-
-$ python ./mock-client.py
-200
-{"feeling": "OK!", "recv": {"test": "object"}}
-200
-
-## Reasoning
-
-1. In the Java EE code, we are using `@MessageDriven` annotation which is not supported in Quarkus. We need to replace it with a CDI scope annotation like `@ApplicationScoped`.
-2. The `HelloWorldMDB` class is a Message Driven Bean (MDB) that listens to messages on a specified queue and processes them.
-3. The MDB uses the `javax.jms.TextMessage` class to process the messages.
-4. The MDB is activated using the `@ActivationConfigProperty` annotation which specifies the destination type, destination, and acknowledge mode.
-5. To migrate this code to Quarkus, we need to replace the `@MessageDriven` annotation with `@ApplicationScoped` and use CDI for dependency injection.
-6. We also need to update the `onMessage` method to use the `@Incoming` and `Log` annotations provided by Quarkus.
-
-## Updated File
-
-```java
-// Update the `HelloWorldMDB` class to use CDI and Quarkus annotations
-@ApplicationScoped
-public class HelloWorldMDB {
-
-    @Incoming("CMTQueue")
-    public void onMessage(String msg) {
-        Log.info("Received Message: " + msg);
-    }
-}
-```
-
-This updated file uses the `@ApplicationScoped` annotation to scope the MDB to the application and the `@Incoming` and `Log` annotations to process the messages and log them.
-input...
+9. The file in question has now been updated
+10. We move onto the next file/issue and repeat
 
 ### Demo Pre-requisites
 
@@ -135,10 +139,10 @@ input...
        - TODO: Instructions forthcoming
 - CLI usage (not intended for any demo, but useful for dev team to do test of backend)
 
-  - Run the client: [kai/kai-service/mock-client.py]
+  - Run the client: [kai-service/mock-client.py](/kai-service/mock-client.py)
 
     1.  `source env/bin/activate`
-    1.  `cd kai/kai-service`
+    1.  `cd kai-service`
     1.  `python ./mock-client.py` . (This needs the server to be running above)
 
             $ python ./mock-client.py
