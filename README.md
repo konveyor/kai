@@ -1,6 +1,6 @@
 # Konveyor AI (kai)
 
-Konveyor AI (kai) is Konveyor's approach to easing modernization of application source code to a new target by leveraging LLMs with guidance from static code analysis augmented with data in Konveyor that helps to learn how an Organization solved a similar problem in the past.g
+Konveyor AI (kai) is Konveyor's approach to easing modernization of application source code to a new target by leveraging LLMs with guidance from static code analysis augmented with data in Konveyor that helps to learn how an Organization solved a similar problem in the past.
 
 Pronounciation of 'kai': https://www.howtopronounce.com/kai
 
