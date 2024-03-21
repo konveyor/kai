@@ -23,9 +23,9 @@ SERVER_URL = "http://0.0.0.0:8080"
 
 @dataclass
 class KaiRequestParams:
-    application_name: str = ""
+    application_name: str
     file_name: str
-    file_contents: str = ""
+    file_contents: str
     violation_name: str
     ruleset_name: str
     analysis_message: str
