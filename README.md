@@ -12,7 +12,7 @@ This approach does _not_ require fine-tuning of LLMs, we augment a LLMs knowledg
 
 For example, [analyzer-lsp Rules](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md) such as these ([Java EE to Quarkus rulesets](https://github.com/konveyor/rulesets/tree/main/default/generated/quarkus)) are leveraged to aid guiding a LLM to update a legacy Java EE application to Quarkus
 
-Note: For purposes of this initial protype we are using an example of Java EE to Quarkus. That is an arbitrary choice to show viability of this approach. The code and the approach will work on other targets that Konveyor has rules for.
+Note: For purposes of this initial prototype we are using an example of Java EE to Quarkus. That is an arbitrary choice to show viability of this approach. The code and the approach will work on other targets that Konveyor has rules for.
 
 #### What happens technically to make this work?
 
