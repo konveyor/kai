@@ -257,6 +257,9 @@ def get_incident_solution(request_json: dict, stream: bool = False):
 
     pb = PromptBuilder(model_provider.get_prompt_builder_config(), pb_vars)
     prompt = pb.build_prompt()
+
+    pprint.pprint(prompt)
+
     if isinstance(prompt, list):
         raise Exception(f"Did not supply proper variables. Need at least {prompt}")
 
