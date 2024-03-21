@@ -56,6 +56,7 @@ class Report:
                                 "message": incid.get("message", ""),
                                 "codeSnip": incid.get("codeSnip", ""),
                                 "lineNumber": incid.get("lineNumber", ""),
+                                "variables": incid.get("variables", {}),
                             }
                             if impacted_files.get(file_path) is None:
                                 impacted_files[file_path] = []
