@@ -22,6 +22,8 @@ from model_provider import IBMGraniteModel, ModelProvider
 from prompt_builder import PromptBuilder
 from report import Report
 
+from kai.pydantic_models import parse_file_solution_content
+
 # TODO: Make openapi spec for everything
 
 # TODO: Repo lives both on client and on server. Determine either A) Best way to
@@ -205,15 +207,6 @@ async def post_change_model(request: Request):
 
 
 def get_incident_solution(request_json: dict, stream: bool = False):
-    schema: dict = json.loads(
-        open(os.path.join(JSONSCHEMA_DIR, "post_get_incident_solution.json")).read()
-    )
-
-    try:
-        jsonschema.validate(instance=request_json, schema=schema)
-    except jsonschema.ValidationError as err:
-        raise web.HTTPUnprocessableEntity(text=f"{err}") from err
-
     application_name: str = request_json["application_name"]
     application_name = application_name  # NOTE: To please trunk error, remove me
     ruleset_name: str = request_json["ruleset_name"]
@@ -262,6 +255,31 @@ def get_incident_solution(request_json: dict, stream: bool = False):
         return model_provider.invoke(prompt)
 
 
+# TODO: Figure out why we have to put this validator wrapping the routes
+# decorator
+def validator(schema_file):
+    def decorator(fn):
+        async def inner(request: Request, *args, **kwargs):
+            request_json = await request.json()
+
+            schema: dict = json.loads(
+                open(os.path.join(JSONSCHEMA_DIR, schema_file)).read()
+            )
+
+            try:
+                jsonschema.validate(instance=request_json, schema=schema)
+            except jsonschema.ValidationError as err:
+                print(f"{err}")
+                raise web.HTTPUnprocessableEntity(text=f"{err}") from err
+
+            return fn(request, *args, **kwargs)
+
+        return inner
+
+    return decorator
+
+
+@validator("post_get_incident_solution.json")
 @routes.post("/get_incident_solution")
 async def post_get_incident_solution(request: Request):
     """
@@ -275,7 +293,7 @@ async def post_get_incident_solution(request: Request):
     - ruleset_name (str)
     - violation_name (str)
     - incident_snip (str)
-    - incident_variables (list)
+    - incident_variables (object)
     - file_name (str)
     - file_contents (str)
     - line_number: 0-indexed (let's keep it consistent)
@@ -296,6 +314,7 @@ async def post_get_incident_solution(request: Request):
     )
 
 
+@validator("post_get_incident_solution.json")
 @routes.get("/ws/get_incident_solution")
 async def ws_get_incident_solution(request: Request):
     ws = web.WebSocketResponse()
@@ -329,6 +348,49 @@ async def ws_get_incident_solution(request: Request):
     await ws.close()
 
     return ws
+
+
+@validator("get_incident_solutions_for_file.json")
+@routes.post("/get_incident_solutions_for_file")
+async def get_incident_solutions_for_file(request: Request):
+    """
+    - file_name (str)
+    - file_contents (str)
+    - application_name (str)
+    - incidents (list)
+        - ruleset_name (str)
+        - violation_name (str)
+        - incident_snip (str)
+        - incident_variables (object)
+        - line_number: 0-indexed (let's keep it consistent)
+        - analysis_message (str)
+    """
+
+    print(f"get_incident_solutions_for_file recv'd: {request}")
+
+    request_json = await request.json()
+
+    total_reasoning = []
+    current_file_contents = request_json["file_contents"]
+
+    incident: dict[str, str]
+    for incident in request_json["incidents"]:
+        incident["file_name"] = request_json["file_name"]
+        incident["file_contents"] = current_file_contents
+        incident["application_name"] = request_json["application_name"]
+
+        llm_output = get_incident_solution(incident, False)
+        content = parse_file_solution_content(llm_output.content)
+
+        total_reasoning.append(content.reasoning)
+        current_file_contents = content.updated_file
+
+    return web.json_response(
+        {
+            "updated_file": current_file_contents,
+            "total_reasoning": total_reasoning,
+        }
+    )
 
 
 app = web.Application()
