@@ -62,7 +62,7 @@ Note: For purposes of this initial protype we are using an example of Java EE to
 
 #### What are the general steps of the demo?
 
-1. We launch VSCode with out Kai VS Code extension which is a [modified version of the MTA VSCode Plugin](https://github.com/hhpatel14/rhamt-vscode-extension/tree/kai-2-29)
+1. We launch VSCode with our Kai VS Code extension which is a [modified version of the MTA VSCode Plugin](https://github.com/hhpatel14/rhamt-vscode-extension/tree/kai-2-29)
 2. We open a git checkout of a sample application: [coolstore](https://github.com/konveyor-ecosystem/coolstore)
 3. We run [Kantra](https://github.com/konveyor/kantra) inside of VSCode to do an analysis of the application to learn what issues are present that need to be addressed before migrating to Quarkus
 4. We view the analysis information in VSCode
@@ -79,7 +79,7 @@ Note: For purposes of this initial protype we are using an example of Java EE to
 
 - Until we fix [this open issue](https://github.com/konveyor-ecosystem/kai/issues/85), you must have an IBM API Key to use kai
 - Set the below environment variables in your shell:
-  - GENAI_KEY=my-secret-api-key-value
+  - `GENAI_KEY=my-secret-api-key-value`
 - We plan to allow alternative ways of specifiying coordinates in future, tracked via: [Allow model credentials to be stored in an .env file #89](https://github.com/konveyor-ecosystem/kai/issues/89)
   - Once the above issue is fixed we expect to have alternative ways to specifiy model coordinates
 
