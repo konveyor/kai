@@ -12,8 +12,8 @@ from genai.schema import (
     TextGenerationParameters,
     TextGenerationReturnOptions,
 )
+from langchain_community.chat_models import ChatOpenAI
 from langchain_core.messages import BaseMessage, BaseMessageChunk
-from langchain_openai import ChatOpenAI
 
 """
 TODO: Add comments. General idea is that we can use dependency injection to
