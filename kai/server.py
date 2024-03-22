@@ -415,7 +415,7 @@ config: dict
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument(
-        "--log",
+        "-log",
         "--loglevel",
         default="warning",
         choices=["debug", "info", "warning", "error", "critical"],
