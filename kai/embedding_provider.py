@@ -1,3 +1,4 @@
+import logging
 import random
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -106,11 +107,11 @@ class EmbeddingOpenAI(EmbeddingProvider):
                 timeout=50,
             )
         except requests.Timeout:
-            print("Error: timout after 50 seconds")
+            logging.error("Error: timeout after 50 seconds")
             return None
 
         if response.status_code != 200:
-            print("Error:", response.status_code, response.text)
+            logging.error("Error:", response.status_code, response.text)
             return None
 
         return response.json()["data"][0]["embedding"]
@@ -140,7 +141,9 @@ class EmbeddingInstructor(EmbeddingProvider):
         toks = self.instructor.tokenize([inp])["input_ids"].tolist()[0]
 
         if len(toks) > self.max_tokens:
-            print(f"Length of tokens is {len(toks)}. Truncating to {self.max_tokens}.")
+            logging.info(
+                f"Length of tokens is {len(toks)}. Truncating to {self.max_tokens}."
+            )
 
         result: numpy.ndarray = self.instructor.encode(prompt).tolist()[0]
         return result

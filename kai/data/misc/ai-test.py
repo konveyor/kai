@@ -1,6 +1,3 @@
-from langchain import PromptTemplate
-from langchain.callbacks import FileCallbackHandler
-from langchain.chains import LLMChain
 from langchain_community.chat_models import ChatOpenAI
 
 template = """
