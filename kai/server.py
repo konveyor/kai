@@ -234,6 +234,9 @@ def get_incident_solution(request_json: dict, stream: bool = False):
     line_number: int = request_json["line_number"]
     analysis_message: str = request_json.get("analysis_message", "")
 
+    print(
+        f"get_incident_solution '{file_name}' '{ruleset_name}' '{violation_name}' line_number: {line_number}"
+    )
     # Gather context
     # First, let's see if there's an "exact" match
 
@@ -398,6 +401,9 @@ async def get_incident_solutions_for_file(request: Request):
 
     total_reasoning = []
     current_file_contents = request_json["file_contents"]
+    file_name = request_json["file_name"]
+
+    print(f"Working on '{file_name} with {len(request_json['incidents'])} incidents'")
 
     incident: dict[str, str]
     for incident in request_json["incidents"]:

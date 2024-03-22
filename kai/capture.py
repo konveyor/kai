@@ -41,11 +41,15 @@ class Capture:
         """Saves the capture to disk"""
         application_name = self.request["application_name"]
         src_file_name = self.request["file_name"]
+        ruleset_name = self.request["ruleset_name"]
+        violation_name = self.request["violation_name"]
+
         # We want to group the output by the source file name, but flatten the dir structure
         src_file_name = src_file_name.replace("/", "_")
 
         out_dir = os.path.join(
-            self.logs_dir, f"{self.model_id}/{application_name}/{src_file_name}"
+            self.logs_dir,
+            f"{self.model_id}/{application_name}/{src_file_name}/{ruleset_name}/{violation_name}",
         )
         os.makedirs(out_dir, exist_ok=True)
 
