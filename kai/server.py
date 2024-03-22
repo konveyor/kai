@@ -237,7 +237,7 @@ def get_incident_solution(request_json: dict, stream: bool = False):
 
     print(solved_incident)
 
-    if bool(solved_incident):
+    if bool(solved_incident) and match_type == "exact":
         solved_example = incident_store.select_accepted_solution(
             solved_incident["solution_id"]
         )
