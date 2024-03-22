@@ -22,7 +22,12 @@ import yaml
 from aiohttp import web
 from aiohttp.web_request import Request
 from incident_store_advanced import Application, EmbeddingNone, PSQLIncidentStore
-from model_provider import IBMGraniteModel, IBMLlamaModel, ModelProvider, OpenAIModel
+from model_provider import (
+    IBMGraniteModel,
+    IBMOpenSourceModel,
+    ModelProvider,
+    OpenAIModel,
+)
 from prompt_builder import PromptBuilder
 from report import Report
 
@@ -444,11 +449,11 @@ Example: --loglevel debug (default: warning)""",
         drop_tables=False,
     )
 
-    if config["models"]["provider"] == "IBMGranite":
+    if config["models"]["provider"].lower() == "IBMGranite".lower():
         model_provider = IBMGraniteModel(**config["models"]["args"])
-    elif config["models"]["provider"] == "IBMLlama":
-        model_provider = IBMLlamaModel(**config["models"]["args"])
-    elif config["models"]["provider"] == "OpenAI":
+    elif config["models"]["provider"].lower() == "IBMOpenSource".lower():
+        model_provider = IBMOpenSourceModel(**config["models"]["args"])
+    elif config["models"]["provider"].lower() == "OpenAI".lower():
         model_provider = OpenAIModel(**config["models"]["args"])
     else:
         raise Exception(f"Unrecognized model '{config['models']['provider']}'")
