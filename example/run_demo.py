@@ -9,7 +9,7 @@ import requests
 
 # Ensure that we have 'kai' in our import path
 sys.path.append("../../kai")
-from kai import Report, pydantic_models
+from kai import Report
 
 SERVER_URL = "http://0.0.0.0:8080"
 APP_NAME = "coolstore"
@@ -85,13 +85,13 @@ def generate_fix(params: KaiRequestParams):
 
 
 def parse_response(response):
-    response_json = response.json()
+    return response.json()
     ## TODO:  Below is rough guess at error handling, need to confirm
-    if "error" in response_json:
-        print(f"Error: {response_json['error']}")
-        return ""
-
-    return pydantic_models.parse_file_solution_content(response_json["updated_file"])
+    # if "error" in response_json:
+    #    print(f"Error: {response_json['error']}")
+    #    return ""
+    # TODO: When we are batching incidents we get back a parse result so we dont need below
+    # return pydantic_models.parse_file_solution_content(response_json["updated_file"])
 
 
 def write_to_disk(file_path, updated_file_contents):
@@ -102,8 +102,11 @@ def write_to_disk(file_path, updated_file_contents):
             f"**WARNING* File {intended_file_path} does not exist.  Proceeding, but suspect this is a new file or there is a problem with the filepath"
         )
 
+    print(f"Writing to {intended_file_path}")
+    print(f"{updated_file_contents['updated_file']}")
+    print(f"Reasoning: {updated_file_contents['total_reasoning']}")
     with open(intended_file_path, "w") as f:
-        f.write(updated_file_contents.updated_file)
+        f.write(updated_file_contents["updated_file"])
 
 
 def run_demo(report):
