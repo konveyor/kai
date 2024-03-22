@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import json
+import os
 import sys
 from dataclasses import asdict, dataclass
 
@@ -8,7 +9,7 @@ import requests
 
 # Ensure that we have 'kai' in our import path
 sys.path.append("../../kai")
-from kai import Report
+from kai import Report, pydantic_models
 
 SERVER_URL = "http://0.0.0.0:8080"
 APP_NAME = "coolstore"
@@ -84,7 +85,25 @@ def generate_fix(params: KaiRequestParams):
 
 
 def parse_response(response):
-    return ""
+    response_json = response.json()
+    ## TODO:  Below is rough guess at error handling, need to confirm
+    if "error" in response_json:
+        print(f"Error: {response_json['error']}")
+        return ""
+
+    return pydantic_models.parse_file_solution_content(response_json["updated_file"])
+
+
+def write_to_disk(file_path, updated_file_contents):
+    # We expect that we are overwriting the file, so all directories should exist
+    intended_file_path = f"{SAMPLE_APP_DIR}/{file_path}"
+    if not os.path.exists(intended_file_path):
+        print(
+            f"**WARNING* File {intended_file_path} does not exist.  Proceeding, but suspect this is a new file or there is a problem with the filepath"
+        )
+
+    with open(intended_file_path, "w") as f:
+        f.write(updated_file_contents.updated_file)
 
 
 def run_demo(report):
@@ -96,22 +115,28 @@ def run_demo(report):
         total_violations += len(violations)
     print(f"{num_impacted_files} files with a total of {total_violations} violations.")
 
-    count = 1
+    count = 0
     for file_path, violations in impacted_files.items():
+        count += 1
         print(
             f"File #{count} of {num_impacted_files} - Processing {file_path} which has {len(violations)} violations"
         )
+
+        # TODO: Revisit processing non Java files
+        if not file_path.endswith(".java"):
+            print(f"Skipping {file_path} as it is not a Java file")
+            continue
         # Gather the info we need to send to the REST API
         params = collect_parameters(file_path, violations)
+        print(f"\n{file_path}: {params.file_contents}\n")
         ####
         ## Call Kai
         #####
         response = generate_fix(params)
         print(f"\nResponse StatusCode: {response.status_code} for {file_path}\n")
-        # Parse the Output
-        # updated_file_contents = parse_response(response)
-        # Write it to Disk
-        count += 1
+        print(f"\nResponse: {response.text}\n")
+        updated_file_contents = parse_response(response)
+        write_to_disk(file_path, updated_file_contents)
 
 
 if __name__ == "__main__":
