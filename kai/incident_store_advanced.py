@@ -2,7 +2,7 @@ import argparse
 import datetime
 import json
 import os
-from configparser import ConfigParser
+import tomllib
 from dataclasses import dataclass
 from functools import wraps
 from inspect import signature
@@ -86,7 +86,7 @@ class PSQLIncidentStore:
         config: dict = None,
         emb_provider: EmbeddingProvider = None,
     ):
-        # Config parsing. Either comes from a dict or a .ini file
+        # Config parsing. Either comes from a dict or a .toml file
         cf_none = config_filepath is None
         cs_none = config_section is None
         cd_none = config is None
@@ -96,20 +96,18 @@ class PSQLIncidentStore:
                 "config_filepath and config_section must both be set if using .ini file."
             )
         if not (cf_none ^ cd_none):
-            raise Exception("Must provide either config .ini or config dict.")
+            raise Exception("Must provide either config .toml or config dict.")
 
         if not cf_none:
-            parser = ConfigParser()
-            parser.read(config_filepath)
+            with open(config_filepath, "rb") as f:
+                config = tomllib.load(f)
 
-            config = {}
-            if not parser.has_section(config_section):
+            if config_section not in config:
                 raise Exception(
                     f"Section {config_section} not found in file {config_filepath}"
                 )
 
-            for p in parser.items(config_section):
-                config[p[0]] = p[1]
+            config = config[config_section]
 
         # Embedding provider
         if emb_provider is None:

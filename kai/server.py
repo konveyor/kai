@@ -6,9 +6,14 @@
 
 """This module is intended to facilitate using Konveyor with LLMs."""
 
+import argparse
 import json
+import logging
 import os
+import pprint
+import tomllib
 import warnings
+from configparser import ConfigParser
 from os import listdir
 from os.path import isfile, join
 
@@ -18,7 +23,7 @@ import yaml
 from aiohttp import web
 from aiohttp.web_request import Request
 from incident_store_advanced import Application, EmbeddingNone, PSQLIncidentStore
-from model_provider import IBMGraniteModel, ModelProvider
+from model_provider import IBMGraniteModel, IBMLlamaModel, ModelProvider, OpenAIModel
 from prompt_builder import PromptBuilder
 from report import Report
 
@@ -400,22 +405,38 @@ app.add_routes(routes)
 
 incident_store: PSQLIncidentStore
 model_provider: ModelProvider
+config: dict
 
 if __name__ == "__main__":
     base_path = os.path.dirname(__file__)
 
+    with open(os.path.join(base_path, "config.toml"), "rb") as f:
+        config = tomllib.load(f)
+
+    schema: dict = json.loads(
+        open(os.path.join(JSONSCHEMA_DIR, "server_config.json")).read()
+    )
+    # TODO: Make this error look nicer
+    jsonschema.validate(instance=config, schema=schema)
+
     # TODO: Make this all config-based
     incident_store = PSQLIncidentStore(
-        config_filepath=f"{base_path}/../kai/database.ini",
-        config_section="postgresql",
+        config=config["postgresql"],
         # emb_provider=EmbeddingInstructor(model="hkunlp/instructor-base"),
         emb_provider=EmbeddingNone(),
         drop_tables=False,
     )
 
-    model_provider = IBMGraniteModel()
-    # model_provider = IBMLlamaModel()
-    # model_provider = OpenAIModel()
+    if config["models"]["provider"] == "IBMGranite":
+        model_provider = IBMGraniteModel(**config["models"]["args"])
+    elif config["models"]["provider"] == "IBMLlama":
+        model_provider = IBMLlamaModel(**config["models"]["args"])
+    elif config["models"]["provider"] == "OpenAI":
+        model_provider = OpenAIModel(**config["models"]["args"])
+    else:
+        raise Exception(f"Unrecognized model '{config['models']['provider']}'")
+
+    print(f"Selected model {config['models']['provider']}")
 
     web.run_app(app)
 
