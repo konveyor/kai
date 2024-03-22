@@ -1,4 +1,3 @@
-import logging
 import random
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -7,6 +6,7 @@ import numpy
 import requests
 import tiktoken
 from InstructorEmbedding import INSTRUCTOR
+from kai_logging import KAI_LOG
 from psycopg2 import sql
 from psycopg2.extensions import connection
 
@@ -107,11 +107,11 @@ class EmbeddingOpenAI(EmbeddingProvider):
                 timeout=50,
             )
         except requests.Timeout:
-            logging.error("Error: timeout after 50 seconds")
+            KAI_LOG.error("Error: timeout after 50 seconds")
             return None
 
         if response.status_code != 200:
-            logging.error("Error:", response.status_code, response.text)
+            KAI_LOG.error("Error:", response.status_code, response.text)
             return None
 
         return response.json()["data"][0]["embedding"]
@@ -141,7 +141,7 @@ class EmbeddingInstructor(EmbeddingProvider):
         toks = self.instructor.tokenize([inp])["input_ids"].tolist()[0]
 
         if len(toks) > self.max_tokens:
-            logging.info(
+            KAI_LOG.info(
                 f"Length of tokens is {len(toks)}. Truncating to {self.max_tokens}."
             )
 

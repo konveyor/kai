@@ -8,7 +8,6 @@
 
 import argparse
 import json
-import logging
 import os
 import pprint
 import tomllib
@@ -22,6 +21,7 @@ import yaml
 from aiohttp import web
 from aiohttp.web_request import Request
 from incident_store_advanced import Application, EmbeddingNone, PSQLIncidentStore
+from kai_logging import KAI_LOG
 from model_provider import (
     IBMGraniteModel,
     IBMOpenSourceModel,
@@ -174,7 +174,7 @@ async def run_analysis_report():
 
 @routes.post("/dummy_json_request")
 async def post_dummy_json_request(request: Request):
-    logging.debug(f"post_dummy_json_request recv'd: {request}")
+    KAI_LOG.debug(f"post_dummy_json_request recv'd: {request}")
 
     request_json: dict = await request.json()
 
@@ -246,7 +246,7 @@ def get_incident_solution(request_json: dict, stream: bool = False):
         "analysis_message": analysis_message,
     }
 
-    logging.debug(solved_incident)
+    KAI_LOG.debug(solved_incident)
 
     if bool(solved_incident) and match_type == "exact":
         solved_example = incident_store.select_accepted_solution(
@@ -280,7 +280,7 @@ def validator(schema_file):
             try:
                 jsonschema.validate(instance=request_json, schema=schema)
             except jsonschema.ValidationError as err:
-                logging.error(f"{err}")
+                KAI_LOG.error(f"{err}")
                 raise web.HTTPUnprocessableEntity(text=f"{err}") from err
 
             return fn(request, *args, **kwargs)
@@ -314,7 +314,7 @@ async def post_get_incident_solution(request: Request):
     - llm_output:
     """
 
-    logging.debug(f"post_get_incident_solution recv'd: {request}")
+    KAI_LOG.debug(f"post_get_incident_solution recv'd: {request}")
 
     llm_output = get_incident_solution(await request.json(), False).content
 
@@ -377,7 +377,7 @@ async def get_incident_solutions_for_file(request: Request):
         - analysis_message (str)
     """
 
-    logging.debug(f"get_incident_solutions_for_file recv'd: {request}")
+    KAI_LOG.debug(f"get_incident_solutions_for_file recv'd: {request}")
 
     request_json = await request.json()
 
@@ -430,11 +430,11 @@ Example: --loglevel debug (default: warning)""",
     )
 
     args = arg_parser.parse_args()
-    logging.basicConfig(level=args.loglevel.upper())
+    KAI_LOG.setLevel(args.loglevel.upper())
 
     with open(os.path.join(base_path, "config.toml"), "rb") as f:
         config = tomllib.load(f)
-        logging.info(f"Config loaded: {pprint.pformat(config)}")
+        KAI_LOG.info(f"Config loaded: {pprint.pformat(config)}")
 
     schema: dict = json.loads(
         open(os.path.join(JSONSCHEMA_DIR, "server_config.json")).read()
@@ -458,7 +458,7 @@ Example: --loglevel debug (default: warning)""",
     else:
         raise Exception(f"Unrecognized model '{config['models']['provider']}'")
 
-    logging.info(f"Selected model {config['models']['provider']}")
+    KAI_LOG.info(f"Selected model {config['models']['provider']}")
 
     web.run_app(app)
 

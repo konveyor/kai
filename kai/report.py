@@ -1,11 +1,11 @@
 __all__ = ["Report"]
 
-import logging
 import os
 import shutil
 from io import StringIO
 
 import yaml
+from kai_logging import KAI_LOG
 
 
 class Report:
@@ -74,7 +74,7 @@ class Report:
         return new_report
 
     def _read_report(self):
-        logging.info(f"Reading report from {self.path_to_report}")
+        KAI_LOG.info(f"Reading report from {self.path_to_report}")
         with open(self.path_to_report, "r") as f:
             report: dict = yaml.safe_load(f)
         report = self._reformat_report(report)
@@ -100,7 +100,7 @@ class Report:
         try:
             os.makedirs(output_dir, exist_ok=True)
         except OSError as error:
-            logging.error(f"Error creating directory {output_dir}: {error}")
+            KAI_LOG.error(f"Error creating directory {output_dir}: {error}")
             raise error
         report = self.get_report()
         # Iterate through each Ruleset that has data
@@ -116,7 +116,7 @@ class Report:
                 self._get_markdown_snippet(ruleset_name, buffer)
                 buffer.seek(0)
                 shutil.copyfileobj(buffer, f)
-                logging.info(
+                KAI_LOG.info(
                     f"Writing {ruleset_name} to {output_dir}/{ruleset_name_display}.md"
                 )
                 buffer.close()

@@ -1,8 +1,8 @@
 __all__ = ["GitDiff"]
 
-import logging
 
 from git import BadName, Repo
+from kai_logging import KAI_LOG
 
 
 class GitDiff:
@@ -30,13 +30,13 @@ class GitDiff:
         return patch
 
     def get_file_contents(self, file_path, commit_id="HEAD"):
-        logging.debug(f"Getting file contents for {file_path} in {commit_id}")
+        KAI_LOG.debug(f"Getting file contents for {file_path} in {commit_id}")
         commit = self.repo.commit(commit_id)
-        logging.debug(f"Commit: {commit}")
+        KAI_LOG.debug(f"Commit: {commit}")
         tree = self.repo.tree(commit)
-        logging.debug(f"Tree: {tree}")
+        KAI_LOG.debug(f"Tree: {tree}")
         blob = tree[file_path]
-        logging.debug(f"Blob: {blob}")
+        KAI_LOG.debug(f"Blob: {blob}")
         return blob.data_stream.read().decode()
 
     def get_file_contents_from_branch(self, file_path, branch="main"):

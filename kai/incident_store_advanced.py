@@ -1,7 +1,6 @@
 import argparse
 import datetime
 import json
-import logging
 import os
 import tomllib
 from dataclasses import dataclass
@@ -13,6 +12,7 @@ import psycopg2
 import yaml
 from embedding_provider import EmbeddingNone, EmbeddingProvider
 from git import Repo
+from kai_logging import KAI_LOG
 from psycopg2.extensions import connection
 from psycopg2.extras import DictCursor, DictRow
 
@@ -118,7 +118,7 @@ class PSQLIncidentStore:
 
         try:
             with psycopg2.connect(cursor_factory=DictCursor, **config) as conn:
-                logging.info("Connected to the PostgreSQL server.")
+                KAI_LOG.info("Connected to the PostgreSQL server.")
                 self.conn: connection = conn
                 self.conn.autocommit = True
 
@@ -144,7 +144,7 @@ class PSQLIncidentStore:
                     cur.execute(q, (dim,))
 
         except (psycopg2.DatabaseError, Exception) as error:
-            logging.error(f"Error initializing PSQLIncidentStore: {error}")
+            KAI_LOG.error(f"Error initializing PSQLIncidentStore: {error}")
 
     @supply_cursor_if_none
     def select_application(
@@ -306,7 +306,7 @@ class PSQLIncidentStore:
         vars_str = json.dumps(incident_variables)
         truncated_vars = (vars_str[:75] + "...") if len(vars_str) > 75 else vars_str
 
-        logging.info(
+        KAI_LOG.info(
             f"Inserting incident {(violation_id, application_id, incident_uri, incident_line, truncated_vars, solution_id,)}"
         )
 
@@ -337,7 +337,7 @@ class PSQLIncidentStore:
         solution_updated_code: str,
         cur: DictCursor = None,
     ):
-        logging.info(f"Inserting accepted solution {((generated_at))}")
+        KAI_LOG.info(f"Inserting accepted solution {((generated_at))}")
         small_diff_embedding = str(self.emb_provider.get_embedding(solution_small_diff))
         original_code_embedding = str(
             self.emb_provider.get_embedding(solution_original_code)
@@ -426,7 +426,7 @@ class PSQLIncidentStore:
         # if len(filter_on_vars) > 1:
         #   return get_snip_with_highest_embedding_similarity_from_filtered_set(), 'exact'
 
-        logging.debug("get_fuzzy_similar_incident")
+        KAI_LOG.debug("get_fuzzy_similar_incident")
 
         emb = self.emb_provider.get_embedding(incident_snip)
         emb_str = str(emb)
@@ -458,10 +458,10 @@ class PSQLIncidentStore:
         violation_query = cur.fetchall()
 
         if len(violation_query) > 1:
-            logging.info("Ambiguous violation based on ruleset_name and violation_name")
+            KAI_LOG.info("Ambiguous violation based on ruleset_name and violation_name")
             return highest_embedding_similarity_from_all(), "ambiguous_violation"
         if len(violation_query) == 0:
-            logging.info(f"No violations matched: {ruleset_name=} {violation_name=}")
+            KAI_LOG.info(f"No violations matched: {ruleset_name=} {violation_name=}")
             return highest_embedding_similarity_from_all(), "unseen_violation"
 
         violation = violation_query[0]
@@ -478,7 +478,7 @@ class PSQLIncidentStore:
 
         number_of_slns = cur.fetchone()[0]
         if number_of_slns == 0:
-            logging.info(
+            KAI_LOG.info(
                 f"No solutions for violation: {ruleset_name=} {violation_name=}"
             )
             return highest_embedding_similarity_from_all(), "similarity_only"
@@ -729,7 +729,7 @@ WHERE fit.incident_id IS NULL;""",
 
             solved_incidents = cur.fetchall()
             number_solved_incidents = len(solved_incidents)
-            logging.debug(f"# of solved inc: {len(solved_incidents)}")
+            KAI_LOG.debug(f"# of solved inc: {len(solved_incidents)}")
 
             self.conn.autocommit = False
             for si in solved_incidents:
@@ -796,28 +796,28 @@ WHERE fit.incident_id IS NULL;""",
         folder_path = os.path.join(parent_dir, path)
 
         if not os.path.exists(folder_path):
-            logging.error(f"Error: {folder_path} does not exist.")
+            KAI_LOG.error(f"Error: {folder_path} does not exist.")
             return None
         # check if the folder is empty
         if not os.listdir(folder_path):
-            logging.error(f"Error: {folder_path} is empty.")
+            KAI_LOG.error(f"Error: {folder_path} is empty.")
             return None
         apps = os.listdir(folder_path)
-        logging.info(f"Loading incident store with applications: {apps}\n")
+        KAI_LOG.info(f"Loading incident store with applications: {apps}\n")
 
         for app in apps:
 
             # if app is a directory then check if there is a folder called initial
-            logging.info(f"Loading application {app}\n")
+            KAI_LOG.info(f"Loading application {app}\n")
             app_path = os.path.join(folder_path, app)
             if os.path.isdir(app_path):
                 initial_folder = os.path.join(app_path, "initial")
                 if not os.path.exists(initial_folder):
-                    logging.error(f"Error: {initial_folder} does not exist.")
+                    KAI_LOG.error(f"Error: {initial_folder} does not exist.")
                     return None
                 # check if the folder is empty
                 if not os.listdir(initial_folder):
-                    logging.error(
+                    KAI_LOG.error(
                         f"Error: No analysis report found in {initial_folder}."
                     )
                     return None
@@ -840,20 +840,20 @@ WHERE fit.incident_id IS NULL;""",
                     generated_at=datetime.datetime.now(),
                 )
 
-                logging.info(f"Loading application {app}\n")
+                KAI_LOG.info(f"Loading application {app}\n")
 
                 self.insert_and_update_from_report(app_initial, Report(report_path))
-                logging.info(f"Loaded application - initial {app}\n")
+                KAI_LOG.info(f"Loaded application - initial {app}\n")
 
                 # input(f"After inserting initial for {app}...")
 
                 solved_folder = os.path.join(app_path, "solved")
                 if not os.path.exists(solved_folder):
-                    logging.error(f"Error: {solved_folder} does not exist.")
+                    KAI_LOG.error(f"Error: {solved_folder} does not exist.")
                     return None
                 # check if the folder is empty
                 if not os.listdir(solved_folder):
-                    logging.error(
+                    KAI_LOG.error(
                         f"Error: No analysis report found in {solved_folder}."
                     )
                     return None
@@ -874,7 +874,7 @@ WHERE fit.incident_id IS NULL;""",
                 )
                 self.insert_and_update_from_report(app_solved, Report(report_path))
 
-                logging.info(f"Loaded application - solved {app}\n")
+                KAI_LOG.info(f"Loaded application - solved {app}\n")
 
     def get_repo_path(self, app_name):
         """
@@ -903,7 +903,7 @@ WHERE fit.incident_id IS NULL;""",
     def get_app_variables(self, path: str, app_name: str):
 
         if not os.path.exists(path):
-            logging.error(
+            KAI_LOG.error(
                 f"Error: {app_name} does not exist in the analysis_reports directory."
             )
             return None
@@ -912,7 +912,7 @@ WHERE fit.incident_id IS NULL;""",
         app_yaml_path = os.path.join(path, app_name, "app.yaml")
         # Check if app.yaml exists for the specified app
         if not os.path.exists(app_yaml_path):
-            logging.error(f"Error: app.yaml does not exist for {app_name}.")
+            KAI_LOG.error(f"Error: app.yaml does not exist for {app_name}.")
             return None
 
         # Load contents of app.yaml
