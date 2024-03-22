@@ -11,7 +11,7 @@ class FileSolutionContent(BaseModel):
 # TODO: Sometimes this will fail. Why?
 def parse_file_solution_content(content: str) -> FileSolutionContent:
     reasoning_pattern = r"## Reasoning\s+(.+?)(?=##|$)"
-    updated_file_pattern = r"```java\s+(.+?)```"
+    updated_file_pattern = r"```(?:\w+)?\s+(.+?)```"
 
     reasoning_match = re.search(reasoning_pattern, content, re.DOTALL)
     updated_file_match = re.search(updated_file_pattern, content, re.DOTALL)
