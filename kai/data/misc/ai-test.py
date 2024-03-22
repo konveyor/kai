@@ -1,7 +1,4 @@
-from langchain import PromptTemplate
-from langchain.callbacks import FileCallbackHandler
-from langchain.chains import LLMChain
-from langchain.chat_models import ChatOpenAI
+from langchain_community.chat_models import ChatOpenAI
 
 template = """
 You are an excellent enterprise architect who has an extensive

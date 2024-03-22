@@ -100,6 +100,47 @@ Note: For purposes of this initial prototype we are using an example of Java EE 
     - To access via an API you can look at ‘Documentation’ after logging into https://bam.res.ibm.com/
       - You will see a field embedded in the 'Documentation' section where you can generate/obtain an API Key.
 
+##### Selecting Other Models
+
+We also support other models. To change which llm you are targeting, open `config.toml` and change the `[models]` section to one of the following:
+
+**IBM served granite**
+
+```toml
+provider = "IBMGranite"
+args = { model_id = "ibm/granite-13b-chat-v2" }
+```
+
+**IBM served mistral**
+
+```toml
+provider = "IBMOpenSource"
+args = { model_id = "ibm-mistralai/mixtral-8x7b-instruct-v01-q" }
+```
+
+**IBM served codellama**
+
+```toml
+provider = "IBMOpenSource"
+args = { model_id = "meta-llama/llama-2-13b-chat" }
+```
+
+**OpenAI GPT 3.5**
+
+```toml
+provider = "OpenAI"
+args = { model_id = "gpt-4" }
+```
+
+**OpenAI GPT 4**
+
+```toml
+provider = "OpenAI"
+args = { model_id = "gpt-3.5-turbo" }
+```
+
+provider = "IBMGranite"
+
 ### Demo Steps
 
 #### Backend

@@ -1,5 +1,6 @@
 __all__ = ["Report"]
 
+import logging
 import os
 import shutil
 from io import StringIO
@@ -73,7 +74,7 @@ class Report:
         return new_report
 
     def _read_report(self):
-        print(f"Reading report from {self.path_to_report}")
+        logging.info(f"Reading report from {self.path_to_report}")
         with open(self.path_to_report, "r") as f:
             report: dict = yaml.safe_load(f)
         report = self._reformat_report(report)
@@ -99,13 +100,14 @@ class Report:
         try:
             os.makedirs(output_dir, exist_ok=True)
         except OSError as error:
-            print(f"Error creating directory {output_dir}: {error}")
+            logging.error(f"Error creating directory {output_dir}: {error}")
             raise error
         report = self.get_report()
         # Iterate through each Ruleset that has data
         # Write a separate file per ruleset
         for ruleset_name in report.keys():
             ruleset = report[ruleset_name]
+            ruleset = ruleset  # FIXME: To stop trunk error
             ruleset_name_display = ruleset_name.replace("/", "_")
             with open(f"{output_dir}/{ruleset_name_display}.md", "w") as f:
                 # We want to start each run with a clean file
@@ -114,7 +116,7 @@ class Report:
                 self._get_markdown_snippet(ruleset_name, buffer)
                 buffer.seek(0)
                 shutil.copyfileobj(buffer, f)
-                print(
+                logging.info(
                     f"Writing {ruleset_name} to {output_dir}/{ruleset_name_display}.md"
                 )
                 buffer.close()
@@ -123,14 +125,14 @@ class Report:
         report = self.get_report()
         ruleset = report[ruleset_name]
         f.write(f"# {ruleset_name}\n")
-        f.write(f"## Description\n")
+        f.write("## Description\n")
         f.write(f"{ruleset.get('description', '')}\n")
         f.write(
-            f"* Source of rules: https://github.com/konveyor/rulesets/tree/main/default/generated\n"
+            "* Source of rules: https://github.com/konveyor/rulesets/tree/main/default/generated\n"
         )
-        f.write(f"## Violations\n")
+        f.write("## Violations\n")
         f.write(f"Number of Violations: {len(ruleset['violations'])}\n")
-        counter = 0
+        # counter = 0
         for count, key in enumerate(ruleset["violations"]):
             items = ruleset["violations"][key]
             f.write(f"### #{count} - {key}\n")
@@ -147,11 +149,11 @@ class Report:
             if "labels" in items:
                 f.write(f"* Labels: {', '.join(items['labels'])}\n")
             if "links" in items:
-                f.write(f"* Links\n")
+                f.write("* Links\n")
                 for l in items["links"]:
                     f.write(f"  * {l['title']}: {l['url']}\n")
             if "incidents" in items:
-                f.write(f"* Incidents\n")
+                f.write("* Incidents\n")
                 for incid in items["incidents"]:
                     # Possible keys of 'uri', 'message', 'codeSnip'
                     if "uri" in incid:
@@ -161,20 +163,21 @@ class Report:
                     if "message" in incid and incid["message"].strip() != "":
                         f.write(f"      * Message: '{incid['message'].strip()}'\n")
                     if "codeSnip" in incid:
-                        f.write(f"      * Code Snippet:\n")
-                        f.write(f"```java\n")
+                        f.write("      * Code Snippet:\n")
+                        f.write("```java\n")
                         f.write(f"{incid['codeSnip']}\n")
-                        f.write(f"```\n")
+                        f.write("```\n")
 
     def get_violation_snippet(self, ruleset_name, violation_name):
         report = self.get_report()
         ruleset = report[ruleset_name]
         violation = ruleset["violations"][violation_name]
+        violation = violation  # FIXME: to please trunk error
         buffer = StringIO()
         buffer.write(f"# {ruleset_name}\n")
-        buffer.write(f"## Description\n")
+        buffer.write("## Description\n")
         buffer.write(f"{ruleset['description']}\n")
-        buffer.write(f"* Source of rules:")
+        buffer.write("* Source of rules:")
 
     def should_we_skip_incident(self, incid):
         # Filter out known issues

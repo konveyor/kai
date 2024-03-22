@@ -6,8 +6,12 @@
 
 """This module is intended to facilitate using Konveyor with LLMs."""
 
+import argparse
 import json
+import logging
 import os
+import pprint
+import tomllib
 import warnings
 from os import listdir
 from os.path import isfile, join
@@ -18,7 +22,12 @@ import yaml
 from aiohttp import web
 from aiohttp.web_request import Request
 from incident_store_advanced import Application, EmbeddingNone, PSQLIncidentStore
-from model_provider import IBMGraniteModel, ModelProvider
+from model_provider import (
+    IBMGraniteModel,
+    IBMOpenSourceModel,
+    ModelProvider,
+    OpenAIModel,
+)
 from prompt_builder import PromptBuilder
 from report import Report
 
@@ -165,7 +174,7 @@ async def run_analysis_report():
 
 @routes.post("/dummy_json_request")
 async def post_dummy_json_request(request: Request):
-    print(f"post_dummy_json_request recv'd: {request}")
+    logging.debug(f"post_dummy_json_request recv'd: {request}")
 
     request_json: dict = await request.json()
 
@@ -237,7 +246,7 @@ def get_incident_solution(request_json: dict, stream: bool = False):
         "analysis_message": analysis_message,
     }
 
-    print(solved_incident)
+    logging.debug(solved_incident)
 
     if bool(solved_incident) and match_type == "exact":
         solved_example = incident_store.select_accepted_solution(
@@ -271,7 +280,7 @@ def validator(schema_file):
             try:
                 jsonschema.validate(instance=request_json, schema=schema)
             except jsonschema.ValidationError as err:
-                print(f"{err}")
+                logging.error(f"{err}")
                 raise web.HTTPUnprocessableEntity(text=f"{err}") from err
 
             return fn(request, *args, **kwargs)
@@ -305,7 +314,7 @@ async def post_get_incident_solution(request: Request):
     - llm_output:
     """
 
-    print(f"post_get_incident_solution recv'd: {request}")
+    logging.debug(f"post_get_incident_solution recv'd: {request}")
 
     llm_output = get_incident_solution(await request.json(), False).content
 
@@ -368,7 +377,7 @@ async def get_incident_solutions_for_file(request: Request):
         - analysis_message (str)
     """
 
-    print(f"get_incident_solutions_for_file recv'd: {request}")
+    logging.debug(f"get_incident_solutions_for_file recv'd: {request}")
 
     request_json = await request.json()
 
@@ -398,24 +407,58 @@ async def get_incident_solutions_for_file(request: Request):
 app = web.Application()
 app.add_routes(routes)
 
+base_path = os.path.dirname(__file__)
 incident_store: PSQLIncidentStore
 model_provider: ModelProvider
+config: dict
 
 if __name__ == "__main__":
-    base_path = os.path.dirname(__file__)
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument(
+        "--log",
+        "--loglevel",
+        default="warning",
+        choices=["debug", "info", "warning", "error", "critical"],
+        help="""Provide logging level.
+Options:
+- debug: Detailed information, typically of interest only when diagnosing problems.
+- info: Confirmation that things are working as expected.
+- warning: An indication that something unexpected happened, or indicative of some problem in the near future (e.g., ‘disk space low’). The software is still working as expected.
+- error: Due to a more serious problem, the software has not been able to perform some function.
+- critical: A serious error, indicating that the program itself may be unable to continue running.
+Example: --loglevel debug (default: warning)""",
+    )
 
-    # TODO: Make this all config-based
+    args = arg_parser.parse_args()
+    logging.basicConfig(level=args.loglevel.upper())
+
+    with open(os.path.join(base_path, "config.toml"), "rb") as f:
+        config = tomllib.load(f)
+        logging.info(f"Config loaded: {pprint.pformat(config)}")
+
+    schema: dict = json.loads(
+        open(os.path.join(JSONSCHEMA_DIR, "server_config.json")).read()
+    )
+    # TODO: Make this error look nicer
+    jsonschema.validate(instance=config, schema=schema)
+
     incident_store = PSQLIncidentStore(
-        config_filepath=f"{base_path}/../kai/database.ini",
-        config_section="postgresql",
+        config=config["postgresql"],
         # emb_provider=EmbeddingInstructor(model="hkunlp/instructor-base"),
         emb_provider=EmbeddingNone(),
         drop_tables=False,
     )
 
-    model_provider = IBMGraniteModel()
-    # model_provider = IBMLlamaModel()
-    # model_provider = OpenAIModel()
+    if config["models"]["provider"].lower() == "IBMGranite".lower():
+        model_provider = IBMGraniteModel(**config["models"]["args"])
+    elif config["models"]["provider"].lower() == "IBMOpenSource".lower():
+        model_provider = IBMOpenSourceModel(**config["models"]["args"])
+    elif config["models"]["provider"].lower() == "OpenAI".lower():
+        model_provider = OpenAIModel(**config["models"]["args"])
+    else:
+        raise Exception(f"Unrecognized model '{config['models']['provider']}'")
+
+    logging.info(f"Selected model {config['models']['provider']}")
 
     web.run_app(app)
 

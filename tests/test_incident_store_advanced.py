@@ -123,7 +123,7 @@ class TestIncidentStoreAdvanced(unittest.TestCase):
 
     def create_instance(self):
         psqlis = PSQLIncidentStore(
-            config_filepath="tests/test_data/data/database.ini",
+            config_filepath="tests/test_data/data/database.toml",
             config_section="postgresql",
             emb_provider=EmbeddingNone(),
             drop_tables=True,

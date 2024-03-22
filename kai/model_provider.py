@@ -12,8 +12,8 @@ from genai.schema import (
     TextGenerationParameters,
     TextGenerationReturnOptions,
 )
+from langchain_community.chat_models import ChatOpenAI
 from langchain_core.messages import BaseMessage, BaseMessageChunk
-from langchain_openai import ChatOpenAI
 
 """
 TODO: Add comments. General idea is that we can use dependency injection to
@@ -102,7 +102,7 @@ class IBMGraniteModel(ModelProvider):
         return self.models
 
 
-class IBMLlamaModel(ModelProvider):
+class IBMOpenSourceModel(ModelProvider):
     def __init__(
         self,
         model_id: str = "meta-llama/llama-2-13b-chat",
@@ -114,7 +114,7 @@ class IBMLlamaModel(ModelProvider):
 
         self.prompt_builder_config = prompt_builder.CONFIG_IBM_LLAMA
         self.models = [
-            # "ibm-mistralai/mixtral-8x7b-instruct-v01-q",
+            "ibm-mistralai/mixtral-8x7b-instruct-v01-q",
             # "codellama/codellama-34b-instruct",
             # "codellama/codellama-70b-instruct",
             # "mistralai/mistral-7b-instruct-v0-2",

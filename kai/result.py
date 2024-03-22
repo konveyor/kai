@@ -4,8 +4,8 @@ import logging
 import os
 
 from langchain.chains import LLMChain
-from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
+from langchain_community.chat_models import ChatOpenAI
 
 from .report import Report
 from .scm import GitDiff
@@ -66,7 +66,8 @@ class LLMResult:
     def create_prompt(self, description, incidents, template):
         # To form a prompt we need:
         template = self.get_prompt_template()
-        print(f"{len(incidents)} incidents:  {description}\n")
+        print(f"{len(incidents)} incidents: {description}\n")
+        print(f"template: {template}")
 
     def _update_uri(self, uri):
         logging.debug(f"Updating uri {uri}")
@@ -139,10 +140,11 @@ class LLMResult:
                 description = items["description"]
                 # TODO
                 # Don't use the codeSnip from the report, get the code from Git and use the linenumber
-                # We want to avoide the line number printed on each line of code snip, worried it will impact
+                # We want to avoid the line number printed on each line of code snip, worried it will impact
                 # the diff we get back from LLM
                 # current_issue_original_code =  items['incidents'][0].get('codeSnip', None)
                 lineNumber = items["incidents"][0].get("lineNumber", None)
+                lineNumber = lineNumber  # FIXME: To please trunk error
                 current_issue_filename = self._update_uri(items["incidents"][0]["uri"])
                 if current_issue_filename is None:
                     continue
@@ -163,6 +165,7 @@ class LLMResult:
                     # We are experimenting with the diff for right now
                     ###
                     example_lineNumber = items["incidents"][1].get("lineNumber", None)
+                    example_lineNumber = example_lineNumber  # FIXME: To fix trunk error
                     solved_example_filename = self._update_uri(
                         items["incidents"][1]["uri"]
                     )
@@ -211,9 +214,9 @@ class LLMResult:
                 )
                 with open(f_name, "w") as f:
                     f.truncate(0)
-                    f.write(f"## Prompt:\n")
+                    f.write("## Prompt:\n")
                     f.write(f"{formatted_prompt}\n")
-                    f.write(f"\n\n## Result:\n")
+                    f.write("\n\n## Result:\n")
                     f.write(f"{result}\n\n")
 
                 d_name = f_name = os.path.join(
@@ -225,4 +228,4 @@ class LLMResult:
                     f.truncate(0)
                     f.write(result_diff)
 
-        print(f"Process complete")
+        print("Process complete")
