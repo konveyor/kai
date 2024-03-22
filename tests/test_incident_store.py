@@ -243,7 +243,7 @@ class TestIncidentStore(unittest.TestCase):
             "quarkus/springboot", "javaee-pom-to-quarkus-00010"
         )
         self.assertIsNotNone(patches)
-        self.assertEquals(len(patches), 1)
+        self.assertEqual(len(patches), 1)
         self.incident_store.cleanup()
 
     def test_find_solved_issues_no_solved_issues(self):
