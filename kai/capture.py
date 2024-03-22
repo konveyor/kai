@@ -4,7 +4,13 @@ import pprint
 from collections import defaultdict
 from dataclasses import dataclass, field
 
+# TODO: There are various scenarios where we will overwrite prior information
+# - <JWM Notes> We do not distinguish between differences in Line Numbers, an issue with same appname, filename, ruleset, violation but different line number will overwrite prior
+#   I am not addressing now as I think we ultimately want to group all violations of same type together and we dont want to attemt to fix separate line numbers in independent calls
 
+
+# TODO: Capture at get_solutions_for_file level as well.
+#   We are only capturing at the lower level of get_incident_solution
 @dataclass
 class Capture:
     """Gathers information from the server for a request, prompt, and LLM Response
@@ -53,6 +59,8 @@ class Capture:
         )
         os.makedirs(out_dir, exist_ok=True)
 
+        with open(os.path.join(out_dir, src_file_name), "w") as f:
+            f.write(self.request["file_contents"])
         with open(os.path.join(out_dir, "request.json"), "w") as f:
             json.dump(self.request, f, indent=2)
         with open(os.path.join(out_dir, "solved_incident.json"), "w") as f:
@@ -61,5 +69,3 @@ class Capture:
             pprint.pprint(self.prompt, f, indent=2)
         with open(os.path.join(out_dir, "llm_result"), "w") as f:
             f.write(self.llm_result.pretty_repr())
-
-        print(f"Saved capture to {out_dir}")

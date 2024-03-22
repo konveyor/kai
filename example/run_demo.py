@@ -10,6 +10,7 @@ import requests
 # Ensure that we have 'kai' in our import path
 sys.path.append("../../kai")
 from kai import Report
+from kai.kai_logging import KAI_LOG
 
 SERVER_URL = "http://0.0.0.0:8080"
 APP_NAME = "coolstore"
@@ -143,6 +144,7 @@ def run_demo(report):
 
 
 if __name__ == "__main__":
+    KAI_LOG.setLevel("info".upper())
     coolstore_analysis_dir = "./analysis/coolstore/output.yaml"
     r = Report(coolstore_analysis_dir)
     run_demo(r)

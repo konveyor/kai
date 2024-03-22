@@ -5,7 +5,8 @@ import shutil
 from io import StringIO
 
 import yaml
-from kai_logging import KAI_LOG
+
+from kai.kai_logging import KAI_LOG
 
 
 class Report:

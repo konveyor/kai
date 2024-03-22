@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import pprint
+import time
 import tomllib
 import warnings
 from os import listdir
@@ -217,6 +218,7 @@ async def post_change_model(request: Request):
 
 
 def get_incident_solution(request_json: dict, stream: bool = False):
+    start = time.time()
     capture = Capture()
     capture.request = request_json
     capture.model_id = model_provider.get_current_model_id()
@@ -234,9 +236,10 @@ def get_incident_solution(request_json: dict, stream: bool = False):
     line_number: int = request_json["line_number"]
     analysis_message: str = request_json.get("analysis_message", "")
 
-    print(
-        f"get_incident_solution '{file_name}' '{ruleset_name}' '{violation_name}' line_number: {line_number}"
+    KAI_LOG.info(
+        f"START - App: '{application_name}', File: '{file_name}' '{ruleset_name}'/'{violation_name}' @ Line Number '{line_number}' using model_id '{capture.model_id}'"
     )
+
     # Gather context
     # First, let's see if there's an "exact" match
 
@@ -276,11 +279,19 @@ def get_incident_solution(request_json: dict, stream: bool = False):
             "TODO consider if we need to implement for streaming responses"
         )
         capture.commit()
+        end = time.time()
+        KAI_LOG.info(
+            f"END - completed in '{end-start}s: - App: '{application_name}', File: '{file_name}' '{ruleset_name}'/'{violation_name}' @ Line Number '{line_number}' using model_id '{capture.model_id}'"
+        )
         return model_provider.stream(prompt)
     else:
         llm_result = model_provider.invoke(prompt)
         capture.llm_result = model_provider.invoke(prompt)
         capture.commit()
+        end = time.time()
+        KAI_LOG.info(
+            f"END - completed in '{end-start}s: - App: '{application_name}', File: '{file_name}' '{ruleset_name}'/'{violation_name}' @ Line Number '{line_number}' using model_id '{capture.model_id}'"
+        )
         return llm_result
 
 
@@ -394,29 +405,39 @@ async def get_incident_solutions_for_file(request: Request):
         - line_number: 0-indexed (let's keep it consistent)
         - analysis_message (str)
     """
-
+    start = time.time()
     KAI_LOG.debug(f"get_incident_solutions_for_file recv'd: {request}")
 
     request_json = await request.json()
+    KAI_LOG.info(
+        f"START - App: '{request_json['application_name']}', File: '{request_json['file_name']}' with {len(request_json['incidents'])} incidents'"
+    )
 
     total_reasoning = []
     current_file_contents = request_json["file_contents"]
-    file_name = request_json["file_name"]
+    # file_name = request_json["file_name"]
 
-    print(f"Working on '{file_name} with {len(request_json['incidents'])} incidents'")
-
+    count = 0
     incident: dict[str, str]
     for incident in request_json["incidents"]:
+        count += 1
         incident["file_name"] = request_json["file_name"]
         incident["file_contents"] = current_file_contents
         incident["application_name"] = request_json["application_name"]
 
+        KAI_LOG.info(
+            f"Processing incident {count}/{len(request_json['incidents'])} for {incident['file_name']}"
+        )
         llm_output = get_incident_solution(incident, False)
         content = parse_file_solution_content(llm_output.content)
 
         total_reasoning.append(content.reasoning)
         current_file_contents = content.updated_file
 
+    end = time.time()
+    KAI_LOG.info(
+        f"END - completed in '{end-start}s:  - App: '{request_json['application_name']}', File: '{request_json['file_name']}' with {len(request_json['incidents'])} incidents'"
+    )
     return web.json_response(
         {
             "updated_file": current_file_contents,
@@ -452,6 +473,9 @@ Example: --loglevel debug (default: warning)""",
 
     args = arg_parser.parse_args()
     KAI_LOG.setLevel(args.loglevel.upper())
+    print(
+        f"Logging for KAI has been initialized and the level set to {args.loglevel.upper()}"
+    )
 
     with open(os.path.join(base_path, "config.toml"), "rb") as f:
         config = tomllib.load(f)
