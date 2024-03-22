@@ -31,6 +31,7 @@ from model_provider import (
 from prompt_builder import PromptBuilder
 from report import Report
 
+from kai.capture import Capture
 from kai.pydantic_models import parse_file_solution_content
 
 # TODO: Make openapi spec for everything
@@ -216,6 +217,10 @@ async def post_change_model(request: Request):
 
 
 def get_incident_solution(request_json: dict, stream: bool = False):
+    capture = Capture()
+    capture.request = request_json
+    capture.model_id = model_provider.get_current_model_id()
+
     application_name: str = request_json["application_name"]
     application_name = application_name  # NOTE: To please trunk error, remove me
     ruleset_name: str = request_json["ruleset_name"]
@@ -235,6 +240,7 @@ def get_incident_solution(request_json: dict, stream: bool = False):
     solved_incident, match_type = incident_store.get_fuzzy_similar_incident(
         violation_name, ruleset_name, incident_snip, incident_vars
     )
+    capture.solved_incident = solved_incident
 
     if not isinstance(solved_incident, dict):
         raise Exception("solved_example not a dict")
@@ -257,16 +263,22 @@ def get_incident_solution(request_json: dict, stream: bool = False):
 
     pb = PromptBuilder(model_provider.get_prompt_builder_config(), pb_vars)
     prompt = pb.build_prompt()
-
-    pprint.pprint(prompt)
+    capture.prompt = prompt
 
     if isinstance(prompt, list):
         raise Exception(f"Did not supply proper variables. Need at least {prompt}")
 
     if stream:
+        capture.llm_result = (
+            "TODO consider if we need to implement for streaming responses"
+        )
+        capture.commit()
         return model_provider.stream(prompt)
     else:
-        return model_provider.invoke(prompt)
+        llm_result = model_provider.invoke(prompt)
+        capture.llm_result = model_provider.invoke(prompt)
+        capture.commit()
+        return llm_result
 
 
 # TODO: Figure out why we have to put this validator wrapping the routes

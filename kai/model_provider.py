@@ -43,6 +43,10 @@ class ModelProvider(ABC):
     def get_models(self) -> list[str]:
         pass
 
+    @abstractmethod
+    def get_current_model_id(self) -> str:
+        pass
+
 
 class IBMGraniteModel(ModelProvider):
     def __init__(self, model_id: str = "ibm/granite-13b-chat-v2") -> None:
@@ -100,6 +104,9 @@ class IBMGraniteModel(ModelProvider):
 
     def get_models(self) -> list[str]:
         return self.models
+
+    def get_current_model_id(self) -> str:
+        return self.model_id
 
 
 class IBMOpenSourceModel(ModelProvider):
@@ -164,6 +171,9 @@ class IBMOpenSourceModel(ModelProvider):
     def get_models(self) -> list[str]:
         return self.models
 
+    def get_current_model_id(self) -> str:
+        return self.model_id
+
 
 # FIXME: Remove for final demo
 class OpenAIModel(ModelProvider):
@@ -206,3 +216,6 @@ class OpenAIModel(ModelProvider):
 
     def get_models(self) -> list[str]:
         return self.models
+
+    def get_current_model_id(self) -> str:
+        return self.model_id
