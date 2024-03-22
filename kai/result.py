@@ -1,11 +1,12 @@
 __all__ = ["LLMResult"]
 
-import logging
 import os
 
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_community.chat_models import ChatOpenAI
+
+from kai.kai_logging import KAI_LOG
 
 from .report import Report
 from .scm import GitDiff
@@ -70,9 +71,9 @@ class LLMResult:
         print(f"template: {template}")
 
     def _update_uri(self, uri):
-        logging.debug(f"Updating uri {uri}")
+        KAI_LOG.debug(f"Updating uri {uri}")
         f = uri.replace("file:///tmp/source-code/", "")
-        logging.debug(f"Updated uri {f}")
+        KAI_LOG.debug(f"Updated uri {f}")
         # Skip any incident that begins with 'target/'
         # Related to: https://github.com/konveyor/analyzer-lsp/issues/358
         return f if not f.startswith("target/") else None
