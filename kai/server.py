@@ -211,7 +211,9 @@ def get_incident_solution(request_json: dict, stream: bool = False):
     application_name = application_name  # NOTE: To please trunk error, remove me
     ruleset_name: str = request_json["ruleset_name"]
     violation_name: str = request_json["violation_name"]
-    incident_snip: str = request_json["incident_snip"]
+    # FIXME: See my comment here
+    # https://github.com/konveyor-ecosystem/kai/issues/87#issuecomment-2015574994
+    incident_snip: str = request_json.get("incident_snip", "")
     incident_vars: dict = request_json["incident_variables"]
     file_name: str = request_json["file_name"]
     file_contents: str = request_json["file_contents"]
@@ -292,7 +294,7 @@ async def post_get_incident_solution(request: Request):
     - application_name (str)
     - ruleset_name (str)
     - violation_name (str)
-    - incident_snip (str)
+    - incident_snip (str optional)
     - incident_variables (object)
     - file_name (str)
     - file_contents (str)
@@ -360,7 +362,7 @@ async def get_incident_solutions_for_file(request: Request):
     - incidents (list)
         - ruleset_name (str)
         - violation_name (str)
-        - incident_snip (str)
+        - incident_snip (str optional)
         - incident_variables (object)
         - line_number: 0-indexed (let's keep it consistent)
         - analysis_message (str)
