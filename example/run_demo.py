@@ -73,8 +73,9 @@ def collect_parameters(file_path, violations) -> KaiRequestParams:
     return params
 
 
-def generate_fix(params: KaiRequestParams):
+def _generate_fix(params: KaiRequestParams):
     headers = {"Content-type": "application/json", "Accept": "text/plain"}
+    ## We will timeout in 10 minutes if we do not receive a reply
     response = requests.post(
         # f"{SERVER_URL}/get_incident_solution",
         f"{SERVER_URL}/get_incident_solutions_for_file",
@@ -83,6 +84,25 @@ def generate_fix(params: KaiRequestParams):
         timeout=600,
     )
     return response
+
+
+def generate_fix(params: KaiRequestParams):
+    retries_left = 6
+    for i in range(retries_left):
+        try:
+            response = _generate_fix(params)
+            if response.status_code == 200:
+                return response
+            else:
+                print(f"Received status code {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            print(f"Received exception: {e}")
+            # This is what a timeout exception will look like:
+            # requests.exceptions.ReadTimeout: HTTPConnectionPool(host='0.0.0.0', port=8080): Read timed out. (read timeout=600)
+        print(
+            f"Failed to get a '200' response from the server.  Retrying {retries_left-i} more times"
+        )
+    sys.exit(f"Failed to get a '200' response from the server.  Parameters = {params}")
 
 
 def parse_response(response):
