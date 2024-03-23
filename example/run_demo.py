@@ -124,8 +124,8 @@ def write_to_disk(file_path, updated_file_contents):
         )
 
     print(f"Writing to {intended_file_path}")
-    print(f"{updated_file_contents['updated_file']}")
-    print(f"Reasoning: {updated_file_contents['total_reasoning']}")
+    # print(f"{updated_file_contents['updated_file']}")
+    # print(f"Reasoning: {updated_file_contents['total_reasoning']}")
     with open(intended_file_path, "w") as f:
         f.write(updated_file_contents["updated_file"])
 
@@ -152,13 +152,13 @@ def run_demo(report):
             continue
         # Gather the info we need to send to the REST API
         params = collect_parameters(file_path, violations)
-        print(f"\n{file_path}: {params.file_contents}\n")
+        # print(f"\n{file_path}: {params.file_contents}\n")
         ####
         ## Call Kai
         #####
         response = generate_fix(params)
         print(f"\nResponse StatusCode: {response.status_code} for {file_path}\n")
-        print(f"\nResponse: {response.text}\n")
+        # print(f"\nResponse: {response.text}\n")
         updated_file_contents = parse_response(response)
         write_to_disk(file_path, updated_file_contents)
 
