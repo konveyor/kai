@@ -2,7 +2,8 @@ __all__ = ["GitDiff"]
 
 
 from git import BadName, Repo
-from kai_logging import KAI_LOG
+
+from kai.kai_logging import KAI_LOG
 
 
 class GitDiff:

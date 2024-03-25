@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import pprint
+import time
 import tomllib
 import warnings
 from os import listdir
@@ -31,6 +32,7 @@ from model_provider import (
 from prompt_builder import PromptBuilder
 from report import Report
 
+from kai.capture import Capture
 from kai.pydantic_models import parse_file_solution_content
 
 # TODO: Make openapi spec for everything
@@ -216,6 +218,11 @@ async def post_change_model(request: Request):
 
 
 def get_incident_solution(request_json: dict, stream: bool = False):
+    start = time.time()
+    capture = Capture()
+    capture.request = request_json
+    capture.model_id = model_provider.get_current_model_id()
+
     application_name: str = request_json["application_name"]
     application_name = application_name  # NOTE: To please trunk error, remove me
     ruleset_name: str = request_json["ruleset_name"]
@@ -229,12 +236,17 @@ def get_incident_solution(request_json: dict, stream: bool = False):
     line_number: int = request_json["line_number"]
     analysis_message: str = request_json.get("analysis_message", "")
 
+    KAI_LOG.info(
+        f"START - App: '{application_name}', File: '{file_name}' '{ruleset_name}'/'{violation_name}' @ Line Number '{line_number}' using model_id '{capture.model_id}'"
+    )
+
     # Gather context
     # First, let's see if there's an "exact" match
 
     solved_incident, match_type = incident_store.get_fuzzy_similar_incident(
         violation_name, ruleset_name, incident_snip, incident_vars
     )
+    capture.solved_incident = solved_incident
 
     if not isinstance(solved_incident, dict):
         raise Exception("solved_example not a dict")
@@ -257,13 +269,30 @@ def get_incident_solution(request_json: dict, stream: bool = False):
 
     pb = PromptBuilder(model_provider.get_prompt_builder_config(), pb_vars)
     prompt = pb.build_prompt()
+    capture.prompt = prompt
+
     if isinstance(prompt, list):
         raise Exception(f"Did not supply proper variables. Need at least {prompt}")
 
     if stream:
+        capture.llm_result = (
+            "TODO consider if we need to implement for streaming responses"
+        )
+        capture.commit()
+        end = time.time()
+        KAI_LOG.info(
+            f"END - completed in '{end-start}s: - App: '{application_name}', File: '{file_name}' '{ruleset_name}'/'{violation_name}' @ Line Number '{line_number}' using model_id '{capture.model_id}'"
+        )
         return model_provider.stream(prompt)
     else:
-        return model_provider.invoke(prompt)
+        llm_result = model_provider.invoke(prompt)
+        capture.llm_result = model_provider.invoke(prompt)
+        capture.commit()
+        end = time.time()
+        KAI_LOG.info(
+            f"END - completed in '{end-start}s: - App: '{application_name}', File: '{file_name}' '{ruleset_name}'/'{violation_name}' @ Line Number '{line_number}' using model_id '{capture.model_id}'"
+        )
+        return llm_result
 
 
 # TODO: Figure out why we have to put this validator wrapping the routes
@@ -376,26 +405,39 @@ async def get_incident_solutions_for_file(request: Request):
         - line_number: 0-indexed (let's keep it consistent)
         - analysis_message (str)
     """
-
+    start = time.time()
     KAI_LOG.debug(f"get_incident_solutions_for_file recv'd: {request}")
 
     request_json = await request.json()
+    KAI_LOG.info(
+        f"START - App: '{request_json['application_name']}', File: '{request_json['file_name']}' with {len(request_json['incidents'])} incidents'"
+    )
 
     total_reasoning = []
     current_file_contents = request_json["file_contents"]
+    # file_name = request_json["file_name"]
 
+    count = 0
     incident: dict[str, str]
     for incident in request_json["incidents"]:
+        count += 1
         incident["file_name"] = request_json["file_name"]
         incident["file_contents"] = current_file_contents
         incident["application_name"] = request_json["application_name"]
 
+        KAI_LOG.info(
+            f"Processing incident {count}/{len(request_json['incidents'])} for {incident['file_name']}"
+        )
         llm_output = get_incident_solution(incident, False)
         content = parse_file_solution_content(llm_output.content)
 
         total_reasoning.append(content.reasoning)
         current_file_contents = content.updated_file
 
+    end = time.time()
+    KAI_LOG.info(
+        f"END - completed in '{end-start}s:  - App: '{request_json['application_name']}', File: '{request_json['file_name']}' with {len(request_json['incidents'])} incidents'"
+    )
     return web.json_response(
         {
             "updated_file": current_file_contents,
@@ -417,7 +459,7 @@ if __name__ == "__main__":
     arg_parser.add_argument(
         "-log",
         "--loglevel",
-        default="warning",
+        default=os.environ.get("KAI_LOG_LEVEL", "info"),
         choices=["debug", "info", "warning", "error", "critical"],
         help="""Provide logging level.
 Options:
@@ -431,6 +473,9 @@ Example: --loglevel debug (default: warning)""",
 
     args = arg_parser.parse_args()
     KAI_LOG.setLevel(args.loglevel.upper())
+    print(
+        f"Logging for KAI has been initialized and the level set to {args.loglevel.upper()}"
+    )
 
     with open(os.path.join(base_path, "config.toml"), "rb") as f:
         config = tomllib.load(f)
