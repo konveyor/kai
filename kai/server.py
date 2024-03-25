@@ -459,7 +459,7 @@ if __name__ == "__main__":
     arg_parser.add_argument(
         "-log",
         "--loglevel",
-        default="warning",
+        default=os.environ.get("KAI_LOG_LEVEL", "info"),
         choices=["debug", "info", "warning", "error", "critical"],
         help="""Provide logging level.
 Options:
