@@ -2,7 +2,6 @@ import os
 from abc import ABC, abstractmethod
 from typing import Iterator
 
-import prompt_builder
 from genai import Client, Credentials
 from genai.extensions.langchain.chat_llm import LangChainChatInterface
 from genai.schema import (
@@ -14,6 +13,8 @@ from genai.schema import (
 )
 from langchain_community.chat_models import ChatOpenAI
 from langchain_core.messages import BaseMessage, BaseMessageChunk
+
+from kai import prompt_builder
 
 """
 TODO: Add comments. General idea is that we can use dependency injection to

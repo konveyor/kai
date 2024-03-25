@@ -6,9 +6,10 @@ import numpy
 import requests
 import tiktoken
 from InstructorEmbedding import INSTRUCTOR
-from kai_logging import KAI_LOG
 from psycopg2 import sql
 from psycopg2.extensions import connection
+
+from kai.kai_logging import KAI_LOG
 
 
 class TrimStrategy(Enum):
