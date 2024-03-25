@@ -4,6 +4,7 @@ import json
 import os
 import sys
 from dataclasses import asdict, dataclass
+from concurrent.futures import ThreadPoolExecutor
 
 import requests
 
@@ -81,7 +82,7 @@ def _generate_fix(params: KaiRequestParams):
         f"{SERVER_URL}/get_incident_solutions_for_file",
         data=params.to_json(),
         headers=headers,
-        timeout=600,
+        timeout=2400,
     )
     return response
 
@@ -130,37 +131,37 @@ def write_to_disk(file_path, updated_file_contents):
         f.write(updated_file_contents["updated_file"])
 
 
+def process_file(file_path, violations, num_impacted_files, count):
+    print(
+        f"File #{count} of {num_impacted_files} - Processing {file_path} which has {len(violations)} violations"
+    )
+
+    if not file_path.endswith(".java"):
+        print(f"Skipping {file_path} as it is not a Java file")
+        return
+
+    params = collect_parameters(file_path, violations)
+    response = generate_fix(params)
+    print(f"\nResponse StatusCode: {response.status_code} for {file_path}\n")
+    updated_file_contents = parse_response(response)
+    write_to_disk(file_path, updated_file_contents)
+
+
 def run_demo(report):
     impacted_files = report.get_impacted_files()
     num_impacted_files = len(impacted_files)
-    # Quick loop to find the total number of violations
-    total_violations = 0
-    for _, violations in impacted_files.items():
-        total_violations += len(violations)
+
+    total_violations = sum(len(violations) for violations in impacted_files.values())
     print(f"{num_impacted_files} files with a total of {total_violations} violations.")
 
-    count = 0
-    for file_path, violations in impacted_files.items():
-        count += 1
-        print(
-            f"File #{count} of {num_impacted_files} - Processing {file_path} which has {len(violations)} violations"
-        )
+    with ThreadPoolExecutor() as executor:
+        futures = []
+        for count, (file_path, violations) in enumerate(impacted_files.items(), 1):
+            future = executor.submit(process_file, file_path, violations, num_impacted_files, count)
+            futures.append(future)
 
-        # TODO: Revisit processing non Java files
-        if not file_path.endswith(".java"):
-            print(f"Skipping {file_path} as it is not a Java file")
-            continue
-        # Gather the info we need to send to the REST API
-        params = collect_parameters(file_path, violations)
-        # print(f"\n{file_path}: {params.file_contents}\n")
-        ####
-        ## Call Kai
-        #####
-        response = generate_fix(params)
-        print(f"\nResponse StatusCode: {response.status_code} for {file_path}\n")
-        # print(f"\nResponse: {response.text}\n")
-        updated_file_contents = parse_response(response)
-        write_to_disk(file_path, updated_file_contents)
+        for future in futures:
+            future.result()
 
 
 if __name__ == "__main__":
