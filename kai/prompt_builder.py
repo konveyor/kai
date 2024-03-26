@@ -1,3 +1,4 @@
+import os
 import string
 from dataclasses import dataclass
 from enum import Enum
@@ -73,7 +74,7 @@ class Section:
         *,
         file_path: str = None,
         template: str = None,
-        default_vars: dict[str, str] = None
+        default_vars: dict[str, str] = None,
     ):
         if file_path is None == template is None:
             raise Exception("Must provide one of: file_path, template")
@@ -240,10 +241,10 @@ class PromptBuilder:
     def build_prompt(self):
         """
         Returns either the built prompt or the list of missing vars in order to
-        build it. Note that a prompt may not need these vars. Rather, these are the
-        vars that would guarantee that the prompt be built. In other words, some
-        other combination of vars may work too (see SectionGraph) but these ones are
-        sufficient.
+        build it. Note that a prompt may not need these vars. Rather, these are
+        the vars that would guarantee that the prompt be built. In other words,
+        some other combination of vars may work too (see SectionGraph) but these
+        ones are sufficient.
         """
         result = ""
         missing_vars = set()
@@ -259,42 +260,192 @@ class PromptBuilder:
         return result if not missing_vars else list(missing_vars - self.vars.keys())
 
 
+class GroupingStrategy(Enum):
+    GROUP_NONE = 0
+    GROUP_ON_VIOLATION = 1
+
+
+def build_prompt_incident_solver(
+    *,
+    model: str = "granite",
+    grouping: GroupingStrategy = GroupingStrategy.GROUP_NONE,
+    src_file_name: str = None,
+    src_file_language: str = None,
+    src_file_contents: str = None,
+    incidents: list[dict] = None,
+):
+    """
+    TODO: Make pydantic models so it's cleaner
+
+    Assuming an incident is a dict with the following
+    - ruleset_name (str)
+    - violation_name (str)
+    - incident_snip (str optional)
+    - incident_variables (object)
+    - line_number: 0-indexed (let's keep it consistent)
+    - analysis_message (str)
+    - solved_example (str)
+    """
+
+    if src_file_name is None:
+        raise ValueError("Must provide a source file name to prompt builder")
+
+    if src_file_language is None:
+        _, ext = os.path.splitext(src_file_name)
+        src_file_language = ext[1:] if len(ext) > 0 else ""
+
+    if src_file_contents is None:
+        raise ValueError("Must provide source file contents to prompt builder")
+
+    if incidents is None:
+        incidents = []
+
+    preamble = """# Java EE to Quarkus Migration
+You are an AI Assistant trained on migrating enterprise JavaEE code to Quarkus. I will give you an example of a JavaEE file and you will give me the Quarkus equivalent.
+
+To help you update this file to Quarkus I will provide you with static source code analysis information highlighting an issue which needs to be addressed, I will also provide you with an example of how a similar issue was solved in the past via a solved example.  You can refer to the solved example for a pattern of how to update the input Java EE file to Quarkus.
+
+Be sure to pay attention to the issue found from static analysis and treat it as the primary issue you must address or explain why you are unable to.
+
+Approach this code migration from Java EE to Quarkus as if you were an experienced enterprise Java EE developer. Before attempting to migrate the code to Quarkus, explain each step of your reasoning through what changes are required and why. 
+
+Pay attention to changes you make and impacts to external dependencies in the pom.xml as well as changes to imports we need to consider.
+
+As you make changes that impact the pom.xml or imports, be sure you explain what needs to be updated.
+
+After you have shared your step by step thinking, provide a full output of the updated file.
+
+"""
+
+    input_information = """# Input Information
+
+"""
+
+    input_file = """## Input File
+    
+File name: "{src_file_name}"
+Source file contents:
+```{src_file_language}
+{src_file_contents}
+
+```
+
+""".format(
+        src_file_name=src_file_name,
+        src_file_language=src_file_language,
+        src_file_contents=src_file_contents,
+    )
+
+    issues = "## Issues \n\n"
+
+    if grouping == GroupingStrategy.GROUP_NONE:
+        for i in range(len(incidents)):
+            issues += """### Issue {i}
+- Issue to fix: "{analysis_message}"
+- Line number: {analysis_line_number}
+""".format(
+                i=i,
+                analysis_message=incidents[i]["analysis_message"],
+                analysis_line_number=incidents[i]["analysis_line_number"],
+            )
+
+            if "solved_example" in incidents[i]:
+                issues += """Solved example:
+```diff
+{solved_example_diff}
+```
+""".format(
+                    solved_example_diff=incidents[i]["solved_example_diff"]
+                )
+            issues += "\n"
+    # elif grouping == GroupingStrategy.GROUP_ON_VIOLATION:
+    #     raise Exception()
+    else:
+        raise ValueError(f"Invalid grouping strategy {grouping}")
+
+    # res = {i: [j[0] for j in j] for i, j in itertools.groupby(sorted(test_dict.items(), key = lambda x : x[1]), lambda x : x[1])}
+
+    # for i, j in itertools.groupby(sorted(test_dict.items(), key = lambda x : x[1]), lambda x : x[1]):
+
+    output_instructions = """# Output instructions
+
+Structure your output in the following Markdown format:
+
+## Reasoning 
+
+Write the step by step reasoning in this markdown section. If you are unsure of a step or reasoning, clearly state you are unsure and why.
+
+## Updated File
+
+```{src_file_language}
+// Write the updated file for Quarkus in this section
+```
+
+""".format(
+        src_file_language=src_file_language
+    )
+
+    return preamble + input_information + input_file + issues + output_instructions
+
+
 if __name__ == "__main__":
-    pb = PromptBuilder(CONFIG_IBM_GRANITE)
+    # pb = PromptBuilder(CONFIG_IBM_GRANITE)
 
-    print(pb.build_prompt())
-    input()
+    # print(pb.build_prompt())
+    # input()
 
-    pb.vars = {
-        "src_file_name": "/var/src_file_name.java",
-        "src_file_contents": "import nothing;",
-        "analysis_line_number": 10,
-        "analysis_message": "ya done goofed!",
-    }
+    # pb.vars = {
+    #     "src_file_name": "/var/src_file_name.java",
+    #     "src_file_contents": "import nothing;",
+    #     "analysis_line_number": 10,
+    #     "analysis_message": "ya done goofed!",
+    # }
 
-    print(pb.build_prompt())
-    input()
+    # print(pb.build_prompt())
+    # input()
 
-    pb.vars = {
-        "src_file_name": "/var/src_file_name.java",
-        "solved_example_diff": "Here's a diff for ya!",
-        "solved_example_file_name": "the/solved/example.java",
-        "src_file_contents": "import nothing;",
-        "analysis_line_number": 10,
-        "analysis_message": "ya done goofed!",
-    }
+    # pb.vars = {
+    #     "src_file_name": "/var/src_file_name.java",
+    #     "solved_example_diff": "Here's a diff for ya!",
+    #     "solved_example_file_name": "the/solved/example.java",
+    #     "src_file_contents": "import nothing;",
+    #     "analysis_line_number": 10,
+    #     "analysis_message": "ya done goofed!",
+    # }
 
-    print(pb.build_prompt())
-    input()
+    # print(pb.build_prompt())
+    # input()
 
-    pb.vars = {
-        "src_file_name": "/var/src_file_name.java",
-        "solved_example_before": "File before!",
-        "solved_example_after": "File after!",
-        "solved_example_file_name": "the/solved/example.java",
-        "src_file_contents": "import nothing;",
-        "analysis_line_number": 10,
-        "analysis_message": "ya done goofed!",
-    }
+    # pb.vars = {
+    #     "src_file_name": "/var/src_file_name.java",
+    #     "solved_example_before": "File before!",
+    #     "solved_example_after": "File after!",
+    #     "solved_example_file_name": "the/solved/example.java",
+    #     "src_file_contents": "import nothing;",
+    #     "analysis_line_number": 10,
+    #     "analysis_message": "ya done goofed!",
+    # }
 
-    print(pb.build_prompt())
+    # print(pb.build_prompt())
+
+    x = build_prompt_incident_solver(
+        src_file_name="/var/whatever.java",
+        src_file_contents="""import whatever;
+        
+class Java {
+
+}
+""",
+        incidents=[
+            {
+                "analysis_line_number": 10,
+                "analysis_message": "ya done goofed!",
+            },
+            {
+                "analysis_line_number": 10,
+                "analysis_message": "ya done goofed!",
+            },
+        ],
+    )
+
+    print(x, end="")
