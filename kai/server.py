@@ -25,12 +25,7 @@ from aiohttp.web_request import Request
 from kai.capture import Capture
 from kai.incident_store_advanced import Application, EmbeddingNone, PSQLIncidentStore
 from kai.kai_logging import KAI_LOG
-from kai.model_provider import (
-    IBMGraniteModel,
-    IBMOpenSourceModel,
-    ModelProvider,
-    OpenAIModel,
-)
+from kai.model_provider import IBMGraniteModel, IBMOpenSourceModel, OpenAIModel
 from kai.prompt_builder import PromptBuilder
 from kai.pydantic_models import parse_file_solution_content
 from kai.report import Report

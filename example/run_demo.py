@@ -3,8 +3,8 @@
 import json
 import os
 import sys
-from dataclasses import asdict, dataclass
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import asdict, dataclass
 
 import requests
 
@@ -157,7 +157,9 @@ def run_demo(report):
     with ThreadPoolExecutor() as executor:
         futures = []
         for count, (file_path, violations) in enumerate(impacted_files.items(), 1):
-            future = executor.submit(process_file, file_path, violations, num_impacted_files, count)
+            future = executor.submit(
+                process_file, file_path, violations, num_impacted_files, count
+            )
             futures.append(future)
 
         for future in futures:
