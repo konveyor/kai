@@ -429,11 +429,19 @@ async def get_incident_solutions_for_file(request: Request):
         KAI_LOG.info(
             f"Processing incident {count}/{len(request_json['incidents'])} for {incident['file_name']}"
         )
-        llm_output = get_incident_solution(request.app, incident, False)
-        content = parse_file_solution_content(llm_output.content)
-
-        total_reasoning.append(content.reasoning)
-        current_file_contents = content.updated_file
+        llm_output = None
+        for _ in range(3):
+            try:
+                llm_output = get_incident_solution(request.app, incident, False)
+                content = parse_file_solution_content(llm_output.content)
+                total_reasoning.append(content.reasoning)
+                current_file_contents = content.updated_file
+                break
+            except Exception as e:
+                KAI_LOG.warn(
+                    f"Request to model failed with exception, retrying in 10s\n{e}"
+                )
+                time.sleep(10)
 
     end = time.time()
     KAI_LOG.info(
