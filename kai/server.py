@@ -21,19 +21,14 @@ import jsonschema
 import yaml
 from aiohttp import web
 from aiohttp.web_request import Request
-from incident_store_advanced import Application, EmbeddingNone, PSQLIncidentStore
-from kai_logging import KAI_LOG
-from model_provider import (
-    IBMGraniteModel,
-    IBMOpenSourceModel,
-    ModelProvider,
-    OpenAIModel,
-)
-from prompt_builder import PromptBuilder
-from report import Report
 
 from kai.capture import Capture
+from kai.incident_store_advanced import Application, EmbeddingNone, PSQLIncidentStore
+from kai.kai_logging import KAI_LOG
+from kai.model_provider import IBMGraniteModel, IBMOpenSourceModel, OpenAIModel
+from kai.prompt_builder import PromptBuilder
 from kai.pydantic_models import parse_file_solution_content
+from kai.report import Report
 
 # TODO: Make openapi spec for everything
 
@@ -201,7 +196,9 @@ async def post_load_analysis_report(request: Request):
     path_to_report: str = request_json["path_to_report"]
     report = Report(path_to_report)
 
-    count = incident_store.insert_and_update_from_report(application, report)
+    count = request.app["incident_store"].insert_and_update_from_report(
+        application, report
+    )
 
     return web.json_response(
         {
@@ -217,11 +214,11 @@ async def post_change_model(request: Request):
     pass
 
 
-def get_incident_solution(request_json: dict, stream: bool = False):
+def get_incident_solution(request_app, request_json: dict, stream: bool = False):
     start = time.time()
     capture = Capture()
     capture.request = request_json
-    capture.model_id = model_provider.get_current_model_id()
+    capture.model_id = request_app["model_provider"].get_current_model_id()
 
     application_name: str = request_json["application_name"]
     application_name = application_name  # NOTE: To please trunk error, remove me
@@ -243,7 +240,9 @@ def get_incident_solution(request_json: dict, stream: bool = False):
     # Gather context
     # First, let's see if there's an "exact" match
 
-    solved_incident, match_type = incident_store.get_fuzzy_similar_incident(
+    solved_incident, match_type = request_app[
+        "incident_store"
+    ].get_fuzzy_similar_incident(
         violation_name, ruleset_name, incident_snip, incident_vars
     )
     capture.solved_incident = solved_incident
@@ -261,13 +260,15 @@ def get_incident_solution(request_json: dict, stream: bool = False):
     KAI_LOG.debug(solved_incident)
 
     if bool(solved_incident) and match_type == "exact":
-        solved_example = incident_store.select_accepted_solution(
+        solved_example = request_app["incident_store"].select_accepted_solution(
             solved_incident["solution_id"]
         )
         pb_vars["solved_example_diff"] = solved_example["solution_small_diff"]
         pb_vars["solved_example_file_name"] = solved_incident["incident_uri"]
 
-    pb = PromptBuilder(model_provider.get_prompt_builder_config(), pb_vars)
+    pb = PromptBuilder(
+        request_app["model_provider"].get_prompt_builder_config(), pb_vars
+    )
     prompt = pb.build_prompt()
     capture.prompt = prompt
 
@@ -283,10 +284,10 @@ def get_incident_solution(request_json: dict, stream: bool = False):
         KAI_LOG.info(
             f"END - completed in '{end-start}s: - App: '{application_name}', File: '{file_name}' '{ruleset_name}'/'{violation_name}' @ Line Number '{line_number}' using model_id '{capture.model_id}'"
         )
-        return model_provider.stream(prompt)
+        return request_app["model_provider"].stream(prompt)
     else:
-        llm_result = model_provider.invoke(prompt)
-        capture.llm_result = model_provider.invoke(prompt)
+        llm_result = request_app["model_provider"].invoke(prompt)
+        capture.llm_result = request_app["model_provider"].invoke(prompt)
         capture.commit()
         end = time.time()
         KAI_LOG.info(
@@ -428,7 +429,7 @@ async def get_incident_solutions_for_file(request: Request):
         KAI_LOG.info(
             f"Processing incident {count}/{len(request_json['incidents'])} for {incident['file_name']}"
         )
-        llm_output = get_incident_solution(incident, False)
+        llm_output = get_incident_solution(request.app, incident, False)
         content = parse_file_solution_content(llm_output.content)
 
         total_reasoning.append(content.reasoning)
@@ -446,15 +447,47 @@ async def get_incident_solutions_for_file(request: Request):
     )
 
 
-app = web.Application()
-app.add_routes(routes)
+def app(loglevel):
+    webapp = web.Application()
+    base_path = os.path.dirname(__file__)
+    KAI_LOG.setLevel(loglevel.upper())
+    print(
+        f"Logging for KAI has been initialized and the level set to {loglevel.upper()}"
+    )
 
-base_path = os.path.dirname(__file__)
-incident_store: PSQLIncidentStore
-model_provider: ModelProvider
-config: dict
+    with open(os.path.join(base_path, "config.toml"), "rb") as f:
+        config = tomllib.load(f)
+        KAI_LOG.info(f"Config loaded: {pprint.pformat(config)}")
 
-if __name__ == "__main__":
+    schema: dict = json.loads(
+        open(os.path.join(JSONSCHEMA_DIR, "server_config.json")).read()
+    )
+    # TODO: Make this error look nicer
+    jsonschema.validate(instance=config, schema=schema)
+
+    webapp["incident_store"] = PSQLIncidentStore(
+        config=config["postgresql"],
+        # emb_provider=EmbeddingInstructor(model="hkunlp/instructor-base"),
+        emb_provider=EmbeddingNone(),
+        drop_tables=False,
+    )
+
+    if config["models"]["provider"].lower() == "IBMGranite".lower():
+        webapp["model_provider"] = IBMGraniteModel(**config["models"]["args"])
+    elif config["models"]["provider"].lower() == "IBMOpenSource".lower():
+        webapp["model_provider"] = IBMOpenSourceModel(**config["models"]["args"])
+    elif config["models"]["provider"].lower() == "OpenAI".lower():
+        webapp["model_provider"] = OpenAIModel(**config["models"]["args"])
+    else:
+        raise Exception(f"Unrecognized model '{config['models']['provider']}'")
+
+    KAI_LOG.info(f"Selected model {config['models']['provider']}")
+    webapp.add_routes(routes)
+
+    return webapp
+
+
+def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument(
         "-log",
@@ -471,91 +504,9 @@ Options:
 Example: --loglevel debug (default: warning)""",
     )
 
-    args = arg_parser.parse_args()
-    KAI_LOG.setLevel(args.loglevel.upper())
-    print(
-        f"Logging for KAI has been initialized and the level set to {args.loglevel.upper()}"
-    )
-
-    with open(os.path.join(base_path, "config.toml"), "rb") as f:
-        config = tomllib.load(f)
-        KAI_LOG.info(f"Config loaded: {pprint.pformat(config)}")
-
-    schema: dict = json.loads(
-        open(os.path.join(JSONSCHEMA_DIR, "server_config.json")).read()
-    )
-    # TODO: Make this error look nicer
-    jsonschema.validate(instance=config, schema=schema)
-
-    incident_store = PSQLIncidentStore(
-        config=config["postgresql"],
-        # emb_provider=EmbeddingInstructor(model="hkunlp/instructor-base"),
-        emb_provider=EmbeddingNone(),
-        drop_tables=False,
-    )
-
-    if config["models"]["provider"].lower() == "IBMGranite".lower():
-        model_provider = IBMGraniteModel(**config["models"]["args"])
-    elif config["models"]["provider"].lower() == "IBMOpenSource".lower():
-        model_provider = IBMOpenSourceModel(**config["models"]["args"])
-    elif config["models"]["provider"].lower() == "OpenAI".lower():
-        model_provider = OpenAIModel(**config["models"]["args"])
-    else:
-        raise Exception(f"Unrecognized model '{config['models']['provider']}'")
-
-    KAI_LOG.info(f"Selected model {config['models']['provider']}")
-
-    web.run_app(app)
+    args, _ = arg_parser.parse_known_args()
+    web.run_app(app(args.loglevel))
 
 
-# NOTE: Dead code blocks. Keeping in tree for now just in case we decide to
-# implement these functions
-
-# def post_json(func: Callable[[dict], Any], schema_name: str):
-#     async def wrapped_handler(request: Request):
-#         schema: dict = json.loads(open(f"data/jsonschema/{schema_name}.json").read())
-#         request_json: dict = await request.json()
-
-#         try:
-#             jsonschema.validate(instance=request_json, schema=schema)
-#         except jsonschema.ValidationError as err:
-#             raise web.HTTPUnprocessableEntity(text=f"{err}")
-
-#         # TODO: Make better
-#         try:
-#             result = func(request_json)
-#         except web.HTTPException
-#         except Exception as err:
-#             return web.HTTPException(text=f"{err}")
-
-#         if isinstance(result, dict):
-#             return web.json_response(result)
-#         elif isinstance(result, list):
-#             return web.json_response(result)
-#         elif isinstance(result, str):
-#             return web.Response(text=result)
-#         else:
-#             return web.Response(text=str(result))
-
-#     return wrapped_handler
-
-# def accept_or_reject_solution(params):
-#     """
-#     User says which solution and whether to reject or accept it
-
-#     params (json):
-#     - id: the id of the incident to accept or reject
-#     - accept: bool to say yes or no
-
-#     return (json):
-#     - success: duh
-#     """
-
-#     id = params["id"]
-#     accept = params["accept"]
-
-#     if accept:
-#         solution = get_solution_from_id(id)
-#         put_solution_in_indicent_store(solution)
-
-#     return json.dump({"success": True})
+if __name__ == "__main__":
+    main()

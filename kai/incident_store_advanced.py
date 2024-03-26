@@ -10,12 +10,12 @@ from urllib.parse import unquote, urlparse
 
 import psycopg2
 import yaml
-from embedding_provider import EmbeddingNone, EmbeddingProvider
 from git import Repo
-from kai_logging import KAI_LOG
 from psycopg2.extensions import connection
 from psycopg2.extras import DictCursor, DictRow
 
+from kai.embedding_provider import EmbeddingNone, EmbeddingProvider
+from kai.kai_logging import KAI_LOG
 from kai.report import Report
 
 BASE_PATH = os.path.dirname(__file__)
