@@ -159,7 +159,9 @@ def write_to_disk(file_path, updated_file_contents):
 
 def process_file(file_path, violations, num_impacted_files, count):
     start = time.time()
-    KAI_LOG.info(f"File #{count} of {num_impacted_files} - Processing {file_path} which has {len(violations)} violations")
+    KAI_LOG.info(
+        f"File #{count} of {num_impacted_files} - Processing {file_path} which has {len(violations)} violations"
+    )
     # TODO: Revisit processing non Java files
     if not file_path.endswith(".java"):
         KAI_LOG.warning(f"Skipping {file_path} as it is not a Java file")
@@ -167,13 +169,12 @@ def process_file(file_path, violations, num_impacted_files, count):
 
     params = collect_parameters(file_path, violations)
     response = generate_fix(params)
-    KAI_LOG.info(
-        f"Response StatusCode: {response.status_code} for {file_path}\n"
-    )
+    KAI_LOG.info(f"Response StatusCode: {response.status_code} for {file_path}\n")
     updated_file_contents = parse_response(response)
     write_to_disk(file_path, updated_file_contents)
     end = time.time()
     return f"{end-start}s to process {file_path} with {len(violations)} violations"
+
 
 def run_demo(report):
     impacted_files = report.get_impacted_files()
@@ -192,7 +193,7 @@ def run_demo(report):
             )
             futures.append(future)
 
-        for future in futures:
+        for future in as_completed(futures):
             try:
                 result = future.result()
                 KAI_LOG.info(f"Result:  {result}")
@@ -203,8 +204,12 @@ def run_demo(report):
                 f"{remaining_files} files remaining from total of {num_impacted_files}"
             )
 
+
 if __name__ == "__main__":
     KAI_LOG.setLevel("info".upper())
+    start = time.time()
     coolstore_analysis_dir = "./analysis/coolstore/output.yaml"
     r = Report(coolstore_analysis_dir)
     run_demo(r)
+    end = time.time()
+    KAI_LOG.info(f"Total time to process '{coolstore_analysis_dir}' was {end-start}s")
