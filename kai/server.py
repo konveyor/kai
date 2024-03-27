@@ -14,9 +14,9 @@ import pprint
 import time
 import tomllib
 import warnings
-from collections import defaultdict
 from os import listdir
 from os.path import isfile, join
+from typing import Any, Callable
 
 import aiohttp
 import jsonschema
@@ -392,6 +392,23 @@ async def ws_get_incident_solution(request: Request):
     return ws
 
 
+def get_key_and_res_function(
+    batch_mode: str,
+) -> tuple[Callable[[Any], tuple], Callable[[Any, Any], tuple[dict, list]]]:
+    return {
+        "none": (lambda x: (id(x),), lambda k, g: ({}, list(g))),
+        "single_group": (lambda x: (0,), lambda k, g: ({}, list(g))),
+        "ruleset": (
+            lambda x: (x.get("ruleset_name"),),
+            lambda k, g: ({"ruleset_name": k[0]}, list(g)),
+        ),
+        "violation": (
+            lambda x: (x.get("ruleset_name"), x.get("violation_name")),
+            lambda k, g: ({"ruleset_name": k[0], "violation_name": k[1]}, list(g)),
+        ),
+    }.get(batch_mode)
+
+
 @validator("get_incident_solutions_for_file.json")
 @routes.post("/get_incident_solutions_for_file")
 async def get_incident_solutions_for_file(request: Request):
@@ -399,8 +416,8 @@ async def get_incident_solutions_for_file(request: Request):
     - file_name (str)
     - file_contents (str)
     - application_name (str)
-    - outside_grouping (str optional, one of 'sequential', 'none', 'violation', 'violation_and_variables')
-    - inside_grouping (str optional, one of 'none', 'line_number')
+    - batch_mode (str optional, one of 'sequential', 'none', 'violation', 'violation_and_variables')
+    - include_solved_incident (bool optional)
     - incidents (list)
         - ruleset_name (str)
         - violation_name (str)
@@ -418,123 +435,89 @@ async def get_incident_solutions_for_file(request: Request):
         f"START - App: '{request_json['application_name']}', File: '{request_json['file_name']}' with {len(request_json['incidents'])} incidents'"
     )
 
-    outside_grouping = request_json.get("outside_grouping", "none")
-    inside_grouping = request_json.get("inside_grouping", "none")
+    batch_mode = request_json.get("batch_mode", "single_group")
+    include_solved_incidents = request_json.get("include_solved_incidents", True)
 
     # NOTE: Looks worse than it is, `trunk check` mangled the heck out of this
     # section. It doesn't like lambdas for some reason :(
-
-    if outside_grouping == "none":  # own group
-
-        def outside_key_fn(x):
-            return (id(x),)
-
-        def outside_res_fn(k, g):
-            return {}, list(g)
-
-    elif outside_grouping == "single_group":  # single group
-
-        def outside_key_fn(x):
-            return (0,)
-
-        def outside_res_fn(k, g):
-            return {}, list(g)
-
-    elif outside_grouping == "ruleset":
-
-        def outside_key_fn(x):
-            return (x.get("ruleset_name"),)
-
-        def outside_res_fn(k, g):
-            return {"ruleset_name": k[0]}, list(g)
-
-    elif outside_grouping == "violation":  # violations group
-
-        def outside_key_fn(x):
-            return x.get("ruleset_name"), x.get("violation_name")
-
-        def outside_res_fn(k, g):
-            return {"ruleset_name": k[0], "violation_name": k[1]}, list(g)
-
-    else:
-        raise Exception(f"Invalid outside_grouping: {outside_grouping}")
-
-    if inside_grouping == "none":
-
-        def inside_key_fn(x):
-            return 0
-
-        def inside_res_fn(k, g):
-            return {}, list(g)
-
-    # FIXME: 'incident_variables' is unhashable.
-    elif inside_grouping == "violation":
-
-        def inside_key_fn(x):
-            return x.get("ruleset_name"), x.get("violation_name")
-
-        def inside_res_fn(key, group):
-            aggregated = defaultdict(set)
-            for item in group:
-                for k, v in item.items():
-                    if k not in key:
-                        aggregated[k].add(v)
-            return ({"ruleset_name": k[0], "violation_name": k[1]}, dict(aggregated))
-
-    else:
-        raise Exception(f"Invalid inside_grouping: {inside_grouping}")
-
     updated_file = request_json["file_contents"]
     total_reasoning = []
     used_prompts = []
 
-    request_json["incidents"].sort(key=outside_key_fn)
-    outside_grouped = itertools.groupby(request_json["incidents"], outside_key_fn)
-    for outside_key, outside_group in outside_grouped:
-        _, outside_incidents = outside_res_fn(outside_key, outside_group)
+    batch_key_fn, batch_res_fn = get_key_and_res_function(batch_mode)
 
-        outside_incidents.sort(key=inside_key_fn)
-        inside_grouped = itertools.groupby(outside_incidents, inside_key_fn)
-        count = 0  # Feels like there's a more pythonic way of doing this
-        for inside_key, inside_group in inside_grouped:
-            count += 1
-            _, inside_incidents = inside_res_fn(inside_key, inside_group)
-            for i, incident in enumerate(inside_incidents):
-                incident["issue_number"] = i + 1
-                incident["src_file_language"] = "java"
-                incident["analysis_line_number"] = incident["line_number"]
+    request_json["incidents"].sort(key=batch_key_fn)
+    batched_groupby = itertools.groupby(request_json["incidents"], batch_key_fn)
 
-            prompt = build_prompt(
-                CONFIG_IBM_GRANITE_MF,
-                {
-                    "src_file_name": request_json["file_name"],
-                    "src_file_language": "java",
-                    "src_file_contents": updated_file,
-                    "incidents": inside_incidents,
-                },
-            )
+    # NOTE: To get out of itertools hell
+    batched: list[tuple[dict, list]] = []
+    for batch_key, batch_group in batched_groupby:
+        batch_dict, batch_list = batch_res_fn(batch_key, batch_group)
+        batched.append((batch_dict, batch_list))
 
-            KAI_LOG.info(
-                f"Processing incident batch {count}/{len(outside_incidents)} for {request_json['file_name']}"
-            )
+    for count, (_, incidents) in enumerate(batched):
+        for i, incident in enumerate(incidents):
+            incident["issue_number"] = i + 1
+            incident["src_file_language"] = "java"  # FIXME:
+            incident["analysis_line_number"] = incident["line_number"]
 
-            llm_result = None
-            for _ in range(LLM_RETRIES):
-                try:
-                    llm_result = request.app["model_provider"].invoke(prompt)
-                    content = parse_file_solution_content(llm_result.content)
+            if include_solved_incidents:
+                solved_incident, match_type = request.app[
+                    "incident_store"
+                ].get_fuzzy_similar_incident(
+                    incident["violation_name"],
+                    incident["ruleset_name"],
+                    incident.get("incident_snip", ""),
+                    incident["incident_variables"],
+                )
 
-                    total_reasoning.append(content.reasoning)
-                    updated_file = content.updated_file
-                    used_prompts.append(prompt)
-                    break
-                except Exception as e:
-                    KAI_LOG.warn(
-                        f"Request to model failed for batch {count}/{len(outside_incidents)} for {request_json['file_name']} with exception, retrying in {LLM_RETRY_DELAY}s\n{e}"
-                    )
-                    time.sleep(LLM_RETRY_DELAY)
+                KAI_LOG.debug(solved_incident)
 
-            # KAI_LOG.info(prompt)
+                if not isinstance(solved_incident, dict):
+                    raise Exception("solved_example not a dict")
+
+                if bool(solved_incident) and match_type == "exact":
+                    solved_example = request.app[
+                        "incident_store"
+                    ].select_accepted_solution(solved_incident["solution_id"])
+                    incident["solved_example_diff"] = solved_example[
+                        "solution_small_diff"
+                    ]
+                    incident["solved_example_file_name"] = solved_incident[
+                        "incident_uri"
+                    ]
+
+        prompt = build_prompt(
+            CONFIG_IBM_GRANITE_MF,
+            {
+                "src_file_name": request_json["file_name"],
+                "src_file_language": "java",
+                "src_file_contents": updated_file,
+                "incidents": incidents,
+            },
+        )
+
+        KAI_LOG.debug(f"Sending prompt: {prompt}")
+
+        KAI_LOG.info(
+            f"Processing incident batch {count}/{len(batched)} for {request_json['file_name']}"
+        )
+
+        llm_result = None
+        for _ in range(LLM_RETRIES):
+            try:
+                llm_result = request.app["model_provider"].invoke(prompt)
+                content = parse_file_solution_content(llm_result.content)
+
+                total_reasoning.append(content.reasoning)
+                updated_file = content.updated_file
+                used_prompts.append(prompt)
+                break
+            except Exception as e:
+                KAI_LOG.warn(
+                    f"Request to model failed for batch {count}/{len(batched)} for {request_json['file_name']} with exception, retrying in {LLM_RETRY_DELAY}s\n{e}"
+                )
+                time.sleep(LLM_RETRY_DELAY)
 
     end = time.time()
     KAI_LOG.info(
