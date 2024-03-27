@@ -418,8 +418,8 @@ async def get_incident_solutions_for_file(request: Request):
         f"START - App: '{request_json['application_name']}', File: '{request_json['file_name']}' with {len(request_json['incidents'])} incidents'"
     )
 
-    outside_grouping = request_json.get("outside_grouping", "sequential")
-    inside_grouping = request_json.get("inside_grouping", "sequential")
+    outside_grouping = request_json.get("outside_grouping", "none")
+    inside_grouping = request_json.get("inside_grouping", "none")
 
     # NOTE: Looks worse than it is, `trunk check` mangled the heck out of this
     # section. It doesn't like lambdas for some reason :(
@@ -495,7 +495,9 @@ async def get_incident_solutions_for_file(request: Request):
 
         outside_incidents.sort(key=inside_key_fn)
         inside_grouped = itertools.groupby(outside_incidents, inside_key_fn)
+        count = 0  # Feels like there's a more pythonic way of doing this
         for inside_key, inside_group in inside_grouped:
+            count += 1
             _, inside_incidents = inside_res_fn(inside_key, inside_group)
             for i, incident in enumerate(inside_incidents):
                 incident["issue_number"] = i + 1
@@ -512,18 +514,27 @@ async def get_incident_solutions_for_file(request: Request):
                 },
             )
 
-            #         KAI_LOG.info(
-            #             f"Processing incident {count}/{len(request_json['incidents'])} for {incident['file_name']}"
-            #         )
+            KAI_LOG.info(
+                f"Processing incident batch {count}/{len(outside_incidents)} for {request_json['file_name']}"
+            )
 
-            llm_result = request.app["model_provider"].invoke(prompt)
-            content = parse_file_solution_content(llm_result.content)
+            llm_result = None
+            for _ in range(LLM_RETRIES):
+                try:
+                    llm_result = request.app["model_provider"].invoke(prompt)
+                    content = parse_file_solution_content(llm_result.content)
 
-            total_reasoning.append(content.reasoning)
-            updated_file = content.updated_file
-            used_prompts.append(prompt)
+                    total_reasoning.append(content.reasoning)
+                    updated_file = content.updated_file
+                    used_prompts.append(prompt)
+                    break
+                except Exception as e:
+                    KAI_LOG.warn(
+                        f"Request to model failed for batch {count}/{len(outside_incidents)} for {request_json['file_name']} with exception, retrying in {LLM_RETRY_DELAY}s\n{e}"
+                    )
+                    time.sleep(LLM_RETRY_DELAY)
 
-            KAI_LOG.info(prompt)
+            # KAI_LOG.info(prompt)
 
     end = time.time()
     KAI_LOG.info(

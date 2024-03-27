@@ -16,7 +16,6 @@ class Section:
     Simple data class containing the template and the variables for a section
     """
 
-    # TODO: Fix this
     @staticmethod
     def from_dict(x: dict):
         return Section(
