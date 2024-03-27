@@ -7,6 +7,7 @@
 """This module is intended to facilitate using Konveyor with LLMs."""
 
 import argparse
+import itertools
 import json
 import os
 import pprint
@@ -15,6 +16,7 @@ import tomllib
 import warnings
 from os import listdir
 from os.path import isfile, join
+from typing import Any, Callable
 
 import aiohttp
 import jsonschema
@@ -26,7 +28,7 @@ from kai.capture import Capture
 from kai.incident_store_advanced import Application, EmbeddingNone, PSQLIncidentStore
 from kai.kai_logging import KAI_LOG
 from kai.model_provider import IBMGraniteModel, IBMOpenSourceModel, OpenAIModel
-from kai.prompt_builder import PromptBuilder
+from kai.prompt_builder import CONFIG_IBM_GRANITE_MF, build_prompt
 from kai.pydantic_models import parse_file_solution_content
 from kai.report import Report
 
@@ -269,14 +271,10 @@ def get_incident_solution(request_app, request_json: dict, stream: bool = False)
         pb_vars["solved_example_diff"] = solved_example["solution_small_diff"]
         pb_vars["solved_example_file_name"] = solved_incident["incident_uri"]
 
-    pb = PromptBuilder(
+    prompt = build_prompt(
         request_app["model_provider"].get_prompt_builder_config(), pb_vars
     )
-    prompt = pb.build_prompt()
     capture.prompt = prompt
-
-    if isinstance(prompt, list):
-        raise Exception(f"Did not supply proper variables. Need at least {prompt}")
 
     if stream:
         capture.llm_result = (
@@ -349,7 +347,7 @@ async def post_get_incident_solution(request: Request):
 
     KAI_LOG.debug(f"post_get_incident_solution recv'd: {request}")
 
-    llm_output = get_incident_solution(await request.json(), False).content
+    llm_output = get_incident_solution(request.app, await request.json(), False).content
 
     return web.json_response(
         {
@@ -370,7 +368,7 @@ async def ws_get_incident_solution(request: Request):
         try:
             json_request = json.loads(msg.data)
 
-            for chunk in get_incident_solution(json_request, True):
+            for chunk in get_incident_solution(request.app, json_request, True):
                 await ws.send_str(
                     json.dumps(
                         {
@@ -394,6 +392,23 @@ async def ws_get_incident_solution(request: Request):
     return ws
 
 
+def get_key_and_res_function(
+    batch_mode: str,
+) -> tuple[Callable[[Any], tuple], Callable[[Any, Any], tuple[dict, list]]]:
+    return {
+        "none": (lambda x: (id(x),), lambda k, g: ({}, list(g))),
+        "single_group": (lambda x: (0,), lambda k, g: ({}, list(g))),
+        "ruleset": (
+            lambda x: (x.get("ruleset_name"),),
+            lambda k, g: ({"ruleset_name": k[0]}, list(g)),
+        ),
+        "violation": (
+            lambda x: (x.get("ruleset_name"), x.get("violation_name")),
+            lambda k, g: ({"ruleset_name": k[0], "violation_name": k[1]}, list(g)),
+        ),
+    }.get(batch_mode)
+
+
 @validator("get_incident_solutions_for_file.json")
 @routes.post("/get_incident_solutions_for_file")
 async def get_incident_solutions_for_file(request: Request):
@@ -401,6 +416,8 @@ async def get_incident_solutions_for_file(request: Request):
     - file_name (str)
     - file_contents (str)
     - application_name (str)
+    - batch_mode (str optional, one of 'sequential', 'none', 'violation', 'violation_and_variables')
+    - include_solved_incident (bool optional)
     - incidents (list)
         - ruleset_name (str)
         - violation_name (str)
@@ -413,36 +430,92 @@ async def get_incident_solutions_for_file(request: Request):
     KAI_LOG.debug(f"get_incident_solutions_for_file recv'd: {request}")
 
     request_json = await request.json()
+
     KAI_LOG.info(
         f"START - App: '{request_json['application_name']}', File: '{request_json['file_name']}' with {len(request_json['incidents'])} incidents'"
     )
 
-    total_reasoning = []
-    current_file_contents = request_json["file_contents"]
-    # file_name = request_json["file_name"]
+    batch_mode = request_json.get("batch_mode", "single_group")
+    include_solved_incidents = request_json.get("include_solved_incidents", True)
 
-    count = 0
-    incident: dict[str, str]
-    for incident in request_json["incidents"]:
-        count += 1
-        incident["file_name"] = request_json["file_name"]
-        incident["file_contents"] = current_file_contents
-        incident["application_name"] = request_json["application_name"]
+    # NOTE: Looks worse than it is, `trunk check` mangled the heck out of this
+    # section. It doesn't like lambdas for some reason :(
+    updated_file = request_json["file_contents"]
+    total_reasoning = []
+    used_prompts = []
+
+    batch_key_fn, batch_res_fn = get_key_and_res_function(batch_mode)
+
+    request_json["incidents"].sort(key=batch_key_fn)
+    batched_groupby = itertools.groupby(request_json["incidents"], batch_key_fn)
+
+    # NOTE: To get out of itertools hell
+    batched: list[tuple[dict, list]] = []
+    for batch_key, batch_group in batched_groupby:
+        batch_dict, batch_list = batch_res_fn(batch_key, batch_group)
+        batched.append((batch_dict, batch_list))
+
+    for count, (_, incidents) in enumerate(batched, 1):
+        for i, incident in enumerate(incidents, 1):
+            incident["issue_number"] = i
+            incident["src_file_language"] = "java"  # FIXME:
+            incident["analysis_line_number"] = incident["line_number"]
+
+            if include_solved_incidents:
+                solved_incident, match_type = request.app[
+                    "incident_store"
+                ].get_fuzzy_similar_incident(
+                    incident["violation_name"],
+                    incident["ruleset_name"],
+                    incident.get("incident_snip", ""),
+                    incident["incident_variables"],
+                )
+
+                KAI_LOG.debug(solved_incident)
+
+                if not isinstance(solved_incident, dict):
+                    raise Exception("solved_example not a dict")
+
+                if bool(solved_incident) and match_type == "exact":
+                    solved_example = request.app[
+                        "incident_store"
+                    ].select_accepted_solution(solved_incident["solution_id"])
+                    incident["solved_example_diff"] = solved_example[
+                        "solution_small_diff"
+                    ]
+                    incident["solved_example_file_name"] = solved_incident[
+                        "incident_uri"
+                    ]
+
+        prompt = build_prompt(
+            CONFIG_IBM_GRANITE_MF,
+            {
+                "src_file_name": request_json["file_name"],
+                "src_file_language": "java",
+                "src_file_contents": updated_file,
+                "incidents": incidents,
+            },
+        )
+
+        KAI_LOG.debug(f"Sending prompt: {prompt}")
 
         KAI_LOG.info(
-            f"Processing incident {count}/{len(request_json['incidents'])} for {incident['file_name']}"
+            f"Processing incident batch {count}/{len(batched)} for {request_json['file_name']}"
         )
-        llm_output = None
+
+        llm_result = None
         for _ in range(LLM_RETRIES):
             try:
-                llm_output = get_incident_solution(request.app, incident, False)
-                content = parse_file_solution_content(llm_output.content)
+                llm_result = request.app["model_provider"].invoke(prompt)
+                content = parse_file_solution_content(llm_result.content)
+
                 total_reasoning.append(content.reasoning)
-                current_file_contents = content.updated_file
+                updated_file = content.updated_file
+                used_prompts.append(prompt)
                 break
             except Exception as e:
                 KAI_LOG.warn(
-                    f"Request to model failed for {incident['file_name']} {count}/{len(request_json['incidents'])} with exception, retrying in {LLM_RETRY_DELAY}s\n{e}"
+                    f"Request to model failed for batch {count}/{len(batched)} for {request_json['file_name']} with exception, retrying in {LLM_RETRY_DELAY}s\n{e}"
                 )
                 time.sleep(LLM_RETRY_DELAY)
 
@@ -450,10 +523,12 @@ async def get_incident_solutions_for_file(request: Request):
     KAI_LOG.info(
         f"END - completed in '{end-start}s:  - App: '{request_json['application_name']}', File: '{request_json['file_name']}' with {len(request_json['incidents'])} incidents'"
     )
+
     return web.json_response(
         {
-            "updated_file": current_file_contents,
+            "updated_file": updated_file,
             "total_reasoning": total_reasoning,
+            "used_prompts": used_prompts,
         }
     )
 

@@ -1,0 +1,49 @@
+uuid: $ibm_granite_model
+build_steps:
+  - concat:
+      - build: $preamble
+      - one_of:
+          - build: $solved_example_file
+          - build: $solved_example_diff
+          - build: $solved_example_none
+      - build: $input_file
+      - build: $output_instructions
+---
+uuid: $preamble
+file_path: preamble.txt
+---
+uuid: $solved_example_file
+file_path: solved_example_file.txt
+---
+uuid: $solved_example_diff
+file_path: solved_example_diff.txt
+---
+uuid: $solved_example_none
+file_path: solved_example_none.txt
+---
+uuid: $input_file
+file_path: input_file.txt
+---
+uuid: $output_instructions
+file_path: output_instructions.txt
+---
+uuid: $ibm_llama_model
+build_steps:
+  - concat:
+      - build: $ibm_llama_begin
+      - build: $ibm_granite_model
+      - build: $ibm_llama_end
+---
+uuid: $ibm_llama_begin
+template: |+
+  <s>[INST] <<SYS>>
+  {llama_sys}
+  <</SYS>>
+
+default_vars:
+  llama_sys: You are an AI Assistant trained on migrating enterprise JavaEE code to Quarkus.
+---
+uuid: $ibm_llama_end
+template: |+
+
+  [/INST]

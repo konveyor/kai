@@ -37,7 +37,7 @@ class ModelProvider(ABC):
         pass
 
     @abstractmethod
-    def get_prompt_builder_config(self) -> prompt_builder.Config:
+    def get_prompt_builder_config(self):
         pass
 
     @abstractmethod
@@ -100,7 +100,7 @@ class IBMGraniteModel(ModelProvider):
     def stream(self, prompt: str) -> Iterator[BaseMessageChunk]:
         return self.llm.stream(prompt)
 
-    def get_prompt_builder_config(self) -> prompt_builder.Config:
+    def get_prompt_builder_config(self):
         return self.prompt_builder_config
 
     def get_models(self) -> list[str]:
@@ -166,7 +166,7 @@ class IBMOpenSourceModel(ModelProvider):
     def stream(self, prompt: str) -> Iterator[BaseMessageChunk]:
         return self.llm.stream(prompt)
 
-    def get_prompt_builder_config(self) -> prompt_builder.Config:
+    def get_prompt_builder_config(self):
         return self.prompt_builder_config
 
     def get_models(self) -> list[str]:
@@ -212,7 +212,7 @@ class OpenAIModel(ModelProvider):
     def stream(self, prompt: str):
         return self.llm.stream(prompt)
 
-    def get_prompt_builder_config(self) -> prompt_builder.Config:
+    def get_prompt_builder_config(self):
         return self.prompt_builder_config
 
     def get_models(self) -> list[str]:
