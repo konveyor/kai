@@ -30,6 +30,9 @@ from kai.prompt_builder import PromptBuilder
 from kai.pydantic_models import parse_file_solution_content
 from kai.report import Report
 
+LLM_RETRIES = 5
+LLM_RETRY_DELAY = 10
+
 # TODO: Make openapi spec for everything
 
 # TODO: Repo lives both on client and on server. Determine either A) Best way to
@@ -430,7 +433,7 @@ async def get_incident_solutions_for_file(request: Request):
             f"Processing incident {count}/{len(request_json['incidents'])} for {incident['file_name']}"
         )
         llm_output = None
-        for _ in range(3):
+        for _ in range(LLM_RETRIES):
             try:
                 llm_output = get_incident_solution(request.app, incident, False)
                 content = parse_file_solution_content(llm_output.content)
@@ -439,9 +442,9 @@ async def get_incident_solutions_for_file(request: Request):
                 break
             except Exception as e:
                 KAI_LOG.warn(
-                    f"Request to model failed with exception, retrying in 10s\n{e}"
+                    f"Request to model failed for {incident['file_name']} {count}/{len(request_json['incidents'])} with exception, retrying in {LLM_RETRY_DELAY}s\n{e}"
                 )
-                time.sleep(10)
+                time.sleep(LLM_RETRY_DELAY)
 
     end = time.time()
     KAI_LOG.info(
