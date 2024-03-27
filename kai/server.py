@@ -455,9 +455,9 @@ async def get_incident_solutions_for_file(request: Request):
         batch_dict, batch_list = batch_res_fn(batch_key, batch_group)
         batched.append((batch_dict, batch_list))
 
-    for count, (_, incidents) in enumerate(batched):
-        for i, incident in enumerate(incidents):
-            incident["issue_number"] = i + 1
+    for count, (_, incidents) in enumerate(batched, 1):
+        for i, incident in enumerate(incidents, 1):
+            incident["issue_number"] = i
             incident["src_file_language"] = "java"  # FIXME:
             incident["analysis_line_number"] = incident["line_number"]
 
