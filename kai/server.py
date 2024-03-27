@@ -7,12 +7,14 @@
 """This module is intended to facilitate using Konveyor with LLMs."""
 
 import argparse
+import itertools
 import json
 import os
 import pprint
 import time
 import tomllib
 import warnings
+from collections import defaultdict
 from os import listdir
 from os.path import isfile, join
 
@@ -29,7 +31,7 @@ from model_provider import (
     ModelProvider,
     OpenAIModel,
 )
-from prompt_builder import build_prompt
+from prompt_builder import CONFIG_IBM_GRANITE_MF, build_prompt
 from report import Report
 
 from kai.capture import Capture
@@ -282,9 +284,6 @@ def get_incident_solution(request_app, request_json: dict, stream: bool = False)
     prompt = build_prompt(request_app["model_provider"].get_prompt_builder_config(), pb_vars)
     capture.prompt = prompt
 
-    if isinstance(prompt, list):
-        raise Exception(f"Did not supply proper variables. Need at least {prompt}")
-
     if stream:
         capture.llm_result = (
             "TODO consider if we need to implement for streaming responses"
@@ -408,7 +407,8 @@ async def get_incident_solutions_for_file(request: Request):
     - file_name (str)
     - file_contents (str)
     - application_name (str)
-    - grouping (str optional, one of 'sequential', 'none', 'violation_only', 'violation_and_line_number')
+    - outside_grouping (str optional, one of 'sequential', 'none', 'violation', 'violation_and_variables')
+    - inside_grouping (str optional, one of 'none', 'line_number')
     - incidents (list)
         - ruleset_name (str)
         - violation_name (str)
@@ -421,46 +421,128 @@ async def get_incident_solutions_for_file(request: Request):
     KAI_LOG.debug(f"get_incident_solutions_for_file recv'd: {request}")
 
     request_json = await request.json()
+
     KAI_LOG.info(
         f"START - App: '{request_json['application_name']}', File: '{request_json['file_name']}' with {len(request_json['incidents'])} incidents'"
     )
 
+    outside_grouping = request_json.get("outside_grouping", "sequential")
+    inside_grouping = request_json.get("inside_grouping", "sequential")
+
+    # NOTE: Looks worse than it is, `trunk check` mangled the heck out of this
+    # section. It doesn't like lambdas for some reason :(
+
+    if outside_grouping == "none":  # own group
+
+        def outside_key_fn(x):
+            return (id(x),)
+
+        def outside_res_fn(k, g):
+            return {}, list(g)
+
+    elif outside_grouping == "single_group":  # single group
+
+        def outside_key_fn(x):
+            return (0,)
+
+        def outside_res_fn(k, g):
+            return {}, list(g)
+
+    elif outside_grouping == "ruleset":
+
+        def outside_key_fn(x):
+            return (x.get("ruleset_name"),)
+
+        def outside_res_fn(k, g):
+            return {"ruleset_name": k[0]}, list(g)
+
+    elif outside_grouping == "violation":  # violations group
+
+        def outside_key_fn(x):
+            return x.get("ruleset_name"), x.get("violation_name")
+
+        def outside_res_fn(k, g):
+            return {"ruleset_name": k[0], "violation_name": k[1]}, list(g)
+
+    else:
+        raise Exception(f"Invalid outside_grouping: {outside_grouping}")
+
+    if inside_grouping == "none":
+
+        def inside_key_fn(x):
+            return 0
+
+        def inside_res_fn(k, g):
+            return {}, list(g)
+
+    # FIXME: 'incident_variables' is unhashable.
+    elif inside_grouping == "violation":
+
+        def inside_key_fn(x):
+            return x.get("ruleset_name"), x.get("violation_name")
+
+        def inside_res_fn(key, group):
+            aggregated = defaultdict(set)
+            for item in group:
+                for k, v in item.items():
+                    if k not in key:
+                        aggregated[k].add(v)
+            return ({"ruleset_name": k[0], "violation_name": k[1]}, dict(aggregated))
+
+    else:
+        raise Exception(f"Invalid inside_grouping: {inside_grouping}")
+
+    updated_file = request_json["file_contents"]
     total_reasoning = []
-    updated_file = ""
+    used_prompts = []
 
-    grouping = request_json.get("grouping", "sequential")
+    request_json["incidents"].sort(key=outside_key_fn)
+    outside_grouped = itertools.groupby(request_json["incidents"], outside_key_fn)
+    for outside_key, outside_group in outside_grouped:
+        _, outside_incidents = outside_res_fn(outside_key, outside_group)
 
-    if grouping == "sequential":
-        updated_file = request_json["file_contents"]
-        # file_name = request_json["file_name"]
+        outside_incidents.sort(key=inside_key_fn)
+        inside_grouped = itertools.groupby(outside_incidents, inside_key_fn)
+        for inside_key, inside_group in inside_grouped:
+            _, inside_incidents = inside_res_fn(inside_key, inside_group)
+            for i, incident in enumerate(inside_incidents):
+                incident["issue_number"] = i + 1
+                incident["src_file_language"] = "java"
+                incident["analysis_line_number"] = incident["line_number"]
 
-        count = 0
-        incident: dict[str, str]
-        for incident in request_json["incidents"]:
-            count += 1
-            incident["file_name"] = request_json["file_name"]
-            incident["file_contents"] = updated_file
-            incident["application_name"] = request_json["application_name"]
-
-            KAI_LOG.info(
-                f"Processing incident {count}/{len(request_json['incidents'])} for {incident['file_name']}"
+            prompt = build_prompt(
+                CONFIG_IBM_GRANITE_MF,
+                {
+                    "src_file_name": request_json["file_name"],
+                    "src_file_language": "java",
+                    "src_file_contents": updated_file,
+                    "incidents": inside_incidents,
+                },
             )
-            llm_output = get_incident_solution(incident, False)
-            content = parse_file_solution_content(llm_output.content)
+
+            #         KAI_LOG.info(
+            #             f"Processing incident {count}/{len(request_json['incidents'])} for {incident['file_name']}"
+            #         )
+
+            llm_result = model_provider.invoke(prompt)
+            content = parse_file_solution_content(llm_result.content)
 
             total_reasoning.append(content.reasoning)
             updated_file = content.updated_file
-    else:
-        pass
+            used_prompts.append(prompt)
+
+            KAI_LOG.info(prompt)
 
     end = time.time()
     KAI_LOG.info(
         f"END - completed in '{end-start}s:  - App: '{request_json['application_name']}', File: '{request_json['file_name']}' with {len(request_json['incidents'])} incidents'"
     )
+
     return web.json_response(
         {
             "updated_file": updated_file,
             "total_reasoning": total_reasoning,
+            "used_prompts": used_prompts,
         }
     )
 

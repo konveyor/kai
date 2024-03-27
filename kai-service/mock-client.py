@@ -295,11 +295,14 @@ async def main():
                         "name": "MessageDriven",
                         "package": "org.jboss.as.quickstarts.cmt.mdb",
                     },
-                    "line_number": 1,
-                    "analysis_message": "Please change every variable to an emoji.",
+                    "line_number": -1,
+                    "analysis_message": "Please change every that you can to a punny name.",
                 },
             ],
         }
+
+        y["inside_grouping"] = "none"
+        y["outside_grouping"] = "none"
 
         async with session.post("/get_incident_solutions_for_file", json=y) as resp:
             print("lmao!")
@@ -310,7 +313,12 @@ async def main():
             try:
                 resp_json: dict = await resp.json()
                 print(resp_json["updated_file"])
+                input()
                 print(resp_json["total_reasoning"])
+                input()
+                for x in resp_json["used_prompts"]:
+                    print(x)
+                    input()
             except Exception as e:
                 print(f"{e}")
                 print(await resp.text())

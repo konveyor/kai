@@ -136,7 +136,7 @@ def pb_concat(args: list, pb_env: Env, pb_vars: dict) -> str:
 
 
 def pb_format(args: list, pb_env: Env, pb_vars: dict) -> str | None:
-    print(f"pb_format: {args=}")
+    # print(f"pb_format: {args=}")
     if len(args) > 2:
         raise PBError("Max 2 arguments.")
     if len(args) == 0:
@@ -164,7 +164,7 @@ def pb_format(args: list, pb_env: Env, pb_vars: dict) -> str | None:
 
 
 def pb_build(args: list, pb_env: Env, pb_vars: dict):
-    print(f"pb_format: {args=}")
+    # print(f"pb_format: {args=}")
     if len(args) > 2:
         raise PBError("Max 2 arguments.")
     if len(args) == 0:
@@ -216,7 +216,7 @@ def pb_one_of(args: list, pb_env: Env, pb_vars: dict) -> str:
 
 
 def pb_eval(x, pb_env: Env, pb_vars: dict):
-    print(f"pb_eval: {x}")
+    # print(f"pb_eval: {x}")
     if isinstance(x, Symbol) or (isinstance(x, str) and len(x) > 0 and x[0] == "$"):
         f = pb_env.find(x)
         if f is not None:
