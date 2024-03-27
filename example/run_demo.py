@@ -84,7 +84,7 @@ def _generate_fix(params: KaiRequestParams):
         f"{SERVER_URL}/get_incident_solutions_for_file",
         data=params.to_json(),
         headers=headers,
-        timeout=2400,
+        timeout=3600,
     )
     return response
 
