@@ -1,0 +1,68 @@
+uuid: $mf_ibm_model
+build_steps:
+  - concat:
+      - build: $mf_preamble
+      - build: $mf_input_information
+      - build: $mf_input_file
+      - build: $mf_issue_header
+      # - one_of:
+      - build: [$mf_issue, incidents]
+        # - build: $mf_issue_none
+      - build: $mf_output_instructions
+---
+uuid: $mf_preamble
+file_path: mf_preamble.txt
+---
+uuid: $mf_input_information
+template: "# Input Information\n\n"
+---
+uuid: $mf_input_file
+template: |+
+  ## Input File
+
+  File name: "{src_file_name}"
+  Source file contents:
+  ```{src_file_language}
+  {src_file_contents}
+  ```
+
+---
+uuid: $mf_issue_header
+template: "## Issues\n\n"
+---
+uuid: $mf_issue
+template: |+
+  ### Issue {issue_number}
+  Issue to fix: "{analysis_message}"
+  Line number: {analysis_line_number}
+build_steps:
+  - concat:
+      - format: $mf_issue
+      - one_of:
+          - build: $mf_issue_solved_example_file
+          - build: $mf_issue_solved_example_diff
+        # - build: []
+---
+uuid: $mf_issue_solved_example_diff
+template: |
+  Solved example:
+  ```diff
+  {solved_example_diff}
+  ```
+---
+uuid: $mf_issue_solved_example_file
+template: |
+  Solved example before changes:
+  ```{src_file_language}
+  {solved_example_before}
+  ```
+  Solved example after changes:
+  ```{src_file_language}
+  {solved_example_after}
+  ```
+---
+uuid: $mf_issue_none
+template: "There are no issues.\n\n"
+---
+uuid: $mf_output_instructions
+file_path: mf_output_instructions.txt

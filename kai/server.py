@@ -21,6 +21,16 @@ import jsonschema
 import yaml
 from aiohttp import web
 from aiohttp.web_request import Request
+from incident_store_advanced import Application, EmbeddingNone, PSQLIncidentStore
+from kai_logging import KAI_LOG
+from model_provider import (
+    IBMGraniteModel,
+    IBMOpenSourceModel,
+    ModelProvider,
+    OpenAIModel,
+)
+from prompt_builder import build_prompt
+from report import Report
 
 from kai.capture import Capture
 from kai.incident_store_advanced import Application, EmbeddingNone, PSQLIncidentStore
@@ -269,10 +279,7 @@ def get_incident_solution(request_app, request_json: dict, stream: bool = False)
         pb_vars["solved_example_diff"] = solved_example["solution_small_diff"]
         pb_vars["solved_example_file_name"] = solved_incident["incident_uri"]
 
-    pb = PromptBuilder(
-        request_app["model_provider"].get_prompt_builder_config(), pb_vars
-    )
-    prompt = pb.build_prompt()
+    prompt = build_prompt(request_app["model_provider"].get_prompt_builder_config(), pb_vars)
     capture.prompt = prompt
 
     if isinstance(prompt, list):
@@ -401,6 +408,7 @@ async def get_incident_solutions_for_file(request: Request):
     - file_name (str)
     - file_contents (str)
     - application_name (str)
+    - grouping (str optional, one of 'sequential', 'none', 'violation_only', 'violation_and_line_number')
     - incidents (list)
         - ruleset_name (str)
         - violation_name (str)
@@ -418,33 +426,32 @@ async def get_incident_solutions_for_file(request: Request):
     )
 
     total_reasoning = []
-    current_file_contents = request_json["file_contents"]
-    # file_name = request_json["file_name"]
+    updated_file = ""
 
-    count = 0
-    incident: dict[str, str]
-    for incident in request_json["incidents"]:
-        count += 1
-        incident["file_name"] = request_json["file_name"]
-        incident["file_contents"] = current_file_contents
-        incident["application_name"] = request_json["application_name"]
+    grouping = request_json.get("grouping", "sequential")
 
-        KAI_LOG.info(
-            f"Processing incident {count}/{len(request_json['incidents'])} for {incident['file_name']}"
-        )
-        llm_output = None
-        for _ in range(LLM_RETRIES):
-            try:
-                llm_output = get_incident_solution(request.app, incident, False)
-                content = parse_file_solution_content(llm_output.content)
-                total_reasoning.append(content.reasoning)
-                current_file_contents = content.updated_file
-                break
-            except Exception as e:
-                KAI_LOG.warn(
-                    f"Request to model failed for {incident['file_name']} {count}/{len(request_json['incidents'])} with exception, retrying in {LLM_RETRY_DELAY}s\n{e}"
-                )
-                time.sleep(LLM_RETRY_DELAY)
+    if grouping == "sequential":
+        updated_file = request_json["file_contents"]
+        # file_name = request_json["file_name"]
+
+        count = 0
+        incident: dict[str, str]
+        for incident in request_json["incidents"]:
+            count += 1
+            incident["file_name"] = request_json["file_name"]
+            incident["file_contents"] = updated_file
+            incident["application_name"] = request_json["application_name"]
+
+            KAI_LOG.info(
+                f"Processing incident {count}/{len(request_json['incidents'])} for {incident['file_name']}"
+            )
+            llm_output = get_incident_solution(incident, False)
+            content = parse_file_solution_content(llm_output.content)
+
+            total_reasoning.append(content.reasoning)
+            updated_file = content.updated_file
+    else:
+        pass
 
     end = time.time()
     KAI_LOG.info(
@@ -452,7 +459,7 @@ async def get_incident_solutions_for_file(request: Request):
     )
     return web.json_response(
         {
-            "updated_file": current_file_contents,
+            "updated_file": updated_file,
             "total_reasoning": total_reasoning,
         }
     )

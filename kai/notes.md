@@ -1,7 +1,9 @@
+# DELETE ME
+
 Prompt builder should return a formatted string that the llm can use. We need to
 fill it up with some information in order to do that.
 
-# Data in the full file:
+# Data in the full file
 
 - analysis_message
 - solved_example_file_name
