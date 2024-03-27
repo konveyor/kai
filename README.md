@@ -164,6 +164,7 @@ provider = "IBMGranite"
    1. Let this run in background: `make run-server`
       - Please double check that you have `GENAI_KEY=my-secret-api-key-value` defined in the environment variables prior to running the server.
 1. Load data into the database
+   1. Fetch sample apps: `pushd samples; ./fetch_apps.py; popd`
    1. Can run this in current shell, command will run for a ~1 minute and complete
    1. Ensure you are running within our python virtual env: `source env/bin/activate`
    1. `make load-data`
