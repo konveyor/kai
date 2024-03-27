@@ -1,8 +1,10 @@
 import os
 import string
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from os import path
+
+import yaml
 
 # TODO: Unify the model selection criteria across PromptBuilder, IncidentStore
 # embeddings and the actual llm call itself
@@ -59,8 +61,132 @@ A few problems I see with with this:
 """
 
 
-class PromptBuilderVariables(Enum):
-    ANALYSIS_MESSAGE = "analysis_message"
+class PBError(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(message)
+
+
+@dataclass
+class Symbol:
+    value: str
+
+    def __hash__(self):
+        return hash(self.value)
+
+
+@dataclass
+class Env:
+    inner: dict = field(default_factory=dict)
+    outer: "Env" = None
+
+    def find(self, x: str):
+        if x in self.inner:
+            return self.inner
+
+        if self.outer is not None:
+            return self.outer.find(x)
+
+        return None
+
+
+def pb_concat(args: list, pb_env: Env, pb_vars: dict) -> str:
+    result = ""
+
+    for arg in args:
+        arg = pb_eval(arg, pb_env, pb_vars)
+        if not isinstance(arg, str):
+            raise PBError(f"Can only concat strings. Got {type(arg)}.")
+        result += arg
+
+    return result
+
+
+def pb_format(args: list, pb_env: Env, pb_vars: dict) -> str | None:
+    print(f"pb_format: {args=}")
+    if len(args) > 2:
+        raise PBError(f"Max 2 arguments.")
+    if len(args) == 0:
+        return ""
+
+    section = pb_eval(args[0], pb_env, pb_vars)
+    if not isinstance(section, Section):
+        raise PBError("Not a section!")
+
+    if len(args) == 1:
+        return section.format_with_raise(pb_vars)
+
+    pb_vars = pb_vars[pb_eval(args[1], pb_env, pb_vars)]
+    if isinstance(pb_vars, dict):
+        return section.format_with_raise(pb_vars)
+    if not isinstance(pb_vars, list):
+        raise PBError("Uh-oh, not a list!")
+
+    result = ""
+    for vars in pb_vars:
+        s = section.format_with_raise(vars)
+        # if s is None:
+        #     return None
+        result += s
+
+    return result
+
+
+def pb_one_of(args: list, pb_env: Env, pb_vars: dict) -> str:
+    for arg in args:
+        try:
+            arg = pb_eval(arg, pb_env, pb_vars)
+            if not (isinstance(arg, str) or arg is None):
+                raise PBError(f"Can only one_of strings or None. Got {type(arg)}.")
+            if arg is not None:
+                return arg
+        except Exception:
+            continue
+
+    raise PBError(f"one_of: All of the arguments were invalid.")
+
+
+def pb_eval(x, pb_env: Env, pb_vars: dict):
+    print(f"pb_eval: {x}")
+    if isinstance(x, Symbol) or (isinstance(x, str) and len(x) > 0 and x[0] == "$"):
+        f = pb_env.find(x)
+        if f is not None:
+            return f[x]
+        else:
+            return None
+
+    if not isinstance(x, dict):
+        return x
+
+    if len(list(x.keys())) != 1:
+        raise PBError("Only one action at a time!")
+
+    fn_name = list(x.keys())[0]
+    if not isinstance(fn_name, str):
+        raise PBError("Action key must be string!")
+
+    fn_args = x[fn_name]
+    if not isinstance(fn_args, list):
+        fn_args = [fn_args]
+
+    if fn_name == "quote" or fn_name == "q":
+        return fn_args[0]
+
+    func = pb_eval(Symbol(fn_name), pb_env, pb_vars)
+    return func(fn_args, pb_env, pb_vars)
+
+
+def standard_env():
+    return Env(
+        inner={
+            Symbol("concat"): pb_concat,
+            Symbol("format"): pb_format,
+            Symbol("one_of"): pb_one_of,
+        }
+    )
+
+
+global_env = standard_env()
 
 
 # TODO: Variants
@@ -69,22 +195,58 @@ class Section:
     Simple data class containing the template and the variables for a section
     """
 
+    # TODO: Fix this
+    @staticmethod
+    def from_dict(x: dict):
+        return Section(
+            uuid=x.get("uuid", None),
+            file_path=x.get("file_path", None),
+            template=x.get("template", None),
+            default_vars=x.get("default_vars", None),
+            build_steps=x.get("build_steps", None),
+        )
+
+    def to_dict(self):
+        return {
+            "uuid": self.uuid,
+            "file_path": self.file_path,
+            "template": self.template,
+            "default_vars": self.default_vars,
+            "build_steps": self.build_steps,
+        }
+
     def __init__(
         self,
         *,
+        uuid: str = None,
         file_path: str = None,
         template: str = None,
         default_vars: dict[str, str] = None,
+        build_steps: list = None,
     ):
-        if file_path is None == template is None:
-            raise Exception("Must provide one of: file_path, template")
+        print(type(template))
+        print(template)
 
-        if file_path is not None:
+        if uuid is None:
+            raise Exception("uuid can't be none")
+        self.uuid = uuid
+
+        if file_path is not None and template is not None:
+            raise Exception("Can't provide both file_path and template")
+        elif file_path is not None:
             self.file_path = file_path
             self.template = open(file_path).read()
-        else:
+        elif template is not None:
             self.file_path = "/dev/null"
             self.template = template
+        else:
+            self.file_path = "/dev/null"
+            self.template = ""
+
+        if build_steps is None:
+            build_steps = []
+
+        self.build_steps = build_steps
 
         itr = string.Formatter().parse(self.template)
         self.vars = [v[1] for v in itr if v[1] is not None]
@@ -106,6 +268,14 @@ class Section:
         vars_dict = self.default_vars | vars_dict
 
         return self.template.format(**vars_dict)
+
+    def format_with_raise(self, vars_dict: dict[str, str]):
+        if self.is_valid(vars_dict):
+            return self.format(vars_dict)
+
+        raise PBError(
+            f"Missing variables: {set(self.vars).difference(set(vars_dict))} for section '{self.uuid}'"
+        )
 
 
 # TODO: How to do optional sections that don't have variables?
@@ -163,66 +333,40 @@ class Config:
 
 
 T_DIR = path.join(path.dirname(__file__), "data/templates")
-S_PREAMBLE = Section(file_path=path.join(T_DIR, "preamble.txt"))
-S_SOLVED_EXAMPLE_DIFF = Section(file_path=path.join(T_DIR, "solved_example_diff.txt"))
-S_SOLVED_EXAMPLE_FILE = Section(file_path=path.join(T_DIR, "solved_example_file.txt"))
-S_SOLVED_EXAMPLE_NONE = Section(file_path=path.join(T_DIR, "solved_example_none.txt"))
-S_INPUT_FILE = Section(file_path=path.join(T_DIR, "input_file.txt"))
-S_OUTPUT_INSTRUCTIONS = Section(file_path=path.join(T_DIR, "output_instructions.txt"))
 
-# TODO: Allow for internal variable overrides. Chaining prompt builders?
-
-S_LLAMA_BEGIN = Section(
-    template="""
-<s>[INST] <<SYS>>
-{llama_sys}
-<</SYS>>
-""",
-    default_vars={
-        "llama_sys": "You are an AI Assistant trained on migrating enterprise JavaEE code to Quarkus."
-    },
-)
-
-S_LLAMA_END = Section(
-    template="""
-[/INST]
-"""
-)
+# # NOTE: May need to do something like foo: AtLeastOneOf([bar, baz]) or something
+# CONFIG_IBM_GRANITE = Config(
+#     [
+#         SectionGraph(S_PREAMBLE, False, {}),
+#         SectionGraph(
+#             S_SOLVED_EXAMPLE_NONE,
+#             False,
+#             {
+#                 S_SOLVED_EXAMPLE_NONE: [S_SOLVED_EXAMPLE_DIFF, S_SOLVED_EXAMPLE_FILE],
+#             },
+#         ),
+#         SectionGraph(S_INPUT_FILE, False, {}),
+#         SectionGraph(S_OUTPUT_INSTRUCTIONS, False, {}),
+#     ]
+# )
 
 
-# NOTE: May need to do something like foo: AtLeastOneOf([bar, baz]) or something
-CONFIG_IBM_GRANITE = Config(
-    [
-        SectionGraph(S_PREAMBLE, False, {}),
-        SectionGraph(
-            S_SOLVED_EXAMPLE_NONE,
-            False,
-            {
-                S_SOLVED_EXAMPLE_NONE: [S_SOLVED_EXAMPLE_DIFF, S_SOLVED_EXAMPLE_FILE],
-            },
-        ),
-        SectionGraph(S_INPUT_FILE, False, {}),
-        SectionGraph(S_OUTPUT_INSTRUCTIONS, False, {}),
-    ]
-)
-
-
-CONFIG_IBM_LLAMA = Config(
-    [
-        SectionGraph(S_LLAMA_BEGIN, False, {}),
-        SectionGraph(S_PREAMBLE, False, {}),
-        SectionGraph(
-            S_SOLVED_EXAMPLE_NONE,
-            False,
-            {
-                S_SOLVED_EXAMPLE_NONE: [S_SOLVED_EXAMPLE_DIFF, S_SOLVED_EXAMPLE_FILE],
-            },
-        ),
-        SectionGraph(S_INPUT_FILE, False, {}),
-        SectionGraph(S_OUTPUT_INSTRUCTIONS, False, {}),
-        SectionGraph(S_LLAMA_END, False, {}),
-    ]
-)
+# CONFIG_IBM_LLAMA = Config(
+#     [
+#         SectionGraph(S_LLAMA_BEGIN, False, {}),
+#         SectionGraph(S_PREAMBLE, False, {}),
+#         SectionGraph(
+#             S_SOLVED_EXAMPLE_NONE,
+#             False,
+#             {
+#                 S_SOLVED_EXAMPLE_NONE: [S_SOLVED_EXAMPLE_DIFF, S_SOLVED_EXAMPLE_FILE],
+#             },
+#         ),
+#         SectionGraph(S_INPUT_FILE, False, {}),
+#         SectionGraph(S_OUTPUT_INSTRUCTIONS, False, {}),
+#         SectionGraph(S_LLAMA_END, False, {}),
+#     ]
+# )
 
 
 # TODO: Make custom configs easier to define
@@ -260,135 +404,131 @@ class PromptBuilder:
         return result if not missing_vars else list(missing_vars - self.vars.keys())
 
 
-class GroupingStrategy(Enum):
-    GROUP_NONE = 0
-    GROUP_ON_VIOLATION = 1
+# def build_prompt_incident_solver(
+#     *,
+#     model: str = "granite",
+#     grouping: GroupingStrategy = GroupingStrategy.GROUP_NONE,
+#     src_file_name: str = None,
+#     src_file_language: str = None,
+#     src_file_contents: str = None,
+#     incidents: list[dict] = None,
+# ):
+#     """
+#     TODO: Make pydantic models so it's cleaner
 
+#     Assuming an incident is a dict with the following
+#     - ruleset_name (str)
+#     - violation_name (str)
+#     - incident_snip (str optional)
+#     - incident_variables (object)
+#     - line_number: 0-indexed (let's keep it consistent)
+#     - analysis_message (str)
+#     - solved_example (str)
+#     """
 
-def build_prompt_incident_solver(
-    *,
-    model: str = "granite",
-    grouping: GroupingStrategy = GroupingStrategy.GROUP_NONE,
-    src_file_name: str = None,
-    src_file_language: str = None,
-    src_file_contents: str = None,
-    incidents: list[dict] = None,
-):
-    """
-    TODO: Make pydantic models so it's cleaner
+#     if src_file_name is None:
+#         raise ValueError("Must provide a source file name to prompt builder")
 
-    Assuming an incident is a dict with the following
-    - ruleset_name (str)
-    - violation_name (str)
-    - incident_snip (str optional)
-    - incident_variables (object)
-    - line_number: 0-indexed (let's keep it consistent)
-    - analysis_message (str)
-    - solved_example (str)
-    """
+#     if src_file_language is None:
+#         _, ext = os.path.splitext(src_file_name)
+#         src_file_language = ext[1:] if len(ext) > 0 else ""
 
-    if src_file_name is None:
-        raise ValueError("Must provide a source file name to prompt builder")
+#     if src_file_contents is None:
+#         raise ValueError("Must provide source file contents to prompt builder")
 
-    if src_file_language is None:
-        _, ext = os.path.splitext(src_file_name)
-        src_file_language = ext[1:] if len(ext) > 0 else ""
+#     if incidents is None:
+#         incidents = []
 
-    if src_file_contents is None:
-        raise ValueError("Must provide source file contents to prompt builder")
+#     preamble = """# Java EE to Quarkus Migration
 
-    if incidents is None:
-        incidents = []
+# You are an AI Assistant trained on migrating enterprise JavaEE code to Quarkus. I will give you an example of a JavaEE file and you will give me the Quarkus equivalent.
 
-    preamble = """# Java EE to Quarkus Migration
-You are an AI Assistant trained on migrating enterprise JavaEE code to Quarkus. I will give you an example of a JavaEE file and you will give me the Quarkus equivalent.
+# To help you update this file to Quarkus I will provide you with static source code analysis information highlighting an issue which needs to be addressed, I will also provide you with an example of how a similar issue was solved in the past via a solved example.  You can refer to the solved example for a pattern of how to update the input Java EE file to Quarkus.
 
-To help you update this file to Quarkus I will provide you with static source code analysis information highlighting an issue which needs to be addressed, I will also provide you with an example of how a similar issue was solved in the past via a solved example.  You can refer to the solved example for a pattern of how to update the input Java EE file to Quarkus.
+# Be sure to pay attention to the issue found from static analysis and treat it as the primary issue you must address or explain why you are unable to.
 
-Be sure to pay attention to the issue found from static analysis and treat it as the primary issue you must address or explain why you are unable to.
+# Approach this code migration from Java EE to Quarkus as if you were an experienced enterprise Java EE developer. Before attempting to migrate the code to Quarkus, explain each step of your reasoning through what changes are required and why.
 
-Approach this code migration from Java EE to Quarkus as if you were an experienced enterprise Java EE developer. Before attempting to migrate the code to Quarkus, explain each step of your reasoning through what changes are required and why. 
+# Pay attention to changes you make and impacts to external dependencies in the pom.xml as well as changes to imports we need to consider.
 
-Pay attention to changes you make and impacts to external dependencies in the pom.xml as well as changes to imports we need to consider.
+# As you make changes that impact the pom.xml or imports, be sure you explain what needs to be updated.
 
-As you make changes that impact the pom.xml or imports, be sure you explain what needs to be updated.
+# After you have shared your step by step thinking, provide a full output of the updated file.
 
-After you have shared your step by step thinking, provide a full output of the updated file.
+# """
 
-"""
+#     input_information = """# Input Information
 
-    input_information = """# Input Information
+# """
 
-"""
+#     input_file = """## Input File
 
-    input_file = """## Input File
-    
-File name: "{src_file_name}"
-Source file contents:
-```{src_file_language}
-{src_file_contents}
+# File name: "{src_file_name}"
+# Source file contents:
+# ```{src_file_language}
+# {src_file_contents}'
+# ```
 
-```
+# """.format(
+#         src_file_name=src_file_name,
+#         src_file_language=src_file_language,
+#         src_file_contents=src_file_contents,
+#     )
 
-""".format(
-        src_file_name=src_file_name,
-        src_file_language=src_file_language,
-        src_file_contents=src_file_contents,
-    )
+#     issues = "## Issues \n\n"
 
-    issues = "## Issues \n\n"
+#     if grouping == GroupingStrategy.GROUP_NONE:
+#         for i in range(len(incidents)):
+#             issues += """### Issue {i}
+# Issue to fix: "{analysis_message}"
+# Line number: {analysis_line_number}
+# """.format(
+#                 i=i,
+#                 analysis_message=incidents[i]["analysis_message"],
+#                 analysis_line_number=incidents[i]["analysis_line_number"],
+#             )
 
-    if grouping == GroupingStrategy.GROUP_NONE:
-        for i in range(len(incidents)):
-            issues += """### Issue {i}
-- Issue to fix: "{analysis_message}"
-- Line number: {analysis_line_number}
-""".format(
-                i=i,
-                analysis_message=incidents[i]["analysis_message"],
-                analysis_line_number=incidents[i]["analysis_line_number"],
-            )
+#             if "solved_example" in incidents[i]:
+#                 issues += """Solved example:
+# ```diff
+# {solved_example_diff}
+# ```
+# """.format(
+#                     solved_example_diff=incidents[i]["solved_example_diff"]
+#                 )
+#             issues += "\n"
+#     # elif grouping == GroupingStrategy.GROUP_ON_VIOLATION:
+#     #     raise Exception()
+#     else:
+#         raise ValueError(f"Invalid grouping strategy {grouping}")
 
-            if "solved_example" in incidents[i]:
-                issues += """Solved example:
-```diff
-{solved_example_diff}
-```
-""".format(
-                    solved_example_diff=incidents[i]["solved_example_diff"]
-                )
-            issues += "\n"
-    # elif grouping == GroupingStrategy.GROUP_ON_VIOLATION:
-    #     raise Exception()
-    else:
-        raise ValueError(f"Invalid grouping strategy {grouping}")
+#     # res = {i: [j[0] for j in j] for i, j in itertools.groupby(sorted(test_dict.items(), key = lambda x : x[1]), lambda x : x[1])}
 
-    # res = {i: [j[0] for j in j] for i, j in itertools.groupby(sorted(test_dict.items(), key = lambda x : x[1]), lambda x : x[1])}
+#     # for i, j in itertools.groupby(sorted(test_dict.items(), key = lambda x : x[1]), lambda x : x[1]):
 
-    # for i, j in itertools.groupby(sorted(test_dict.items(), key = lambda x : x[1]), lambda x : x[1]):
+#     output_instructions = """# Output instructions
 
-    output_instructions = """# Output instructions
+# Structure your output in the following Markdown format:
 
-Structure your output in the following Markdown format:
+# ## Reasoning
 
-## Reasoning 
+# Write the step by step reasoning in this markdown section. If you are unsure of a step or reasoning, clearly state you are unsure and why.
 
-Write the step by step reasoning in this markdown section. If you are unsure of a step or reasoning, clearly state you are unsure and why.
+# ## Updated File
 
-## Updated File
+# ```{src_file_language}
+# // Write the updated file for Quarkus in this section
+# ```
 
-```{src_file_language}
-// Write the updated file for Quarkus in this section
-```
+# """.format(
+#         src_file_language=src_file_language
+#     )
 
-""".format(
-        src_file_language=src_file_language
-    )
-
-    return preamble + input_information + input_file + issues + output_instructions
+#     return preamble + input_information + input_file + issues + output_instructions
 
 
 if __name__ == "__main__":
+    """
     # pb = PromptBuilder(CONFIG_IBM_GRANITE)
 
     # print(pb.build_prompt())
@@ -427,6 +567,58 @@ if __name__ == "__main__":
     # }
 
     # print(pb.build_prompt())
+
+    """
+
+    # Example usage
+    yaml_str = """
+uuid: $ibm_config
+file_path: null
+default_vars: null
+build_steps:
+    - one_of:
+        - format: $test_0
+        - format: $test_1
+    - format: [ $test_0, test_0 ]
+    # - format: [ "123" ]
+    # - one_of:
+    #     - format: [ xyz, asdfgh ]
+    #     - format: [ abc, qwerty ]
+    #     - format: [ ]
+---
+uuid: $test_0
+template: "{replace_me}"
+---
+uuid: $test_1
+template: "Hello!"
+"""
+
+    documents = yaml.safe_load_all(yaml_str)
+
+    for doc in documents:
+        s = Section.from_dict(doc)
+        if global_env.find(s.uuid) is not None:
+            print("already exists")
+        else:
+            global_env.inner[s.uuid] = s
+
+    s = global_env.find("$ibm_config")["$ibm_config"]
+    print(yaml.dump(s.to_dict()))
+    print(
+        pb_concat(
+            s.build_steps,
+            global_env,
+            {
+                "test_0": [
+                    {"replace_me": "first"},
+                    {"replace_me": "second"},
+                    {"replace_me": "third"},
+                ]
+            },
+        )
+    )
+
+    exit()
 
     x = build_prompt_incident_solver(
         src_file_name="/var/whatever.java",
