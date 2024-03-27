@@ -312,9 +312,16 @@ async def main():
 
             try:
                 resp_json: dict = await resp.json()
+                print("updated_file")
+                input()
                 print(resp_json["updated_file"])
                 input()
-                print(resp_json["total_reasoning"])
+                print(f"total_reasoning, {len(resp_json['total_reasoning'])} items")
+                input()
+                for x in resp_json["total_reasoning"]:
+                    print(x)
+                    input()
+                print(f"used_prompts, {len(resp_json['used_prompts'])} items")
                 input()
                 for x in resp_json["used_prompts"]:
                     print(x)

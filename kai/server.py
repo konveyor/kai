@@ -25,22 +25,12 @@ from aiohttp import web
 from aiohttp.web_request import Request
 from incident_store_advanced import Application, EmbeddingNone, PSQLIncidentStore
 from kai_logging import KAI_LOG
-from model_provider import (
-    IBMGraniteModel,
-    IBMOpenSourceModel,
-    ModelProvider,
-    OpenAIModel,
-)
+from model_provider import IBMGraniteModel, IBMOpenSourceModel, OpenAIModel
 from prompt_builder import CONFIG_IBM_GRANITE_MF, build_prompt
 from report import Report
 
 from kai.capture import Capture
-from kai.incident_store_advanced import Application, EmbeddingNone, PSQLIncidentStore
-from kai.kai_logging import KAI_LOG
-from kai.model_provider import IBMGraniteModel, IBMOpenSourceModel, OpenAIModel
-from kai.prompt_builder import PromptBuilder
 from kai.pydantic_models import parse_file_solution_content
-from kai.report import Report
 
 LLM_RETRIES = 5
 LLM_RETRY_DELAY = 10
@@ -281,7 +271,9 @@ def get_incident_solution(request_app, request_json: dict, stream: bool = False)
         pb_vars["solved_example_diff"] = solved_example["solution_small_diff"]
         pb_vars["solved_example_file_name"] = solved_incident["incident_uri"]
 
-    prompt = build_prompt(request_app["model_provider"].get_prompt_builder_config(), pb_vars)
+    prompt = build_prompt(
+        request_app["model_provider"].get_prompt_builder_config(), pb_vars
+    )
     capture.prompt = prompt
 
     if stream:
@@ -355,7 +347,7 @@ async def post_get_incident_solution(request: Request):
 
     KAI_LOG.debug(f"post_get_incident_solution recv'd: {request}")
 
-    llm_output = get_incident_solution(await request.json(), False).content
+    llm_output = get_incident_solution(request.app, await request.json(), False).content
 
     return web.json_response(
         {
@@ -376,7 +368,7 @@ async def ws_get_incident_solution(request: Request):
         try:
             json_request = json.loads(msg.data)
 
-            for chunk in get_incident_solution(json_request, True):
+            for chunk in get_incident_solution(request.app, json_request, True):
                 await ws.send_str(
                     json.dumps(
                         {
@@ -524,7 +516,7 @@ async def get_incident_solutions_for_file(request: Request):
             #             f"Processing incident {count}/{len(request_json['incidents'])} for {incident['file_name']}"
             #         )
 
-            llm_result = model_provider.invoke(prompt)
+            llm_result = request.app["model_provider"].invoke(prompt)
             content = parse_file_solution_content(llm_result.content)
 
             total_reasoning.append(content.reasoning)
