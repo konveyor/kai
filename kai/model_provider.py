@@ -50,7 +50,13 @@ class ModelProvider(ABC):
 
 
 class IBMGraniteModel(ModelProvider):
-    def __init__(self, model_id: str = "ibm/granite-13b-chat-v2") -> None:
+    def __init__(
+        self,
+        model_id: str = "ibm/granite-13b-chat-v2",
+        temperature=0.1,
+        top_k=50,
+        top_p=1,
+    ) -> None:
         if os.environ.get("GENAI_KEY") is None:
             raise Exception(
                 "Must set GENAI_KEY in environment if using IBMGraniteModel"
@@ -85,9 +91,9 @@ class IBMGraniteModel(ModelProvider):
                 decoding_method=DecodingMethod.SAMPLE,
                 max_new_tokens=4096,
                 min_new_tokens=10,
-                temperature=0.1,
-                top_k=50,
-                top_p=1,
+                temperature=temperature,
+                top_k=top_k,
+                top_p=top_p,
                 return_options=TextGenerationReturnOptions(
                     input_text=False, input_tokens=True
                 ),
@@ -120,6 +126,9 @@ class IBMOpenSourceModel(ModelProvider):
     def __init__(
         self,
         model_id: str = "meta-llama/llama-2-13b-chat",
+        temperature=0.1,
+        top_k=50,
+        top_p=1,
     ) -> None:
         if os.environ.get("GENAI_KEY") is None:
             raise Exception(
@@ -160,9 +169,9 @@ class IBMOpenSourceModel(ModelProvider):
                 # max_new_tokens=4096,
                 max_new_tokens=1536,
                 min_new_tokens=10,
-                temperature=0.1,
-                top_k=50,
-                top_p=1,
+                temperature=temperature,
+                top_k=top_k,
+                top_p=top_p,
                 return_options=TextGenerationReturnOptions(
                     input_text=False, input_tokens=True
                 ),
@@ -193,7 +202,7 @@ class IBMOpenSourceModel(ModelProvider):
 
 # FIXME: Remove for final demo
 class OpenAIModel(ModelProvider):
-    def __init__(self, model_id: str = "gpt-3.5-turbo"):
+    def __init__(self, model_id: str = "gpt-3.5-turbo", temperature: float = 0.7):
         self.prompt_builder_config = prompt_builder.CONFIG_IBM_GRANITE
         self.models = [
             "gpt-4-0125-preview",
@@ -222,7 +231,9 @@ class OpenAIModel(ModelProvider):
                 f"Invalid model_id: {model_id}\nValid models: {valid_models}"
             )
 
-        self.llm = ChatOpenAI(model=self.model_id, streaming=True)
+        self.llm = ChatOpenAI(
+            model=self.model_id, streaming=True, temperature=temperature
+        )
 
     def invoke(self, prompt: str):
         return self.llm.invoke(prompt)
