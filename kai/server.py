@@ -519,6 +519,10 @@ async def get_incident_solutions_for_file(request: Request):
                 content = parse_file_solution_content(
                     src_file_language, llm_result.content
                 )
+                if not content.updated_file:
+                    raise Exception(
+                        f"Error in LLM Response: The LLM did not provide an updated file for {request_json['file_name']}"
+                    )
                 if request_json.get("include_llm_results"):
                     llm_results.append(llm_result.content)
 

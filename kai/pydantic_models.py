@@ -34,7 +34,13 @@ def parse_file_solution_content(language: str, content: str) -> FileSolutionCont
 
     reasoning_match = re.search(reasoning_pattern, content, re.DOTALL)
     reasoning = reasoning_match.group(1).strip() if reasoning_match else ""
-    code_block_matches = re.findall(code_block_pattern, content, re.DOTALL)
+
+    # Only search under the Updated File header if it exists
+    if "## Updated File" in content:
+        updated_file_content = content.split("## Updated File")[1]
+    else:
+        updated_file_content = content
+    code_block_matches = re.findall(code_block_pattern, updated_file_content, re.DOTALL)
 
     matching_blocks = []
     for block in code_block_matches:
