@@ -29,7 +29,7 @@ from kai.incident_store_advanced import Application, EmbeddingNone, PSQLIncident
 from kai.kai_logging import KAI_LOG
 from kai.model_provider import IBMGraniteModel, IBMOpenSourceModel, OpenAIModel
 from kai.prompt_builder import CONFIG_IBM_GRANITE_MF, build_prompt
-from kai.pydantic_models import parse_file_solution_content
+from kai.pydantic_models import guess_language, parse_file_solution_content
 from kai.report import Report
 
 LLM_RETRIES = 5
@@ -435,6 +435,13 @@ async def get_incident_solutions_for_file(request: Request):
         f"START - App: '{request_json['application_name']}', File: '{request_json['file_name']}' with {len(request_json['incidents'])} incidents'"
     )
 
+    src_file_language = guess_language(
+        request_json.get("file_contents"), filename=request_json["file_name"]
+    )
+    KAI_LOG.debug(
+        f"{request_json['file_name']} classified as filetype {src_file_language}"
+    )
+
     batch_mode = request_json.get("batch_mode", "single_group")
     include_solved_incidents = request_json.get("include_solved_incidents", True)
 
@@ -458,7 +465,7 @@ async def get_incident_solutions_for_file(request: Request):
     for count, (_, incidents) in enumerate(batched, 1):
         for i, incident in enumerate(incidents, 1):
             incident["issue_number"] = i
-            incident["src_file_language"] = "java"  # FIXME:
+            incident["src_file_language"] = src_file_language
             incident["analysis_line_number"] = incident["line_number"]
 
             if include_solved_incidents:
@@ -491,7 +498,7 @@ async def get_incident_solutions_for_file(request: Request):
             CONFIG_IBM_GRANITE_MF,
             {
                 "src_file_name": request_json["file_name"],
-                "src_file_language": "java",
+                "src_file_language": src_file_language,
                 "src_file_contents": updated_file,
                 "incidents": incidents,
             },
@@ -507,7 +514,9 @@ async def get_incident_solutions_for_file(request: Request):
         for _ in range(LLM_RETRIES):
             try:
                 llm_result = request.app["model_provider"].invoke(prompt)
-                content = parse_file_solution_content(llm_result.content)
+                content = parse_file_solution_content(
+                    src_file_language, llm_result.content
+                )
 
                 total_reasoning.append(content.reasoning)
                 updated_file = content.updated_file
