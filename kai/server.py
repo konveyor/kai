@@ -519,22 +519,28 @@ async def get_incident_solutions_for_file(request: Request):
                 content = parse_file_solution_content(
                     src_file_language, llm_result.content
                 )
-                if not content.updated_file:
-                    raise Exception(
-                        f"Error in LLM Response: The LLM did not provide an updated file for {request_json['file_name']}"
-                    )
                 if request_json.get("include_llm_results"):
                     llm_results.append(llm_result.content)
 
                 total_reasoning.append(content.reasoning)
-                updated_file = content.updated_file
                 used_prompts.append(prompt)
+                if not content.updated_file:
+                    raise Exception(
+                        f"Error in LLM Response: The LLM did not provide an updated file for {request_json['file_name']}"
+                    )
+                updated_file = content.updated_file
                 break
             except Exception as e:
                 KAI_LOG.warn(
                     f"Request to model failed for batch {count}/{len(batched)} for {request_json['file_name']} with exception, retrying in {LLM_RETRY_DELAY}s\n{e}"
                 )
                 time.sleep(LLM_RETRY_DELAY)
+        else:
+            KAI_LOG.error(f"{request_json['file_name']} failed to migrate")
+            raise web.HTTPInternalServerError(
+                reason="Migration failed",
+                text=f"The LLM did not generate a valid response: {llm_result}",
+            )
 
     end = time.time()
     KAI_LOG.info(

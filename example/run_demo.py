@@ -156,12 +156,23 @@ def write_to_disk(file_path, updated_file_contents):
         KAI_LOG.error(f"Failed to write reasoning @ {reasoning_path} with error: {e}")
         KAI_LOG.error(f"Contents: {updated_file_contents}")
         sys.exit(1)
+
+    prompts_path = f"{intended_file_path}.prompts"
+    KAI_LOG.info(f"Writing prompts to {prompts_path}")
+    try:
+        with open(prompts_path, "w") as f:
+            f.write("\n---\n".join(updated_file_contents["used_prompts"]))
+    except Exception as e:
+        KAI_LOG.error(f"Failed to write prompts @ {prompts_path} with error: {e}")
+        KAI_LOG.error(f"Contents: {updated_file_contents}")
+        sys.exit(1)
+
     if updated_file_contents.get("llm_results"):
         llm_result_path = f"{intended_file_path}.llm_result"
         KAI_LOG.info(f"Writing llm_result to {llm_result_path}")
         try:
             with open(llm_result_path, "w") as f:
-                f.write("\n\n".join(updated_file_contents["llm_results"]))
+                f.write("\n---\n".join(updated_file_contents["llm_results"]))
         except Exception as e:
             KAI_LOG.error(
                 f"Failed to write llm_result @ {llm_result_path} with error: {e}"
