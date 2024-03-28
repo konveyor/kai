@@ -63,5 +63,6 @@ def parse_file_solution_content(language: str, content: str) -> FileSolutionCont
     else:
         updated_file = ""
         KAI_LOG.warn("No codeblocks detected in LLM response")
+        KAI_LOG.debug(content)
 
     return FileSolutionContent(reasoning=reasoning, updated_file=updated_file)

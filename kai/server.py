@@ -425,6 +425,7 @@ async def get_incident_solutions_for_file(request: Request):
         - incident_variables (object)
         - line_number: 0-indexed (let's keep it consistent)
         - analysis_message (str)
+    - include_llm_results (bool)
     """
     start = time.time()
     KAI_LOG.debug(f"get_incident_solutions_for_file recv'd: {request}")
@@ -449,6 +450,7 @@ async def get_incident_solutions_for_file(request: Request):
     # section. It doesn't like lambdas for some reason :(
     updated_file = request_json["file_contents"]
     total_reasoning = []
+    llm_results = []
     used_prompts = []
 
     batch_key_fn, batch_res_fn = get_key_and_res_function(batch_mode)
@@ -517,6 +519,8 @@ async def get_incident_solutions_for_file(request: Request):
                 content = parse_file_solution_content(
                     src_file_language, llm_result.content
                 )
+                if request_json.get("include_llm_results"):
+                    llm_results.append(llm_result.content)
 
                 total_reasoning.append(content.reasoning)
                 updated_file = content.updated_file
@@ -532,14 +536,15 @@ async def get_incident_solutions_for_file(request: Request):
     KAI_LOG.info(
         f"END - completed in '{end-start}s:  - App: '{request_json['application_name']}', File: '{request_json['file_name']}' with {len(request_json['incidents'])} incidents'"
     )
+    response = {
+        "updated_file": updated_file,
+        "total_reasoning": total_reasoning,
+        "used_prompts": used_prompts,
+    }
+    if request_json.get("include_llm_results"):
+        response["llm_results"] = llm_results
 
-    return web.json_response(
-        {
-            "updated_file": updated_file,
-            "total_reasoning": total_reasoning,
-            "used_prompts": used_prompts,
-        }
-    )
+    return web.json_response(response)
 
 
 def app(loglevel):
