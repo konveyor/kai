@@ -29,7 +29,7 @@ from kai.incident_store_advanced import Application, EmbeddingNone, PSQLIncident
 from kai.kai_logging import KAI_LOG
 from kai.model_provider import IBMGraniteModel, IBMOpenSourceModel, OpenAIModel
 from kai.prompt_builder import CONFIG_IBM_GRANITE_MF, build_prompt
-from kai.pydantic_models import parse_file_solution_content
+from kai.pydantic_models import guess_language, parse_file_solution_content
 from kai.report import Report
 
 LLM_RETRIES = 5
@@ -425,6 +425,7 @@ async def get_incident_solutions_for_file(request: Request):
         - incident_variables (object)
         - line_number: 0-indexed (let's keep it consistent)
         - analysis_message (str)
+    - include_llm_results (bool)
     """
     start = time.time()
     KAI_LOG.debug(f"get_incident_solutions_for_file recv'd: {request}")
@@ -435,6 +436,13 @@ async def get_incident_solutions_for_file(request: Request):
         f"START - App: '{request_json['application_name']}', File: '{request_json['file_name']}' with {len(request_json['incidents'])} incidents'"
     )
 
+    src_file_language = guess_language(
+        request_json.get("file_contents"), filename=request_json["file_name"]
+    )
+    KAI_LOG.debug(
+        f"{request_json['file_name']} classified as filetype {src_file_language}"
+    )
+
     batch_mode = request_json.get("batch_mode", "single_group")
     include_solved_incidents = request_json.get("include_solved_incidents", True)
 
@@ -442,6 +450,7 @@ async def get_incident_solutions_for_file(request: Request):
     # section. It doesn't like lambdas for some reason :(
     updated_file = request_json["file_contents"]
     total_reasoning = []
+    llm_results = []
     used_prompts = []
 
     batch_key_fn, batch_res_fn = get_key_and_res_function(batch_mode)
@@ -458,7 +467,7 @@ async def get_incident_solutions_for_file(request: Request):
     for count, (_, incidents) in enumerate(batched, 1):
         for i, incident in enumerate(incidents, 1):
             incident["issue_number"] = i
-            incident["src_file_language"] = "java"  # FIXME:
+            incident["src_file_language"] = src_file_language
             incident["analysis_line_number"] = incident["line_number"]
 
             if include_solved_incidents:
@@ -491,7 +500,7 @@ async def get_incident_solutions_for_file(request: Request):
             CONFIG_IBM_GRANITE_MF,
             {
                 "src_file_name": request_json["file_name"],
-                "src_file_language": "java",
+                "src_file_language": src_file_language,
                 "src_file_contents": updated_file,
                 "incidents": incidents,
             },
@@ -507,30 +516,45 @@ async def get_incident_solutions_for_file(request: Request):
         for _ in range(LLM_RETRIES):
             try:
                 llm_result = request.app["model_provider"].invoke(prompt)
-                content = parse_file_solution_content(llm_result.content)
+                content = parse_file_solution_content(
+                    src_file_language, llm_result.content
+                )
+                if request_json.get("include_llm_results"):
+                    llm_results.append(llm_result.content)
 
                 total_reasoning.append(content.reasoning)
-                updated_file = content.updated_file
                 used_prompts.append(prompt)
+                if not content.updated_file:
+                    raise Exception(
+                        f"Error in LLM Response: The LLM did not provide an updated file for {request_json['file_name']}"
+                    )
+                updated_file = content.updated_file
                 break
             except Exception as e:
                 KAI_LOG.warn(
                     f"Request to model failed for batch {count}/{len(batched)} for {request_json['file_name']} with exception, retrying in {LLM_RETRY_DELAY}s\n{e}"
                 )
                 time.sleep(LLM_RETRY_DELAY)
+        else:
+            KAI_LOG.error(f"{request_json['file_name']} failed to migrate")
+            raise web.HTTPInternalServerError(
+                reason="Migration failed",
+                text=f"The LLM did not generate a valid response: {llm_result}",
+            )
 
     end = time.time()
     KAI_LOG.info(
         f"END - completed in '{end-start}s:  - App: '{request_json['application_name']}', File: '{request_json['file_name']}' with {len(request_json['incidents'])} incidents'"
     )
+    response = {
+        "updated_file": updated_file,
+        "total_reasoning": total_reasoning,
+        "used_prompts": used_prompts,
+    }
+    if request_json.get("include_llm_results"):
+        response["llm_results"] = llm_results
 
-    return web.json_response(
-        {
-            "updated_file": updated_file,
-            "total_reasoning": total_reasoning,
-            "used_prompts": used_prompts,
-        }
-    )
+    return web.json_response(response)
 
 
 def app(loglevel):
