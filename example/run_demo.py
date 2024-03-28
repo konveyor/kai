@@ -158,7 +158,7 @@ def write_to_disk(file_path, updated_file_contents):
         sys.exit(1)
     if updated_file_contents.get("llm_results"):
         llm_result_path = f"{intended_file_path}.llm_result"
-        KAI_LOG.info(f"Writing reasoning to {llm_result_path}")
+        KAI_LOG.info(f"Writing llm_result to {llm_result_path}")
         try:
             with open(llm_result_path, "w") as f:
                 f.write("\n\n".join(updated_file_contents["llm_results"]))
