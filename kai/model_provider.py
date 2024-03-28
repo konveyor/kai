@@ -202,7 +202,7 @@ class IBMOpenSourceModel(ModelProvider):
 
 # FIXME: Remove for final demo
 class OpenAIModel(ModelProvider):
-    def __init__(self, model_id: str = "gpt-3.5-turbo", temperature: float = 0.7):
+    def __init__(self, model_id: str = "gpt-3.5-turbo", temperature: float = 0.1):
         self.prompt_builder_config = prompt_builder.CONFIG_IBM_GRANITE
         self.models = [
             "gpt-4-0125-preview",
