@@ -58,14 +58,16 @@ class IBMGraniteModel(ModelProvider):
 
         self.prompt_builder_config = prompt_builder.CONFIG_IBM_GRANITE
         self.models = [
-            # NOTE: These models require some extra "plumbing", unsure how to use
-            # "ibm/granite-13b-instruct-v1",
-            # "ibm/granite-13b-instruct-v2",
-            # "ibm/granite-20b-5lang-instruct-rc",
-            # "ibm/granite-20b-code-instruct-v1",
-            # "ibm/granite-20b-code-instruct-v1-gptq",
-            "ibm/granite-20b-code-instruct-v1"
+            # NOTE: Some of these models require some extra "plumbing", unsure how to use
+            "ibm/granite-20b-code-instruct-v1",
+            "ibm/granite-13b-chat-v1",
             "ibm/granite-13b-chat-v2",
+            "ibm/granite-13b-lab-incubation",
+            "ibm/granite-20b-code-instruct-v1",
+            "ibm/granite-20b-code-instruct-v1-gptq",
+            "ibm/granite-20b-multilang-lab-rc",
+            "ibm/granite-20b-multilingual",
+            "ibm/granite-3b-code-plus-v1",
         ]
 
         if model_id in self.models:
