@@ -64,13 +64,17 @@ class IBMGraniteModel(ModelProvider):
             # "ibm/granite-20b-5lang-instruct-rc",
             # "ibm/granite-20b-code-instruct-v1",
             # "ibm/granite-20b-code-instruct-v1-gptq",
+            "ibm/granite-20b-code-instruct-v1"
             "ibm/granite-13b-chat-v2",
         ]
 
         if model_id in self.models:
             self.model_id = model_id
         else:
-            self.model_id = "ibm/granite-20b-code-instruct-v1"
+            valid_models = "\n\t".join(self.models)
+            raise Exception(
+                f"Invalid model_id: {model_id}\nValid models: {valid_models}"
+            )
 
         self.llm = LangChainChatInterface(
             client=Client(credentials=Credentials.from_env()),
@@ -122,18 +126,27 @@ class IBMOpenSourceModel(ModelProvider):
 
         self.prompt_builder_config = prompt_builder.CONFIG_IBM_LLAMA
         self.models = [
-            "ibm-mistralai/mixtral-8x7b-instruct-v01-q",
-            # "codellama/codellama-34b-instruct",
-            # "codellama/codellama-70b-instruct",
-            # "mistralai/mistral-7b-instruct-v0-2",
-            # "thebloke/mixtral-8x7b-v0-1-gptq",
+            "mistralai/mistral-7b-instruct-v0-2",
+            "mistralai/mixtral-8x7b-instruct-v0-1",
+            "ibm-mistralai/mixtral-8x7b-instruct-v01-q",  # quantized
+            "thebloke/mixtral-8x7b-v0-1-gptq",  # quantized
+            "codellama/codellama-34b-instruct",
+            "codellama/codellama-70b-instruct",
+            "deepseek-ai/deepseek-coder-33b-instruct",
+            "tiiuae/falcon-180b",
+            "tiiuae/falcon-40b",
+            "ibm/falcon-40b-8lang-instruct" "meta-llama/llama-2-70b-chat",
             "meta-llama/llama-2-13b-chat",
+            "meta-llama/llama-2-7b",
         ]
 
         if model_id in self.models:
             self.model_id = model_id
         else:
-            self.model_id = "meta-llama/llama-2-13b-chat"
+            valid_models = "\n\t".join(self.models)
+            raise Exception(
+                f"Invalid model_id: {model_id}\nValid models: {valid_models}"
+            )
 
         self.llm = LangChainChatInterface(
             client=Client(credentials=Credentials.from_env()),
@@ -202,7 +215,10 @@ class OpenAIModel(ModelProvider):
         if model_id in self.models:
             self.model_id = model_id
         else:
-            self.model_id = "gpt-3.5-turbo"
+            valid_models = "\n\t".join(self.models)
+            raise Exception(
+                f"Invalid model_id: {model_id}\nValid models: {valid_models}"
+            )
 
         self.llm = ChatOpenAI(model=self.model_id, streaming=True)
 
