@@ -150,7 +150,8 @@ class IBMOpenSourceModel(ModelProvider):
             "deepseek-ai/deepseek-coder-33b-instruct",
             "tiiuae/falcon-180b",
             "tiiuae/falcon-40b",
-            "ibm/falcon-40b-8lang-instruct" "meta-llama/llama-2-70b-chat",
+            "ibm/falcon-40b-8lang-instruct",
+            "meta-llama/llama-2-70b-chat",
             "meta-llama/llama-2-13b-chat",
             "meta-llama/llama-2-7b",
         ]
