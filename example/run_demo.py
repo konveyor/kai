@@ -147,28 +147,10 @@ def write_to_disk(file_path, updated_file_contents):
         KAI_LOG.error(f"Contents: {updated_file_contents}")
         sys.exit(1)
 
-    reasoning_path = f"{intended_file_path}.reasoning"
-    KAI_LOG.info(f"Writing reasoning to {reasoning_path}")
-    try:
-        with open(reasoning_path, "w") as f:
-            json.dump(updated_file_contents["total_reasoning"], f)
-    except Exception as e:
-        KAI_LOG.error(f"Failed to write reasoning @ {reasoning_path} with error: {e}")
-        KAI_LOG.error(f"Contents: {updated_file_contents}")
-        sys.exit(1)
-
-    prompts_path = f"{intended_file_path}.prompts"
-    KAI_LOG.info(f"Writing prompts to {prompts_path}")
-    try:
-        with open(prompts_path, "w") as f:
-            f.write("\n---\n".join(updated_file_contents["used_prompts"]))
-    except Exception as e:
-        KAI_LOG.error(f"Failed to write prompts @ {prompts_path} with error: {e}")
-        KAI_LOG.error(f"Contents: {updated_file_contents}")
-        sys.exit(1)
-
+    # since the other files are all contained within the llm_result, avoid duplication
+    # when they're available
     if updated_file_contents.get("llm_results"):
-        llm_result_path = f"{intended_file_path}.llm_result"
+        llm_result_path = f"{intended_file_path}.llm_result.md"
         KAI_LOG.info(f"Writing llm_result to {llm_result_path}")
         try:
             model_id = updated_file_contents.get("model_id", "unknown")
@@ -178,6 +160,42 @@ def write_to_disk(file_path, updated_file_contents):
         except Exception as e:
             KAI_LOG.error(
                 f"Failed to write llm_result @ {llm_result_path} with error: {e}"
+            )
+            KAI_LOG.error(f"Contents: {updated_file_contents}")
+            sys.exit(1)
+    else:
+        reasoning_path = f"{intended_file_path}.reasoning"
+        KAI_LOG.info(f"Writing reasoning to {reasoning_path}")
+        try:
+            with open(reasoning_path, "w") as f:
+                json.dump(updated_file_contents["total_reasoning"], f)
+        except Exception as e:
+            KAI_LOG.error(
+                f"Failed to write reasoning @ {reasoning_path} with error: {e}"
+            )
+            KAI_LOG.error(f"Contents: {updated_file_contents}")
+            sys.exit(1)
+
+        prompts_path = f"{intended_file_path}.prompts.md"
+        KAI_LOG.info(f"Writing prompts to {prompts_path}")
+        try:
+            with open(prompts_path, "w") as f:
+                f.write("\n---\n".join(updated_file_contents["used_prompts"]))
+        except Exception as e:
+            KAI_LOG.error(f"Failed to write prompts @ {prompts_path} with error: {e}")
+            KAI_LOG.error(f"Contents: {updated_file_contents}")
+            sys.exit(1)
+
+        additional_information_path = f"{intended_file_path}.additional_information.md"
+        KAI_LOG.info(f"Writing additional_information to {additional_information_path}")
+        try:
+            with open(additional_information_path, "w") as f:
+                f.write(
+                    "\n---\n".join(updated_file_contents["used_additional_information"])
+                )
+        except Exception as e:
+            KAI_LOG.error(
+                f"Failed to write additional_information @ {additional_information_path} with error: {e}"
             )
             KAI_LOG.error(f"Contents: {updated_file_contents}")
             sys.exit(1)
