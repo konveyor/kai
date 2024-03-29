@@ -550,6 +550,7 @@ async def get_incident_solutions_for_file(request: Request):
         "updated_file": updated_file,
         "total_reasoning": total_reasoning,
         "used_prompts": used_prompts,
+        "model_id": request.app["model_provider"].get_current_model_id(),
     }
     if request_json.get("include_llm_results"):
         response["llm_results"] = llm_results

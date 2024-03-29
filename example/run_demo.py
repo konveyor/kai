@@ -171,7 +171,9 @@ def write_to_disk(file_path, updated_file_contents):
         llm_result_path = f"{intended_file_path}.llm_result"
         KAI_LOG.info(f"Writing llm_result to {llm_result_path}")
         try:
+            model_id = updated_file_contents.get("model_id", "unknown")
             with open(llm_result_path, "w") as f:
+                f.write(f"Model ID: {model_id}\n")
                 f.write("\n---\n".join(updated_file_contents["llm_results"]))
         except Exception as e:
             KAI_LOG.error(
@@ -186,10 +188,6 @@ def process_file(file_path, violations, num_impacted_files, count):
     KAI_LOG.info(
         f"File #{count} of {num_impacted_files} - Processing {file_path} which has {len(violations)} violations"
     )
-    # TODO: Revisit processing non Java files
-    if not file_path.endswith(".java"):
-        KAI_LOG.warning(f"Skipping {file_path} as it is not a Java file")
-        return
 
     params = collect_parameters(file_path, violations)
     response = generate_fix(params)
