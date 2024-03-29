@@ -451,6 +451,7 @@ async def get_incident_solutions_for_file(request: Request):
     updated_file = request_json["file_contents"]
     total_reasoning = []
     llm_results = []
+    additional_info = []
     used_prompts = []
 
     batch_key_fn, batch_res_fn = get_key_and_res_function(batch_mode)
@@ -524,6 +525,7 @@ async def get_incident_solutions_for_file(request: Request):
 
                 total_reasoning.append(content.reasoning)
                 used_prompts.append(prompt)
+                additional_info.append(content.additional_info)
                 if not content.updated_file:
                     raise Exception(
                         f"Error in LLM Response: The LLM did not provide an updated file for {request_json['file_name']}"
@@ -551,6 +553,7 @@ async def get_incident_solutions_for_file(request: Request):
         "total_reasoning": total_reasoning,
         "used_prompts": used_prompts,
         "model_id": request.app["model_provider"].get_current_model_id(),
+        "additional_information": additional_info,
     }
     if request_json.get("include_llm_results"):
         response["llm_results"] = llm_results

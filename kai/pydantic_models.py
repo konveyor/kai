@@ -10,6 +10,7 @@ from kai.kai_logging import KAI_LOG
 class FileSolutionContent(BaseModel):
     reasoning: str
     updated_file: str
+    additional_info: str
 
 
 def guess_language(code: str, filename: str = None) -> str:
@@ -28,18 +29,40 @@ def guess_language(code: str, filename: str = None) -> str:
         return "unknown"
 
 
+def separate_sections(document):
+    section_titles = ["## Reasoning", "## Updated File", "## Additional Information"]
+    # Find the start index of each section by looking for the section titles, filter out not found (-1) indices
+    indices = {
+        title: document.find(title)
+        for title in section_titles
+        if document.find(title) != -1
+    }
+
+    sorted_indices = dict(sorted(indices.items(), key=lambda item: item[1]))
+    sorted_indices["end"] = len(document)
+    titles_sorted = list(sorted_indices.keys()) + ["end"]
+
+    # Extract the sections based on the indices found
+    sections = {}
+    for i, title in enumerate(
+        titles_sorted[:-1]
+    ):  # Skip the last item ('end') for iteration
+        start_index = sorted_indices[title] + len(title)
+        end_title = titles_sorted[i + 1]
+        end_index = sorted_indices[end_title]
+        sections[title] = document[start_index:end_index].strip()
+
+    return sections
+
+
 def parse_file_solution_content(language: str, content: str) -> FileSolutionContent:
-    reasoning_pattern = r"## Reasoning\s+(.+?)(?=##|$)"
     code_block_pattern = r"```(?:\w+)?\s+(.+?)```"
 
-    reasoning_match = re.search(reasoning_pattern, content, re.DOTALL)
-    reasoning = reasoning_match.group(1).strip() if reasoning_match else ""
+    sections = separate_sections(content)
+    reasoning = sections.get("## Reasoning", "")
+    updated_file_content = sections.get("## Updated File", "")
+    additional_info = sections.get("## Additional Information", "")
 
-    # Only search under the Updated File header if it exists
-    if "## Updated File" in content:
-        updated_file_content = content.split("## Updated File")[1]
-    else:
-        updated_file_content = content
     code_block_matches = re.findall(code_block_pattern, updated_file_content, re.DOTALL)
 
     matching_blocks = []
@@ -71,4 +94,6 @@ def parse_file_solution_content(language: str, content: str) -> FileSolutionCont
         KAI_LOG.warn("No codeblocks detected in LLM response")
         KAI_LOG.debug(content)
 
-    return FileSolutionContent(reasoning=reasoning, updated_file=updated_file)
+    return FileSolutionContent(
+        reasoning=reasoning, updated_file=updated_file, additional_info=additional_info
+    )
