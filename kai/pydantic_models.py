@@ -60,7 +60,7 @@ def parse_file_solution_content(language: str, content: str) -> FileSolutionCont
 
     sections = separate_sections(content)
     reasoning = sections.get("## Reasoning", "")
-    updated_file_content = sections.get("## Updated File", content)
+    updated_file_content = sections.get("## Updated File", "")
     additional_info = sections.get("## Additional Information", "")
 
     code_block_matches = re.findall(code_block_pattern, updated_file_content, re.DOTALL)
