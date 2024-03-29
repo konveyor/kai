@@ -56,6 +56,8 @@ class IBMGraniteModel(ModelProvider):
         temperature=0.1,
         top_k=50,
         top_p=1,
+        max_new_tokens=4096,
+        min_new_tokens=10,
     ) -> None:
         if os.environ.get("GENAI_KEY") is None:
             raise Exception(
@@ -89,8 +91,8 @@ class IBMGraniteModel(ModelProvider):
             model_id=model_id,
             parameters=TextGenerationParameters(
                 decoding_method=DecodingMethod.SAMPLE,
-                max_new_tokens=4096,
-                min_new_tokens=10,
+                max_new_tokens=max_new_tokens,
+                min_new_tokens=min_new_tokens,
                 temperature=temperature,
                 top_k=top_k,
                 top_p=top_p,
@@ -129,6 +131,8 @@ class IBMOpenSourceModel(ModelProvider):
         temperature=0.1,
         top_k=50,
         top_p=1,
+        max_new_tokens=1536,
+        min_new_tokens=10,
     ) -> None:
         if os.environ.get("GENAI_KEY") is None:
             raise Exception(
@@ -167,8 +171,8 @@ class IBMOpenSourceModel(ModelProvider):
                 # NOTE: probably have to do some more clever stuff regarding
                 # config. max_new_tokens and such varies between models
                 # max_new_tokens=4096,
-                max_new_tokens=1536,
-                min_new_tokens=10,
+                max_new_tokens=max_new_tokens,
+                min_new_tokens=min_new_tokens,
                 temperature=temperature,
                 top_k=top_k,
                 top_p=top_p,
@@ -202,7 +206,12 @@ class IBMOpenSourceModel(ModelProvider):
 
 # FIXME: Remove for final demo
 class OpenAIModel(ModelProvider):
-    def __init__(self, model_id: str = "gpt-3.5-turbo", temperature: float = 0.1):
+    def __init__(
+        self,
+        model_id: str = "gpt-3.5-turbo",
+        temperature: float = 0.1,
+        max_new_tokens: int = None,
+    ):
         self.prompt_builder_config = prompt_builder.CONFIG_IBM_GRANITE
         self.models = [
             "gpt-4-0125-preview",
@@ -232,7 +241,10 @@ class OpenAIModel(ModelProvider):
             )
 
         self.llm = ChatOpenAI(
-            model=self.model_id, streaming=True, temperature=temperature
+            model=self.model_id,
+            streaming=True,
+            temperature=temperature,
+            max_tokens=max_new_tokens,
         )
 
     def invoke(self, prompt: str):
