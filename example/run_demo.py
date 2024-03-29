@@ -147,6 +147,16 @@ def write_to_disk(file_path, updated_file_contents):
         KAI_LOG.error(f"Contents: {updated_file_contents}")
         sys.exit(1)
 
+    prompts_path = f"{intended_file_path}.prompts.md"
+    KAI_LOG.info(f"Writing prompts to {prompts_path}")
+    try:
+        with open(prompts_path, "w") as f:
+            f.write("\n---\n".join(updated_file_contents["used_prompts"]))
+    except Exception as e:
+        KAI_LOG.error(f"Failed to write prompts @ {prompts_path} with error: {e}")
+        KAI_LOG.error(f"Contents: {updated_file_contents}")
+        sys.exit(1)
+
     # since the other files are all contained within the llm_result, avoid duplication
     # when they're available
     if updated_file_contents.get("llm_results"):
@@ -173,16 +183,6 @@ def write_to_disk(file_path, updated_file_contents):
             KAI_LOG.error(
                 f"Failed to write reasoning @ {reasoning_path} with error: {e}"
             )
-            KAI_LOG.error(f"Contents: {updated_file_contents}")
-            sys.exit(1)
-
-        prompts_path = f"{intended_file_path}.prompts.md"
-        KAI_LOG.info(f"Writing prompts to {prompts_path}")
-        try:
-            with open(prompts_path, "w") as f:
-                f.write("\n---\n".join(updated_file_contents["used_prompts"]))
-        except Exception as e:
-            KAI_LOG.error(f"Failed to write prompts @ {prompts_path} with error: {e}")
             KAI_LOG.error(f"Contents: {updated_file_contents}")
             sys.exit(1)
 
