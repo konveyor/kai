@@ -3,6 +3,8 @@ import re
 from pydantic import BaseModel
 from pygments import lexers
 from pygments.util import ClassNotFound
+from tree_sitter import Node
+from tree_sitter_languages import get_parser
 
 from kai.kai_logging import KAI_LOG
 
@@ -11,6 +13,7 @@ class FileSolutionContent(BaseModel):
     reasoning: str
     updated_file: str
     additional_info: str
+    parse_error: bool
 
 
 def guess_language(code: str, filename: str = None) -> str:
@@ -55,6 +58,31 @@ def separate_sections(document):
     return sections
 
 
+def get_error_nodes(node: Node):
+    def traverse_tree_for_errors(node: Node):
+        for n in node.children:
+            if n.type == "ERROR" or n.is_missing:
+                yield n
+            if n.has_error:
+                yield from traverse_tree_for_errors(n)
+
+    yield from traverse_tree_for_errors(node)
+
+
+def has_parse_error(language: str, content: str) -> bool:
+    try:
+        parser = get_parser(language)
+    except Exception:
+        return False
+
+    tree = parser.parse(bytes(content, "utf8"))
+
+    for _ in get_error_nodes(tree.root_node):
+        return True
+
+    return False
+
+
 def parse_file_solution_content(language: str, content: str) -> FileSolutionContent:
     code_block_pattern = r"```(?:\w+)?\s+(.+?)```"
 
@@ -95,5 +123,8 @@ def parse_file_solution_content(language: str, content: str) -> FileSolutionCont
         KAI_LOG.debug(content)
 
     return FileSolutionContent(
-        reasoning=reasoning, updated_file=updated_file, additional_info=additional_info
+        reasoning=reasoning,
+        updated_file=updated_file,
+        additional_info=additional_info,
+        parse_error=has_parse_error(language, content),
     )
