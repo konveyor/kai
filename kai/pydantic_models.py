@@ -24,7 +24,12 @@ def guess_language(code: str, filename: str = None) -> str:
         else:
             lexer = lexers.guess_lexer(code)
             KAI_LOG.debug(f"Code content classified as {lexer.aliases[0]}\n{code}")
-        return lexer.aliases[0]
+
+        guessed_language = lexer.aliases[0]
+        if guessed_language == "genshi":
+            guessed_language = "xml"
+
+        return guessed_language
     except ClassNotFound:
         KAI_LOG.debug(
             f"Code content for filename {filename} could not be classified\n{code}"
@@ -72,12 +77,18 @@ def get_error_nodes(node: Node):
 def has_parse_error(language: str, content: str) -> bool:
     try:
         parser = get_parser(language)
-    except Exception:
+    except Exception as e:
+        KAI_LOG.warning(e)
+        # NOTE: Should we default to True or False? Right now defaulting to True
+        # because tree_sitter_languages does not have an xml parser
         return False
 
     tree = parser.parse(bytes(content, "utf8"))
 
     for _ in get_error_nodes(tree.root_node):
+        KAI_LOG.debug(
+            f"parse error detected!\nlanguage: {language}\ncontent: {content}"
+        )
         return True
 
     return False
@@ -96,6 +107,7 @@ def parse_file_solution_content(language: str, content: str) -> FileSolutionCont
     matching_blocks = []
     for block in code_block_matches:
         guessed_language = guess_language(block)
+
         if language == guessed_language:
             matching_blocks.append(block)
 
@@ -126,5 +138,5 @@ def parse_file_solution_content(language: str, content: str) -> FileSolutionCont
         reasoning=reasoning,
         updated_file=updated_file,
         additional_info=additional_info,
-        parse_error=has_parse_error(language, content),
+        parse_error=has_parse_error(language, updated_file),
     )
