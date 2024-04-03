@@ -391,6 +391,7 @@ global_env = standard_env()
 
 CONFIG_IBM_GRANITE_MF = "$mf_ibm_model"
 CONFIG_IBM_GRANITE = "$ibm_granite_model"
+CONFIG_IBM_LLAMA_MF = "$mf_ibm_llama_model"
 CONFIG_IBM_LLAMA = "$ibm_llama_model"
 
 
