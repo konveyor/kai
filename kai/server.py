@@ -13,13 +13,16 @@ import os
 import pprint
 import time
 import tomllib
+import traceback
 import warnings
+from contextlib import contextmanager
 from os import listdir
 from os.path import isfile, join
 from typing import Any, Callable
 
 import aiohttp
 import jsonschema
+import vcr
 import yaml
 from aiohttp import web
 from aiohttp.web_request import Request
@@ -50,6 +53,37 @@ JSONSCHEMA_DIR = os.path.join(
     os.path.dirname(__file__),
     "data/jsonschema/",
 )
+
+DEMO_MODE = os.getenv("DEMO_MODE") == "true"
+
+
+@contextmanager
+def playback_if_demo_mode(model_id, application_name, filename):
+    """A context manager to conditionally use a VCR cassette when demo mode is enabled."""
+    if DEMO_MODE:
+        KAI_LOG.debug(
+            f"DEMO MODE - using cassette {application_name}/{model_id}/{filename}.yaml"
+        )
+        my_vcr = vcr.VCR(
+            cassette_library_dir=f"{os.path.dirname(__file__)}/data/vcr/{application_name}/{model_id}/",
+            record_mode="once",
+            match_on=[
+                "uri",
+                "method",
+                "scheme",
+                "host",
+                "port",
+                "path",
+                "query",
+                "headers",
+                "body",
+            ],
+            record_on_exception=False,
+        )
+        with my_vcr.use_cassette(f"{filename}.yaml", filter_headers=["authorization"]):
+            yield
+    else:
+        yield
 
 
 def load_config():
@@ -453,6 +487,7 @@ async def get_incident_solutions_for_file(request: Request):
     llm_results = []
     additional_info = []
     used_prompts = []
+    model_id = request.app["model_provider"].get_current_model_id()
 
     batch_key_fn, batch_res_fn = get_key_and_res_function(batch_mode)
 
@@ -512,30 +547,35 @@ async def get_incident_solutions_for_file(request: Request):
         KAI_LOG.info(
             f"Processing incident batch {count}/{len(batched)} for {request_json['file_name']}"
         )
-
         llm_result = None
         for _ in range(LLM_RETRIES):
             try:
-                llm_result = request.app["model_provider"].invoke(prompt)
-                content = parse_file_solution_content(
-                    src_file_language, llm_result.content
-                )
-                if request_json.get("include_llm_results"):
-                    llm_results.append(llm_result.content)
-
-                total_reasoning.append(content.reasoning)
-                used_prompts.append(prompt)
-                additional_info.append(content.additional_info)
-                if not content.updated_file:
-                    raise Exception(
-                        f"Error in LLM Response: The LLM did not provide an updated file for {request_json['file_name']}"
+                with playback_if_demo_mode(
+                    model_id,
+                    request_json["application_name"],
+                    f'{request_json["file_name"].replace("/", "-")}',
+                ):
+                    llm_result = request.app["model_provider"].invoke(prompt)
+                    content = parse_file_solution_content(
+                        src_file_language, llm_result.content
                     )
-                updated_file = content.updated_file
-                break
+                    if request_json.get("include_llm_results"):
+                        llm_results.append(llm_result.content)
+
+                    total_reasoning.append(content.reasoning)
+                    used_prompts.append(prompt)
+                    additional_info.append(content.additional_info)
+                    if not content.updated_file:
+                        raise Exception(
+                            f"Error in LLM Response: The LLM did not provide an updated file for {request_json['file_name']}"
+                        )
+                    updated_file = content.updated_file
+                    break
             except Exception as e:
                 KAI_LOG.warn(
                     f"Request to model failed for batch {count}/{len(batched)} for {request_json['file_name']} with exception, retrying in {LLM_RETRY_DELAY}s\n{e}"
                 )
+                KAI_LOG.debug(traceback.format_exc())
                 time.sleep(LLM_RETRY_DELAY)
         else:
             KAI_LOG.error(f"{request_json['file_name']} failed to migrate")
@@ -552,7 +592,7 @@ async def get_incident_solutions_for_file(request: Request):
         "updated_file": updated_file,
         "total_reasoning": total_reasoning,
         "used_prompts": used_prompts,
-        "model_id": request.app["model_provider"].get_current_model_id(),
+        "model_id": model_id,
         "additional_information": additional_info,
     }
     if request_json.get("include_llm_results"):
@@ -568,6 +608,9 @@ def app(loglevel):
     print(
         f"Logging for KAI has been initialized and the level set to {loglevel.upper()}"
     )
+
+    if DEMO_MODE:
+        KAI_LOG.info("DEMO_MODE is enabled. LLM responses will be cached")
 
     with open(os.path.join(base_path, "config.toml"), "rb") as f:
         config = tomllib.load(f)
@@ -619,6 +662,7 @@ Example: --loglevel debug (default: warning)""",
     )
 
     args, _ = arg_parser.parse_known_args()
+
     web.run_app(app(args.loglevel))
 
 
