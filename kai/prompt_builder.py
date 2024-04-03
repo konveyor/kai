@@ -390,8 +390,16 @@ global_env = standard_env()
 
 
 CONFIG_IBM_GRANITE_MF = "$mf_ibm_model"
+CONFIG_IBM_GRANITE_MF_PREAMBLE_ONLY = "$mf_ibm_model_preamble_only"
+CONFIG_IBM_GRANITE_MF_PREAMBLE_WITH_ANALYSIS_ONLY = (
+    "$mf_ibm_model_preamble_with_analysis_only"
+)
 CONFIG_IBM_GRANITE = "$ibm_granite_model"
 CONFIG_IBM_LLAMA_MF = "$mf_ibm_llama_model"
+CONFIG_IBM_LLAMA_MF_PREAMBLE_ONLY = "$mf_ibm_llama_model_preamble_only"
+CONFIG_IBM_LLAMA_MF_PREAMBLE_WITH_ANALYSIS_ONLY = (
+    "$mf_ibm_llama_model_preamble_with_analysis_only"
+)
 CONFIG_IBM_LLAMA = "$ibm_llama_model"
 
 

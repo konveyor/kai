@@ -58,6 +58,7 @@ class IBMGraniteModel(ModelProvider):
         top_p=1,
         max_new_tokens=4096,
         min_new_tokens=10,
+        template="",
     ) -> None:
         if os.environ.get("GENAI_KEY") is None:
             raise Exception(
@@ -89,6 +90,7 @@ class IBMGraniteModel(ModelProvider):
         self.llm = LangChainChatInterface(
             client=Client(credentials=Credentials.from_env()),
             model_id=model_id,
+            template=template,
             parameters=TextGenerationParameters(
                 decoding_method=DecodingMethod.SAMPLE,
                 max_new_tokens=max_new_tokens,
@@ -133,6 +135,7 @@ class IBMOpenSourceModel(ModelProvider):
         top_p=1,
         max_new_tokens=1536,
         min_new_tokens=10,
+        template="",
     ) -> None:
         if os.environ.get("GENAI_KEY") is None:
             raise Exception(
@@ -167,6 +170,7 @@ class IBMOpenSourceModel(ModelProvider):
         self.llm = LangChainChatInterface(
             client=Client(credentials=Credentials.from_env()),
             model_id=model_id,
+            template=template,
             parameters=TextGenerationParameters(
                 decoding_method=DecodingMethod.SAMPLE,
                 # NOTE: probably have to do some more clever stuff regarding

@@ -10,11 +10,45 @@ build_steps:
         # - build: $mf_issue_none
       - build: $mf_output_instructions
 ---
+uuid: $mf_ibm_model_preamble_with_analysis_only
+build_steps:
+  - concat:
+      - build: $mf_preamble
+      - build: $mf_input_information
+      - build: $mf_input_file
+      - build: $mf_issue_header
+      # - one_of:
+      - build: [$mf_issue_no_examples, incidents]
+        # - build: $mf_issue_none
+      - build: $mf_output_instructions
+---
+uuid: $mf_ibm_model_preamble_only
+build_steps:
+  - concat:
+      - build: $mf_preamble_only
+      - build: $mf_input_information
+      - build: $mf_input_file
+      - build: $mf_output_instructions
+---
 uuid: $mf_ibm_llama_model
 build_steps:
   - concat:
       - build: $mf_ibm_llama_begin
       - build: $mf_ibm_model
+      - build: $mf_ibm_llama_end
+---
+uuid: $mf_ibm_llama_model_preamble_with_analysis_only
+build_steps:
+  - concat:
+      - build: $mf_ibm_llama_begin
+      - build: $mf_ibm_model_preamble_with_analysis_only
+      - build: $mf_ibm_llama_end
+---
+uuid: $mf_ibm_llama_model_preamble_only
+build_steps:
+  - concat:
+      - build: $mf_ibm_llama_begin
+      - build: $mf_ibm_model_preamble_only
       - build: $mf_ibm_llama_end
 ---
 uuid: $mf_ibm_llama_begin
@@ -34,6 +68,12 @@ template: |+
 ---
 uuid: $mf_preamble
 file_path: mf_preamble.txt
+---
+uuid: $mf_preamble_only
+file_path: mf_preamble_only.txt
+---
+uuid: $mf_preamble_with_analysis_only
+file_path: mf_preamble_with_analysis_only.txt
 ---
 uuid: $mf_input_information
 template: "# Input Information\n\n"
@@ -63,6 +103,17 @@ build_steps:
       - one_of:
           - build: $mf_issue_solved_example_file
           - build: $mf_issue_solved_example_diff
+          - build: []
+---
+uuid: $mf_issue_no_examples
+template: |+
+  ### Issue {issue_number}
+  Issue to fix: "{analysis_message}"
+  Line number: {analysis_line_number}
+build_steps:
+  - concat:
+      - format: $mf_issue
+      - one_of:
           - build: []
 ---
 uuid: $mf_issue_solved_example_diff
