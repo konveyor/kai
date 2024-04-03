@@ -64,7 +64,7 @@ class IBMGraniteModel(ModelProvider):
                 "Must set GENAI_KEY in environment if using IBMGraniteModel"
             )
 
-        self.prompt_builder_config = prompt_builder.CONFIG_IBM_GRANITE
+        self.prompt_builder_config = prompt_builder.CONFIG_IBM_GRANITE_MF
         self.models = [
             # NOTE: Some of these models require some extra "plumbing", unsure how to use
             "ibm/granite-20b-code-instruct-v1",
@@ -139,7 +139,7 @@ class IBMOpenSourceModel(ModelProvider):
                 "Must set GENAI_KEY in environment if using IBMGraniteModel"
             )
 
-        self.prompt_builder_config = prompt_builder.CONFIG_IBM_LLAMA
+        self.prompt_builder_config = prompt_builder.CONFIG_IBM_LLAMA_MF
         self.models = [
             "mistralai/mistral-7b-instruct-v0-2",
             "mistralai/mixtral-8x7b-instruct-v0-1",
@@ -213,7 +213,7 @@ class OpenAIModel(ModelProvider):
         temperature: float = 0.1,
         max_new_tokens: int = None,
     ):
-        self.prompt_builder_config = prompt_builder.CONFIG_IBM_GRANITE
+        self.prompt_builder_config = prompt_builder.CONFIG_IBM_GRANITE_MF
         self.models = [
             "gpt-4-0125-preview",
             "gpt-4-turbo-preview",

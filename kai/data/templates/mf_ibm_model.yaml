@@ -10,6 +10,28 @@ build_steps:
         # - build: $mf_issue_none
       - build: $mf_output_instructions
 ---
+uuid: $mf_ibm_llama_model
+build_steps:
+  - concat:
+      - build: $mf_ibm_llama_begin
+      - build: $mf_ibm_model
+      - build: $mf_ibm_llama_end
+---
+uuid: $mf_ibm_llama_begin
+template: |+
+  <s>[INST] <<SYS>>
+  {llama_sys}
+  <</SYS>>
+
+default_vars:
+  llama_sys: You are an AI Assistant trained on migrating enterprise JavaEE code to Quarkus.
+---
+uuid: $mf_ibm_llama_end
+template: |+
+
+  [/INST]
+
+---
 uuid: $mf_preamble
 file_path: mf_preamble.txt
 ---
