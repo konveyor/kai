@@ -79,8 +79,9 @@ def playback_if_demo_mode(model_id, application_name, filename):
                 "body",
             ],
             record_on_exception=False,
+            filter_headers=["authorization", "cookie"],
         )
-        with my_vcr.use_cassette(f"{filename}.yaml", filter_headers=["authorization"]):
+        with my_vcr.use_cassette(f"{filename}.yaml"):
             yield
     else:
         yield
