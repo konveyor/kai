@@ -53,9 +53,9 @@ class IBMGraniteModel(ModelProvider):
     def __init__(
         self,
         model_id: str = "ibm/granite-13b-chat-v2",
-        temperature=0.1,
-        top_k=50,
-        top_p=1,
+        temperature=0.05,
+        top_k=20,
+        top_p=0.9,
         max_new_tokens=4096,
         min_new_tokens=10,
     ) -> None:
@@ -128,10 +128,10 @@ class IBMOpenSourceModel(ModelProvider):
     def __init__(
         self,
         model_id: str = "meta-llama/llama-2-13b-chat",
-        temperature=0.1,
-        top_k=50,
-        top_p=1,
-        max_new_tokens=1536,
+        temperature=0.05,
+        top_k=20,
+        top_p=0.9,
+        max_new_tokens=4096,
         min_new_tokens=10,
     ) -> None:
         if os.environ.get("GENAI_KEY") is None:
