@@ -28,15 +28,7 @@ from kai.capture import Capture
 from kai.incident_store_advanced import Application, EmbeddingNone, PSQLIncidentStore
 from kai.kai_logging import KAI_LOG
 from kai.model_provider import IBMGraniteModel, IBMOpenSourceModel, OpenAIModel
-from kai.prompt_builder import (
-    CONFIG_IBM_GRANITE_MF,
-    CONFIG_IBM_GRANITE_MF_PREAMBLE_ONLY,
-    CONFIG_IBM_GRANITE_MF_PREAMBLE_WITH_ANALYSIS_ONLY,
-    CONFIG_IBM_LLAMA_MF,
-    CONFIG_IBM_LLAMA_MF_PREAMBLE_ONLY,
-    CONFIG_IBM_LLAMA_MF_PREAMBLE_WITH_ANALYSIS_ONLY,
-    build_prompt,
-)
+from kai.prompt_builder import build_prompt
 from kai.pydantic_models import guess_language, parse_file_solution_content
 from kai.report import Report
 
@@ -505,13 +497,6 @@ async def get_incident_solutions_for_file(request: Request):
                         "incident_uri"
                     ]
 
-        config_template = ""
-        base_path = os.path.dirname(__file__)
-        with open(os.path.join(base_path, "config.toml"), "rb") as f:
-            config = tomllib.load(f)
-        if "template" in config["models"]["args"]:
-            config_template = config["models"]["args"]["template"]
-
         args = {
             "src_file_name": request_json["file_name"],
             "src_file_language": src_file_language,
@@ -519,24 +504,9 @@ async def get_incident_solutions_for_file(request: Request):
             "incidents": incidents,
         }
 
-        if config["models"]["provider"].lower() == "IBMOpenSource".lower():
-            if config_template == "preamble_only":
-                prompt = build_prompt(CONFIG_IBM_LLAMA_MF_PREAMBLE_ONLY, args)
-            elif config_template == "preamble_with_analysis_only":
-                prompt = build_prompt(
-                    CONFIG_IBM_LLAMA_MF_PREAMBLE_WITH_ANALYSIS_ONLY, args
-                )
-            else:
-                prompt = build_prompt(CONFIG_IBM_LLAMA_MF, args)
-        else:
-            if config_template == "preamble_only":
-                prompt = build_prompt(CONFIG_IBM_GRANITE_MF_PREAMBLE_ONLY, args)
-            elif config_template == "preamble_with_analysis_only":
-                prompt = build_prompt(
-                    CONFIG_IBM_GRANITE_MF_PREAMBLE_WITH_ANALYSIS_ONLY, args
-                )
-            else:
-                prompt = build_prompt(CONFIG_IBM_GRANITE_MF, args)
+        prompt = build_prompt(
+            request.app["model_provider"].get_prompt_builder_config("multi_file"), args
+        )
 
         KAI_LOG.debug(f"Sending prompt: {prompt}")
 
