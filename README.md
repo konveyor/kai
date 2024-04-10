@@ -161,8 +161,9 @@ provider = "IBMGranite"
 1. Run the Kai server in background
    1. Open a new shell tab
    1. `source env/bin/activate`
-   1. Let this run in background: `make run-server`
+   1. Let this run in background: `DEMO_MODE=true make run-server`
       - Please double check that you have `GENAI_KEY=my-secret-api-key-value` defined in the environment variables prior to running the server.
+      - The `DEMO_MODE` option will cache responses and play them back on subsequent runs.
 1. Load data into the database
    1. Fetch sample apps: `pushd samples; ./fetch_apps.py; popd`
    1. Can run this in current shell, command will run for a ~1 minute and complete
@@ -216,6 +217,17 @@ provider = "IBMGranite"
 
             This updated file uses the `@ApplicationScoped` annotation to scope the MDB to the application and the `@Incoming` and `Log` annotations to process the messages and log them.
             input...
+
+#### Notes on `DEMO_MODE` and cached responses
+
+The kai server will always cache responses in the `kai/data/vcr/<application_name>/<model>` directory. In non-demo mode, these responses will be overwritten whenever a new request is made.
+When the server is run with `DEMO_MODE=true`, these responses will be played back. The request will be matched on everything except for authorization headers, cookies, content-length and request body.
+
+There are two ways to record new responses:
+
+1. Run the requests while the server is not in `DEMO_MODE`
+1. Delete the specific existing cached response (under `kai/data/vcr/<application_name>/<model>/<source-file-path-with-slashes-replaced-with-dashes.java.yaml>`), then rerun. When a cached response does
+   not exist, a new one will be recorded and played back on subsequent runs.
 
 ## Contributors
 
