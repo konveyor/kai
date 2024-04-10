@@ -60,30 +60,31 @@ DEMO_MODE = os.getenv("DEMO_MODE") == "true"
 @contextmanager
 def playback_if_demo_mode(model_id, application_name, filename):
     """A context manager to conditionally use a VCR cassette when demo mode is enabled."""
-    if DEMO_MODE:
-        KAI_LOG.debug(
-            f"DEMO MODE - using cassette {application_name}/{model_id}/{filename}.yaml"
-        )
-        my_vcr = vcr.VCR(
-            cassette_library_dir=f"{os.path.dirname(__file__)}/data/vcr/{application_name}/{model_id}/",
-            record_mode="once",
-            match_on=[
-                "uri",
-                "method",
-                "scheme",
-                "host",
-                "port",
-                "path",
-                "query",
-                "headers",
-                "body",
-            ],
-            record_on_exception=False,
-            filter_headers=["authorization", "cookie"],
-        )
-        with my_vcr.use_cassette(f"{filename}.yaml"):
-            yield
-    else:
+    record_mode = "once" if DEMO_MODE else "all"
+    my_vcr = vcr.VCR(
+        cassette_library_dir=f"{os.path.dirname(__file__)}/data/vcr/{application_name}/{model_id}/",
+        record_mode=record_mode,
+        match_on=[
+            "uri",
+            "method",
+            "scheme",
+            "host",
+            "port",
+            "path",
+            "query",
+            "headers",
+        ],
+        record_on_exception=False,
+        filter_headers=["authorization", "cookie", "content-length"],
+    )
+    KAI_LOG.debug(
+        f"record_mode='{record_mode}' - Using cassette {application_name}/{model_id}/{filename}.yaml",
+    )
+    # Workaround to actually blow away the cassettes instead of appending
+    if my_vcr.record_mode == "all":
+        my_vcr.persister.load_cassette = lambda cassette_path, serializer: ([], [])
+
+    with my_vcr.use_cassette(f"{filename}.yaml"):
         yield
 
 
