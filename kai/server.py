@@ -73,10 +73,9 @@ def playback_if_demo_mode(model_id, application_name, filename):
             "path",
             "query",
             "headers",
-            "body",
         ],
         record_on_exception=False,
-        filter_headers=["authorization", "cookie"],
+        filter_headers=["authorization", "cookie", "content-length"],
     )
     KAI_LOG.debug(
         f"record_mode='{record_mode}' - Using cassette {application_name}/{model_id}/{filename}.yaml",
