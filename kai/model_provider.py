@@ -58,13 +58,15 @@ class IBMGraniteModel(ModelProvider):
         top_p=0.9,
         max_new_tokens=4096,
         min_new_tokens=10,
+        template="",
     ) -> None:
         if os.environ.get("GENAI_KEY") is None:
             raise Exception(
                 "Must set GENAI_KEY in environment if using IBMGraniteModel"
             )
 
-        self.prompt_builder_config = prompt_builder.CONFIG_IBM_GRANITE_MF
+        self.template = template
+
         self.models = [
             # NOTE: Some of these models require some extra "plumbing", unsure how to use
             "ibm/granite-20b-code-instruct-v1",
@@ -89,6 +91,7 @@ class IBMGraniteModel(ModelProvider):
         self.llm = LangChainChatInterface(
             client=Client(credentials=Credentials.from_env()),
             model_id=model_id,
+            template=template,
             parameters=TextGenerationParameters(
                 decoding_method=DecodingMethod.SAMPLE,
                 max_new_tokens=max_new_tokens,
@@ -114,8 +117,21 @@ class IBMGraniteModel(ModelProvider):
     def stream(self, prompt: str) -> Iterator[BaseMessageChunk]:
         return self.llm.stream(prompt)
 
-    def get_prompt_builder_config(self):
-        return self.prompt_builder_config
+    def get_prompt_builder_config(self, query_kind: str, override_template: str = None):
+        if override_template is None:
+            override_template = self.template
+
+        match (query_kind, override_template):
+            case ("single_file", _):
+                return prompt_builder.CONFIG_IBM_GRANITE
+            case ("multi_file", "preamble_only"):
+                return prompt_builder.CONFIG_IBM_GRANITE_MF_PREAMBLE_ONLY
+            case ("multi_file", "preamble_with_analysis_only"):
+                return prompt_builder.CONFIG_IBM_GRANITE_MF_PREAMBLE_WITH_ANALYSIS_ONLY
+            case ("multi_file", _):
+                return prompt_builder.CONFIG_IBM_GRANITE_MF
+            case _:
+                raise Exception(f"{query_kind=} {override_template=} not supported.")
 
     def get_models(self) -> list[str]:
         return self.models
@@ -133,13 +149,15 @@ class IBMOpenSourceModel(ModelProvider):
         top_p=0.9,
         max_new_tokens=4096,
         min_new_tokens=10,
+        template="",
     ) -> None:
         if os.environ.get("GENAI_KEY") is None:
             raise Exception(
                 "Must set GENAI_KEY in environment if using IBMGraniteModel"
             )
 
-        self.prompt_builder_config = prompt_builder.CONFIG_IBM_LLAMA_MF
+        self.template = template
+
         self.models = [
             "mistralai/mistral-7b-instruct-v0-2",
             "mistralai/mixtral-8x7b-instruct-v0-1",
@@ -167,6 +185,7 @@ class IBMOpenSourceModel(ModelProvider):
         self.llm = LangChainChatInterface(
             client=Client(credentials=Credentials.from_env()),
             model_id=model_id,
+            template=template,
             parameters=TextGenerationParameters(
                 decoding_method=DecodingMethod.SAMPLE,
                 # NOTE: probably have to do some more clever stuff regarding
@@ -195,8 +214,21 @@ class IBMOpenSourceModel(ModelProvider):
     def stream(self, prompt: str) -> Iterator[BaseMessageChunk]:
         return self.llm.stream(prompt)
 
-    def get_prompt_builder_config(self):
-        return self.prompt_builder_config
+    def get_prompt_builder_config(self, query_kind: str, override_template: str = None):
+        if override_template is None:
+            override_template = self.template
+
+        match (query_kind, override_template):
+            case ("single_file", _):
+                return prompt_builder.CONFIG_IBM_LLAMA
+            case ("multi_file", "preamble_only"):
+                return prompt_builder.CONFIG_IBM_LLAMA_MF_PREAMBLE_ONLY
+            case ("multi_file", "preamble_with_analysis_only"):
+                return prompt_builder.CONFIG_IBM_LLAMA_MF_PREAMBLE_WITH_ANALYSIS_ONLY
+            case ("multi_file", _):
+                return prompt_builder.CONFIG_IBM_LLAMA_MF
+            case _:
+                raise Exception(f"{query_kind=} {override_template=} not supported.")
 
     def get_models(self) -> list[str]:
         return self.models
@@ -212,8 +244,10 @@ class OpenAIModel(ModelProvider):
         model_id: str = "gpt-3.5-turbo",
         temperature: float = 0.1,
         max_new_tokens: int = None,
+        template: str = "",
     ):
-        self.prompt_builder_config = prompt_builder.CONFIG_IBM_GRANITE_MF
+        self.template = template
+
         self.models = [
             "gpt-4-0125-preview",
             "gpt-4-turbo-preview",
@@ -254,8 +288,21 @@ class OpenAIModel(ModelProvider):
     def stream(self, prompt: str):
         return self.llm.stream(prompt)
 
-    def get_prompt_builder_config(self):
-        return self.prompt_builder_config
+    def get_prompt_builder_config(self, query_kind: str, override_template: str = None):
+        if override_template is None:
+            override_template = self.template
+
+        match (query_kind, override_template):
+            case ("single_file", _):
+                return prompt_builder.CONFIG_IBM_GRANITE
+            case ("multi_file", "preamble_only"):
+                return prompt_builder.CONFIG_IBM_GRANITE_MF_PREAMBLE_ONLY
+            case ("multi_file", "preamble_with_analysis_only"):
+                return prompt_builder.CONFIG_IBM_GRANITE_MF_PREAMBLE_WITH_ANALYSIS_ONLY
+            case ("multi_file", _):
+                return prompt_builder.CONFIG_IBM_GRANITE_MF
+            case _:
+                raise Exception(f"{query_kind=} {override_template=} not supported.")
 
     def get_models(self) -> list[str]:
         return self.models

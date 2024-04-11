@@ -31,7 +31,7 @@ from kai.capture import Capture
 from kai.incident_store_advanced import Application, EmbeddingNone, PSQLIncidentStore
 from kai.kai_logging import KAI_LOG
 from kai.model_provider import IBMGraniteModel, IBMOpenSourceModel, OpenAIModel
-from kai.prompt_builder import CONFIG_IBM_GRANITE_MF, build_prompt
+from kai.prompt_builder import build_prompt
 from kai.pydantic_models import guess_language, parse_file_solution_content
 from kai.report import Report
 
@@ -534,14 +534,15 @@ async def get_incident_solutions_for_file(request: Request):
                         "incident_uri"
                     ]
 
+        args = {
+            "src_file_name": request_json["file_name"],
+            "src_file_language": src_file_language,
+            "src_file_contents": updated_file,
+            "incidents": incidents,
+        }
+
         prompt = build_prompt(
-            CONFIG_IBM_GRANITE_MF,
-            {
-                "src_file_name": request_json["file_name"],
-                "src_file_language": src_file_language,
-                "src_file_contents": updated_file,
-                "incidents": incidents,
-            },
+            request.app["model_provider"].get_prompt_builder_config("multi_file"), args
         )
 
         KAI_LOG.debug(f"Sending prompt: {prompt}")
