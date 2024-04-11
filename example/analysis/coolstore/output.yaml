@@ -3004,7 +3004,7 @@
           name: Stateless
           package: com.redhat.coolstore.service
       - uri: file:///tmp/source-code/src/main/java/com/redhat/coolstore/service/OrderService.java
-        message: "Stateless EJBs can be converted to a cdi bean by replacing the `@Stateless` annotation with a scope eg `@ApplicationScoped`\n "
+        message: "Stateless EJBs can be converted to a cdi bean by importing `jakarta.enterprise.context.ApplicationScoped` and replacing the `@Stateless` annotation with a scope eg `@ApplicationScoped`\n "
         codeSnip: "  1  package com.redhat.coolstore.service;\n  2  \n  3  import com.redhat.coolstore.model.Order;\n  4  import java.util.List;\n  5  import javax.ejb.Stateless;\n  6  import javax.inject.Inject;\n  7  import javax.persistence.EntityManager;\n  8  import javax.persistence.criteria.CriteriaBuilder;\n  9  import javax.persistence.criteria.CriteriaQuery;\n 10  import javax.persistence.criteria.Root;\n 11  \n 12  @Stateless\n 13  public class OrderService {\n 14  \n 15    @Inject\n 16    private EntityManager em;\n 17  \n 18    public void save(Order order) {\n 19      em.persist(order);\n 20    }\n 21  \n 22    public List<Order> getOrders() {\n 23      CriteriaBuilder cb = em.getCriteriaBuilder();\n 24      CriteriaQuery<Order> criteria = cb.createQuery(Order.class);\n 25      Root<Order> member = criteria.from(Order.class);\n 26      criteria.select(member);\n 27      return em.createQuery(criteria).getResultList();\n 28    }\n 29  \n 30    public Order getOrderById(long id) {\n 31      return em.find(Order.class, id);\n 32    }\n 33  }\n"
         lineNumber: 12
         variables:
