@@ -6,6 +6,10 @@ SOURCE_ONLY=""
 # If you want to run with source only uncomment below
 # SOURCE_ONLY="-m source-only"
 
+# We are experimenting with modifying some of the default Kantra rules from:
+# . https://github.com/konveyor/rulesets/tree/main/default/generated
+DEFAULT_RULES_DIR="${PWD}/default_rules"
+
 CUSTOM_RULES_DIR="${PWD}/../samples/custom_rules"
 
 # Choose to either analyze the initial or solved branch
@@ -43,4 +47,4 @@ git checkout "${BRANCH}"
 popd || exit
 
 mkdir -p "${OUTDIR}"
-time "${KANTRA_BIN}" analyze -i "${PWD}"/"${SOURCE_DIR}" "${SOURCE_ONLY}" -t "quarkus" -t "jakarta-ee" -t "jakarta-ee8+" -t "jakarta-ee9+" -t "cloud-readiness" --rules "${CUSTOM_RULES_DIR}" -o "${OUTDIR}" --overwrite
+time "${KANTRA_BIN}" analyze -i "${PWD}"/"${SOURCE_DIR}" "${SOURCE_ONLY}" --enable-default-rulesets=false -t "quarkus" -t "jakarta-ee" -t "jakarta-ee8+" -t "jakarta-ee9+" -t "cloud-readiness" --rules "${DEFAULT_RULES_DIR}" --rules "${CUSTOM_RULES_DIR}" -o "${OUTDIR}" --overwrite
