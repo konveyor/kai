@@ -1,9 +1,4 @@
 repos = {
-    "eap-coolstore-monolith": [
-        "https://github.com/mathianasj/eap-coolstore-monolith.git",
-        "main",
-        "quarkus-migration",
-    ],
     "kitchensink": [
         "https://github.com/tqvarnst/jboss-eap-quickstarts.git",
         "7.1",
