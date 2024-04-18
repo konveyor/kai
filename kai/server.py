@@ -518,7 +518,9 @@ async def get_incident_solutions_for_file(request: Request):
                     incident["incident_variables"],
                 )
 
-                KAI_LOG.debug(solved_incident)
+                KAI_LOG.debug(
+                    f"Got solved incident: {solved_incident['incident_id']} Match type: {match_type}"
+                )
 
                 if not isinstance(solved_incident, dict):
                     raise Exception("solved_example not a dict")
@@ -527,12 +529,13 @@ async def get_incident_solutions_for_file(request: Request):
                     solved_example = request.app[
                         "incident_store"
                     ].select_accepted_solution(solved_incident["solution_id"])
-                    incident["solved_example_diff"] = solved_example[
-                        "solution_small_diff"
-                    ]
-                    incident["solved_example_file_name"] = solved_incident[
-                        "incident_uri"
-                    ]
+
+                    solved_example_diff = solved_example["solution_small_diff"].strip()
+                    solved_example_file_name = solved_incident["incident_uri"].strip()
+
+                    if len(solved_example_diff) > 0:
+                        incident["solved_example_diff"] = solved_example_diff
+                        incident["solved_example_file_name"] = solved_example_file_name
 
         args = {
             "src_file_name": request_json["file_name"],
@@ -579,6 +582,34 @@ async def get_incident_solutions_for_file(request: Request):
                     f"Request to model failed for batch {count}/{len(batched)} for {request_json['file_name']} with exception, retrying in {LLM_RETRY_DELAY}s\n{e}"
                 )
                 KAI_LOG.debug(traceback.format_exc())
+
+                # Naively remove solved incidents because prompt might be too long
+
+                # TODO: Add a method to the model providers that can query what type of error occurred
+                update_prompt = False
+                for incident in incidents:
+                    if "solved_example_diff" in incident:
+                        del incident["solved_example_diff"]
+                        update_prompt = True
+                    if "solved_example_file_name" in incident:
+                        del incident["solved_example_file_name"]
+                        update_prompt = True
+
+                if update_prompt:
+                    args = {
+                        "src_file_name": request_json["file_name"],
+                        "src_file_language": src_file_language,
+                        "src_file_contents": updated_file,
+                        "incidents": incidents,
+                    }
+
+                    prompt = build_prompt(
+                        request.app["model_provider"].get_prompt_builder_config(
+                            "multi_file"
+                        ),
+                        args,
+                    )
+
                 time.sleep(LLM_RETRY_DELAY)
         else:
             KAI_LOG.error(f"{request_json['file_name']} failed to migrate")

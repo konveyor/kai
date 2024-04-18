@@ -21,6 +21,15 @@ from kai.report import Report
 BASE_PATH = os.path.dirname(__file__)
 
 
+def filter_incident_vars(incident_vars: dict):
+    filtered_vars = ["file", "package"]
+
+    for v in filtered_vars:
+        incident_vars.pop(v, None)
+
+    return incident_vars
+
+
 @dataclass
 class Application:
     application_id: int | None
@@ -97,7 +106,7 @@ class PSQLIncidentStore:
                 "config_filepath and config_section must both be set if using .ini file."
             )
         if not (cf_none ^ cd_none):
-            raise Exception("Must provide either config .toml or config dict.")
+            raise Exception("Must provide either config.toml or config dict.")
 
         if not cf_none:
             with open(config_filepath, "rb") as f:
@@ -303,6 +312,8 @@ class PSQLIncidentStore:
         # if not isinstance(incident_variables, list):
         #   raise Exception(f"incident_variables must be of type list. Got type '{type(incident_variables)}'")
 
+        incident_variables = filter_incident_vars(incident_variables)
+
         vars_str = json.dumps(incident_variables)
         truncated_vars = (vars_str[:75] + "...") if len(vars_str) > 75 else vars_str
 
@@ -344,8 +355,9 @@ class PSQLIncidentStore:
         )
 
         # Encode the strings using the appropriate encoding method
-        # to avoid unicode errors TODO: validate if this is the right way to do it
-        solution_big_diff = solution_big_diff.encode("utf-8", "ignore").decode("utf-8")
+        # to avoid unicode errors
+        # solution_big_diff = solution_big_diff.encode("utf-8", "ignore").decode("utf-8")
+        solution_big_diff = ""  # NOTE: Ignoring big_diff for now for performance
         solution_small_diff = solution_small_diff.encode("utf-8", "ignore").decode(
             "utf-8"
         )
@@ -427,6 +439,8 @@ class PSQLIncidentStore:
         #   return get_snip_with_highest_embedding_similarity_from_filtered_set(), 'exact'
 
         KAI_LOG.debug("get_fuzzy_similar_incident")
+
+        incident_vars = filter_incident_vars(incident_vars)
 
         emb = self.emb_provider.get_embedding(incident_snip)
         emb_str = str(emb)
@@ -625,6 +639,9 @@ class PSQLIncidentStore:
                         violation = query_violation[0]
 
                     for incident in violation_dict.get("incidents", []):
+                        v_str = json.dumps(
+                            filter_incident_vars(incident.get("variables", {}))
+                        )
                         cur.execute(
                             """INSERT INTO incidents_temp(violation_id, application_id, incident_uri, incident_snip, incident_line, incident_variables)
               VALUES (%s, %s, %s, %s, %s, %s);""",
@@ -634,7 +651,7 @@ class PSQLIncidentStore:
                                 incident.get("uri", ""),
                                 incident.get("codeSnip", ""),
                                 incident.get("lineNumber", 0),
-                                json.dumps(incident.get("variables", {})),
+                                v_str,
                             ),
                         )
 
@@ -671,7 +688,7 @@ WHERE fi.incident_id IS NULL;""",
                     ni["incident_uri"],
                     ni["incident_snip"],
                     ni["incident_line"],
-                    ni["incident_variables"],
+                    filter_incident_vars(ni["incident_variables"]),
                     None,
                     cur,
                 )
@@ -927,7 +944,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config_filepath",
         type=str,
-        default="database.ini",
+        default="config.toml",
         help="Path to the config file.",
     )
     parser.add_argument(
@@ -945,7 +962,15 @@ if __name__ == "__main__":
         default="samples/analysis_reports",
         help="path to analysis reports folder",
     )
+    parser.add_argument(
+        "--loglevel",
+        type=str,
+        default="info",
+        help="Logging level (info, warning, etc...)",
+    )
     args = parser.parse_args()
+
+    KAI_LOG.setLevel(args.loglevel.upper())
 
     psqlis = PSQLIncidentStore(
         config_filepath=args.config_filepath,
