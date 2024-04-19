@@ -172,6 +172,8 @@ class IBMOpenSourceModel(ModelProvider):
             "meta-llama/llama-2-70b-chat",
             "meta-llama/llama-2-13b-chat",
             "meta-llama/llama-2-7b",
+            "meta-llama/llama-3-70b-instruct",
+            "meta-llama/llama-3-8b-instruct",
         ]
 
         if model_id in self.models:
