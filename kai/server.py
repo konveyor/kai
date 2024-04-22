@@ -308,7 +308,7 @@ def get_incident_solution(request_app, request_json: dict, stream: bool = False)
         pb_vars["solved_example_file_name"] = solved_incident["incident_uri"]
 
     prompt = build_prompt(
-        request_app["model_provider"].get_prompt_builder_config(), pb_vars
+        request_app["model_provider"].get_prompt_builder_config("single_file"), pb_vars
     )
     capture.prompt = prompt
 
