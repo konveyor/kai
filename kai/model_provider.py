@@ -11,7 +11,7 @@ from genai.schema import (
     TextGenerationParameters,
     TextGenerationReturnOptions,
 )
-from langchain_community.chat_models import ChatOpenAI
+from langchain_community.chat_models import ChatOllama, ChatOpenAI
 from langchain_core.messages import BaseMessage, BaseMessageChunk
 
 from kai import prompt_builder
@@ -278,6 +278,70 @@ class OpenAIModel(ModelProvider):
             )
 
         self.llm = ChatOpenAI(
+            model=self.model_id,
+            streaming=True,
+            temperature=temperature,
+            max_tokens=max_new_tokens,
+        )
+
+    def invoke(self, prompt: str):
+        return self.llm.invoke(prompt)
+
+    def stream(self, prompt: str):
+        return self.llm.stream(prompt)
+
+    def get_prompt_builder_config(self, query_kind: str, override_template: str = None):
+        if override_template is None:
+            override_template = self.template
+
+        match (query_kind, override_template):
+            case ("single_file", _):
+                return prompt_builder.CONFIG_IBM_GRANITE
+            case ("multi_file", "preamble_only"):
+                return prompt_builder.CONFIG_IBM_GRANITE_MF_PREAMBLE_ONLY
+            case ("multi_file", "preamble_with_analysis_only"):
+                return prompt_builder.CONFIG_IBM_GRANITE_MF_PREAMBLE_WITH_ANALYSIS_ONLY
+            case ("multi_file", _):
+                return prompt_builder.CONFIG_IBM_GRANITE_MF
+            case _:
+                raise Exception(f"{query_kind=} {override_template=} not supported.")
+
+    def get_models(self) -> list[str]:
+        return self.models
+
+    def get_current_model_id(self) -> str:
+        return self.model_id
+
+
+class OllamaModel(ModelProvider):
+    def __init__(
+        self,
+        model_id: str = "mistral",
+        temperature: float = 0.1,
+        max_new_tokens: int = None,
+        template: str = "",
+    ):
+        self.template = template
+
+        self.models = [
+            "codellama",
+            "llama3",
+            "llama2",
+            "mistral",
+            "mixtral",
+            "starcoder2",
+            "wizardcoder",
+        ]
+
+        if model_id in self.models:
+            self.model_id = model_id
+        else:
+            valid_models = "\n\t".join(self.models)
+            raise Exception(
+                f"Invalid model_id: {model_id}\nValid models: {valid_models}"
+            )
+
+        self.llm = ChatOllama(
             model=self.model_id,
             streaming=True,
             temperature=temperature,

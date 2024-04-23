@@ -30,7 +30,12 @@ from aiohttp.web_request import Request
 from kai.capture import Capture
 from kai.incident_store_advanced import Application, EmbeddingNone, PSQLIncidentStore
 from kai.kai_logging import KAI_LOG
-from kai.model_provider import IBMGraniteModel, IBMOpenSourceModel, OpenAIModel
+from kai.model_provider import (
+    IBMGraniteModel,
+    IBMOpenSourceModel,
+    OllamaModel,
+    OpenAIModel,
+)
 from kai.prompt_builder import build_prompt
 from kai.pydantic_models import guess_language, parse_file_solution_content
 from kai.report import Report
@@ -638,6 +643,8 @@ def app(loglevel):
         webapp["model_provider"] = IBMOpenSourceModel(**config["models"]["args"])
     elif config["models"]["provider"].lower() == "OpenAI".lower():
         webapp["model_provider"] = OpenAIModel(**config["models"]["args"])
+    elif config["models"]["provider"].lower() == "Ollama".lower():
+        webapp["model_provider"] = OllamaModel(**config["models"]["args"])
     else:
         raise Exception(f"Unrecognized model '{config['models']['provider']}'")
 
