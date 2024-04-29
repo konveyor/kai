@@ -28,11 +28,12 @@ from aiohttp import web
 from aiohttp.web_request import Request
 
 from kai.capture import Capture
-from kai.incident_store_advanced import Application, EmbeddingNone, PSQLIncidentStore
+from kai.incident_store import Application, EmbeddingNone, PSQLIncidentStore
 from kai.kai_logging import KAI_LOG
 from kai.model_provider import (
     IBMGraniteModel,
     IBMOpenSourceModel,
+    ModelProvider,
     OllamaModel,
     OpenAIModel,
 )
@@ -165,6 +166,9 @@ async def generate_prompt(request):
         return web.json_response({"generated_prompt": response})
     except Exception as e:
         return web.json_response({"error": str(e)}, status=400)
+
+
+Request
 
 
 @routes.route("*", "/proxy")
@@ -433,23 +437,6 @@ async def ws_get_incident_solution(request: Request):
     return ws
 
 
-def get_key_and_res_function(
-    batch_mode: str,
-) -> tuple[Callable[[Any], tuple], Callable[[Any, Any], tuple[dict, list]]]:
-    return {
-        "none": (lambda x: (id(x),), lambda k, g: ({}, list(g))),
-        "single_group": (lambda x: (0,), lambda k, g: ({}, list(g))),
-        "ruleset": (
-            lambda x: (x.get("ruleset_name"),),
-            lambda k, g: ({"ruleset_name": k[0]}, list(g)),
-        ),
-        "violation": (
-            lambda x: (x.get("ruleset_name"), x.get("violation_name")),
-            lambda k, g: ({"ruleset_name": k[0], "violation_name": k[1]}, list(g)),
-        ),
-    }.get(batch_mode)
-
-
 @validator("get_incident_solutions_for_file.json")
 @routes.post("/get_incident_solutions_for_file")
 async def get_incident_solutions_for_file(request: Request):
@@ -468,6 +455,11 @@ async def get_incident_solutions_for_file(request: Request):
         - analysis_message (str)
     - include_llm_results (bool)
     """
+
+    variables_for_this_call = process_request(request)
+    result = kai.llm.get_incident_solutions_for_file(**variables_for_this_call)
+    return format_result_as_a_web_response_thing(result)
+
     start = time.time()
     KAI_LOG.debug(f"get_incident_solutions_for_file recv'd: {request}")
 
@@ -637,16 +629,8 @@ def app(loglevel):
         drop_tables=False,
     )
 
-    if config["models"]["provider"].lower() == "IBMGranite".lower():
-        webapp["model_provider"] = IBMGraniteModel(**config["models"]["args"])
-    elif config["models"]["provider"].lower() == "IBMOpenSource".lower():
-        webapp["model_provider"] = IBMOpenSourceModel(**config["models"]["args"])
-    elif config["models"]["provider"].lower() == "OpenAI".lower():
-        webapp["model_provider"] = OpenAIModel(**config["models"]["args"])
-    elif config["models"]["provider"].lower() == "Ollama".lower():
-        webapp["model_provider"] = OllamaModel(**config["models"]["args"])
-    else:
-        raise Exception(f"Unrecognized model '{config['models']['provider']}'")
+    ModelProviderClass = ModelProvider.model_from_string(config["models"]["provider"])
+    webapp["model_provider"] = ModelProviderClass(**config["models"]["args"])
 
     KAI_LOG.info(f"Selected model {config['models']['provider']}")
     webapp.add_routes(routes)

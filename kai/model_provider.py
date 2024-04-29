@@ -28,6 +28,19 @@ around LangChain, but could get more complicated as the project grows
 
 
 class ModelProvider(ABC):
+    @staticmethod
+    def model_from_string(provider: str):
+        if provider.lower() == "IBMGranite".lower():
+            return IBMGraniteModel
+        elif provider.lower() == "IBMOpenSource".lower():
+            return IBMOpenSourceModel
+        elif provider.lower() == "OpenAI".lower():
+            return OpenAIModel
+        elif provider.lower() == "Ollama".lower():
+            return OllamaModel
+        else:
+            raise Exception(f"Unrecognized model '{provider}'")
+
     @abstractmethod
     def invoke(self, prompt: str) -> BaseMessage:
         pass
@@ -58,7 +71,7 @@ class IBMGraniteModel(ModelProvider):
         top_p=0.9,
         max_new_tokens=4096,
         min_new_tokens=10,
-        template="",
+        template: str = None,
     ) -> None:
         if os.environ.get("GENAI_KEY") is None:
             raise Exception(
@@ -92,7 +105,6 @@ class IBMGraniteModel(ModelProvider):
         self.llm = LangChainChatInterface(
             client=Client(credentials=Credentials.from_env()),
             model_id=model_id,
-            template=template,
             parameters=TextGenerationParameters(
                 decoding_method=DecodingMethod.SAMPLE,
                 max_new_tokens=max_new_tokens,
@@ -121,6 +133,9 @@ class IBMGraniteModel(ModelProvider):
     def get_prompt_builder_config(self, query_kind: str, override_template: str = None):
         if override_template is None:
             override_template = self.template
+
+        if os.path.isfile(override_template):
+            return prompt_builder.add_to_env_from_file_force(override_template)
 
         match (query_kind, override_template):
             case ("single_file", _):
@@ -154,7 +169,7 @@ class IBMOpenSourceModel(ModelProvider):
     ) -> None:
         if os.environ.get("GENAI_KEY") is None:
             raise Exception(
-                "Must set GENAI_KEY in environment if using IBMGraniteModel"
+                "Must set GENAI_KEY in environment if using IBMOpenSourceModel"
             )
 
         self.template = template
@@ -186,7 +201,6 @@ class IBMOpenSourceModel(ModelProvider):
         self.llm = LangChainChatInterface(
             client=Client(credentials=Credentials.from_env()),
             model_id=model_id,
-            template=template,
             parameters=TextGenerationParameters(
                 decoding_method=DecodingMethod.SAMPLE,
                 # NOTE: probably have to do some more clever stuff regarding
@@ -218,6 +232,9 @@ class IBMOpenSourceModel(ModelProvider):
     def get_prompt_builder_config(self, query_kind: str, override_template: str = None):
         if override_template is None:
             override_template = self.template
+
+        if os.path.isfile(override_template):
+            return prompt_builder.add_to_env_from_file_force(override_template)
 
         match (query_kind, override_template):
             case ("single_file", _):
@@ -293,6 +310,9 @@ class OpenAIModel(ModelProvider):
         if override_template is None:
             override_template = self.template
 
+        if os.path.isfile(override_template):
+            return prompt_builder.add_to_env_from_file_force(override_template)
+
         match (query_kind, override_template):
             case ("single_file", _):
                 return prompt_builder.CONFIG_IBM_GRANITE
@@ -356,6 +376,9 @@ class OllamaModel(ModelProvider):
     def get_prompt_builder_config(self, query_kind: str, override_template: str = None):
         if override_template is None:
             override_template = self.template
+
+        if os.path.isfile(override_template):
+            return prompt_builder.add_to_env_from_file_force(override_template)
 
         match (query_kind, override_template):
             case ("single_file", _):

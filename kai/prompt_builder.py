@@ -420,6 +420,35 @@ def build_prompt(section_name: str, pb_vars: dict):
     return result
 
 
+def add_to_env_force(yaml_str: str) -> list[str]:
+    """
+    Loads the template from the yaml string and puts it into the env by force.
+    Returns the list of uuids added to the env.
+    """
+    list_of_uuids: list[str] = []
+
+    documents = yaml.safe_load_all(yaml_str)
+    for doc in documents:
+        section = Section.from_dict(doc)
+        global_env.inner[section.uuid] = section
+        list_of_uuids.append(section.uuid)
+
+    return list_of_uuids
+
+
+def add_to_env_from_file_force(file_path: str) -> list[str]:
+    """
+    Loads the template from the file path and puts it into the env by force.
+    Returns the list of uuids added to the env.
+    """
+    file_str: str
+
+    with open(file_path) as f:
+        file_str = f.read()
+
+    return add_to_env_force(file_str)
+
+
 if __name__ == "__main__":
 
     pb_vars = {

@@ -13,4 +13,4 @@ run-server:
 	PYTHONPATH=$(KAI_PYTHON_PATH) gunicorn --timeout 3600 -w $(NUM_WORKERS) --bind localhost:8080 --worker-class aiohttp.GunicornWebWorker 'kai.server:app("$(LOGLEVEL)")'
 
 load-data:
-	PYTHONPATH=$(KAI_PYTHON_PATH) python ./kai/incident_store_advanced.py  --config_filepath ./kai/config.toml
+	PYTHONPATH=$(KAI_PYTHON_PATH) python ./kai/incident_store.py  --config_filepath ./kai/config.toml

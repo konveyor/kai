@@ -1,682 +1,930 @@
-__all__ = ["Application", "IncidentStore"]
-
-import copy
+import argparse
+import datetime
+import json
 import os
-import pprint
+import tomllib
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
+from functools import wraps
+from inspect import signature
+from typing import Literal, Optional
+from urllib.parse import unquote, urlparse
 
+import psycopg2
 import yaml
+from git import Repo
+from psycopg2.extensions import connection
+from psycopg2.extras import DictCursor, DictRow
 
+from kai.embedding_provider import EmbeddingNone, EmbeddingProvider
+from kai.kai_logging import KAI_LOG
 from kai.report import Report
-from kai.scm import GitDiff
 
-# TODO: Add types to this entire file - jsussman
+BASE_PATH = os.path.dirname(__file__)
 
-# TODO: Make this more like the real n -> n+1 problem
+
+class IncidentStore(ABC):
+
+    @abstractmethod
+    def load_store(path: str):
+        pass
+
+    @abstractmethod
+    def delete_store():
+        pass
+
+    @abstractmethod
+    def add_incident():
+        pass
+
+    @abstractmethod
+    def find_similar_incident(
+        violation_name: str,
+        ruleset_name: str,
+        incident_snip: str,
+        incident_vars: dict,
+    ) -> tuple[
+        Optional[dict],
+        Literal[
+            "exact",
+            "variables_mismatch",
+            "similarity_only",
+            "unseen_violation",
+            "ambiguous_violation",
+        ],
+    ]:
+        """
+        Returns tuple[dict | None, str] - First element is the match if it exists
+        - Second element is whether it is an exact match or not. Values can be:
+          - 'exact': exact match. From the same violation and has the same
+            variables. Filtered using similarity search
+          - 'variables_mismatch': From the same violation but does not have the same
+            variables.
+          - 'similarity_only': Not from the same violation, only based on snip
+            similarity search
+          - 'unseen_violation': We haven't seen this violation before. Same result
+            as 'similarity_only'
+          - 'ambiguous_violation': violation_name and ruleset_name did not uniquely
+            identify a violation. Same result as 'similarity_only'
+        """
+        pass
 
 
 @dataclass
 class Application:
-    name: str
-    report: dict
-    repo: Optional[str] = None
-    initial_branch: Optional[str] = None  # shouldn't it be current branch?
-    solved_branch: Optional[str] = None
-    timestamp: Optional[int] = None
+    application_id: int | None
+    application_name: str
+    repo_uri_origin: str
+    repo_uri_local: str
+    current_branch: str
+    current_commit: str
+    generated_at: datetime.datetime
 
-
-class IncidentStore:
-    def __init__(self, report_path: str, output_dir: str):
-        # applications, keyed on App Name
-        self.applications: dict[str, Application] = {}
-        # cached_violations is defined in comments in self._update_cached_violations
-        self.cached_violations = {}
-        self.solved_violations = {}
-        self.missing_violations = {}
-        self.output_dir = output_dir
-        self.analysis_dir = report_path
-        self.pp = pprint.PrettyPrinter(indent=2)
-
-    def add_app_to_incident_store(self, app_name: str, path_to_report: str):
-        r = Report(path_to_report).get_report()
-        app_variables = self.get_app_variables(app_name)
-        if app_variables is None:
-            raise Exception(f"Unable to get app_variables for app_name '{app_name}'.")
-
-        a = Application(
-            app_name,
-            r,
-            app_variables.get("repo", None),
-            app_variables.get("initial_branch", None),
-            app_variables.get("solved_branch", None),
-            app_variables.get("timestamp", None),
+    def as_tuple(self):
+        return (
+            self.application_id,
+            self.application_name,
+            self.repo_uri_origin,
+            self.repo_uri_local,
+            self.current_branch,
+            self.current_commit,
+            self.generated_at,
         )
-        self.applications[app_name] = a
-        self._update_cached_violations(a)
 
-    def get_app_from_incident_store(self, app_name: str):
-        return self.applications[app_name]
+    @staticmethod
+    def from_dict_row(row: DictRow) -> "Application":
+        return Application(
+            application_id=row["application_id"],
+            application_name=row["application_name"],
+            repo_uri_origin=row["repo_uri_origin"],
+            repo_uri_local=row["repo_uri_local"],
+            current_branch=row["current_branch"],
+            current_commit=row["current_commit"],
+            generated_at=row["generated_at"],
+        )
 
-    def get_app_names_from_incident_store(self):
-        return self.applications.keys()
 
-    # TODO: query hub api for the application
-    def get_app_from_konveyor_hub(self, app_name: str):
-        return None  # For now, return None always - jsussman
+def supply_cursor_if_none(func):
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        sig = signature(func)
+        bound_args = sig.bind(self, *args, **kwargs)
+        bound_args.apply_defaults()
 
-    # get the app variables from the app.yaml
-    def get_app_variables(self, app_name: str):
-        # Path to the analysis_reports directory
-        analysis_reports_dir = "samples/analysis_reports"
+        if "cur" not in bound_args.arguments or bound_args.arguments["cur"] is None:
+            with self.conn.cursor() as cur:
+                bound_args.arguments["cur"] = cur
+                return func(*bound_args.args, **bound_args.kwargs)
+        else:
+            return func(*bound_args.args, **bound_args.kwargs)
 
-        # Check if the specified app folder exists
-        app_folder = os.path.join(analysis_reports_dir, app_name)
-        if not os.path.exists(app_folder):
-            print(
-                f"Error: {app_name} does not exist in the analysis_reports directory."
+    return wrapper
+
+
+# TODO: Potentially create a Redis version of the incident store as well?
+
+
+# TODO(@JonahSussman): Migrate this to use an ORM
+class PSQLIncidentStore(IncidentStore):
+    def __init__(
+        self,
+        *,
+        drop_tables: bool = False,
+        config_filepath: str = None,
+        config_section: str = None,
+        config: dict = None,
+        emb_provider: EmbeddingProvider = None,
+    ):
+        # Config parsing. Either comes from a dict or a .toml file
+        cf_none = config_filepath is None
+        cs_none = config_section is None
+        cd_none = config is None
+
+        if cf_none != cs_none:
+            raise Exception(
+                "config_filepath and config_section must both be set if using .ini file."
             )
-            return None
+        if not (cf_none ^ cd_none):
+            raise Exception("Must provide either config .toml or config dict.")
 
-        # Path to the app.yaml file
-        app_yaml_path = os.path.join(app_folder, "app.yaml")
+        if not cf_none:
+            with open(config_filepath, "rb") as f:
+                config = tomllib.load(f)
 
-        # Check if app.yaml exists for the specified app
-        if not os.path.exists(app_yaml_path):
-            print(f"Error: app.yaml does not exist for {app_name}.")
-            return None
-
-        # Load contents of app.yaml
-        with open(app_yaml_path, "r") as app_yaml_file:
-            app_data: dict = yaml.safe_load(app_yaml_file)
-
-        return app_data
-
-    # determine if new application analysis report is available
-    def is_new_analysis_report_available(self, application):
-        # query hub api for the application
-        # if the timestamp is newer than the current timestamp
-        # return true
-        # else return false
-        app1 = self.get_app_from_konveyor_hub(application.name)
-        if app1 is not None:
-            if app1.timestamp > application.timestamp:
-                return True
-        return False
-
-    def _update_cached_violations(self, a):
-        """
-        Update the cached_violations with the new application
-        The desired structure
-         cached_violations: {
-           ruleset_name: {
-               violation_name: {
-                   app_name: {
-                       file_path: [ {
-                            variables: {}
-                            line_number: int
-                            message: str
-                        } ]
-                    }
-               }
-           }
-         }
-
-        """
-        ### Add our Application's Name to the cached_violations
-        # self.pp.pprint(a.report)
-        # load self.cached_violations if it is not loaded
-        if self.cached_violations is None:
-            self.cached_violations = self.get_cached_violations(
-                "cached_violations.yaml"
-            )
-        print(f"Updating cached_violations with '{a.name}'")
-        for ruleset in a.report.keys():
-            if ruleset not in self.cached_violations:
-                self.cached_violations[ruleset] = {}
-            for violation_name in a.report[ruleset]["violations"].keys():
-                if violation_name not in self.cached_violations[ruleset]:
-                    self.cached_violations[ruleset][violation_name] = {}
-                # Assume there can be multiple incidents of the same violation in same file
-                ## Example of the YAML report data for an incident
-                ##  incidents:
-                ##  - uri: file:///tmp/source-code/src/main/webapp/WEB-INF/web.xml
-                ##    message: "\n Session replication ensures that client sessions are not disrupted by node failure.
-                ##             Each node in the cluster shares information about ongoing sessions and can take over sessions
-                ##             if another node disappears. In a cloud environment, however, data in the memory of a running container can be wiped out by a restart.\n\n
-                ##             Recommendations\n\n * Review the session replication usage and ensure that it is configured properly.\n *
-                ##             Disable HTTP session clustering and accept its implications.\n * Re-architect the application so that sessions are stored in a cache backing service or a remote data grid.\n\n
-                ##             A remote data grid has the following benefits:\n\n * The application is more scaleable and elastic.\n * The application can survive EAP node failures
-                ##             because a JVM failure does not cause session data loss.\n * Session data can be shared by multiple applications.\n "
-                ##    variables:
-                ##      data: distributable
-                ##      innerText: ""
-                ##      matchingXML: ""
-                ##
-                incidents = a.report[ruleset]["violations"][violation_name].get(
-                    "incidents", None
+            if config_section not in config:
+                raise Exception(
+                    f"Section {config_section} not found in file {config_filepath}"
                 )
-                if incidents is None:
-                    # self.pp.pprint(a.report[ruleset]["violations"])
-                    print(
-                        f"Found no incidents for '{a.name}' with {ruleset} and {violation_name}"
+
+            config = config[config_section]
+
+        # Embedding provider
+        if emb_provider is None:
+            raise Exception("emb_provider must not be None")
+
+        self.emb_provider = emb_provider
+
+        try:
+            with psycopg2.connect(cursor_factory=DictCursor, **config) as conn:
+                KAI_LOG.info("Connected to the PostgreSQL server.")
+                self.conn: connection = conn
+                self.conn.autocommit = True
+
+            with self.conn.cursor() as cur:
+                # TODO: Figure out portable way to install the pgvector extension.
+                # Containerize? "CREATE EXTENSION IF NOT EXISTS vector;" Only works as
+                # superuser
+
+                # TODO: along with analyzer_types.py, we should really use something
+                # like openapi to nail down the spec and autogenerate the types
+
+                if drop_tables:
+                    cur.execute(
+                        open(f"{BASE_PATH}/data/sql/drop_tables.sql", "r").read()
                     )
-                    continue
-                for incident in incidents:
-                    if a.name not in self.cached_violations[ruleset][violation_name]:
-                        self.cached_violations[ruleset][violation_name][a.name] = {}
-                    uri = incident.get("uri", None)
-                    if uri is None:
-                        # self.pp.pprint(incident)
-                        print(
-                            f"'{a.name}' with {ruleset} and {violation_name}, incident has no 'uri'"
-                        )
-                        continue
-                    file_path = Report.get_cleaned_file_path(uri)
-                    if (
-                        file_path
-                        not in self.cached_violations[ruleset][violation_name][a.name]
-                    ):
-                        self.cached_violations[ruleset][violation_name][a.name][
-                            file_path
-                        ] = []
-                    # Remember for future matches we need to take into account the variables
-                    entry = {
-                        "variables": copy.deepcopy(incident.get("variables", {})),
-                        "line_number": incident.get("lineNumber", None),
-                        "message": incident.get("message", None),
-                    }
-                    self.cached_violations[ruleset][violation_name][a.name][
-                        file_path
-                    ].append(entry)
 
-    def find_common_violations(self, ruleset_name, violation_name):
-        """
-        Find the common violation across all applications
-        Returns:
-            None        - if no common violation
-            {}          - if a common violation is found
-        """
+                cur.execute(open(f"{BASE_PATH}/data/sql/create_tables.sql", "r").read())
 
-        # if the cached_violations is not loaded, load it
-        if not self.cached_violations:
-            self.cached_violations = self.get_cached_violations(
-                "cached_violations.yaml"
+                dim = self.emb_provider.get_dimension()
+                for q in open(
+                    f"{BASE_PATH}/data/sql/add_embedding.sql", "r"
+                ).readlines():
+                    cur.execute(q, (dim,))
+
+        except (psycopg2.DatabaseError, Exception) as error:
+            KAI_LOG.error(f"Error initializing PSQLIncidentStore: {error}")
+
+    @supply_cursor_if_none
+    def select_application(
+        self, app_id: int, app_name: str = None, cur: DictCursor = None
+    ) -> list[DictRow]:
+        if app_id is None and app_name is None:
+            return []
+
+        if app_id is not None:
+            cur.execute(
+                "SELECT * FROM applications WHERE application_id = %s;", (app_id,)
             )
-        # check the loaded cached_violations and see if its empty
-        if self.cached_violations is None:
-            return None
+        elif app_name is not None:
+            cur.execute(
+                "SELECT * FROM applications WHERE application_name = %s;", (app_name,)
+            )
+        else:
+            raise Exception("At least one of app_id or app_name must be not None.")
 
-        common_entries = []
+        # return [Application.from_dict_row(row) for row in cur.fetchall()]
+        return cur.fetchall()
 
-        # iterate through the cached_violations and find the common entries
-        for ruleset, violations in self.cached_violations.items():
-            if ruleset == ruleset_name:
-                for violation, apps in violations.items():
-                    if violation == violation_name:
-                        for app, file_paths in apps.items():
-                            common_entries.append([ruleset, violation, app, file_paths])
+    @supply_cursor_if_none
+    def insert_application(self, app: Application, cur: DictCursor = None) -> DictRow:
+        cur.execute(
+            """INSERT INTO applications(application_name, repo_uri_origin, repo_uri_local, current_branch, current_commit, generated_at)
+      VALUES (%s, %s, %s, %s, %s, %s) RETURNING *;""",
+            app.as_tuple()[1:],
+        )
 
-                        break
-                break
-        return common_entries
+        return cur.fetchone()
 
-    def cleanup(self):
+    @supply_cursor_if_none
+    def update_application(
+        self, application_id: int, app: Application, cur: DictCursor = None
+    ) -> DictRow:
+        cur.execute(
+            """UPDATE applications
+      SET application_name = %s,
+        repo_uri_origin = %s,
+        repo_uri_local = %s,
+        current_branch = %s,
+        current_commit = %s,
+        generated_at = %s
+      WHERE application_id = %s
+      RETURNING *;""",
+            (
+                app.application_name,
+                app.repo_uri_origin,
+                app.repo_uri_local,
+                app.current_branch,
+                app.current_commit,
+                app.generated_at,
+                application_id,
+            ),
+        )
+
+        return cur.fetchone()
+
+    @supply_cursor_if_none
+    def select_ruleset(
+        self, ruleset_id: int = None, ruleset_name: str = None, cur: DictCursor = None
+    ) -> list[DictRow]:
+        # def select_ruleset(self, ruleset_id: int = None, ruleset_name: str = None, application_id: int = None, cur: DictCursor = None) -> list[DictRow]:
+        if ruleset_id is not None:
+            cur.execute("SELECT * FROM rulesets WHERE ruleset_id = %s;", (ruleset_id,))
+        # elif ruleset_name is not None and application_id is not None:
+        elif ruleset_name is not None:
+            cur.execute(
+                # "SELECT * FROM rulesets WHERE ruleset_name = %s AND application_id = %s;",
+                "SELECT * FROM rulesets WHERE ruleset_name = %s;",
+                # (ruleset_name, application_id,)
+                (ruleset_name,),
+            )
+        else:
+            raise Exception(
+                "At least one of ruleset_id or ruleset_name must be not None."
+            )
+
+        return cur.fetchall()
+
+    @supply_cursor_if_none
+    def insert_ruleset(
+        self, ruleset_name: str, tags: list[str], cur: DictCursor = None
+    ) -> DictRow:
+        # def insert_ruleset(self, ruleset_name: str, application_id: int, tags: list[str], cur: DictCursor = None) -> DictRow:
+        cur.execute(
+            # """INSERT INTO rulesets(ruleset_name, application_id, tags)
+            """INSERT INTO rulesets(ruleset_name, tags)
+      VALUES (%s, %s) RETURNING*;""",
+            # VALUES (%s, %s, %s) RETURNING*;""",
+            # (ruleset_name, application_id, json.dumps(tags))
+            (ruleset_name, json.dumps(tags)),
+        )
+
+        return cur.fetchone()
+
+    @supply_cursor_if_none
+    def select_violation(
+        self,
+        violation_id: int = None,
+        violation_name: str = None,
+        ruleset_id: int = None,
+        cur: DictCursor = None,
+    ) -> list[DictRow]:
+        if violation_id is not None:
+            cur.execute(
+                "SELECT * FROM violations WHERE violation_id = %s;", (violation_id,)
+            )
+        elif violation_name is not None and ruleset_id is not None:
+            cur.execute(
+                "SELECT * FROM violations WHERE violation_name = %s AND ruleset_id = %s;",
+                (
+                    violation_name,
+                    ruleset_id,
+                ),
+            )
+        else:
+            raise Exception(
+                "At least one of violation_id or (violation_name, ruleset_id) must be not None."
+            )
+
+        return cur.fetchall()
+
+    @supply_cursor_if_none
+    def insert_violation(
+        self,
+        violation_name: str,
+        ruleset_id: int,
+        category: str,
+        labels: list[str],
+        cur: DictCursor = None,
+    ) -> DictRow:
+        cur.execute(
+            """INSERT INTO violations(violation_name, ruleset_id, category, labels)
+      VALUES (%s, %s, %s, %s) RETURNING *;""",
+            (violation_name, ruleset_id, category, json.dumps(sorted(labels))),
+        )
+
+        return cur.fetchone()
+
+    @supply_cursor_if_none
+    def insert_incident(
+        self,
+        violation_id: int,
+        application_id: int,
+        incident_uri: str,
+        incident_snip: str,
+        incident_line: int,
+        incident_variables: dict,
+        solution_id: int = None,
+        cur: DictCursor = None,
+    ) -> DictRow:
+        # if isinstance(incident_variables, str):
+        #   incident_variables = json.loads(incident_variables)
+        # if not isinstance(incident_variables, list):
+        #   raise Exception(f"incident_variables must be of type list. Got type '{type(incident_variables)}'")
+
+        vars_str = json.dumps(incident_variables)
+        truncated_vars = (vars_str[:75] + "...") if len(vars_str) > 75 else vars_str
+
+        KAI_LOG.info(
+            f"Inserting incident {(violation_id, application_id, incident_uri, incident_line, truncated_vars, solution_id,)}"
+        )
+
+        cur.execute(
+            """INSERT INTO incidents(violation_id, application_id, incident_uri, incident_snip, incident_line, incident_variables, solution_id, incident_snip_embedding)
+      VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING *;""",
+            (
+                violation_id,
+                application_id,
+                incident_uri,
+                incident_snip,
+                incident_line,
+                json.dumps(incident_variables),
+                solution_id,
+                str(self.emb_provider.get_embedding(incident_snip)),
+            ),
+        )
+
+        return cur.fetchone()
+
+    @supply_cursor_if_none
+    def insert_accepted_solution(
+        self,
+        generated_at: datetime.datetime,
+        solution_big_diff: str,
+        solution_small_diff: str,
+        solution_original_code: str,
+        solution_updated_code: str,
+        cur: DictCursor = None,
+    ):
+        KAI_LOG.info(f"Inserting accepted solution {((generated_at))}")
+        small_diff_embedding = str(self.emb_provider.get_embedding(solution_small_diff))
+        original_code_embedding = str(
+            self.emb_provider.get_embedding(solution_original_code)
+        )
+
+        # Encode the strings using the appropriate encoding method
+        # to avoid unicode errors TODO: validate if this is the right way to do it
+        solution_big_diff = solution_big_diff.encode("utf-8", "ignore").decode("utf-8")
+        solution_small_diff = solution_small_diff.encode("utf-8", "ignore").decode(
+            "utf-8"
+        )
+        solution_original_code = solution_original_code.encode(
+            "utf-8", "ignore"
+        ).decode("utf-8")
+        solution_updated_code = solution_updated_code.encode("utf-8", "ignore").decode(
+            "utf-8"
+        )
+
+        cur.execute(
+            """INSERT INTO accepted_solutions(generated_at, solution_big_diff,
+      solution_small_diff, solution_original_code, solution_updated_code,
+      small_diff_embedding, original_code_embedding)
+      VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING *;""",
+            (
+                generated_at,
+                solution_big_diff,
+                solution_small_diff,
+                solution_original_code,
+                solution_updated_code,
+                small_diff_embedding,
+                original_code_embedding,
+            ),
+        )
+
+        return cur.fetchone()
+
+    @supply_cursor_if_none
+    def select_accepted_solution(self, solution_id: int, cur: DictCursor = None):
+        cur.execute(
+            "SELECT * FROM accepted_solutions WHERE solution_id = %s;", (solution_id,)
+        )
+
+        return cur.fetchone()
+
+    @supply_cursor_if_none
+    def get_fuzzy_similar_incident(
+        self,
+        violation_name: str,
+        ruleset_name: str,
+        incident_snip: str,
+        incident_vars: dict,
+        cur: DictCursor = None,
+    ):
         """
-        Cleanup the incident store
+        Returns tuple[DictRow | None, str] - First element is the match if it exists
+        - Second element is whether it is an exact match or not. Values can be:
+          - 'exact': exact match. From the same violation and has the same
+            variables. Filtered using similarity search
+          - 'variables_mismatch': From the same violation but does not have the same
+            variables.
+          - 'similarity_only': Not from the same violation, only based on snip
+            similarity search
+          - 'unseen_violation': We haven't seen this violation before. Same result
+            as 'similarity_only'
+          - 'ambiguous_violation': violation_name and ruleset_name did not uniquely
+            identify a violation. Same result as 'similarity_only'
         """
-        output_directory = self.output_dir
-        # delete cached_violations.yaml if it exists
-        if os.path.exists(f"{output_directory}/cached_violations.yaml"):
-            os.remove(f"{output_directory}/cached_violations.yaml")
-        # delete solved_incidents.yaml if it exists
-        if os.path.exists(f"{output_directory}/solved_incidents.yaml"):
-            os.remove(f"{output_directory}/solved_incidents.yaml")
-        # delete missing_incidents.yaml if it exists
-        if os.path.exists(f"{output_directory}/missing_incidents.yaml"):
-            os.remove(f"{output_directory}/missing_incidents.yaml")
-        # clear cached_violations if it is not None
-        if self.cached_violations is not None:
-            self.cached_violations = {}
 
-    def load_incident_store(self):
-        # check if the folder exists
-        folder_path = self.analysis_dir
+        # # Pseudo-code
+        # this_violation = get_violation_from_params()
+        # if this_violation_dne:
+        #   return get_snip_with_highest_embedding_similarity_from_all_violations(), 'similarity_only'
+
+        # this_violation_slns = get_solutions_for_this_violation()
+
+        # if len(this_violation_slns) == 0:
+        #   return get_snip_with_highest_embedding_similarity_from_all_violations(), 'similarity_only'
+
+        # # The violation we are looking at has at least one solution
+        # filter_on_vars = this_violation_slns.filter_exact(inp_vars)
+
+        # if len(filter_on_vars) == 0:
+        #   return get_snip_with_highest_embedding_similarity_from_all_solutions(), 'variables_mismatch'
+        # if len(filter_on_vars) == 1:
+        #   return filter_on_vars[0], 'exact'
+        # if len(filter_on_vars) > 1:
+        #   return get_snip_with_highest_embedding_similarity_from_filtered_set(), 'exact'
+
+        KAI_LOG.debug("get_fuzzy_similar_incident")
+
+        emb = self.emb_provider.get_embedding(incident_snip)
+        emb_str = str(emb)
+
+        incident_vars_str = json.dumps(incident_vars)
+
+        def highest_embedding_similarity_from_all():
+            cur.execute(
+                """
+                SELECT * 
+                FROM incidents 
+                WHERE solution_id IS NOT NULL
+                ORDER BY incident_snip_embedding <-> %s LIMIT 1;""",
+                (emb_str,),
+            )
+            return dict(cur.fetchone())
+
+        cur.execute(
+            """
+      SELECT v.*
+      FROM violations v
+      JOIN rulesets r ON v.ruleset_id = r.ruleset_id
+      WHERE v.violation_name = %s
+      AND r.ruleset_name = %s;
+      """,
+            (violation_name, ruleset_name),
+        )
+
+        violation_query = cur.fetchall()
+
+        if len(violation_query) > 1:
+            KAI_LOG.info("Ambiguous violation based on ruleset_name and violation_name")
+            return highest_embedding_similarity_from_all(), "ambiguous_violation"
+        if len(violation_query) == 0:
+            KAI_LOG.info(f"No violations matched: {ruleset_name=} {violation_name=}")
+            return highest_embedding_similarity_from_all(), "unseen_violation"
+
+        violation = violation_query[0]
+
+        cur.execute(
+            """
+      SELECT COUNT(*)
+      FROM incidents
+      WHERE violation_id = %s
+      AND solution_id IS NOT NULL;
+      """,
+            (violation["violation_id"],),
+        )
+
+        number_of_slns = cur.fetchone()[0]
+        if number_of_slns == 0:
+            KAI_LOG.info(
+                f"No solutions for violation: {ruleset_name=} {violation_name=}"
+            )
+            return highest_embedding_similarity_from_all(), "similarity_only"
+
+        cur.execute(
+            """
+      SELECT *
+      FROM incidents
+      WHERE violation_id = %s
+      AND solution_id IS NOT NULL
+      AND incident_variables <@ %s
+      AND incident_variables @> %s;
+      """,
+            (violation["violation_id"], incident_vars_str, incident_vars_str),
+        )
+
+        exact_variables_query = cur.fetchall()
+
+        if len(exact_variables_query) == 1:
+            return dict(exact_variables_query[0]), "exact"
+        elif len(exact_variables_query) == 0:
+            cur.execute(
+                """
+        SELECT *
+        FROM incidents
+        WHERE violation_id = %s
+        AND solution_id IS NOT NULL
+        ORDER BY incident_snip_embedding <-> %s
+        LIMIT 1;
+        """,
+                (
+                    violation["violation_id"],
+                    emb_str,
+                ),
+            )
+            return dict(cur.fetchone()), "variables_mismatch"
+        else:
+            cur.execute(
+                """
+        SELECT *
+        FROM incidents
+        WHERE violation_id = %s
+        AND solution_id IS NOT NULL
+        AND incident_variables <@ %s
+        AND incident_variables @> %s
+        ORDER BY incident_snip_embedding <-> %s
+        LIMIT 1;
+        """,
+                (
+                    violation["violation_id"],
+                    incident_vars_str,
+                    incident_vars_str,
+                    emb_str,
+                ),
+            )
+            return dict(cur.fetchone()), "exact"
+
+    def insert_and_update_from_report(self, app: Application, report: Report):
+        """
+        Returns: (number_new_incidents, number_unsolved_incidents,
+        number_solved_incidents): tuple[int, int, int]
+        """
+        # FIXME: Only does stuff within the same application. Maybe fixed?
+
+        # create entries if not exists
+        # reference the old-new matrix
+        #           old
+        #         | NO     | YES
+        # --------|--------+-----------------------------
+        # new NO  | -      | update (SOLVED, embeddings)
+        #     YES | insert | update (line number, etc...)
+
+        repo_path = unquote(urlparse(app.repo_uri_local).path)
+        repo = Repo(repo_path)
+        old_commit: str
+        new_commit = app.current_commit
+
+        number_new_incidents = 0
+        number_unsolved_incidents = 0
+        number_solved_incidents = 0
+
+        with self.conn.cursor() as cur:
+            cur.execute("DROP TABLE IF EXISTS incidents_temp;")
+            cur.execute("CREATE TABLE incidents_temp (LIKE incidents INCLUDING ALL);")
+
+            query_app = self.select_application(
+                app.application_id, app.application_name, cur
+            )
+
+            if len(query_app) >= 2:
+                raise Exception(f"Multiple applications found for {app}.")
+            elif len(query_app) == 0 and app.application_id is not None:
+                raise Exception(
+                    f"No application with application_id {app.application_id}."
+                )
+            elif len(query_app) == 0:
+                application = self.insert_application(app, cur)
+            else:
+                application = query_app[0]
+
+            old_commit = application["current_commit"]
+
+            report_dict = report.get_report()
+
+            for ruleset_name, ruleset_dict in report_dict.items():
+                query_ruleset = self.select_ruleset(
+                    ruleset_name=ruleset_name,
+                    # application_id=application['application_id'],
+                    cur=cur,
+                )
+
+                if len(query_ruleset) >= 2:
+                    raise Exception("Multiple rulesets found.")
+                elif len(query_ruleset) == 0:
+                    ruleset = self.insert_ruleset(
+                        ruleset_name=ruleset_name,
+                        # application_id=application['application_id'],
+                        tags=ruleset_dict.get("tags", []),
+                        cur=cur,
+                    )
+                else:
+                    ruleset = query_ruleset[0]
+
+                for violation_name, violation_dict in ruleset_dict.get(
+                    "violations", {}
+                ).items():
+                    query_violation = self.select_violation(
+                        violation_name=violation_name,
+                        ruleset_id=ruleset["ruleset_id"],
+                        cur=cur,
+                    )
+
+                    if len(query_violation) >= 2:
+                        raise Exception("Multiple rulesets found.")
+                    elif len(query_violation) == 0:
+                        violation = self.insert_violation(
+                            violation_name=violation_name,
+                            ruleset_id=ruleset["ruleset_id"],
+                            category=violation_dict.get("category", "potential"),
+                            labels=violation_dict.get("labels", []),
+                            cur=cur,
+                        )
+                    else:
+                        violation = query_violation[0]
+
+                    for incident in violation_dict.get("incidents", []):
+                        cur.execute(
+                            """INSERT INTO incidents_temp(violation_id, application_id, incident_uri, incident_snip, incident_line, incident_variables)
+              VALUES (%s, %s, %s, %s, %s, %s);""",
+                            (
+                                violation["violation_id"],
+                                application["application_id"],
+                                incident.get("uri", ""),
+                                incident.get("codeSnip", ""),
+                                incident.get("lineNumber", 0),
+                                json.dumps(incident.get("variables", {})),
+                            ),
+                        )
+
+            # incidents_temp - incidents
+            cur.execute(
+                """WITH filtered_incidents_temp AS (
+    SELECT * FROM incidents_temp WHERE application_id = %s
+),
+filtered_incidents AS (
+    SELECT * FROM incidents WHERE application_id = %s
+)
+SELECT fit.incident_id AS incidents_temp_id, fi.incident_id AS incidents_id, fit.violation_id, fit.application_id, fit.incident_uri, fit.incident_snip, fit.incident_line, fit.incident_variables
+FROM filtered_incidents_temp fit
+LEFT JOIN filtered_incidents fi ON fit.violation_id = fi.violation_id
+                                AND fit.incident_uri = fi.incident_uri
+                                AND fit.incident_snip = fi.incident_snip
+                                AND fit.incident_line = fi.incident_line
+                                AND fit.incident_variables = fi.incident_variables
+WHERE fi.incident_id IS NULL;""",
+                (
+                    application["application_id"],
+                    application["application_id"],
+                ),
+            )
+
+            new_incidents = cur.fetchall()
+            number_new_incidents = len(new_incidents)
+
+            self.conn.autocommit = False
+            for ni in new_incidents:
+                self.insert_incident(
+                    ni["violation_id"],
+                    ni["application_id"],
+                    ni["incident_uri"],
+                    ni["incident_snip"],
+                    ni["incident_line"],
+                    ni["incident_variables"],
+                    None,
+                    cur,
+                )
+            self.conn.commit()
+            cur.fetchall()
+            self.conn.autocommit = True
+
+            # incidents `intersect` incidents_temp
+            cur.execute(
+                """-- incidents `intersect` incidents_temp with application_id match first
+WITH filtered_incidents AS (
+    SELECT * FROM incidents WHERE application_id = %s
+),
+filtered_incidents_temp AS (
+    SELECT * FROM incidents_temp WHERE application_id = %s
+)
+SELECT fi.incident_id AS incidents_id, fit.incident_id AS incidents_temp_id, fi.violation_id, fi.application_id, fi.incident_uri, fi.incident_snip, fi.incident_line, fi.incident_variables
+FROM filtered_incidents fi
+JOIN filtered_incidents_temp fit ON fi.violation_id = fit.violation_id
+                                  AND fi.incident_uri = fit.incident_uri
+                                  AND fi.incident_snip = fit.incident_snip
+                                  AND fi.incident_line = fit.incident_line
+                                  AND fi.incident_variables = fit.incident_variables;
+""",
+                (
+                    application["application_id"],
+                    application["application_id"],
+                ),
+            )
+
+            unsolved_incidents = cur.fetchall()
+            number_unsolved_incidents = len(unsolved_incidents)
+
+            # incidents - incidents_temp
+            cur.execute(
+                """WITH filtered_incidents AS (
+    SELECT * FROM incidents WHERE application_id = %s
+),
+filtered_incidents_temp AS (
+    SELECT * FROM incidents_temp WHERE application_id = %s
+)
+SELECT fi.incident_id AS incidents_id, fit.incident_id AS incidents_temp_id, fi.violation_id, fi.application_id, fi.incident_uri, fi.incident_snip, fi.incident_line, fi.incident_variables
+FROM filtered_incidents fi
+LEFT JOIN filtered_incidents_temp fit ON fi.violation_id = fit.violation_id
+                                      AND fi.incident_uri = fit.incident_uri
+                                      AND fi.incident_snip = fit.incident_snip
+                                      AND fi.incident_line = fit.incident_line
+                                      AND fi.incident_variables = fit.incident_variables
+WHERE fit.incident_id IS NULL;""",
+                (
+                    application["application_id"],
+                    application["application_id"],
+                ),
+            )
+
+            solved_incidents = cur.fetchall()
+            number_solved_incidents = len(solved_incidents)
+            KAI_LOG.debug(f"# of solved inc: {len(solved_incidents)}")
+
+            self.conn.autocommit = False
+            for si in solved_incidents:
+                file_path = os.path.join(
+                    repo_path,
+                    unquote(urlparse(si[4]).path).removeprefix("/tmp/source-code/"),
+                )
+                big_diff = repo.git.diff(old_commit, new_commit)
+
+                try:
+                    original_code = repo.git.show(f"{old_commit}:{file_path}")
+                except Exception:
+                    original_code = ""
+
+                try:
+                    updated_code = repo.git.show(f"{new_commit}:{file_path}")
+                except Exception:
+                    updated_code = ""
+
+                # file_path = pathlib.Path(os.path.join(repo_path, unquote(urlparse(si[3]).path).removeprefix('/tmp/source-code'))).as_uri()
+                small_diff = repo.git.diff(old_commit, new_commit, "--", file_path)
+
+                sln = self.insert_accepted_solution(
+                    app.generated_at,
+                    big_diff,
+                    small_diff,
+                    original_code,
+                    updated_code,
+                    cur,
+                )
+
+                cur.execute(
+                    "UPDATE incidents SET solution_id = %s WHERE incident_id = %s;",
+                    (sln["solution_id"], si[0]),
+                )
+
+            self.conn.commit()
+            self.conn.autocommit = True
+
+            cur.execute("DROP TABLE IF EXISTS incidents_temp;")
+            application = self.update_application(
+                application["application_id"], app, cur
+            )
+
+        return number_new_incidents, number_unsolved_incidents, number_solved_incidents
+
+    # Automatic vs manual solution acceptance
+
+    def accept_solution_from_id(
+        self,
+        incident_id: int,
+        solution_id: int | None,
+    ):
+        pass
+
+    def accept_solution_from_diff():
+        pass
+
+    def load_store(self, path: str):
+        # fetch the output.yaml files from the analysis_reports/initial directory
+
+        basedir = os.path.dirname(os.path.realpath(__file__))
+        parent_dir = os.path.dirname(basedir)
+        folder_path = os.path.join(parent_dir, path)
+
         if not os.path.exists(folder_path):
-            print(f"Error: {folder_path} does not exist.")
+            KAI_LOG.error(f"Error: {folder_path} does not exist.")
             return None
         # check if the folder is empty
         if not os.listdir(folder_path):
-            print(f"Error: {folder_path} is empty.")
+            KAI_LOG.error(f"Error: {folder_path} is empty.")
             return None
         apps = os.listdir(folder_path)
-        print(f"Loading incident store with applications: {apps}\n")
-        if len(apps) != 0:
-            # cleanup incident store
-            self.cleanup()
+        KAI_LOG.info(f"Loading incident store with applications: {apps}\n")
 
         for app in apps:
+
             # if app is a directory then check if there is a folder called initial
+            KAI_LOG.info(f"Loading application {app}\n")
             app_path = os.path.join(folder_path, app)
             if os.path.isdir(app_path):
                 initial_folder = os.path.join(app_path, "initial")
                 if not os.path.exists(initial_folder):
-                    print(f"Error: {initial_folder} does not exist.")
+                    KAI_LOG.error(f"Error: {initial_folder} does not exist.")
                     return None
                 # check if the folder is empty
                 if not os.listdir(initial_folder):
-                    print(f"Error: No analysis report found in {initial_folder}.")
+                    KAI_LOG.error(
+                        f"Error: No analysis report found in {initial_folder}."
+                    )
                     return None
-                print(f"Loading application {app}\n")
-                _ = self.load_app_cached_violation(app, "initial")
-                print(f"Loaded application {app}\n")
+                report_path = os.path.join(initial_folder, "output.yaml")
 
-        for app in apps:
-            solved_folder = os.path.join(folder_path, app, "solved")
-            if os.path.exists(solved_folder) and os.listdir(solved_folder):
-                print("finding missing incidents")
-                self.update_incident_store(app)
+                repo_path = self.get_repo_path(app)
+                repo = Repo(repo_path)
+                app_v = self.get_app_variables(folder_path, app)
+                initial_branch = app_v["initial_branch"]
+                repo.git.checkout(initial_branch)
+                commit = repo.head.commit
 
-        self.write_cached_violations(self.cached_violations, "cached_violations.yaml")
-        # write missing incidents to the a new file
-        self.write_cached_violations(self.missing_violations, "missing_incidents.yaml")
-        self.write_cached_violations(self.solved_violations, "solved_incidents.yaml")
-
-    def load_app_cached_violation(self, app: str, folder):
-        """
-        Load the incident store with the given applications
-        """
-
-        print(f"Loading application {app}\n")
-        output_yaml = self.fetch_output_yaml(app, folder)
-        if output_yaml is None:
-            print(f"Error: output.yaml does not exist for {app}.")
-            return None
-        self.add_app_to_incident_store(app, output_yaml)
-        # self.write_cached_violations(self.cached_violations, "cached_violations.yaml")
-        return self.cached_violations
-
-    def fetch_output_yaml(self, app_name: str, folder: str = "solved") -> str:
-        """
-        Fetch the output and app yaml for the given application
-        """
-        # Path to the analysis_reports directory
-        analysis_reports_dir = self.analysis_dir
-
-        # Check if the specified app folder exists
-        app_folder = os.path.join(analysis_reports_dir, app_name)
-        if not os.path.exists(app_folder):
-            print(
-                f"Error: {app_name} does not exist in the analysis_reports directory."
-            )
-            return None
-
-        # Path to the output.yaml file
-        output_yaml_path = os.path.join(app_folder, folder, "output.yaml")
-
-        # Check if output.yaml exists for the specified app
-        if not os.path.exists(output_yaml_path):
-            print(f"Error: output.yaml does not exist for {app_name}.")
-            return None
-
-        return output_yaml_path
-
-    def write_cached_violations(self, cached_violations, file_name):
-        """
-        Write the cached_violations to a file for later use
-        """
-        output_directory = self.output_dir
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        parent_dir = os.path.dirname(dir_path)
-        os.path.join(parent_dir, output_directory)
-        os.makedirs(
-            output_directory, exist_ok=True
-        )  # Create the directory if it doesn't exist
-        output_file_path = os.path.join(output_directory, file_name)
-
-        mode = "w" if not os.path.exists(output_file_path) else "a"
-        with open(output_file_path, mode) as f:
-            yaml.dump(cached_violations, f)
-
-        if mode == "w":
-            print(f"Written cached_violations to {output_file_path}\n")
-        else:
-            print(f"Appended cached_violations to {output_file_path}\n")
-
-    # determine if new application analysis report is available
-    def is_new_analysis_report_available(self, application):
-        # Todo: query hub api for the application
-        # if the timestamp is newer than the current timestamp
-        # return true
-        # else return false
-        # app1 = IncidentStore.get_app_from_konveyor_hub(application.name)
-        # if app1 is not None:
-        # if app1.timestamp > application.timestamp:
-        # return app1.timestamp
-        # return None
-
-        # fetch app.yaml from the analysis_reports directory
-        app_variables = self.get_app_variables(application.name)
-        if app_variables is not None:
-            if app_variables["timestamp"] > application.timestamp:
-                return app_variables["timestamp"]
-        return None
-
-    # update the timestamp in app.yaml if new analysis report is available
-    # It is a WORKAROUND until we retrieve data from the hub api
-    def update_timestamp(application):
-        # query hub api for the application
-        # if the timestamp is newer than the current timestamp
-        # update the timestamp in app.yaml
-        # return true
-        # else return false
-        if IncidentStore.is_new_analysis_report_available(application) is not None:
-            # update the timestamp in app.yaml
-            # Path to the analysis_reports directory
-            analysis_reports_dir = "samples/analysis_reports"
-
-            # Check if the specified app folder exists
-            app_folder = os.path.join(analysis_reports_dir, application.name)
-            if not os.path.exists(app_folder):
-                print(
-                    f"Error: {application.name} does not exist in the analysis_reports directory."
+                app_initial = Application(
+                    application_id=None,
+                    application_name=app,
+                    repo_uri_origin=repo.remotes.origin.url,
+                    repo_uri_local=repo_path,
+                    current_branch=initial_branch,
+                    current_commit=commit.hexsha,
+                    generated_at=datetime.datetime.now(),
                 )
-                return False
 
-            # Load contents of app.yaml
-            app_yaml_path = os.path.join(app_folder, "app.yaml")
-            if not os.path.exists(app_yaml_path):
-                print(f"Error: app.yaml does not exist for {application.name}.")
-                return False
-            # open the file in write mode and update the timestamp field
-            with open(app_yaml_path, "r") as app_yaml_file:
-                app_yaml_data = yaml.safe_load(app_yaml_file)
+                KAI_LOG.info(f"Loading application {app}\n")
 
-            # Update the timestamp in the app.yaml data
-            app_yaml_data["timestamp"] = application.timestamp
+                self.insert_and_update_from_report(app_initial, Report(report_path))
+                KAI_LOG.info(f"Loaded application - initial {app}\n")
 
-            # Write the updated contents back to app.yaml
-            with open(app_yaml_path, "w") as app_yaml_file:
-                yaml.dump(app_yaml_data, app_yaml_file)
+                # input(f"After inserting initial for {app}...")
 
-            # Return true
-            return True
-        return False
-
-    def get_cached_violations(self, filename):
-        """
-        Load the cached_violations from a file
-        """
-
-        output_directory = self.output_dir
-        output_file_path = os.path.join(output_directory, filename)
-        print(f"Loading incident store from file: {filename}\n")
-        # check if the file is present
-        if not os.path.exists(output_file_path):
-            print(f"Error: {output_file_path} does not exist.")
-            return None
-
-        # check if the contents of the file is not empty
-        if os.stat(output_file_path).st_size == 0:
-            print(f"Error: {output_file_path} is empty.")
-            return None
-
-        # load the contents of the file
-        with open(output_file_path, "r") as f:
-            self.cached_violations = yaml.safe_load(f)
-
-        print(f"Loaded incident store from file: {output_file_path}\n")
-
-        return self.cached_violations
-
-    def create_temp_cached_violations(self, app_name, report):
-        """
-        Create a temporary cached_violations for the given application
-
-        """
-        temp_cached_violations = {}
-        for ruleset in report.keys():
-            if ruleset not in temp_cached_violations:
-                temp_cached_violations[ruleset] = {}
-            for violation_name in report[ruleset]["violations"].keys():
-                if violation_name not in temp_cached_violations[ruleset]:
-                    temp_cached_violations[ruleset][violation_name] = {}
-                    # Assume there can be multiple incidents of the same violation in same file
-
-                    incidents = report[ruleset]["violations"][violation_name].get(
-                        "incidents", None
+                solved_folder = os.path.join(app_path, "solved")
+                if not os.path.exists(solved_folder):
+                    KAI_LOG.error(f"Error: {solved_folder} does not exist.")
+                    return None
+                # check if the folder is empty
+                if not os.listdir(solved_folder):
+                    KAI_LOG.error(
+                        f"Error: No analysis report found in {solved_folder}."
                     )
-                if incidents is None:
+                    return None
+                report_path = os.path.join(solved_folder, "output.yaml")
+                solved_branch = self.get_app_variables(folder_path, app)[
+                    "solved_branch"
+                ]
+                repo.git.checkout(solved_branch)
+                commit = repo.head.commit
+                app_solved = Application(
+                    application_id=None,
+                    application_name=app,
+                    repo_uri_origin=repo.remotes.origin.url,
+                    repo_uri_local=repo_path,
+                    current_branch=solved_branch,
+                    current_commit=commit.hexsha,
+                    generated_at=datetime.datetime.now(),
+                )
+                self.insert_and_update_from_report(app_solved, Report(report_path))
 
-                    print(
-                        f"Found no incidents for '{app_name}' with {ruleset} and {violation_name}"
-                    )
-                    continue
-                for incident in incidents:
-                    if app_name not in temp_cached_violations[ruleset][violation_name]:
-                        temp_cached_violations[ruleset][violation_name][app_name] = {}
-                    uri = incident.get("uri", None)
-                    if uri is None:
+                KAI_LOG.info(f"Loaded application - solved {app}\n")
 
-                        print(
-                            f"'{app_name}' with {ruleset} and {violation_name}, incident has no 'uri'"
-                        )
-                        continue
-                    file_path = Report.get_cleaned_file_path(uri)
-                    if (
-                        file_path
-                        not in temp_cached_violations[ruleset][violation_name][app_name]
-                    ):
-                        temp_cached_violations[ruleset][violation_name][app_name][
-                            file_path
-                        ] = []
-                    # Remember for future matches we need to take into account the variables
-                    entry = {
-                        "variables": copy.deepcopy(incident.get("variables", {})),
-                        "line_number": incident.get("lineNumber", None),
-                        "message": incident.get("message", None),
-                    }
-                    temp_cached_violations[ruleset][violation_name][app_name][
-                        file_path
-                    ].append(entry)
-        return temp_cached_violations
-
-    def update_incident_store(self, app_name):
-        """
-        Update the incident store with the given application
-        Find missing and solved incidents
-        Add new incidents to the cached_violations
-        """
-
-        cached_violations = self.cached_violations
-
-        print(f"Updating incident store with application {app_name}\n")
-        output_yaml = self.fetch_output_yaml(app_name)
-        if output_yaml is None:
-            print(f"Error: output.yaml does not exist for {app_name}.")
-            return None
-        temp_report = Report(output_yaml).get_report()
-        report = self.create_temp_cached_violations(app_name, temp_report)
-        self.missing_violations = self.get_missing_incidents(app_name, report)
-
-        self.solved_violations = self.find_solved_issues(app_name)
-
-        for ruleset in report.keys():
-            if ruleset not in cached_violations:
-                cached_violations[ruleset] = {}
-
-            for violation_name in report[ruleset].keys():
-                if violation_name not in cached_violations[ruleset]:
-                    cached_violations[ruleset][violation_name] = {}
-
-                for app in report[ruleset][violation_name].keys():
-                    if app not in cached_violations[ruleset][violation_name]:
-                        cached_violations[ruleset][violation_name][app] = {}
-
-                    for file_path in report[ruleset][violation_name][app].keys():
-                        if (
-                            file_path
-                            not in cached_violations[ruleset][violation_name][app]
-                        ):
-                            cached_violations[ruleset][violation_name][app][
-                                file_path
-                            ] = []
-
-                        existing_incidents = cached_violations[ruleset][violation_name][
-                            app
-                        ][file_path]
-
-                        for incident in report[ruleset][violation_name][app][file_path]:
-                            # Check if the incident is a duplicate
-                            is_duplicate = False
-                            for existing_incident in existing_incidents:
-                                if (
-                                    existing_incident["variables"]
-                                    == incident["variables"]
-                                    and existing_incident["line_number"]
-                                    == incident["line_number"]
-                                ):
-                                    is_duplicate = True
-                                    # print(f"skip duplicate incident: {existing_incident}\n")
-                                    break
-
-                            if not is_duplicate:
-                                self.cached_violations[ruleset][violation_name][app][
-                                    file_path
-                                ].append(incident)
-
-        return self.cached_violations
-
-    # find the missing incidents from self.cached_violations
-    def get_missing_incidents(self, app_name, new_report):
-        """
-        Compare the new report with the cached_violations to find the missing incidents from cached_violations
-        """
-
-        # get commit_id from app.yaml
-        app_variables = self.get_app_variables(app_name)
-
-        for ruleset in self.cached_violations.keys():
-            for violation in self.cached_violations[ruleset].keys():
-                for app in self.cached_violations[ruleset][violation].keys():
-                    if app == app_name:
-                        for file_path in self.cached_violations[ruleset][violation][
-                            app
-                        ].keys():
-                            if new_report is not None:
-                                new_incidents = (
-                                    new_report.get(ruleset, {})
-                                    .get(violation, {})
-                                    .get(app_name, {})
-                                    .get(file_path, [])
-                                )
-                            else:
-                                new_incidents = []
-                            for incident in self.cached_violations[ruleset][violation][
-                                app
-                            ][file_path]:
-                                if incident not in new_incidents:
-                                    if ruleset not in self.missing_violations:
-                                        self.missing_violations[ruleset] = {}
-                                    if (
-                                        violation
-                                        not in self.missing_violations[ruleset]
-                                    ):
-                                        self.missing_violations[ruleset][violation] = {}
-                                    if (
-                                        app
-                                        not in self.missing_violations[ruleset][
-                                            violation
-                                        ]
-                                    ):
-                                        self.missing_violations[ruleset][violation][
-                                            app
-                                        ] = {}
-                                    if (
-                                        file_path
-                                        not in self.missing_violations[ruleset][
-                                            violation
-                                        ][app]
-                                    ):
-                                        self.missing_violations[ruleset][violation][
-                                            app
-                                        ][file_path] = []
-                                    self.missing_violations[ruleset][violation][app][
-                                        file_path
-                                    ].append(
-                                        {
-                                            "variables": incident["variables"],
-                                            "line_number": incident["line_number"],
-                                            "message": incident["message"],
-                                            "repo": app_variables["repo"],
-                                            "initial_branch": app_variables[
-                                                "initial_branch"
-                                            ],
-                                            "solved_branch": app_variables[
-                                                "solved_branch"
-                                            ],
-                                        }
-                                    )
-
-        return self.missing_violations
-
-    def find_solved_issues(self, app_name):
-        """
-        Find solved issues from the missing incidents
-        """
-
-        # for every missing incident, find the solved issue
-        for ruleset in self.missing_violations.keys():
-            for violation in self.missing_violations[ruleset].keys():
-                for app in self.missing_violations[ruleset][violation].keys():
-                    if app == app_name:
-                        for file_path in self.missing_violations[ruleset][violation][
-                            app
-                        ].keys():
-                            for incident in self.missing_violations[ruleset][violation][
-                                app
-                            ][file_path]:
-                                # find the solved issue
-                                scm = GitDiff(IncidentStore.get_repo_path(app))
-
-                                diff_exists = scm.diff_exists_for_file(
-                                    scm.get_commit_from_branch(
-                                        incident["initial_branch"]
-                                    ),
-                                    scm.get_commit_from_branch(
-                                        incident["solved_branch"]
-                                    ),
-                                    file_path,
-                                )
-                                if diff_exists:
-                                    if ruleset not in self.solved_violations:
-                                        self.solved_violations[ruleset] = {}
-                                    if violation not in self.solved_violations[ruleset]:
-                                        self.solved_violations[ruleset][violation] = {}
-                                    if (
-                                        app
-                                        not in self.solved_violations[ruleset][
-                                            violation
-                                        ]
-                                    ):
-                                        self.solved_violations[ruleset][violation][
-                                            app
-                                        ] = {}
-                                    if (
-                                        file_path
-                                        not in self.solved_violations[ruleset][
-                                            violation
-                                        ][app]
-                                    ):
-                                        self.solved_violations[ruleset][violation][app][
-                                            file_path
-                                        ] = []
-                                    self.solved_violations[ruleset][violation][app][
-                                        file_path
-                                    ].append(incident)
-        return self.solved_violations
-
-    def get_repo_path(app_name):
+    def get_repo_path(self, app_name):
         """
         Get the repo path
         """
@@ -700,49 +948,63 @@ class IncidentStore:
         path = mapping.get(app_name, None)
         return os.path.join(parent_dir, path)
 
-    def find_if_solved_issues_exist(self):
-        """
-        Find if solved issues exist
-        """
-        output_directory = self.output_dir
-        # check if file solved_incidents.yaml exists
-        if not os.path.exists(f"{output_directory}/solved_incidents.yaml"):
-            return False
-        if os.stat(f"{output_directory}/solved_incidents.yaml").st_size == 0:
-            return False
-        return True
+    def get_app_variables(self, path: str, app_name: str):
 
-    def get_solved_issue(self, ruleset, violation):
-        """
-        For the given ruleset and violation, return the solved issue(s) if it exists
-        """
-        patches = []
-
-        # Check if solved issues exist
-        if not self.find_if_solved_issues_exist():
+        if not os.path.exists(path):
+            KAI_LOG.error(
+                f"Error: {app_name} does not exist in the analysis_reports directory."
+            )
             return None
 
-        # Load the solved issues
-        solved_issues = self.get_cached_violations("solved_incidents.yaml")
+        # Path to the app.yaml file
+        app_yaml_path = os.path.join(path, app_name, "app.yaml")
+        # Check if app.yaml exists for the specified app
+        if not os.path.exists(app_yaml_path):
+            KAI_LOG.error(f"Error: app.yaml does not exist for {app_name}.")
+            return None
 
-        # Iterate over the solved issues to find the match
-        if ruleset in solved_issues and violation in solved_issues[ruleset]:
-            for app, app_data in solved_issues[ruleset][violation].items():
-                print(f"Found solved issues for {ruleset} - {violation} for app {app}")
+        # Load contents of app.yaml
+        with open(app_yaml_path, "r") as app_yaml_file:
+            app_data: dict = yaml.safe_load(app_yaml_file)
 
-                for file_path, incidents in app_data.items():
-                    for incident in incidents:
-                        scm = GitDiff(IncidentStore.get_repo_path(app))
-                        patches.append(
-                            scm.get_patch_for_file(
-                                scm.get_commit_from_branch(incident["initial_branch"]),
-                                scm.get_commit_from_branch(incident["solved_branch"]),
-                                file_path,
-                            )
-                        )
+        return app_data
 
-                        # If a match is found, break out of the loop
-                        break
-                    else:
-                        continue
-        return patches
+
+def main():
+    parser = argparse.ArgumentParser(description="Process some parameters.")
+    parser.add_argument(
+        "--config_filepath",
+        type=str,
+        default="database.ini",
+        help="Path to the config file.",
+    )
+    parser.add_argument(
+        "--config_section",
+        type=str,
+        default="postgresql",
+        help="Config section in the config file.",
+    )
+    parser.add_argument(
+        "--drop_tables", type=str, default="False", help="Whether to drop tables."
+    )
+    parser.add_argument(
+        "--analysis_dir_path",
+        type=str,
+        default="samples/analysis_reports",
+        help="path to analysis reports folder",
+    )
+    args = parser.parse_args()
+
+    psqlis = PSQLIncidentStore(
+        config_filepath=args.config_filepath,
+        config_section=args.config_section,
+        emb_provider=EmbeddingNone(),
+    )
+    path = args.analysis_dir_path
+    if args.drop_tables:
+        psqlis.delete_store()
+    psqlis.load_store(path)
+
+
+if __name__ == "__main__":
+    main()
