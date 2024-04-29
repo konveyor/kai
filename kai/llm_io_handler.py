@@ -3,7 +3,7 @@ from typing import Any, Callable, Literal, Optional
 
 from kai_logging import KAI_LOG
 
-from kai.incident_store import PSQLIncidentStore
+from kai.incident_store import IncidentStore
 from kai.model_provider import ModelProvider
 from kai.pydantic_models import guess_language, parse_file_solution_content
 
