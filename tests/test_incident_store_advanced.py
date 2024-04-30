@@ -4,7 +4,7 @@ import unittest
 
 import psycopg2
 
-from kai.incident_store_advanced import EmbeddingNone, PSQLIncidentStore
+from kai.incident_store import EmbeddingNone, PSQLIncidentStore
 
 
 class TestIncidentStoreAdvanced(unittest.TestCase):

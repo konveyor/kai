@@ -15,10 +15,8 @@ import time
 import tomllib
 import traceback
 import warnings
-from contextlib import contextmanager
 from os import listdir
 from os.path import isfile, join
-from typing import Any, Callable
 
 import aiohttp
 import jsonschema
@@ -27,22 +25,14 @@ import yaml
 from aiohttp import web
 from aiohttp.web_request import Request
 
+from kai import llm_io_handler
 from kai.capture import Capture
 from kai.incident_store import Application, EmbeddingNone, PSQLIncidentStore
 from kai.kai_logging import KAI_LOG
-from kai.model_provider import (
-    IBMGraniteModel,
-    IBMOpenSourceModel,
-    ModelProvider,
-    OllamaModel,
-    OpenAIModel,
-)
+from kai.model_provider import ModelProvider
 from kai.prompt_builder import build_prompt
 from kai.pydantic_models import guess_language, parse_file_solution_content
 from kai.report import Report
-
-LLM_RETRIES = 5
-LLM_RETRY_DELAY = 10
 
 # TODO: Make openapi spec for everything
 
@@ -59,39 +49,6 @@ JSONSCHEMA_DIR = os.path.join(
     os.path.dirname(__file__),
     "data/jsonschema/",
 )
-
-DEMO_MODE = os.getenv("DEMO_MODE") == "true"
-
-
-@contextmanager
-def playback_if_demo_mode(model_id, application_name, filename):
-    """A context manager to conditionally use a VCR cassette when demo mode is enabled."""
-    record_mode = "once" if DEMO_MODE else "all"
-    my_vcr = vcr.VCR(
-        cassette_library_dir=f"{os.path.dirname(__file__)}/data/vcr/{application_name}/{model_id}/",
-        record_mode=record_mode,
-        match_on=[
-            "uri",
-            "method",
-            "scheme",
-            "host",
-            "port",
-            "path",
-            "query",
-            "headers",
-        ],
-        record_on_exception=False,
-        filter_headers=["authorization", "cookie", "content-length"],
-    )
-    KAI_LOG.debug(
-        f"record_mode='{record_mode}' - Using cassette {application_name}/{model_id}/{filename}.yaml",
-    )
-    # Workaround to actually blow away the cassettes instead of appending
-    if my_vcr.record_mode == "all":
-        my_vcr.persister.load_cassette = lambda cassette_path, serializer: ([], [])
-
-    with my_vcr.use_cassette(f"{filename}.yaml"):
-        yield
 
 
 def load_config():
@@ -455,150 +412,32 @@ async def get_incident_solutions_for_file(request: Request):
         - analysis_message (str)
     - include_llm_results (bool)
     """
-
-    variables_for_this_call = process_request(request)
-    result = kai.llm.get_incident_solutions_for_file(**variables_for_this_call)
-    return format_result_as_a_web_response_thing(result)
-
     start = time.time()
     KAI_LOG.debug(f"get_incident_solutions_for_file recv'd: {request}")
-
     request_json = await request.json()
 
     KAI_LOG.info(
         f"START - App: '{request_json['application_name']}', File: '{request_json['file_name']}' with {len(request_json['incidents'])} incidents'"
     )
 
-    src_file_language = guess_language(
-        request_json.get("file_contents"), filename=request_json["file_name"]
+    result = llm_io_handler.get_incident_solutions_for_file(
+        request.app["model_provider"],
+        request.app["incident_store"],
+        request_json.get("file_contents"),
+        request_json.get("file_name"),
+        request_json["application_name"],
+        request_json["incidents"],
+        batch_mode=request_json.get("batch_mode", "single_group"),
+        include_solved_incidents=request_json.get("include_solved_incidents", True),
+        include_llm_results=request_json.get("include_llm_results", False),
     )
-    KAI_LOG.debug(
-        f"{request_json['file_name']} classified as filetype {src_file_language}"
-    )
-
-    batch_mode = request_json.get("batch_mode", "single_group")
-    include_solved_incidents = request_json.get("include_solved_incidents", True)
-
-    # NOTE: Looks worse than it is, `trunk check` mangled the heck out of this
-    # section. It doesn't like lambdas for some reason :(
-    updated_file = request_json["file_contents"]
-    total_reasoning = []
-    llm_results = []
-    additional_info = []
-    used_prompts = []
-    model_id = request.app["model_provider"].get_current_model_id()
-
-    batch_key_fn, batch_res_fn = get_key_and_res_function(batch_mode)
-
-    request_json["incidents"].sort(key=batch_key_fn)
-    batched_groupby = itertools.groupby(request_json["incidents"], batch_key_fn)
-
-    # NOTE: To get out of itertools hell
-    batched: list[tuple[dict, list]] = []
-    for batch_key, batch_group in batched_groupby:
-        batch_dict, batch_list = batch_res_fn(batch_key, batch_group)
-        batched.append((batch_dict, batch_list))
-
-    for count, (_, incidents) in enumerate(batched, 1):
-        for i, incident in enumerate(incidents, 1):
-            incident["issue_number"] = i
-            incident["src_file_language"] = src_file_language
-            incident["analysis_line_number"] = incident["line_number"]
-
-            if include_solved_incidents:
-                solved_incident, match_type = request.app[
-                    "incident_store"
-                ].get_fuzzy_similar_incident(
-                    incident["violation_name"],
-                    incident["ruleset_name"],
-                    incident.get("incident_snip", ""),
-                    incident["incident_variables"],
-                )
-
-                KAI_LOG.debug(solved_incident)
-
-                if not isinstance(solved_incident, dict):
-                    raise Exception("solved_example not a dict")
-
-                if bool(solved_incident) and match_type == "exact":
-                    solved_example = request.app[
-                        "incident_store"
-                    ].select_accepted_solution(solved_incident["solution_id"])
-                    incident["solved_example_diff"] = solved_example[
-                        "solution_small_diff"
-                    ]
-                    incident["solved_example_file_name"] = solved_incident[
-                        "incident_uri"
-                    ]
-
-        args = {
-            "src_file_name": request_json["file_name"],
-            "src_file_language": src_file_language,
-            "src_file_contents": updated_file,
-            "incidents": incidents,
-        }
-
-        prompt = build_prompt(
-            request.app["model_provider"].get_prompt_builder_config("multi_file"), args
-        )
-
-        KAI_LOG.debug(f"Sending prompt: {prompt}")
-
-        KAI_LOG.info(
-            f"Processing incident batch {count}/{len(batched)} for {request_json['file_name']}"
-        )
-        llm_result = None
-        for _ in range(LLM_RETRIES):
-            try:
-                with playback_if_demo_mode(
-                    model_id,
-                    request_json["application_name"],
-                    f'{request_json["file_name"].replace("/", "-")}',
-                ):
-                    llm_result = request.app["model_provider"].invoke(prompt)
-                    content = parse_file_solution_content(
-                        src_file_language, llm_result.content
-                    )
-                    if request_json.get("include_llm_results"):
-                        llm_results.append(llm_result.content)
-
-                    total_reasoning.append(content.reasoning)
-                    used_prompts.append(prompt)
-                    additional_info.append(content.additional_info)
-                    if not content.updated_file:
-                        raise Exception(
-                            f"Error in LLM Response: The LLM did not provide an updated file for {request_json['file_name']}"
-                        )
-                    updated_file = content.updated_file
-                    break
-            except Exception as e:
-                KAI_LOG.warn(
-                    f"Request to model failed for batch {count}/{len(batched)} for {request_json['file_name']} with exception, retrying in {LLM_RETRY_DELAY}s\n{e}"
-                )
-                KAI_LOG.debug(traceback.format_exc())
-                time.sleep(LLM_RETRY_DELAY)
-        else:
-            KAI_LOG.error(f"{request_json['file_name']} failed to migrate")
-            raise web.HTTPInternalServerError(
-                reason="Migration failed",
-                text=f"The LLM did not generate a valid response: {llm_result}",
-            )
 
     end = time.time()
     KAI_LOG.info(
         f"END - completed in '{end-start}s:  - App: '{request_json['application_name']}', File: '{request_json['file_name']}' with {len(request_json['incidents'])} incidents'"
     )
-    response = {
-        "updated_file": updated_file,
-        "total_reasoning": total_reasoning,
-        "used_prompts": used_prompts,
-        "model_id": model_id,
-        "additional_information": additional_info,
-    }
-    if request_json.get("include_llm_results"):
-        response["llm_results"] = llm_results
 
-    return web.json_response(response)
+    return web.json_response(result)
 
 
 def app(loglevel):

@@ -1,11 +1,54 @@
 import itertools
+import os
+import time
+import traceback
+from contextlib import contextmanager
 from typing import Any, Callable, Literal, Optional
 
+import vcr
 from kai_logging import KAI_LOG
 
 from kai.incident_store import IncidentStore
 from kai.model_provider import ModelProvider
+from kai.prompt_builder import build_prompt
 from kai.pydantic_models import guess_language, parse_file_solution_content
+
+LLM_RETRIES = 5
+LLM_RETRY_DELAY = 10
+
+DEMO_MODE = os.getenv("DEMO_MODE") == "true"
+
+
+@contextmanager
+def playback_if_demo_mode(model_id, application_name, filename):
+    """A context manager to conditionally use a VCR cassette when demo mode is enabled."""
+    record_mode = "once" if DEMO_MODE else "all"
+    my_vcr = vcr.VCR(
+        cassette_library_dir=f"{os.path.dirname(__file__)}/data/vcr/{application_name}/{model_id}/",
+        record_mode=record_mode,
+        match_on=[
+            "uri",
+            "method",
+            "scheme",
+            "host",
+            "port",
+            "path",
+            "query",
+            "headers",
+        ],
+        record_on_exception=False,
+        filter_headers=["authorization", "cookie", "content-length"],
+    )
+    KAI_LOG.debug(
+        f"record_mode='{record_mode}' - Using cassette {application_name}/{model_id}/{filename}.yaml",
+    )
+
+    # Workaround to actually blow away the cassettes instead of appending
+    if my_vcr.record_mode == "all":
+        my_vcr.persister.load_cassette = lambda cassette_path, serializer: ([], [])
+
+    with my_vcr.use_cassette(f"{filename}.yaml"):
+        yield
 
 
 def get_key_and_res_function(
@@ -32,16 +75,19 @@ async def get_incident_solutions_for_file(
     file_name: str,
     application_name: str,
     incidents: list[dict],  # TODO(@JonahSussman): Add a type for this
-    # ruleset_name: str
-    # violation_name: str
-    # incident_snip: str optional
-    # incident_variables: object
-    # line_number: int (0-indexed)
-    # analysis_message: str
+    # Dict keys are:
+    # - ruleset_name: str
+    # - violation_name: str
+    # - incident_snip: str optional
+    # - incident_variables: object
+    # - line_number: int (0-indexed)
+    # - analysis_message: str
     batch_mode: Optional[
         Literal["none", "single_group", "ruleset", "violation"]
     ] = "single_group",
-    include_solved_incidents: Optional[bool] = True,
+    include_solved_incidents: Optional[
+        bool
+    ] = True,  # NOTE(@JonahSussman): Should this be renamed to "include_solutions"?
     include_llm_results: bool = False,
 ):
     src_file_language = guess_language(file_contents, filename=file_name)
@@ -75,60 +121,48 @@ async def get_incident_solutions_for_file(
             incident["analysis_line_number"] = incident["line_number"]
 
             if include_solved_incidents:
-                solved_incident, match_type = request.app[
-                    "incident_store"
-                ].get_fuzzy_similar_incident(
-                    incident["violation_name"],
+                solutions = incident_store.find_solutions(
                     incident["ruleset_name"],
-                    incident.get("incident_snip", ""),
+                    incident["violation_name"],
                     incident["incident_variables"],
+                    incident.get("incident_snip", ""),
                 )
 
-                KAI_LOG.debug(solved_incident)
-
-                if not isinstance(solved_incident, dict):
-                    raise Exception("solved_example not a dict")
-
-                if bool(solved_incident) and match_type == "exact":
-                    solved_example = request.app[
-                        "incident_store"
-                    ].select_accepted_solution(solved_incident["solution_id"])
-                    incident["solved_example_diff"] = solved_example[
+                if len(solutions) != 0:
+                    incident["solved_example_diff"] = solutions[0][
                         "solution_small_diff"
                     ]
-                    incident["solved_example_file_name"] = solved_incident[
-                        "incident_uri"
-                    ]
+                    incident["solved_example_file_name"] = solutions[0]["incident_uri"]
 
         args = {
-            "src_file_name": request_json["file_name"],
+            "src_file_name": file_name,
             "src_file_language": src_file_language,
             "src_file_contents": updated_file,
             "incidents": incidents,
         }
 
         prompt = build_prompt(
-            request.app["model_provider"].get_prompt_builder_config("multi_file"), args
+            model_provider.get_prompt_builder_config("multi_file"), args
         )
 
         KAI_LOG.debug(f"Sending prompt: {prompt}")
 
         KAI_LOG.info(
-            f"Processing incident batch {count}/{len(batched)} for {request_json['file_name']}"
+            f"Processing incident batch {count}/{len(batched)} for {file_name}"
         )
         llm_result = None
         for _ in range(LLM_RETRIES):
             try:
                 with playback_if_demo_mode(
                     model_id,
-                    request_json["application_name"],
-                    f'{request_json["file_name"].replace("/", "-")}',
+                    application_name,
+                    f'{file_name.replace("/", "-")}',
                 ):
-                    llm_result = request.app["model_provider"].invoke(prompt)
+                    llm_result = model_provider.invoke(prompt)
                     content = parse_file_solution_content(
                         src_file_language, llm_result.content
                     )
-                    if request_json.get("include_llm_results"):
+                    if include_llm_results:
                         llm_results.append(llm_result.content)
 
                     total_reasoning.append(content.reasoning)
@@ -136,21 +170,33 @@ async def get_incident_solutions_for_file(
                     additional_info.append(content.additional_info)
                     if not content.updated_file:
                         raise Exception(
-                            f"Error in LLM Response: The LLM did not provide an updated file for {request_json['file_name']}"
+                            f"Error in LLM Response: The LLM did not provide an updated file for {file_name}"
                         )
                     updated_file = content.updated_file
                     break
             except Exception as e:
                 KAI_LOG.warn(
-                    f"Request to model failed for batch {count}/{len(batched)} for {request_json['file_name']} with exception, retrying in {LLM_RETRY_DELAY}s\n{e}"
+                    f"Request to model failed for batch {count}/{len(batched)} for {file_name} with exception, retrying in {LLM_RETRY_DELAY}s\n{e}"
                 )
                 KAI_LOG.debug(traceback.format_exc())
                 time.sleep(LLM_RETRY_DELAY)
         else:
-            KAI_LOG.error(f"{request_json['file_name']} failed to migrate")
+            KAI_LOG.error(f"{file_name} failed to migrate")
+
+            # TODO: These should be real exceptions
             raise web.HTTPInternalServerError(
                 reason="Migration failed",
                 text=f"The LLM did not generate a valid response: {llm_result}",
             )
 
-    return something
+    response = {
+        "updated_file": updated_file,
+        "total_reasoning": total_reasoning,
+        "used_prompts": used_prompts,
+        "model_id": model_id,
+        "additional_information": additional_info,
+    }
+    if include_llm_results:
+        response["llm_results"] = llm_results
+
+    return response

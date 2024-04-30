@@ -12,12 +12,10 @@
 
 import argparse
 import os
-import pprint
 import tomllib
 from dataclasses import dataclass
-from typing import Callable
 
-from kai_logging import KAI_LOG
+import yaml
 
 from kai.model_provider import ModelProvider
 
@@ -30,12 +28,45 @@ DEFAULT_CONFIGURATION = {
 
 
 @dataclass
+class MockIncidentStore:
+    expected: str
+    original_file: str
+    incident_store: dict
+
+
+@dataclass
 class BenchmarkExample:
-    excepted: str
-    # inputs:
+    expected: str
+    original_file: str
+    incident_store: MockIncidentStore
 
 
-BENCHMARK_EXAMPLES: list[BenchmarkExample] = []
+# Application:
+#     Ruleset:
+#         Violation:
+#             Incidents:
+#                 uri:
+#                 snip:
+#                 line:
+#                 variables:
+
+
+def load_benchmarks(
+    examples_path=os.path.join(os.path.dirname(__file__), "data", "benchmarks")
+) -> list[BenchmarkExample]:
+    benchmarks = []
+    for filename in os.listdir(examples_path):
+        if filename.endswith(".yaml"):
+            file_path = os.path.join(examples_path, filename)
+            with open(file_path, "r") as file:
+                data = yaml.safe_load(file)
+                example = BenchmarkExample(
+                    expected=data.get("expected"),
+                    original_file=data.get("original"),
+                    incident_store=data.get("incident_store"),
+                )
+                benchmarks.append(example)
+    return benchmarks
 
 
 def evaluate(configs: dict[str, dict]):
@@ -49,7 +80,7 @@ def evaluate(configs: dict[str, dict]):
         ModelProviderClass = ModelProvider.model_from_string(
             config["models"]["provider"]
         )
-        model_provider = ModelProviderClass(**config["models"]["args"])
+        ModelProviderClass(**config["models"]["args"])
 
         # TODO: Make this use directories as opposed to constant
         for example in BENCHMARK_EXAMPLES:

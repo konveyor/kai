@@ -23,56 +23,142 @@ from kai.report import Report
 BASE_PATH = os.path.dirname(__file__)
 
 
-class IncidentStore(ABC):
+def __get_repo_path(app_name):
+    """
+    Get the repo path
+    """
 
-    @abstractmethod
-    def load_store(path: str):
-        pass
+    # TODO: This mapping data should be moved out of the code, consider moving
+    # to a config file
+    mapping = {
+        "eap-coolstore-monolith": "samples/sample_repos/eap-coolstore-monolith",
+        "ticket-monster": "samples/sample_repos/ticket-monster",
+        "kitchensink": "samples/sample_repos/kitchensink",
+        "helloworld-mdb": "samples/sample_repos/helloworld-mdb",
+        "bmt": "samples/sample_repos/bmt",
+        "cmt": "samples/sample_repos/cmt",
+        "ejb-remote": "samples/sample_repos/ejb-remote",
+        "ejb-security": "samples/sample_repos/ejb-security",
+        "tasks-qute": "samples/sample_repos/tasks-qute",
+        "greeter": "samples/sample_repos/greeter",
+    }
 
-    @abstractmethod
-    def delete_store():
-        pass
+    basedir = os.path.dirname(os.path.realpath(__file__))
+    parent_dir = os.path.dirname(basedir)
+    path = mapping.get(app_name, None)
+    return os.path.join(parent_dir, path)
 
-    @abstractmethod
-    def add_incident():
-        pass
 
-    @abstractmethod
-    def find_similar_incident(
-        violation_name: str,
-        ruleset_name: str,
-        incident_snip: str,
-        incident_vars: dict,
-    ) -> tuple[
-        Optional[dict],
-        Literal[
-            "exact",
-            "variables_mismatch",
-            "similarity_only",
-            "unseen_violation",
-            "ambiguous_violation",
-        ],
-    ]:
-        """
-        Returns tuple[dict | None, str] - First element is the match if it exists
-        - Second element is whether it is an exact match or not. Values can be:
-          - 'exact': exact match. From the same violation and has the same
-            variables. Filtered using similarity search
-          - 'variables_mismatch': From the same violation but does not have the same
-            variables.
-          - 'similarity_only': Not from the same violation, only based on snip
-            similarity search
-          - 'unseen_violation': We haven't seen this violation before. Same result
-            as 'similarity_only'
-          - 'ambiguous_violation': violation_name and ruleset_name did not uniquely
-            identify a violation. Same result as 'similarity_only'
-        """
-        pass
+def __get_app_variables(path: str, app_name: str):
+    if not os.path.exists(path):
+        KAI_LOG.error(
+            f"Error: {app_name} does not exist in the analysis_reports directory."
+        )
+        return None
+
+    # Path to the app.yaml file
+    app_yaml_path = os.path.join(path, app_name, "app.yaml")
+    # Check if app.yaml exists for the specified app
+    if not os.path.exists(app_yaml_path):
+        KAI_LOG.error(f"Error: app.yaml does not exist for {app_name}.")
+        return None
+
+    # Load contents of app.yaml
+    with open(app_yaml_path, "r") as app_yaml_file:
+        app_data: dict = yaml.safe_load(app_yaml_file)
+
+    return app_data
+
+
+# NOTE: Once we integrate with Konveyor, this most likely will not be necessary
+def load_reports_from_directory(store: "IncidentStore", path: str):
+    basedir = os.path.dirname(os.path.realpath(__file__))
+    parent_dir = os.path.dirname(basedir)
+    folder_path = os.path.join(parent_dir, path)
+
+    if not os.path.exists(folder_path):
+        KAI_LOG.error(f"Error: {folder_path} does not exist.")
+        return None
+    if not os.listdir(folder_path):
+        KAI_LOG.error(f"Error: {folder_path} is empty.")
+        return None
+
+    apps = os.listdir(folder_path)
+    KAI_LOG.info(f"Loading incident store with applications: {apps}\n")
+
+    for app in apps:
+        # if app is a directory then check if there is a folder called initial
+        KAI_LOG.info(f"Loading application {app}\n")
+        app_path = os.path.join(folder_path, app)
+
+        if not os.path.isdir(app_path):
+            continue
+
+        initial_folder = os.path.join(app_path, "initial")
+        if not os.path.exists(initial_folder):
+            KAI_LOG.error(f"Error: {initial_folder} does not exist.")
+            return None
+
+        # Check if the `initial` folder is empty
+        if not os.listdir(initial_folder):
+            KAI_LOG.error(f"Error: No analysis report found in {initial_folder}.")
+            return None
+
+        report_path = os.path.join(initial_folder, "output.yaml")
+
+        repo_path = __get_repo_path(app)
+        repo = Repo(repo_path)
+        app_v = __get_app_variables(folder_path, app)
+        initial_branch = app_v["initial_branch"]
+        repo.git.checkout(initial_branch)
+        commit = repo.head.commit
+
+        app_initial = Application(
+            application_id=None,
+            application_name=app,
+            repo_uri_origin=repo.remotes.origin.url,
+            repo_uri_local=repo_path,
+            current_branch=initial_branch,
+            current_commit=commit.hexsha,
+            generated_at=datetime.datetime.now(),
+        )
+
+        KAI_LOG.info(f"Loading application {app}\n")
+
+        store.load_report(app_initial, Report(report_path))
+        KAI_LOG.info(f"Loaded application - initial {app}\n")
+
+        solved_folder = os.path.join(app_path, "solved")
+
+        if not os.path.exists(solved_folder):
+            KAI_LOG.error(f"Error: {solved_folder} does not exist.")
+            return None
+
+        if not os.listdir(solved_folder):
+            KAI_LOG.error(f"Error: No analysis report found in {solved_folder}.")
+            return None
+
+        report_path = os.path.join(solved_folder, "output.yaml")
+        solved_branch = __get_app_variables(folder_path, app)["solved_branch"]
+
+        repo.git.checkout(solved_branch)
+        commit = repo.head.commit
+        app_solved = Application(
+            application_id=None,
+            application_name=app,
+            repo_uri_origin=repo.remotes.origin.url,
+            repo_uri_local=repo_path,
+            current_branch=solved_branch,
+            current_commit=commit.hexsha,
+            generated_at=datetime.datetime.now(),
+        )
+        store.load_report(app_solved, Report(report_path))
+
+        KAI_LOG.info(f"Loaded application - solved {app}\n")
 
 
 @dataclass
 class Application:
-    application_id: int | None
     application_name: str
     repo_uri_origin: str
     repo_uri_local: str
@@ -80,28 +166,99 @@ class Application:
     current_commit: str
     generated_at: datetime.datetime
 
-    def as_tuple(self):
-        return (
-            self.application_id,
-            self.application_name,
-            self.repo_uri_origin,
-            self.repo_uri_local,
-            self.current_branch,
-            self.current_commit,
-            self.generated_at,
-        )
 
-    @staticmethod
-    def from_dict_row(row: DictRow) -> "Application":
-        return Application(
-            application_id=row["application_id"],
-            application_name=row["application_name"],
-            repo_uri_origin=row["repo_uri_origin"],
-            repo_uri_local=row["repo_uri_local"],
-            current_branch=row["current_branch"],
-            current_commit=row["current_commit"],
-            generated_at=row["generated_at"],
-        )
+@dataclass
+class Solution:
+    uri: str
+    diff: str
+
+
+# NOTE: solved example?
+
+
+class IncidentStore(ABC):
+
+    @abstractmethod
+    def load_report(self, application: Application, report: Report):
+        """
+        Load incidents from a report and given application object.
+
+        NOTE: This application object is more like metadata than anything.
+        """
+        pass
+
+    @abstractmethod
+    def delete_store(self):
+        """
+        Clears all data within the incident store. Most likely non-reversible!
+        """
+        pass
+
+    @abstractmethod
+    def find_solutions(
+        self,
+        ruleset_name: str,
+        violation_name: str,
+        incident_variables: dict,
+        incident_snip: Optional[str] = None,
+    ) -> list[Solution]:
+        """
+        Returns a list of solutions for the given incident. Exact matches only.
+        """
+        pass
+
+
+# @dataclass
+# class Application:
+#     application_id: int | None
+#     application_name: str
+#     repo_uri_origin: str
+#     repo_uri_local: str
+#     current_branch: str
+#     current_commit: str
+#     generated_at: datetime.datetime
+
+#     def as_tuple(self):
+#         return (
+#             self.application_id,
+#             self.application_name,
+#             self.repo_uri_origin,
+#             self.repo_uri_local,
+#             self.current_branch,
+#             self.current_commit,
+#             self.generated_at,
+#         )
+
+#     @staticmethod
+#     def from_dict_row(row: DictRow) -> "Application":
+#         return Application(
+#             application_id=row["application_id"],
+#             application_name=row["application_name"],
+#             repo_uri_origin=row["repo_uri_origin"],
+#             repo_uri_local=row["repo_uri_local"],
+#             current_branch=row["current_branch"],
+#             current_commit=row["current_commit"],
+#             generated_at=row["generated_at"],
+#         )
+
+# @dataclass
+# class Ruleset:
+#     ruleset_name: str
+#     tags: dict
+
+# @dataclass
+# class Violation:
+#     violation_name: str
+#     category: str
+#     labels: dict
+
+# @dataclass
+# class Incident:
+#     incident_uri: str
+#     incident_snip: str
+#     incident_line: int
+#     incident_variables: dict
+#     application: Application
 
 
 def supply_cursor_if_none(func):
@@ -129,7 +286,6 @@ class PSQLIncidentStore(IncidentStore):
     def __init__(
         self,
         *,
-        drop_tables: bool = False,
         config_filepath: str = None,
         config_section: str = None,
         config: dict = None,
@@ -178,11 +334,6 @@ class PSQLIncidentStore(IncidentStore):
                 # TODO: along with analyzer_types.py, we should really use something
                 # like openapi to nail down the spec and autogenerate the types
 
-                if drop_tables:
-                    cur.execute(
-                        open(f"{BASE_PATH}/data/sql/drop_tables.sql", "r").read()
-                    )
-
                 cur.execute(open(f"{BASE_PATH}/data/sql/create_tables.sql", "r").read())
 
                 dim = self.emb_provider.get_dimension()
@@ -193,6 +344,331 @@ class PSQLIncidentStore(IncidentStore):
 
         except (psycopg2.DatabaseError, Exception) as error:
             KAI_LOG.error(f"Error initializing PSQLIncidentStore: {error}")
+
+    # Abstract base class implementations
+
+    def delete_store(self):
+        with self.conn.cursor() as cur:
+            cur.execute(open(f"{BASE_PATH}/data/sql/drop_tables.sql", "r").read())
+
+    def load_report(self, app: Application, report: Report):
+        """
+        Returns: (number_new_incidents, number_unsolved_incidents,
+        number_solved_incidents): tuple[int, int, int]
+        """
+        # FIXME: Only does stuff within the same application. Maybe fixed?
+
+        # create entries if not exists
+        # reference the old-new matrix
+        #           old
+        #         | NO     | YES
+        # --------|--------+-----------------------------
+        # new NO  | -      | update (SOLVED, embeddings)
+        #     YES | insert | update (line number, etc...)
+
+        repo_path = unquote(urlparse(app.repo_uri_local).path)
+        repo = Repo(repo_path)
+        old_commit: str
+        new_commit = app.current_commit
+
+        number_new_incidents = 0
+        number_unsolved_incidents = 0
+        number_solved_incidents = 0
+
+        with self.conn.cursor() as cur:
+            cur.execute("DROP TABLE IF EXISTS incidents_temp;")
+            cur.execute("CREATE TABLE incidents_temp (LIKE incidents INCLUDING ALL);")
+
+            query_app = self.select_application(
+                app.application_id, app.application_name, cur
+            )
+
+            if len(query_app) >= 2:
+                raise Exception(f"Multiple applications found for {app}.")
+            elif len(query_app) == 0 and app.application_id is not None:
+                raise Exception(
+                    f"No application with application_id {app.application_id}."
+                )
+            elif len(query_app) == 0:
+                application = self.insert_application(app, cur)
+            else:
+                application = query_app[0]
+
+            old_commit = application["current_commit"]
+
+            report_dict = report.get_report()
+
+            for ruleset_name, ruleset_dict in report_dict.items():
+                query_ruleset = self.select_ruleset(
+                    ruleset_name=ruleset_name,
+                    # application_id=application['application_id'],
+                    cur=cur,
+                )
+
+                if len(query_ruleset) >= 2:
+                    raise Exception("Multiple rulesets found.")
+                elif len(query_ruleset) == 0:
+                    ruleset = self.insert_ruleset(
+                        ruleset_name=ruleset_name,
+                        # application_id=application['application_id'],
+                        tags=ruleset_dict.get("tags", []),
+                        cur=cur,
+                    )
+                else:
+                    ruleset = query_ruleset[0]
+
+                for violation_name, violation_dict in ruleset_dict.get(
+                    "violations", {}
+                ).items():
+                    query_violation = self.select_violation(
+                        violation_name=violation_name,
+                        ruleset_id=ruleset["ruleset_id"],
+                        cur=cur,
+                    )
+
+                    if len(query_violation) >= 2:
+                        raise Exception("Multiple rulesets found.")
+                    elif len(query_violation) == 0:
+                        violation = self.insert_violation(
+                            violation_name=violation_name,
+                            ruleset_id=ruleset["ruleset_id"],
+                            category=violation_dict.get("category", "potential"),
+                            labels=violation_dict.get("labels", []),
+                            cur=cur,
+                        )
+                    else:
+                        violation = query_violation[0]
+
+                    for incident in violation_dict.get("incidents", []):
+                        cur.execute(
+                            """INSERT INTO incidents_temp(violation_id, application_id, incident_uri, incident_snip, incident_line, incident_variables)
+              VALUES (%s, %s, %s, %s, %s, %s);""",
+                            (
+                                violation["violation_id"],
+                                application["application_id"],
+                                incident.get("uri", ""),
+                                incident.get("codeSnip", ""),
+                                incident.get("lineNumber", 0),
+                                json.dumps(incident.get("variables", {})),
+                            ),
+                        )
+
+            # incidents_temp - incidents
+            cur.execute(
+                """WITH filtered_incidents_temp AS (
+    SELECT * FROM incidents_temp WHERE application_id = %s
+),
+filtered_incidents AS (
+    SELECT * FROM incidents WHERE application_id = %s
+)
+SELECT fit.incident_id AS incidents_temp_id, fi.incident_id AS incidents_id, fit.violation_id, fit.application_id, fit.incident_uri, fit.incident_snip, fit.incident_line, fit.incident_variables
+FROM filtered_incidents_temp fit
+LEFT JOIN filtered_incidents fi ON fit.violation_id = fi.violation_id
+                                AND fit.incident_uri = fi.incident_uri
+                                AND fit.incident_snip = fi.incident_snip
+                                AND fit.incident_line = fi.incident_line
+                                AND fit.incident_variables = fi.incident_variables
+WHERE fi.incident_id IS NULL;""",
+                (
+                    application["application_id"],
+                    application["application_id"],
+                ),
+            )
+
+            new_incidents = cur.fetchall()
+            number_new_incidents = len(new_incidents)
+
+            self.conn.autocommit = False
+            for ni in new_incidents:
+                self.insert_incident(
+                    ni["violation_id"],
+                    ni["application_id"],
+                    ni["incident_uri"],
+                    ni["incident_snip"],
+                    ni["incident_line"],
+                    ni["incident_variables"],
+                    None,
+                    cur,
+                )
+            self.conn.commit()
+            cur.fetchall()
+            self.conn.autocommit = True
+
+            # incidents `intersect` incidents_temp
+            cur.execute(
+                """-- incidents `intersect` incidents_temp with application_id match first
+WITH filtered_incidents AS (
+    SELECT * FROM incidents WHERE application_id = %s
+),
+filtered_incidents_temp AS (
+    SELECT * FROM incidents_temp WHERE application_id = %s
+)
+SELECT fi.incident_id AS incidents_id, fit.incident_id AS incidents_temp_id, fi.violation_id, fi.application_id, fi.incident_uri, fi.incident_snip, fi.incident_line, fi.incident_variables
+FROM filtered_incidents fi
+JOIN filtered_incidents_temp fit ON fi.violation_id = fit.violation_id
+                                  AND fi.incident_uri = fit.incident_uri
+                                  AND fi.incident_snip = fit.incident_snip
+                                  AND fi.incident_line = fit.incident_line
+                                  AND fi.incident_variables = fit.incident_variables;
+""",
+                (
+                    application["application_id"],
+                    application["application_id"],
+                ),
+            )
+
+            unsolved_incidents = cur.fetchall()
+            number_unsolved_incidents = len(unsolved_incidents)
+
+            # incidents - incidents_temp
+            cur.execute(
+                """WITH filtered_incidents AS (
+    SELECT * FROM incidents WHERE application_id = %s
+),
+filtered_incidents_temp AS (
+    SELECT * FROM incidents_temp WHERE application_id = %s
+)
+SELECT fi.incident_id AS incidents_id, fit.incident_id AS incidents_temp_id, fi.violation_id, fi.application_id, fi.incident_uri, fi.incident_snip, fi.incident_line, fi.incident_variables
+FROM filtered_incidents fi
+LEFT JOIN filtered_incidents_temp fit ON fi.violation_id = fit.violation_id
+                                      AND fi.incident_uri = fit.incident_uri
+                                      AND fi.incident_snip = fit.incident_snip
+                                      AND fi.incident_line = fit.incident_line
+                                      AND fi.incident_variables = fit.incident_variables
+WHERE fit.incident_id IS NULL;""",
+                (
+                    application["application_id"],
+                    application["application_id"],
+                ),
+            )
+
+            solved_incidents = cur.fetchall()
+            number_solved_incidents = len(solved_incidents)
+            KAI_LOG.debug(f"# of solved inc: {len(solved_incidents)}")
+
+            self.conn.autocommit = False
+            for si in solved_incidents:
+                file_path = os.path.join(
+                    repo_path,
+                    unquote(urlparse(si[4]).path).removeprefix("/tmp/source-code/"),
+                )
+                big_diff = repo.git.diff(old_commit, new_commit)
+
+                try:
+                    original_code = repo.git.show(f"{old_commit}:{file_path}")
+                except Exception:
+                    original_code = ""
+
+                try:
+                    updated_code = repo.git.show(f"{new_commit}:{file_path}")
+                except Exception:
+                    updated_code = ""
+
+                # file_path = pathlib.Path(os.path.join(repo_path, unquote(urlparse(si[3]).path).removeprefix('/tmp/source-code'))).as_uri()
+                small_diff = repo.git.diff(old_commit, new_commit, "--", file_path)
+
+                sln = self.insert_accepted_solution(
+                    app.generated_at,
+                    big_diff,
+                    small_diff,
+                    original_code,
+                    updated_code,
+                    cur,
+                )
+
+                cur.execute(
+                    "UPDATE incidents SET solution_id = %s WHERE incident_id = %s;",
+                    (sln["solution_id"], si[0]),
+                )
+
+            self.conn.commit()
+            self.conn.autocommit = True
+
+            cur.execute("DROP TABLE IF EXISTS incidents_temp;")
+            application = self.update_application(
+                application["application_id"], app, cur
+            )
+
+        return number_new_incidents, number_unsolved_incidents, number_solved_incidents
+
+    def find_solutions(
+        self,
+        ruleset_name: str,
+        violation_name: str,
+        incident_variables: dict,
+        incident_snip: str | None = None,
+    ) -> list[Solution]:
+        if incident_snip is None:
+            incident_snip = ""
+
+        with self.conn.cursor() as cur:
+            incident_vars_str = json.dumps(incident_variables)
+
+            cur.execute(
+                """
+        SELECT v.*
+        FROM violations v
+        JOIN rulesets r ON v.ruleset_id = r.ruleset_id
+        WHERE v.violation_name = %s
+        AND r.ruleset_name = %s;
+        """,
+                (violation_name, ruleset_name),
+            )
+
+            violation_query = cur.fetchall()
+            if len(violation_query) > 1:
+                raise Exception(
+                    f"More than one violation with name '{violation_name}' and ruleset name {ruleset_name}"
+                )
+            if len(violation_query) == 0:
+                return []
+
+            violation = violation_query[0]
+
+            cur.execute(
+                """
+        SELECT COUNT(*)
+        FROM incidents
+        WHERE violation_id = %s
+        AND solution_id IS NOT NULL;
+        """,
+                (violation["violation_id"],),
+            )
+
+            number_of_slns = cur.fetchone()[0]
+            if number_of_slns == 0:
+                return []
+
+            cur.execute(
+                """
+        SELECT *
+        FROM incidents
+        WHERE violation_id = %s
+        AND solution_id IS NOT NULL
+        AND incident_variables <@ %s
+        AND incident_variables @> %s;
+        """,
+                (violation["violation_id"], incident_vars_str, incident_vars_str),
+            )
+
+            incidents_with_solutions = cur.fetchall()
+            result: list[Solution] = []
+
+            for incident in incidents_with_solutions:
+                accepted_solution = self.select_accepted_solution(
+                    incidents_with_solutions["solution_id"], cur
+                )
+
+                result.append(
+                    Solution(
+                        uri=incident["incident_uri"],
+                        diff=accepted_solution["solution_small_diff"],
+                    )
+                )
+
+            return result
+
+    # Implementation specific to PSQLIncidentStore Methods
 
     @supply_cursor_if_none
     def select_application(
@@ -583,391 +1059,6 @@ class PSQLIncidentStore(IncidentStore):
                 ),
             )
             return dict(cur.fetchone()), "exact"
-
-    def insert_and_update_from_report(self, app: Application, report: Report):
-        """
-        Returns: (number_new_incidents, number_unsolved_incidents,
-        number_solved_incidents): tuple[int, int, int]
-        """
-        # FIXME: Only does stuff within the same application. Maybe fixed?
-
-        # create entries if not exists
-        # reference the old-new matrix
-        #           old
-        #         | NO     | YES
-        # --------|--------+-----------------------------
-        # new NO  | -      | update (SOLVED, embeddings)
-        #     YES | insert | update (line number, etc...)
-
-        repo_path = unquote(urlparse(app.repo_uri_local).path)
-        repo = Repo(repo_path)
-        old_commit: str
-        new_commit = app.current_commit
-
-        number_new_incidents = 0
-        number_unsolved_incidents = 0
-        number_solved_incidents = 0
-
-        with self.conn.cursor() as cur:
-            cur.execute("DROP TABLE IF EXISTS incidents_temp;")
-            cur.execute("CREATE TABLE incidents_temp (LIKE incidents INCLUDING ALL);")
-
-            query_app = self.select_application(
-                app.application_id, app.application_name, cur
-            )
-
-            if len(query_app) >= 2:
-                raise Exception(f"Multiple applications found for {app}.")
-            elif len(query_app) == 0 and app.application_id is not None:
-                raise Exception(
-                    f"No application with application_id {app.application_id}."
-                )
-            elif len(query_app) == 0:
-                application = self.insert_application(app, cur)
-            else:
-                application = query_app[0]
-
-            old_commit = application["current_commit"]
-
-            report_dict = report.get_report()
-
-            for ruleset_name, ruleset_dict in report_dict.items():
-                query_ruleset = self.select_ruleset(
-                    ruleset_name=ruleset_name,
-                    # application_id=application['application_id'],
-                    cur=cur,
-                )
-
-                if len(query_ruleset) >= 2:
-                    raise Exception("Multiple rulesets found.")
-                elif len(query_ruleset) == 0:
-                    ruleset = self.insert_ruleset(
-                        ruleset_name=ruleset_name,
-                        # application_id=application['application_id'],
-                        tags=ruleset_dict.get("tags", []),
-                        cur=cur,
-                    )
-                else:
-                    ruleset = query_ruleset[0]
-
-                for violation_name, violation_dict in ruleset_dict.get(
-                    "violations", {}
-                ).items():
-                    query_violation = self.select_violation(
-                        violation_name=violation_name,
-                        ruleset_id=ruleset["ruleset_id"],
-                        cur=cur,
-                    )
-
-                    if len(query_violation) >= 2:
-                        raise Exception("Multiple rulesets found.")
-                    elif len(query_violation) == 0:
-                        violation = self.insert_violation(
-                            violation_name=violation_name,
-                            ruleset_id=ruleset["ruleset_id"],
-                            category=violation_dict.get("category", "potential"),
-                            labels=violation_dict.get("labels", []),
-                            cur=cur,
-                        )
-                    else:
-                        violation = query_violation[0]
-
-                    for incident in violation_dict.get("incidents", []):
-                        cur.execute(
-                            """INSERT INTO incidents_temp(violation_id, application_id, incident_uri, incident_snip, incident_line, incident_variables)
-              VALUES (%s, %s, %s, %s, %s, %s);""",
-                            (
-                                violation["violation_id"],
-                                application["application_id"],
-                                incident.get("uri", ""),
-                                incident.get("codeSnip", ""),
-                                incident.get("lineNumber", 0),
-                                json.dumps(incident.get("variables", {})),
-                            ),
-                        )
-
-            # incidents_temp - incidents
-            cur.execute(
-                """WITH filtered_incidents_temp AS (
-    SELECT * FROM incidents_temp WHERE application_id = %s
-),
-filtered_incidents AS (
-    SELECT * FROM incidents WHERE application_id = %s
-)
-SELECT fit.incident_id AS incidents_temp_id, fi.incident_id AS incidents_id, fit.violation_id, fit.application_id, fit.incident_uri, fit.incident_snip, fit.incident_line, fit.incident_variables
-FROM filtered_incidents_temp fit
-LEFT JOIN filtered_incidents fi ON fit.violation_id = fi.violation_id
-                                AND fit.incident_uri = fi.incident_uri
-                                AND fit.incident_snip = fi.incident_snip
-                                AND fit.incident_line = fi.incident_line
-                                AND fit.incident_variables = fi.incident_variables
-WHERE fi.incident_id IS NULL;""",
-                (
-                    application["application_id"],
-                    application["application_id"],
-                ),
-            )
-
-            new_incidents = cur.fetchall()
-            number_new_incidents = len(new_incidents)
-
-            self.conn.autocommit = False
-            for ni in new_incidents:
-                self.insert_incident(
-                    ni["violation_id"],
-                    ni["application_id"],
-                    ni["incident_uri"],
-                    ni["incident_snip"],
-                    ni["incident_line"],
-                    ni["incident_variables"],
-                    None,
-                    cur,
-                )
-            self.conn.commit()
-            cur.fetchall()
-            self.conn.autocommit = True
-
-            # incidents `intersect` incidents_temp
-            cur.execute(
-                """-- incidents `intersect` incidents_temp with application_id match first
-WITH filtered_incidents AS (
-    SELECT * FROM incidents WHERE application_id = %s
-),
-filtered_incidents_temp AS (
-    SELECT * FROM incidents_temp WHERE application_id = %s
-)
-SELECT fi.incident_id AS incidents_id, fit.incident_id AS incidents_temp_id, fi.violation_id, fi.application_id, fi.incident_uri, fi.incident_snip, fi.incident_line, fi.incident_variables
-FROM filtered_incidents fi
-JOIN filtered_incidents_temp fit ON fi.violation_id = fit.violation_id
-                                  AND fi.incident_uri = fit.incident_uri
-                                  AND fi.incident_snip = fit.incident_snip
-                                  AND fi.incident_line = fit.incident_line
-                                  AND fi.incident_variables = fit.incident_variables;
-""",
-                (
-                    application["application_id"],
-                    application["application_id"],
-                ),
-            )
-
-            unsolved_incidents = cur.fetchall()
-            number_unsolved_incidents = len(unsolved_incidents)
-
-            # incidents - incidents_temp
-            cur.execute(
-                """WITH filtered_incidents AS (
-    SELECT * FROM incidents WHERE application_id = %s
-),
-filtered_incidents_temp AS (
-    SELECT * FROM incidents_temp WHERE application_id = %s
-)
-SELECT fi.incident_id AS incidents_id, fit.incident_id AS incidents_temp_id, fi.violation_id, fi.application_id, fi.incident_uri, fi.incident_snip, fi.incident_line, fi.incident_variables
-FROM filtered_incidents fi
-LEFT JOIN filtered_incidents_temp fit ON fi.violation_id = fit.violation_id
-                                      AND fi.incident_uri = fit.incident_uri
-                                      AND fi.incident_snip = fit.incident_snip
-                                      AND fi.incident_line = fit.incident_line
-                                      AND fi.incident_variables = fit.incident_variables
-WHERE fit.incident_id IS NULL;""",
-                (
-                    application["application_id"],
-                    application["application_id"],
-                ),
-            )
-
-            solved_incidents = cur.fetchall()
-            number_solved_incidents = len(solved_incidents)
-            KAI_LOG.debug(f"# of solved inc: {len(solved_incidents)}")
-
-            self.conn.autocommit = False
-            for si in solved_incidents:
-                file_path = os.path.join(
-                    repo_path,
-                    unquote(urlparse(si[4]).path).removeprefix("/tmp/source-code/"),
-                )
-                big_diff = repo.git.diff(old_commit, new_commit)
-
-                try:
-                    original_code = repo.git.show(f"{old_commit}:{file_path}")
-                except Exception:
-                    original_code = ""
-
-                try:
-                    updated_code = repo.git.show(f"{new_commit}:{file_path}")
-                except Exception:
-                    updated_code = ""
-
-                # file_path = pathlib.Path(os.path.join(repo_path, unquote(urlparse(si[3]).path).removeprefix('/tmp/source-code'))).as_uri()
-                small_diff = repo.git.diff(old_commit, new_commit, "--", file_path)
-
-                sln = self.insert_accepted_solution(
-                    app.generated_at,
-                    big_diff,
-                    small_diff,
-                    original_code,
-                    updated_code,
-                    cur,
-                )
-
-                cur.execute(
-                    "UPDATE incidents SET solution_id = %s WHERE incident_id = %s;",
-                    (sln["solution_id"], si[0]),
-                )
-
-            self.conn.commit()
-            self.conn.autocommit = True
-
-            cur.execute("DROP TABLE IF EXISTS incidents_temp;")
-            application = self.update_application(
-                application["application_id"], app, cur
-            )
-
-        return number_new_incidents, number_unsolved_incidents, number_solved_incidents
-
-    # Automatic vs manual solution acceptance
-
-    def accept_solution_from_id(
-        self,
-        incident_id: int,
-        solution_id: int | None,
-    ):
-        pass
-
-    def accept_solution_from_diff():
-        pass
-
-    def load_store(self, path: str):
-        # fetch the output.yaml files from the analysis_reports/initial directory
-
-        basedir = os.path.dirname(os.path.realpath(__file__))
-        parent_dir = os.path.dirname(basedir)
-        folder_path = os.path.join(parent_dir, path)
-
-        if not os.path.exists(folder_path):
-            KAI_LOG.error(f"Error: {folder_path} does not exist.")
-            return None
-        # check if the folder is empty
-        if not os.listdir(folder_path):
-            KAI_LOG.error(f"Error: {folder_path} is empty.")
-            return None
-        apps = os.listdir(folder_path)
-        KAI_LOG.info(f"Loading incident store with applications: {apps}\n")
-
-        for app in apps:
-
-            # if app is a directory then check if there is a folder called initial
-            KAI_LOG.info(f"Loading application {app}\n")
-            app_path = os.path.join(folder_path, app)
-            if os.path.isdir(app_path):
-                initial_folder = os.path.join(app_path, "initial")
-                if not os.path.exists(initial_folder):
-                    KAI_LOG.error(f"Error: {initial_folder} does not exist.")
-                    return None
-                # check if the folder is empty
-                if not os.listdir(initial_folder):
-                    KAI_LOG.error(
-                        f"Error: No analysis report found in {initial_folder}."
-                    )
-                    return None
-                report_path = os.path.join(initial_folder, "output.yaml")
-
-                repo_path = self.get_repo_path(app)
-                repo = Repo(repo_path)
-                app_v = self.get_app_variables(folder_path, app)
-                initial_branch = app_v["initial_branch"]
-                repo.git.checkout(initial_branch)
-                commit = repo.head.commit
-
-                app_initial = Application(
-                    application_id=None,
-                    application_name=app,
-                    repo_uri_origin=repo.remotes.origin.url,
-                    repo_uri_local=repo_path,
-                    current_branch=initial_branch,
-                    current_commit=commit.hexsha,
-                    generated_at=datetime.datetime.now(),
-                )
-
-                KAI_LOG.info(f"Loading application {app}\n")
-
-                self.insert_and_update_from_report(app_initial, Report(report_path))
-                KAI_LOG.info(f"Loaded application - initial {app}\n")
-
-                # input(f"After inserting initial for {app}...")
-
-                solved_folder = os.path.join(app_path, "solved")
-                if not os.path.exists(solved_folder):
-                    KAI_LOG.error(f"Error: {solved_folder} does not exist.")
-                    return None
-                # check if the folder is empty
-                if not os.listdir(solved_folder):
-                    KAI_LOG.error(
-                        f"Error: No analysis report found in {solved_folder}."
-                    )
-                    return None
-                report_path = os.path.join(solved_folder, "output.yaml")
-                solved_branch = self.get_app_variables(folder_path, app)[
-                    "solved_branch"
-                ]
-                repo.git.checkout(solved_branch)
-                commit = repo.head.commit
-                app_solved = Application(
-                    application_id=None,
-                    application_name=app,
-                    repo_uri_origin=repo.remotes.origin.url,
-                    repo_uri_local=repo_path,
-                    current_branch=solved_branch,
-                    current_commit=commit.hexsha,
-                    generated_at=datetime.datetime.now(),
-                )
-                self.insert_and_update_from_report(app_solved, Report(report_path))
-
-                KAI_LOG.info(f"Loaded application - solved {app}\n")
-
-    def get_repo_path(self, app_name):
-        """
-        Get the repo path
-        """
-
-        # TODO:  This mapping data should be moved out of the code, consider moving to a config file
-        mapping = {
-            "eap-coolstore-monolith": "samples/sample_repos/eap-coolstore-monolith",
-            "ticket-monster": "samples/sample_repos/ticket-monster",
-            "kitchensink": "samples/sample_repos/kitchensink",
-            "helloworld-mdb": "samples/sample_repos/helloworld-mdb",
-            "bmt": "samples/sample_repos/bmt",
-            "cmt": "samples/sample_repos/cmt",
-            "ejb-remote": "samples/sample_repos/ejb-remote",
-            "ejb-security": "samples/sample_repos/ejb-security",
-            "tasks-qute": "samples/sample_repos/tasks-qute",
-            "greeter": "samples/sample_repos/greeter",
-        }
-
-        basedir = os.path.dirname(os.path.realpath(__file__))
-        parent_dir = os.path.dirname(basedir)
-        path = mapping.get(app_name, None)
-        return os.path.join(parent_dir, path)
-
-    def get_app_variables(self, path: str, app_name: str):
-
-        if not os.path.exists(path):
-            KAI_LOG.error(
-                f"Error: {app_name} does not exist in the analysis_reports directory."
-            )
-            return None
-
-        # Path to the app.yaml file
-        app_yaml_path = os.path.join(path, app_name, "app.yaml")
-        # Check if app.yaml exists for the specified app
-        if not os.path.exists(app_yaml_path):
-            KAI_LOG.error(f"Error: app.yaml does not exist for {app_name}.")
-            return None
-
-        # Load contents of app.yaml
-        with open(app_yaml_path, "r") as app_yaml_file:
-            app_data: dict = yaml.safe_load(app_yaml_file)
-
-        return app_data
 
 
 def main():
