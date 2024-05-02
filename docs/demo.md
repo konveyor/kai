@@ -4,7 +4,7 @@ Konveyor AI (kai) is Konveyor's approach to easing modernization of application 
 
 In this demo, we are going to migrate a partially migrated JavaEE application to Quarkus, and deploy it in OpenShift
 
-## Pre-req:
+## Pre-req
 
 - Podman
 - VSCode
@@ -20,7 +20,7 @@ In this demo, we are going to migrate a partially migrated JavaEE application to
 
 - Before starting the Kai server, Select model `mistralai/mistral-7b-instruct-v0-2` by adding this to `kai/config.toml` file
 
-```
+```yaml
 provider = "IBMOpenSource"
 args = { model_id = "mistralai/mistral-7b-instruct-v0-2" }
 ```
@@ -29,11 +29,9 @@ args = { model_id = "mistralai/mistral-7b-instruct-v0-2" }
 
 In this demo, we will be migrating few files as shown below,
 
-```
-* src/main/java/com/redhat/coolstore/model/Order.java
-* src/main/java/com/redhat/coolstore/model/ShoppingCart.java
-* src/main/java/com/redhat/coolstore/service/PromoService.java
-```
+- `src/main/java/com/redhat/coolstore/model/Order.java`
+- `src/main/java/com/redhat/coolstore/model/ShoppingCart.java`
+- `src/main/java/com/redhat/coolstore/service/PromoService.java`
 
 ### 2.1 Get the coolstore app
 
@@ -49,11 +47,9 @@ In this demo, we will be migrating few files as shown below,
 2. Follow steps from 1 through 4 from https://github.com/konveyor-ecosystem/kai/tree/main/ide#usage-summary
 3. Once the analysis is complete you will see incidents listed on the following files
 
-```
-    * src/main/java/com/redhat/coolstore/model/Order.java
-    * src/main/java/com/redhat/coolstore/model/ShoppingCart.java
-    * src/main/java/com/redhat/coolstore/service/PromoService.java
-```
+- `src/main/java/com/redhat/coolstore/model/Order.java`
+- `src/main/java/com/redhat/coolstore/model/ShoppingCart.java`
+- `src/main/java/com/redhat/coolstore/service/PromoService.java`
 
 4. Right Click on the `src/main/java/com/redhat/coolstore/model/Order.java` and select `Kai Fix-All`.
 
