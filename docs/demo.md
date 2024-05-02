@@ -44,7 +44,7 @@ In this demo, we will be migrating few files as shown below,
 ### 2.2 Run Analysis
 
 1. Open VSCode and load coolstore project if it is not already loaded.
-2. Follow steps from 1 through 4 from https://github.com/konveyor-ecosystem/kai/tree/main/ide#usage-summary
+2. Follow steps 1 through 4 from https://github.com/konveyor-ecosystem/kai/tree/main/ide#usage-summary
 3. Once the analysis is complete you will see incidents listed on the following files
 
    - `src/main/java/com/redhat/coolstore/model/Order.java`
