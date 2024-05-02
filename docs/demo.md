@@ -47,9 +47,9 @@ In this demo, we will be migrating few files as shown below,
 2. Follow steps from 1 through 4 from https://github.com/konveyor-ecosystem/kai/tree/main/ide#usage-summary
 3. Once the analysis is complete you will see incidents listed on the following files
 
-- `src/main/java/com/redhat/coolstore/model/Order.java`
-- `src/main/java/com/redhat/coolstore/model/ShoppingCart.java`
-- `src/main/java/com/redhat/coolstore/service/PromoService.java`
+   - `src/main/java/com/redhat/coolstore/model/Order.java`
+   - `src/main/java/com/redhat/coolstore/model/ShoppingCart.java`
+   - `src/main/java/com/redhat/coolstore/service/PromoService.java`
 
 4. Right Click on the `src/main/java/com/redhat/coolstore/model/Order.java` and select `Kai Fix-All`.
 
