@@ -2,7 +2,7 @@
 
 Konveyor AI (kai) is Konveyor's approach to easing modernization of application source code to a new target by leveraging LLMs with guidance from static code analysis augmented with data in Konveyor that helps to learn how an Organization solved a similar problem in the past (Source: https://github.com/konveyor-ecosystem/kai/blob/main/README.md)
 
-In this demo, we are going to migrate a partially migrated JavaEE application to Quarkus, and deploy it in OpenShift
+In this demo, we are going to migrate a [partially migrated JavaEE application](https://github.com/savitharaghunathan/coolstore.git) to Quarkus, and deploy it in OpenShift
 
 ## Pre-req
 
@@ -62,7 +62,7 @@ In this demo, we will be migrating few files as shown below,
 
 ### 2.3 Deploy app to OpenShift
 
-Now, its time to deploy the coolstore quarkus app on OpenShift cluster.
+Now, its time to deploy the coolstore Quarkus app on the OpenShift cluster.
 
 - Make sure you can access the cluster from your terminal
 - Navigate to the coolstore project folder
