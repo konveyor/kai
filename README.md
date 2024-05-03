@@ -148,7 +148,7 @@ args:
   model: mistral
 ```
 
-**OpenAI GPT 3.5**
+**OpenAI GPT 4**
 
 ```yaml
 provider: ChatOpenAI
@@ -156,7 +156,7 @@ args:
   model: gpt-4
 ```
 
-**OpenAI GPT 4**
+**OpenAI GPT 3.5**
 
 ```yaml
 provider: ChatOpenAI

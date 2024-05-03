@@ -27,7 +27,7 @@ import vcr
 import yaml
 from aiohttp import web
 from aiohttp.web_request import Request
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel, root_validator, validator
 from pydantic.v1.utils import deep_update
 
 from kai import llm_io_handler
@@ -216,8 +216,21 @@ class PostGetIncidentSolutionsForFileIncident(BaseModel):
     violation_name: str
     incident_snip: Optional[str] = ""
     incident_variables: dict
-    line_number: int  # 0-indexed
+    line_number: Optional[int]  # 0-indexed
     analysis_message: str
+
+    @validator("line_number", pre=True)
+    def convert_str_to_int(cls, value):
+        if isinstance(value, str):
+            if value == "":
+                return None
+            try:
+                # Attempt to convert the string to an integer
+                return int(value)
+            except ValueError:
+                # If conversion fails, raise an error
+                raise ValueError("Quantity must be an integer")
+        return value
 
 
 class PostGetIncidentSolutionsForFileParams(BaseModel):
@@ -240,7 +253,7 @@ async def get_incident_solutions_for_file(request: Request):
         f"START - App: '{params.application_name}', File: '{params.file_name}' with {len(params.incidents)} incidents'"
     )
 
-    result = llm_io_handler.get_incident_solutions_for_file(
+    result = await llm_io_handler.get_incident_solutions_for_file(
         request.app["model_provider"],
         request.app["incident_store"],
         params.file_contents,
@@ -293,7 +306,8 @@ def app(log_level: Optional[str] = None, demo_mode: Optional[bool] = None):
     KAI_LOG.info(f"Selected incident store: {config.incident_store.provider}")
 
     webapp["model_provider"] = ModelProvider(config.models)
-    KAI_LOG.info(f"Selected model: {config.models.provider}")
+    KAI_LOG.info(f"Selected provider: {config.models.provider}")
+    KAI_LOG.info(f"Selected model: {webapp['model_provider'].model_id}")
 
     webapp.add_routes(routes)
 

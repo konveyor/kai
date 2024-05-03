@@ -308,8 +308,12 @@ def supply_cursor_if_none(func):
 # TODO(@JonahSussman): Migrate this to use an ORM
 class PSQLIncidentStore(IncidentStore):
     def __init__(self, args: KaiConfigIncidentStorePostgreSQLArgs):
+        self.emb_provider = EmbeddingNone()
+
         try:
-            with psycopg2.connect(cursor_factory=DictCursor, **args.dict()) as conn:
+            with psycopg2.connect(
+                cursor_factory=DictCursor, **args.model_dump()
+            ) as conn:
                 KAI_LOG.info("Connected to the PostgreSQL server.")
                 self.conn: connection = conn
                 self.conn.autocommit = True
@@ -644,7 +648,7 @@ WHERE fit.incident_id IS NULL;""",
 
             for incident in incidents_with_solutions:
                 accepted_solution = self.select_accepted_solution(
-                    incidents_with_solutions["solution_id"], cur
+                    incident["solution_id"], cur
                 )
 
                 result.append(

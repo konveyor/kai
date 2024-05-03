@@ -39,7 +39,9 @@ class ModelProvider:
                 defaults = {
                     "model": "gpt-3.5-turbo",
                     "temperature": 0.1,
-                    "max_new_tokens": None,
+                    # "model_kwargs": {
+                    #     "max_tokens": None,
+                    # },
                     "streaming": True,
                 }
 
@@ -56,7 +58,6 @@ class ModelProvider:
                         "decoding_method": DecodingMethod.SAMPLE,
                         # NOTE: probably have to do some more clever stuff regarding
                         # config. max_new_tokens and such varies between models
-                        # max_new_tokens: 4096,
                         "max_new_tokens": 4096,
                         "min_new_tokens": 10,
                         "temperature": 0.05,
@@ -79,8 +80,6 @@ class ModelProvider:
             case _:
                 raise Exception(f"Unrecognized provider '{config.provider}'")
 
-        print(f"{model_args=}")
-
         self.llm: BaseChatModel = model_class(**model_args)
         self.model_id: str = model_id
 
@@ -88,7 +87,8 @@ class ModelProvider:
     # function should be unnecessary
     def get_prompt_builder_config(self, query_kind: str, override_template: str = None):
         if override_template is None:
-            override_template = self.template
+            # override_template = self.template
+            override_template = ""
 
         if os.path.isfile(override_template):
             return prompt_builder.add_to_env_from_file_force(override_template)

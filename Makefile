@@ -3,7 +3,7 @@ CONTAINER_RUNTIME = podman
 CWD := $(shell pwd)
 KAI_PYTHON_PATH="$(CWD)/kai:$(PYTHONPATH)"
 LOGLEVEL ?= info
-NUM_WORKERS ?= 1
+NUM_WORKERS ?= 8
 DEMO_MODE ?= False
 
 run-postgres:
