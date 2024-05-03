@@ -1,6 +1,4 @@
 import os
-from abc import ABC, abstractmethod
-from typing import Iterator
 
 from genai import Client, Credentials
 from genai.extensions.langchain.chat_llm import LangChainChatInterface

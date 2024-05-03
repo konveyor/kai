@@ -8,7 +8,6 @@ from typing import Any, Callable, Literal, Optional
 import vcr
 from aiohttp import web
 from kai_logging import KAI_LOG
-from langchain_core.language_models.chat_models import BaseChatModel
 
 from kai.incident_store import IncidentStore
 from kai.model_provider import ModelProvider
@@ -250,7 +249,7 @@ def get_incident_solution(
     if stream:
         end = time.time()
         KAI_LOG.info(
-            f"END - completed in '{end-start}s: - App: '{application_name}', File: '{file_name}' '{ruleset_name}'/'{violation_name}' @ Line Number '{line_number}' using model_id '{capture.model_id}'"
+            f"END - completed in '{end-start}s: - App: '{application_name}', File: '{file_name}' '{ruleset_name}'/'{violation_name}' @ Line Number '{line_number}' using model_id '{model_provider.model_id}'"
         )
         return model_provider.llm.stream(prompt)
     else:
@@ -258,6 +257,6 @@ def get_incident_solution(
 
         end = time.time()
         KAI_LOG.info(
-            f"END - completed in '{end-start}s: - App: '{application_name}', File: '{file_name}' '{ruleset_name}'/'{violation_name}' @ Line Number '{line_number}' using model_id '{capture.model_id}'"
+            f"END - completed in '{end-start}s: - App: '{application_name}', File: '{file_name}' '{ruleset_name}'/'{violation_name}' @ Line Number '{line_number}' using model_id '{model_provider.model_id}'"
         )
         return llm_result

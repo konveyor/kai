@@ -2,12 +2,11 @@ import argparse
 import datetime
 import json
 import os
-import tomllib
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import wraps
 from inspect import signature
-from typing import Literal, Optional
+from typing import Optional
 from urllib.parse import unquote, urlparse
 
 import psycopg2
@@ -16,12 +15,10 @@ from git import Repo
 from psycopg2.extensions import connection
 from psycopg2.extras import DictCursor, DictRow
 
-from kai.embedding_provider import EmbeddingNone, EmbeddingProvider
+from kai.embedding_provider import EmbeddingNone
 from kai.kai_logging import KAI_LOG
 from kai.models.kai_config import (
-    KaiConfig,
     KaiConfigIncidentStore,
-    KaiConfigIncidentStorePostgreSQL,
     KaiConfigIncidentStorePostgreSQLArgs,
     KaiConfigIncidentStoreProvider,
 )

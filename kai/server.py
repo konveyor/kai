@@ -8,30 +8,19 @@
 
 import argparse
 import datetime
-import itertools
 import json
 import os
 import pprint
 import time
-import tomllib
-import traceback
-import warnings
 from enum import Enum
-from os import listdir
-from os.path import isfile, join
-from typing import Any, Optional
+from typing import Optional
 
-import aiohttp
-import jsonschema
-import vcr
 import yaml
 from aiohttp import web
 from aiohttp.web_request import Request
-from pydantic import BaseModel, root_validator, validator
-from pydantic.v1.utils import deep_update
+from pydantic import BaseModel, validator
 
 from kai import llm_io_handler
-from kai.capture import Capture
 from kai.incident_store import Application, IncidentStore
 from kai.kai_logging import KAI_LOG
 from kai.model_provider import ModelProvider
@@ -227,9 +216,9 @@ class PostGetIncidentSolutionsForFileIncident(BaseModel):
             try:
                 # Attempt to convert the string to an integer
                 return int(value)
-            except ValueError:
+            except ValueError as err:
                 # If conversion fails, raise an error
-                raise ValueError("Quantity must be an integer")
+                raise ValueError("Quantity must be an integer") from err
         return value
 
 
