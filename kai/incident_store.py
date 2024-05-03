@@ -21,7 +21,8 @@ from kai.kai_logging import KAI_LOG
 from kai.models.kai_config import (
     KaiConfig,
     KaiConfigIncidentStore,
-    KaiConfigIncidentStoreArgsPostgreSQL,
+    KaiConfigIncidentStorePostgreSQL,
+    KaiConfigIncidentStorePostgreSQLArgs,
     KaiConfigIncidentStoreProvider,
 )
 from kai.report import Report
@@ -189,13 +190,13 @@ class IncidentStore(ABC):
         """
         Factory method to produce whichever incident store is needed.
         """
-        match config.provider:
-            case KaiConfigIncidentStoreProvider.POSTGRESQL:
-                return PSQLIncidentStore(config.args)
-            case _:
-                raise ValueError(
-                    f"Unsupported provider: {config.incident_store.provider}"
-                )
+        # if config.provider == KaiConfigIncidentStoreProvider.POSTGRESQL:
+        if config.provider == "postgresql":
+            return PSQLIncidentStore(config.args)
+        else:
+            raise ValueError(
+                f"Unsupported provider: {config.provider}\ntype: {type(config.provider)}\nlmao: {KaiConfigIncidentStoreProvider.POSTGRESQL}"
+            )
 
     @abstractmethod
     def load_report(
@@ -306,7 +307,7 @@ def supply_cursor_if_none(func):
 
 # TODO(@JonahSussman): Migrate this to use an ORM
 class PSQLIncidentStore(IncidentStore):
-    def __init__(self, args: KaiConfigIncidentStoreArgsPostgreSQL):
+    def __init__(self, args: KaiConfigIncidentStorePostgreSQLArgs):
         try:
             with psycopg2.connect(cursor_factory=DictCursor, **args.dict()) as conn:
                 KAI_LOG.info("Connected to the PostgreSQL server.")

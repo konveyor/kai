@@ -2,7 +2,7 @@ import os
 from abc import ABC, abstractmethod
 from typing import Iterator
 
-from genai import Credentials
+from genai import Client, Credentials
 from genai.extensions.langchain.chat_llm import LangChainChatInterface
 from genai.schema import DecodingMethod
 from langchain_community.chat_models import ChatOllama, ChatOpenAI
@@ -50,7 +50,7 @@ class ModelProvider:
                 model_class = LangChainChatInterface
 
                 defaults = {
-                    "client": {"credentials": Credentials.from_env()},
+                    "client": Client(credentials=Credentials.from_env()),
                     "model_id": "ibm-mistralai/mixtral-8x7b-instruct-v01-q",
                     "parameters": {
                         "decoding_method": DecodingMethod.SAMPLE,
@@ -78,6 +78,8 @@ class ModelProvider:
 
             case _:
                 raise Exception(f"Unrecognized provider '{config.provider}'")
+
+        print(f"{model_args=}")
 
         self.llm: BaseChatModel = model_class(**model_args)
         self.model_id: str = model_id

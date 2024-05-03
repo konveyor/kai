@@ -32,17 +32,10 @@ from pydantic.v1.utils import deep_update
 
 from kai import llm_io_handler
 from kai.capture import Capture
-from kai.incident_store import (
-    Application,
-    EmbeddingNone,
-    IncidentStore,
-    PSQLIncidentStore,
-)
+from kai.incident_store import Application, IncidentStore
 from kai.kai_logging import KAI_LOG
-from kai.model_provider import ModelProvider, create_chat_model
+from kai.model_provider import ModelProvider
 from kai.models.kai_config import KaiConfig
-from kai.prompt_builder import build_prompt
-from kai.pydantic_models import guess_language, parse_file_solution_content
 from kai.report import Report
 
 # TODO: Make openapi spec for everything
@@ -268,9 +261,25 @@ async def get_incident_solutions_for_file(request: Request):
     return web.json_response(result)
 
 
-def app(config: KaiConfig):
+def app(log_level: Optional[str] = None, demo_mode: Optional[bool] = None):
     webapp = web.Application()
+
+    with open(os.path.join(os.path.dirname(__file__), "config.yaml"), "r") as f:
+        config_dict: dict = yaml.safe_load(f)
+
+    if log_level:
+        config_dict["log_level"] = log_level
+    if demo_mode:
+        config_dict["demo_mode"] = demo_mode
+
+    config = KaiConfig.model_validate(config_dict)
+
+    print(f"Config loaded: {pprint.pformat(config)}")
+
+    config: KaiConfig
     webapp["config"] = config
+
+    print(type(config))
 
     KAI_LOG.setLevel(config.log_level.upper())
     print(
@@ -281,7 +290,7 @@ def app(config: KaiConfig):
         KAI_LOG.info("DEMO_MODE is enabled. LLM responses will be cached")
 
     webapp["incident_store"] = IncidentStore.from_config(config.incident_store)
-    KAI_LOG(f"Selected incident store: {config.incident_store.provider}")
+    KAI_LOG.info(f"Selected incident store: {config.incident_store.provider}")
 
     webapp["model_provider"] = ModelProvider(config.models)
     KAI_LOG.info(f"Selected model: {config.models.provider}")
@@ -318,14 +327,7 @@ Example: --loglevel debug (default: warning)""",
 
     args, _ = arg_parser.parse_known_args()
 
-    with open(os.path.join(os.path.dirname(__file__), "config.yaml"), "r") as f:
-        config_dict: dict = yaml.safe_load(f)
-
-    config = KaiConfig.model_validate(deep_update(config_dict, vars(args)))
-
-    print(f"Config loaded: {pprint.pformat(config)}")
-
-    web.run_app(app(config))
+    web.run_app(app(args.loglevel, args.demo_mode))
 
 
 if __name__ == "__main__":

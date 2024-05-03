@@ -1,13 +1,7 @@
 from enum import Enum
+from typing import Literal, Union
 
-from pydantic import BaseModel, root_validator
-
-
-class KaiConfigIncidentStoreArgsPostgreSQL(BaseModel):
-    host: str
-    database: str
-    user: str
-    password: str
+from pydantic import BaseModel, Field, field_validator, root_validator
 
 
 class KaiConfigIncidentStoreProvider(Enum):
@@ -15,26 +9,31 @@ class KaiConfigIncidentStoreProvider(Enum):
     IN_MEMORY = "in_memory"
 
 
-class KaiConfigIncidentStore(BaseModel):
-    provider: str
-    args: dict
+class KaiConfigIncidentStorePostgreSQLArgs(BaseModel):
+    host: str
+    database: str
+    user: str
+    password: str
 
-    @root_validator(pre=True)
-    def check_provider(cls, values):
-        provider = values.get("provider")
-        args_data = values.get("args")
 
-        match provider:
-            case KaiConfigIncidentStoreProvider.POSTGRESQL:
-                ArgsModel = KaiConfigIncidentStoreArgsPostgreSQL
-            # case KaiConfigIncidentStoreProvider.IN_MEMORY:
-            #     ArgsModel = KaiConfigIncidentStoreArgsInMemory
-            case _:
-                raise ValueError(f"Unsupported provider: {provider}")
+class KaiConfigIncidentStorePostgreSQL(BaseModel):
+    provider: Literal["postgresql"]
+    args: KaiConfigIncidentStorePostgreSQLArgs
 
-        values["args"] = ArgsModel(**args_data)
 
-        return values
+class KaiConfigIncidentStoreInMemoryArgs(BaseModel):
+    todo: bool
+
+
+class KaiConfigIncidentStoreInMemory(BaseModel):
+    provider: Literal["in_memory"]
+    args: KaiConfigIncidentStoreInMemoryArgs
+
+
+KaiConfigIncidentStore = Union[
+    KaiConfigIncidentStorePostgreSQL,
+    KaiConfigIncidentStoreInMemory,
+]
 
 
 class KaiConfigModels(BaseModel):
@@ -46,5 +45,5 @@ class KaiConfig(BaseModel):
     log_level: str = "info"
     demo_mode: bool = False
 
-    incident_store: KaiConfigIncidentStore
+    incident_store: KaiConfigIncidentStore = Field(discriminator="provider")
     models: KaiConfigModels
