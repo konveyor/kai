@@ -6,7 +6,9 @@ from contextlib import contextmanager
 from typing import Any, Callable, Literal, Optional
 
 import vcr
+from aiohttp import web
 from kai_logging import KAI_LOG
+from langchain_core.language_models.chat_models import BaseChatModel
 
 from kai.incident_store import IncidentStore
 from kai.model_provider import ModelProvider
@@ -16,13 +18,11 @@ from kai.pydantic_models import guess_language, parse_file_solution_content
 LLM_RETRIES = 5
 LLM_RETRY_DELAY = 10
 
-DEMO_MODE = os.getenv("DEMO_MODE") == "true"
-
 
 @contextmanager
-def playback_if_demo_mode(model_id, application_name, filename):
+def playback_if_demo_mode(demo_mode, model_id, application_name, filename):
     """A context manager to conditionally use a VCR cassette when demo mode is enabled."""
-    record_mode = "once" if DEMO_MODE else "all"
+    record_mode = "once" if demo_mode else "all"
     my_vcr = vcr.VCR(
         cassette_library_dir=f"{os.path.dirname(__file__)}/data/vcr/{application_name}/{model_id}/",
         record_mode=record_mode,
@@ -85,10 +85,9 @@ async def get_incident_solutions_for_file(
     batch_mode: Optional[
         Literal["none", "single_group", "ruleset", "violation"]
     ] = "single_group",
-    include_solved_incidents: Optional[
-        bool
-    ] = True,  # NOTE(@JonahSussman): Should this be renamed to "include_solutions"?
+    include_solved_incidents: Optional[bool] = True,
     include_llm_results: bool = False,
+    demo_mode: bool = False,
 ):
     src_file_language = guess_language(file_contents, filename=file_name)
 
@@ -101,7 +100,7 @@ async def get_incident_solutions_for_file(
     llm_results = []
     additional_info = []
     used_prompts = []
-    model_id = model_provider.get_current_model_id()
+    model_id = model_provider.model_id
 
     batch_key_fn, batch_res_fn = get_key_and_res_function(batch_mode)
 
@@ -154,11 +153,12 @@ async def get_incident_solutions_for_file(
         for _ in range(LLM_RETRIES):
             try:
                 with playback_if_demo_mode(
+                    demo_mode,
                     model_id,
                     application_name,
                     f'{file_name.replace("/", "-")}',
                 ):
-                    llm_result = model_provider.invoke(prompt)
+                    llm_result = model_provider.llm.invoke(prompt)
                     content = parse_file_solution_content(
                         src_file_language, llm_result.content
                     )
@@ -200,3 +200,66 @@ async def get_incident_solutions_for_file(
         response["llm_results"] = llm_results
 
     return response
+
+
+# NOTE(@JonahSussman): This function should probably become deprecated at some
+# point. `get_incident_solutions_for_file` does everything this function does,
+# aside from streaming.
+def get_incident_solution(
+    incident_store: IncidentStore,
+    model_provider: ModelProvider,
+    application_name: str,
+    ruleset_name: str,
+    violation_name: str,
+    incident_snip: Optional[str],
+    incident_variables: dict,
+    file_name: str,
+    file_contents: str,
+    line_number: int,
+    analysis_message: str,
+    stream: bool = False,
+):
+    KAI_LOG.info(
+        f"START - App: '{application_name}', File: '{file_name}' '{ruleset_name}'/'{violation_name}' @ Line Number '{line_number}' using model_id '{model_provider.model_id}'"
+    )
+
+    start = time.time()
+
+    solved_incidents = incident_store.find_solutions(
+        ruleset_name,
+        violation_name,
+        incident_variables,
+        incident_snip,
+    )
+
+    KAI_LOG.debug(f"Found {len(solved_incidents)} solved incident(s)")
+
+    pb_vars = {
+        "src_file_name": file_name,
+        "src_file_contents": file_contents,
+        "analysis_line_number": str(line_number),
+        "analysis_message": analysis_message,
+    }
+
+    if len(solved_incidents) >= 1:
+        pb_vars["solved_example_diff"] = solved_incidents[0].file_diff
+        pb_vars["solved_example_file_name"] = solved_incidents[0].uri
+
+    prompt = build_prompt(
+        model_provider.get_prompt_builder_config("single_file"), pb_vars
+    )
+
+    if stream:
+        end = time.time()
+        KAI_LOG.info(
+            f"END - completed in '{end-start}s: - App: '{application_name}', File: '{file_name}' '{ruleset_name}'/'{violation_name}' @ Line Number '{line_number}' using model_id '{capture.model_id}'"
+        )
+        return model_provider.llm.stream(prompt)
+    else:
+        llm_result = model_provider.llm.invoke(prompt)
+
+        end = time.time()
+        KAI_LOG.info(
+            f"END - completed in '{end-start}s: - App: '{application_name}', File: '{file_name}' '{ruleset_name}'/'{violation_name}' @ Line Number '{line_number}' using model_id '{capture.model_id}'"
+        )
+        return llm_result

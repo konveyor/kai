@@ -173,10 +173,13 @@ class Application:
     generated_at: datetime.datetime
 
 
+# NOTE(@JonahSussman): Should we include the incident that this solution is for
+# inside the class?
 @dataclass
 class Solution:
     uri: str
-    diff: str
+    file_diff: str
+    repo_diff: str
 
 
 class IncidentStore(ABC):
@@ -195,9 +198,13 @@ class IncidentStore(ABC):
                 )
 
     @abstractmethod
-    def load_report(self, application: Application, report: Report):
+    def load_report(
+        self, application: Application, report: Report
+    ) -> tuple[int, int, int]:
         """
-        Load incidents from a report and given application object.
+        Load incidents from a report and given application object. Returns a
+        tuple containing (# of new incidents, # of unsolved incidents, # of
+        solved incidents) in that order.
 
         NOTE: This application object is more like metadata than anything.
         """
@@ -331,7 +338,7 @@ class PSQLIncidentStore(IncidentStore):
         with self.conn.cursor() as cur:
             cur.execute(open(f"{BASE_PATH}/data/sql/drop_tables.sql", "r").read())
 
-    def load_report(self, app: Application, report: Report):
+    def load_report(self, app: Application, report: Report) -> tuple[int, int, int]:
         """
         Returns: (number_new_incidents, number_unsolved_incidents,
         number_solved_incidents): tuple[int, int, int]
@@ -642,7 +649,8 @@ WHERE fit.incident_id IS NULL;""",
                 result.append(
                     Solution(
                         uri=incident["incident_uri"],
-                        diff=accepted_solution["solution_small_diff"],
+                        file_diff=accepted_solution["solution_small_diff"],
+                        repo_diff=accepted_solution["solution_big_diff"],
                     )
                 )
 
