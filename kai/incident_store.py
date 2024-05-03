@@ -18,6 +18,12 @@ from psycopg2.extras import DictCursor, DictRow
 
 from kai.embedding_provider import EmbeddingNone, EmbeddingProvider
 from kai.kai_logging import KAI_LOG
+from kai.models.kai_config import (
+    KaiConfig,
+    KaiConfigIncidentStore,
+    KaiConfigIncidentStoreArgsPostgreSQL,
+    KaiConfigIncidentStoreProvider,
+)
 from kai.report import Report
 
 BASE_PATH = os.path.dirname(__file__)
@@ -173,10 +179,20 @@ class Solution:
     diff: str
 
 
-# NOTE: solved example?
-
-
 class IncidentStore(ABC):
+
+    @staticmethod
+    def from_config(config: KaiConfigIncidentStore):
+        """
+        Factory method to produce whichever incident store is needed.
+        """
+        match config.provider:
+            case KaiConfigIncidentStoreProvider.POSTGRESQL:
+                return PSQLIncidentStore(config.args)
+            case _:
+                raise ValueError(
+                    f"Unsupported provider: {config.incident_store.provider}"
+                )
 
     @abstractmethod
     def load_report(self, application: Application, report: Report):
@@ -190,7 +206,7 @@ class IncidentStore(ABC):
     @abstractmethod
     def delete_store(self):
         """
-        Clears all data within the incident store. Most likely non-reversible!
+        Clears all data within the incident store. Non-reversible!
         """
         pass
 
@@ -283,45 +299,9 @@ def supply_cursor_if_none(func):
 
 # TODO(@JonahSussman): Migrate this to use an ORM
 class PSQLIncidentStore(IncidentStore):
-    def __init__(
-        self,
-        *,
-        config_filepath: str = None,
-        config_section: str = None,
-        config: dict = None,
-        emb_provider: EmbeddingProvider = None,
-    ):
-        # Config parsing. Either comes from a dict or a .toml file
-        cf_none = config_filepath is None
-        cs_none = config_section is None
-        cd_none = config is None
-
-        if cf_none != cs_none:
-            raise Exception(
-                "config_filepath and config_section must both be set if using .ini file."
-            )
-        if not (cf_none ^ cd_none):
-            raise Exception("Must provide either config .toml or config dict.")
-
-        if not cf_none:
-            with open(config_filepath, "rb") as f:
-                config = tomllib.load(f)
-
-            if config_section not in config:
-                raise Exception(
-                    f"Section {config_section} not found in file {config_filepath}"
-                )
-
-            config = config[config_section]
-
-        # Embedding provider
-        if emb_provider is None:
-            raise Exception("emb_provider must not be None")
-
-        self.emb_provider = emb_provider
-
+    def __init__(self, args: KaiConfigIncidentStoreArgsPostgreSQL):
         try:
-            with psycopg2.connect(cursor_factory=DictCursor, **config) as conn:
+            with psycopg2.connect(cursor_factory=DictCursor, **args.dict()) as conn:
                 KAI_LOG.info("Connected to the PostgreSQL server.")
                 self.conn: connection = conn
                 self.conn.autocommit = True
