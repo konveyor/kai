@@ -21,7 +21,7 @@ from kai.model_provider import ModelProvider
 
 DEFAULT_CONFIGURATION = {
     "models": {
-        "provider": "IBMOpenSource",
+        "provider": "ChatIBMGenAI",
         "args": {"model_id": "ibm-mistralai/mixtral-8x7b-instruct-v01-q"},
     }
 }

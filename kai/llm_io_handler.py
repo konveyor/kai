@@ -92,8 +92,6 @@ async def get_incident_solutions_for_file(
 
     KAI_LOG.debug(f"{file_name} classified as filetype {src_file_language}")
 
-    # NOTE: Looks worse than it is, `trunk check` mangled the heck out of this
-    # section. It doesn't like lambdas for some reason :(
     updated_file = file_contents
     total_reasoning = []
     llm_results = []

@@ -3,6 +3,8 @@ from typing import Literal, Union
 
 from pydantic import BaseModel, Field
 
+# Incident store providers
+
 
 class KaiConfigIncidentStoreProvider(Enum):
     POSTGRESQL = "postgresql"
@@ -22,7 +24,7 @@ class KaiConfigIncidentStorePostgreSQL(BaseModel):
 
 
 class KaiConfigIncidentStoreInMemoryArgs(BaseModel):
-    todo: bool
+    dummy: bool
 
 
 class KaiConfigIncidentStoreInMemory(BaseModel):
@@ -35,10 +37,15 @@ KaiConfigIncidentStore = Union[
     KaiConfigIncidentStoreInMemory,
 ]
 
+# Model providers
+
 
 class KaiConfigModels(BaseModel):
     provider: str
     args: dict
+
+
+# Main config
 
 
 class KaiConfig(BaseModel):
