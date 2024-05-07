@@ -183,4 +183,4 @@ mvn clean compile package -Dquarkus.kubernetes.deploy=true
 
 ### Conclusion
 
-In this demo, we showcased the capability of Kai in facilitating various types of code migrations within the Coolstore application. From simple translations to more involved changes, Kai helped the migration process. If you are intereted to learn more about our ongoing efforts and future plans, we invite you to reach out to us in the [slack channel](https://kubernetes.slack.com/archives/CR85S82A2)
+In this demo, we showcased the capability of Kai in facilitating various types of code migrations within the Coolstore application. From simple translations to more involved changes, Kai helped the migration process. If you are intereted to learn more about our ongoing efforts and future plans, please reach out to us in the [slack channel](https://kubernetes.slack.com/archives/CR85S82A2)
