@@ -2,7 +2,7 @@
 
 Konveyor AI (kai) is Konveyor's approach to easing modernization of application source code to a new target by leveraging LLMs with guidance from static code analysis augmented with data in Konveyor that helps to learn how an Organization solved a similar problem in the past (Source: https://github.com/konveyor-ecosystem/kai/blob/main/README.md)
 
-In this demo, we will showcase the capabilities of Konveyor AI (KAI) in facilitating the modernization of application source code to a new target. We will illustrate how KAI can handle various levels of migration complexity, ranging from simple translation tasks to more involved changes such as swapping annotations. Additionally, we'll delve into more advanced migration scenarios that might necessitate manual intervention.
+In this demo, we will showcase the capabilities of Konveyor AI (Kai) in facilitating the modernization of application source code to a new target. We will illustrate how Kai can handle various levels of migration complexity, ranging from simple translation tasks to more involved changes such as swapping annotations. Additionally, we'll delve into more advanced migration scenarios that might necessitate manual intervention.
 
 We will focus on migrating a partially migrated [JavaEE Coolstore application](https://github.com/konveyor-ecosystem/coolstore.git`) to Quarkus, a task that involves not only technical translation but also considerations for deployment in OpenShift.
 
