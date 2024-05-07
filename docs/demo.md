@@ -6,7 +6,7 @@ In this demo, we will showcase the capabilities of Konveyor AI (KAI) in facilita
 
 We will focus on migrating a partially migrated [JavaEE Coolstore application](https://github.com/konveyor-ecosystem/coolstore.git`) to Quarkus, a task that involves not only technical translation but also considerations for deployment in OpenShift.
 
-## Pre-req:
+## Pre-req
 
 - Podman
 - VSCode
@@ -27,7 +27,7 @@ In this step, we will configure the Kai IDE plugin within VSCode to showcase the
 
 - Before starting the Kai server, Select model `meta-llama/llama-3-70b-instruct` by adding this to `kai/config.toml` file
 
-```
+```yaml
 provider = "IBMOpenSource"
 args = { model_id = "meta-llama/llama-3-70b-instruct", max_new_tokens = 2048 }
 ```
@@ -56,13 +56,13 @@ In this step, we will clone the Coolstore application, which we will be used dem
 
 1. To clone the Coolstore demo from its repository -
 
-   ```
+   ```bash
    git clone https://github.com/savitharaghunathan/coolstore.git
    ```
 
 2. Next, switch to the branch of the Coolstore app that's been partially migrated -
 
-   ```
+   ```bash
    git checkout mig1
    ```
 
