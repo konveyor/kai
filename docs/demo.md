@@ -2,9 +2,9 @@
 
 Konveyor AI (kai) is Konveyor's approach to easing modernization of application source code to a new target by leveraging LLMs with guidance from static code analysis augmented with data in Konveyor that helps to learn how an Organization solved a similar problem in the past (Source: https://github.com/konveyor-ecosystem/kai/blob/main/README.md)
 
-In this demo, we will showcase the capabilities of Konveyor AI (Kai) in facilitating the modernization of application source code to a new target. We will illustrate how Kai can handle various levels of migration complexity, ranging from simple translation tasks to more involved changes such as swapping annotations. Additionally, we'll delve into more advanced migration scenarios that might necessitate manual intervention.
+In this demo, we will showcase the capabilities of Konveyor AI (Kai) in facilitating the modernization of application source code to a new target. We will illustrate how Kai can handle various levels of migration complexity, ranging from simple import swaps to more involved changes such as modifying scope from CDI bean requirements. Additionally, we will look into migration scenarios that involves EJB Remote and Message Driven Bean(MBD) changes
 
-We will focus on migrating a partially migrated [JavaEE Coolstore application](https://github.com/konveyor-ecosystem/coolstore.git`) to Quarkus, a task that involves not only technical translation but also considerations for deployment in OpenShift.
+We will focus on migrating a partially migrated [JavaEE Coolstore application](https://github.com/konveyor-ecosystem/coolstore.git) to Quarkus, a task that involves not only technical translation but also considerations for deployment in OpenShift.
 
 ## Pre-req
 
@@ -19,7 +19,7 @@ We will focus on migrating a partially migrated [JavaEE Coolstore application](h
 
 ## Step 1: Setup
 
-In this step, we will configure the Kai IDE plugin within VSCode to showcase the capabilities of Kai. We will be using the model `meta-llama/llama-3-70b-instruct` within the Kai configuration. This setup ensures that the demo runs seamlessly within the VSCode environment, highlighting the efficiency and power of Kai for code migration in the context of our specific scenario.
+In this step, we will configure the Kai IDE plugin within VSCode to showcase the capabilities of Kai. For this demo, we will be using the model `meta-llama/llama-3-70b-instruct` within the Kai configuration. This setup ensures that the demo runs seamlessly within the VSCode environment, highlighting the efficiency and power of Kai for code migration in the context of our specific scenario.
 
 ### Setup Kai VSCode IDE plugin
 
@@ -32,9 +32,22 @@ provider = "IBMOpenSource"
 args = { model_id = "meta-llama/llama-3-70b-instruct", max_new_tokens = 2048 }
 ```
 
+If you are interested in using `gpt-3.5-turbo` refer to the section below,
+
+#### Running Kai with GPT-3.5
+
+- Export your OpenAI api key `export OPENAI_API_KEY="<your-openai-api-key>"`
+
+- Before starting the Kai server, Select model `gpt-3.5-turbo` by adding this to `kai/config.toml` file
+
+```yaml
+provider = "OpenAI"
+args = { model_id = "gpt-3.5-turbo" }
+```
+
 ## Step 2: Demo
 
-As mentioned earlier, in this demo we will show various capabilities of Kai. We will begin by showcasing the simple translation tasks. Kai uses hints from the anlaysis results and replaces the javax persistence with Jakarta persistence libraries in the following files:
+As mentioned earlier, in this demo we will show various capabilities of Kai. We will begin with the example - Change import namespaces. Kai uses hints from the anlaysis results and replaces the javax persistence with Jakarta persistence libraries in the following files:
 
 - `src/main/java/com/redhat/coolstore/model/ShoppingCart.java`
 - `src/main/java/com/redhat/coolstore/model/InventoryEntity.java`
@@ -43,7 +56,7 @@ Moving on to slightly more involved tasks, Kai will be migrating the file to use
 
 - `src/main/java/com/redhat/coolstore/service/CatalogService.java`
 
-Lastly, for the advanced migration, we will use the following two files, and we will dive deeper into it later in the demo
+Lastly, for the example - EJB Remote and Message Driven Bean(MBD) changes , we will use the following two files, and we will dive deeper into it later in the demo
 
 - `src/main/java/com/redhat/coolstore/service/ShippingService.java`
 - `src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java`
@@ -57,13 +70,13 @@ In this step, we will clone the Coolstore application, which we will be used dem
 1. To clone the Coolstore demo from its repository -
 
    ```bash
-   git clone https://github.com/savitharaghunathan/coolstore.git
+   git clone https://github.com/konveyor-ecosystem/coolstore.git
    ```
 
 2. Next, switch to the branch of the Coolstore app that's been partially migrated -
 
    ```bash
-   git checkout mig1
+   git checkout partial-migration
    ```
 
 ### 2.2 Run Analysis
@@ -82,20 +95,18 @@ We will kick off by analyzing the Coolstore application using the following targ
 
 Once the analysis is complete, the incidents will provide insights into potential issues or areas that require attention during the migration process.
 
-#### 2.2.1 Simple Translation
-
-To demonstrate simple translation, perform the following steps:
+#### 2.2.1 Change import namespaces
 
 - Right-click on the file `src/main/java/com/redhat/coolstore/model/ShoppingCart.java`.
 - Select Kai Fix-All.
 - Accept the proposed changes.
 - Repeat the same process for the file - `src/main/java/com/redhat/coolstore/model/InventoryEntity.java`.
 
-![Simple Translation](model.png)
+![Change import namespaces](model.png)
 
-Th above steps show how Kai simplifies the translation process, ensuring seamless migration of javax libraries to jakarta persistence libraries.
+Th above steps show how Kai simplifies the translation of import namespaces, ensuring seamless migration of javax libraries to jakarta persistence libraries.
 
-#### 2.2.2 A bit involved migration
+#### 2.2.2 Modify Scope from CDI bean requirements
 
 In this step, we will use Kai to modify the scope according to Quarkus CDI bean requirements.
 
@@ -103,13 +114,11 @@ In this step, we will use Kai to modify the scope according to Quarkus CDI bean 
 - Select Kai Fix-All.
 - Accept the proposed changes.
 
-![A bit involved migration ](kai_type2.png)
+![Modify Scope from CDI bean requirements](kai_type2.png)
 
-These steps show how Kai performs simple involved migration.
+#### 2.2.3 EJB Remote and Message Driven Bean(MBD) changes
 
-#### 2.2.3 Advanced migration
-
-In this step, we will use Kai for an advanced migration involving EJB remote and MDB (Message-Driven Bean) functionalities.
+In this step, we will use Kai for an example involving EJB remote and MDB (Message-Driven Bean) functionalities.
 
 - Right-click on the file `src/main/java/com/redhat/coolstore/service/ShippingService.java`.
 - Select `Kai Fix-All`.
@@ -153,8 +162,6 @@ Due to the absence of support for Remote EJBs in Quarkus, you will notoce that t
   import org.eclipse.microprofile.reactive.messaging.Emitter;
   ```
 
-By following these steps, you have performend advanced migration with the help of Kai.
-
 ### 2.3 Deploy app to OpenShift
 
 Now, its time to deploy the coolstore quarkus app on OpenShift cluster.
@@ -183,4 +190,4 @@ mvn clean compile package -Dquarkus.kubernetes.deploy=true
 
 ### Conclusion
 
-In this demo, we showcased the capability of Kai in facilitating various types of code migrations within the Coolstore application. From simple translations to more involved changes, Kai helped the migration process. If you are intereted to learn more about our ongoing efforts and future plans, please reach out to us in the [slack channel](https://kubernetes.slack.com/archives/CR85S82A2)
+In this demo, we showcased the capability of Kai in facilitating various types of code migrations within the Coolstore application. If you are intereted to learn more about our ongoing efforts and future plans, please reach out to us in the [slack channel](https://kubernetes.slack.com/archives/CR85S82A2)
