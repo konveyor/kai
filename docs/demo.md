@@ -2,9 +2,11 @@
 
 Konveyor AI (kai) is Konveyor's approach to easing modernization of application source code to a new target by leveraging LLMs with guidance from static code analysis augmented with data in Konveyor that helps to learn how an Organization solved a similar problem in the past (Source: https://github.com/konveyor-ecosystem/kai/blob/main/README.md)
 
-In this demo, we are going to migrate a [partially migrated JavaEE application](https://github.com/konveyor-ecosystem/coolstore.git) to Quarkus, and deploy it in OpenShift
+In this demo, we will showcase the capabilities of Konveyor AI (KAI) in facilitating the modernization of application source code to a new target. We will illustrate how KAI can handle various levels of migration complexity, ranging from simple translation tasks to more involved changes such as swapping annotations. Additionally, we'll delve into more advanced migration scenarios that might necessitate manual intervention.
 
-## Pre-req
+We will focus on migrating a partially migrated [JavaEE Coolstore application](https://github.com/konveyor-ecosystem/coolstore.git`) to Quarkus, a task that involves not only technical translation but also considerations for deployment in OpenShift.
+
+## Pre-req:
 
 - Podman
 - VSCode
@@ -13,56 +15,149 @@ In this demo, we are going to migrate a [partially migrated JavaEE application](
 - GenAI credentials
 - mvn
 - Quarkus 3.10
+- Java 17
 
 ## Step 1: Setup
 
+In this step, we will configure the Kai IDE plugin within VSCode to showcase the capabilities of Kai. We will be using the model `meta-llama/llama-3-70b-instruct` within the Kai configuration. This setup ensures that the demo runs seamlessly within the VSCode environment, highlighting the efficiency and power of Kai for code migration in the context of our specific scenario.
+
+### Setup Kai VSCode IDE plugin
+
 - Follow along the steps listed in [here](https://github.com/konveyor-ecosystem/kai/tree/main/ide) to intergrate Kai IDE plugin with VSCode.
 
-- Before starting the Kai server, Select model `mistralai/mistral-7b-instruct-v0-2` by adding this to `kai/config.toml` file
+- Before starting the Kai server, Select model `meta-llama/llama-3-70b-instruct` by adding this to `kai/config.toml` file
 
-```yaml
+```
 provider = "IBMOpenSource"
-args = { model_id = "mistralai/mistral-7b-instruct-v0-2" }
+args = { model_id = "meta-llama/llama-3-70b-instruct", max_new_tokens = 2048 }
 ```
 
 ## Step 2: Demo
 
-In this demo, we will be migrating few files as shown below,
+As mentioned earlier, in this demo we will show various capabilities of Kai. We will begin by showcasing the simple translation tasks. Kai uses hints from the anlaysis results and replaces the javax persistence with Jakarta persistence libraries in the following files:
 
-- `src/main/java/com/redhat/coolstore/model/Order.java`
 - `src/main/java/com/redhat/coolstore/model/ShoppingCart.java`
-- `src/main/java/com/redhat/coolstore/service/PromoService.java`
+- `src/main/java/com/redhat/coolstore/model/InventoryEntity.java`
 
-### 2.1 Get the coolstore app
+Moving on to slightly more involved tasks, Kai will be migrating the file to use the correct Quarkus cdi bean.
 
-1. Clone the coolstore demo repo -
-   `git clone https://github.com/konveyor-ecosystem/coolstore.git`
+- `src/main/java/com/redhat/coolstore/service/CatalogService.java`
 
-2. Checkout the partially migrated branch -
-   `git checkout partial-migration`
+Lastly, for the advanced migration, we will use the following two files, and we will dive deeper into it later in the demo
+
+- `src/main/java/com/redhat/coolstore/service/ShippingService.java`
+- `src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java`
+
+Through these examples, we aim to provide insights into Kai's ability to address varying degrees of migration challenges within application codebases.
+
+### 2.1 Clone the coolstore app
+
+In this step, we will clone the Coolstore application, which we will be used demo the migration process to Quarkus.
+
+1. To clone the Coolstore demo from its repository -
+
+   ```
+   git clone https://github.com/savitharaghunathan/coolstore.git
+   ```
+
+2. Next, switch to the branch of the Coolstore app that's been partially migrated -
+
+   ```
+   git checkout mig1
+   ```
 
 ### 2.2 Run Analysis
 
+We will kick off by analyzing the Coolstore application using the following targets: cloud-readiness, Jakarta EE, and Quarkus.
+
 1. Open VSCode and load coolstore project if it is not already loaded.
-2. Follow steps 1 through 4 from https://github.com/konveyor-ecosystem/kai/tree/main/ide#usage-summary
+2. Follow steps from 1 through 4 from https://github.com/konveyor-ecosystem/kai/tree/main/ide#usage-summary
 3. Once the analysis is complete you will see incidents listed on the following files
 
-   - `src/main/java/com/redhat/coolstore/model/Order.java`
-   - `src/main/java/com/redhat/coolstore/model/ShoppingCart.java`
-   - `src/main/java/com/redhat/coolstore/service/PromoService.java`
+- `src/main/java/com/redhat/coolstore/model/ShoppingCart.java`
+- `src/main/java/com/redhat/coolstore/model/InventoryEntity.java`
+- `src/main/java/com/redhat/coolstore/service/CatalogService.java`
+- `src/main/java/com/redhat/coolstore/service/ShippingService.java`
+- `src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java`
 
-4. Right Click on the `src/main/java/com/redhat/coolstore/model/Order.java` and select `Kai Fix-All`.
+Once the analysis is complete, the incidents will provide insights into potential issues or areas that require attention during the migration process.
 
-   - Note: Sometimes, the output will have comments that says "code remains the same" or something similar. In that case, please make sure to click on `->` to make sure the target file is correct.
-     ![Accept changes](accept.png)
-   - Accept the changes.
-     ![Accept workflow](demo2.gif)
+#### 2.2.1 Simple Translation
 
-5. Repeat step 4 for `src/main/java/com/redhat/coolstore/model/ShoppingCart.java` and `src/main/java/com/redhat/coolstore/service/PromoService.java`
+To demonstrate simple translation, perform the following steps:
+
+- Right-click on the file `src/main/java/com/redhat/coolstore/model/ShoppingCart.java`.
+- Select Kai Fix-All.
+- Accept the proposed changes.
+- Repeat the same process for the file - `src/main/java/com/redhat/coolstore/model/InventoryEntity.java`.
+
+![Simple Translation](model.png)
+
+Th above steps show how Kai simplifies the translation process, ensuring seamless migration of javax libraries to jakarta persistence libraries.
+
+#### 2.2.2 A bit involved migration
+
+In this step, we will use Kai to modify the scope according to Quarkus CDI bean requirements.
+
+- Right-click on the file `src/main/java/com/redhat/coolstore/service/CatalogService.java`.
+- Select Kai Fix-All.
+- Accept the proposed changes.
+
+![A bit involved migration ](kai_type2.png)
+
+These steps show how Kai performs simple involved migration.
+
+#### 2.2.3 Advanced migration
+
+In this step, we will use Kai for an advanced migration involving EJB remote and MDB (Message-Driven Bean) functionalities.
+
+- Right-click on the file `src/main/java/com/redhat/coolstore/service/ShippingService.java`.
+- Select `Kai Fix-All`.
+- Accept the proposed changes.
+
+After applying the changes, you may notice unwanted imports such as `import jakarta.ejb.Singleton;`. Remove this import and save the file.
+
+Due to the absence of support for Remote EJBs in Quarkus, you will notoce that these functionalities are removed and replaced with REST functionality.
+
+- Right-click on the file `src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java`.
+
+- Select `Kai Fix-All` and accept the changes.
+
+- You will notice unwanted imports like `import jakarta.ejb.Singleton;`. Remove this import from the file and save it.
+
+- Check for any missing imports. If you find `import jakarta.enterprise.context.ApplicationScoped;` missing, add it to the file.
+
+- Note the changes made to `ordersEmitter` channel:
+
+  ```java
+  @Inject
+  @Channel("orders")
+  Emitter<String> ordersEmitter;
+  ```
+
+  Although this change is valid, it's important to note that the LLM is unaware of the number of consumers for `orders` channel. It assumed that there is a single consumer for `orders`, but, this app has multiple consumers of `orders`. Assuming there's only a single consumer can lead to `io.smallrye.reactive.messaging.providers.wiring.TooManyDownstreamCandidatesException`. To avoid this, add the `@Broadcast` annotation:
+
+  ```java
+  import io.smallrye.reactive.messaging.annotations.Broadcast;
+
+  @Inject
+  @Channel("orders")
+  @Broadcast
+  Emitter<String> ordersEmitter;
+  ```
+
+- Since the LLM doesn't have access to the project's `pom.xml` file, it lacks information about available dependencies. Update the import statements to the following:
+
+  ```java
+  import org.eclipse.microprofile.reactive.messaging.Channel;
+  import org.eclipse.microprofile.reactive.messaging.Emitter;
+  ```
+
+By following these steps, you have performend advanced migration with the help of Kai.
 
 ### 2.3 Deploy app to OpenShift
 
-Now, its time to deploy the coolstore Quarkus app on the OpenShift cluster.
+Now, its time to deploy the coolstore quarkus app on OpenShift cluster.
 
 - Make sure you can access the cluster from your terminal
 - Navigate to the coolstore project folder
@@ -82,4 +177,10 @@ oc new-app -e POSTGRESQL_USER=quarkus \
 mvn clean compile package -Dquarkus.kubernetes.deploy=true
 ```
 
-![Quarkus app deploy - post migration using Kai](deploy-orig.gif)
+- Once deployed, access the website via `coolstore-<namespace>.apps.ai.migration.redhat.com`
+
+![deploy app](deploy.gif)
+
+### Conclusion
+
+In this demo, we showcased the capability of Kai in facilitating various types of code migrations within the Coolstore application. From simple translations to more involved changes, Kai helped the migration process. If you are intereted to learn more about our ongoing efforts and future plans, we invite you to reach out to us in the [slack channel](https://kubernetes.slack.com/archives/CR85S82A2)
