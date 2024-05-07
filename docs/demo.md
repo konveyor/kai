@@ -45,6 +45,8 @@ provider = "OpenAI"
 args = { model_id = "gpt-3.5-turbo" }
 ```
 
+- Run the server using `make run-server`
+
 ## Step 2: Demo
 
 As mentioned earlier, in this demo we will show various capabilities of Kai. We will begin with the example - Change import namespaces. Kai uses hints from the anlaysis results and replaces the javax persistence with Jakarta persistence libraries in the following files:
