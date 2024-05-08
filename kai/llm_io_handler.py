@@ -11,8 +11,8 @@ from kai_logging import KAI_LOG
 
 from kai.incident_store import IncidentStore
 from kai.model_provider import ModelProvider
+from kai.models.file_solution import guess_language, parse_file_solution_content
 from kai.prompt_builder import build_prompt
-from kai.pydantic_models import guess_language, parse_file_solution_content
 
 LLM_RETRIES = 5
 LLM_RETRY_DELAY = 10

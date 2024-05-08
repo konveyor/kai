@@ -24,6 +24,7 @@ from kai import llm_io_handler
 from kai.incident_store import Application, IncidentStore
 from kai.kai_logging import KAI_LOG
 from kai.model_provider import ModelProvider
+from kai.models.analyzer_types import Incident
 from kai.models.kai_config import KaiConfig
 from kai.report import Report
 
@@ -198,30 +199,6 @@ class PostGetIncidentSolutionsForFileBatchMode(str, Enum):
     VIOLATION = "violation"
 
 
-# NOTE(@JonahSussman): This class can be removed if we unify all of the report
-# models (incidents, rulesets, etc...)
-class PostGetIncidentSolutionsForFileIncident(BaseModel):
-    ruleset_name: str
-    violation_name: str
-    incident_snip: Optional[str] = ""
-    incident_variables: dict
-    line_number: Optional[int]  # 0-indexed
-    analysis_message: str
-
-    @validator("line_number", pre=True)
-    def convert_str_to_int(cls, value):
-        if isinstance(value, str):
-            if value == "":
-                return None
-            try:
-                # Attempt to convert the string to an integer
-                return int(value)
-            except ValueError as err:
-                # If conversion fails, raise an error
-                raise ValueError("Quantity must be an integer") from err
-        return value
-
-
 class PostGetIncidentSolutionsForFileParams(BaseModel):
     file_name: str
     file_contents: str
@@ -229,7 +206,7 @@ class PostGetIncidentSolutionsForFileParams(BaseModel):
     batch_mode: Optional[PostGetIncidentSolutionsForFileBatchMode] = "single_group"
     include_solved_incidents: Optional[bool] = True
     include_llm_results: Optional[bool] = False
-    incidents: list[PostGetIncidentSolutionsForFileIncident]
+    incidents: list[Incident]
 
 
 @routes.post("/get_incident_solutions_for_file")
