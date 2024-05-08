@@ -184,7 +184,6 @@ async def main():
         print("hello!")
 
         # async with session.post("/get_incident_solution", json=x) as resp:
-        #     print('lmao!')
         #     print(resp.status)
 
         #     # print(await resp.text())
@@ -305,7 +304,6 @@ async def main():
         y["outside_grouping"] = "none"
 
         async with session.post("/get_incident_solutions_for_file", json=y) as resp:
-            print("lmao!")
             print(resp.status)
 
             # print(await resp.text())
