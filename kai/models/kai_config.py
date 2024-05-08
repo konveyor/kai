@@ -43,6 +43,7 @@ KaiConfigIncidentStore = Union[
 class KaiConfigModels(BaseModel):
     provider: str
     args: dict
+    template: str = Field(default="")  # TODO: Hack until we get better templating
 
 
 # Main config

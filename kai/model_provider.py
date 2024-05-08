@@ -80,13 +80,13 @@ class ModelProvider:
 
         self.llm: BaseChatModel = model_class(**model_args)
         self.model_id: str = model_id
+        self.template: str = config.template
 
     # TODO(@JonahSussman): Once the prompt builder component is refactored, this
     # function should be unnecessary
     def get_prompt_builder_config(self, query_kind: str, override_template: str = None):
         if override_template is None:
-            # override_template = self.template
-            override_template = ""
+            override_template = self.template
 
         if os.path.isfile(override_template):
             return prompt_builder.add_to_env_from_file_force(override_template)

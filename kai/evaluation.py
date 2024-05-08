@@ -14,62 +14,78 @@ import argparse
 import os
 import tomllib
 from dataclasses import dataclass
+from typing import Optional
 
 import yaml
+from pydantic import BaseModel
 
+from kai import prompt_builder
 from kai.model_provider import ModelProvider
+from kai.models.kai_config import KaiConfigModels
+from kai.prompt_builder import build_prompt
 
-DEFAULT_CONFIGURATION = {
-    "models": {
-        "provider": "ChatIBMGenAI",
-        "args": {"model_id": "ibm-mistralai/mixtral-8x7b-instruct-v01-q"},
-    }
-}
+"""
+The point of this file is to automatically see if certain prompts make the
+output better or worse
 
 
-@dataclass
-class MockIncidentStore:
-    expected: str
-    original_file: str
-    incident_store: dict
+|      .      | Config A | Config B | ... |
+|-------------|----------|----------|-----|
+| Benchmark 1 | (result) | (result) |     |
+| Benchmark 2 | (result) | (result) |     |
+| ...         |          |          |     |
+"""
+
+
+class BenchmarkConfiguration(BaseModel):
+    model_config: KaiConfigModels
+    override_template: Optional[str]
+
+
+DEFAULT_CONFIGURATION = BenchmarkConfiguration(
+    model_config=KaiConfigModels.model_validate(
+        {
+            "models": {
+                "provider": "ChatIBMGenAI",
+                "args": {"model_id": "ibm-mistralai/mixtral-8x7b-instruct-v01-q"},
+            }
+        }
+    ),
+    override_template=None,
+)
 
 
 @dataclass
 class BenchmarkExample:
-    expected: str
     original_file: str
-    incident_store: MockIncidentStore
-
-
-# Application:
-#     Ruleset:
-#         Violation:
-#             Incidents:
-#                 uri:
-#                 snip:
-#                 line:
-#                 variables:
+    expected_file: str
 
 
 def load_benchmarks(
-    examples_path=os.path.join(os.path.dirname(__file__), "data", "benchmarks")
-) -> list[BenchmarkExample]:
-    benchmarks = []
-    for filename in os.listdir(examples_path):
-        if filename.endswith(".yaml"):
-            file_path = os.path.join(examples_path, filename)
-            with open(file_path, "r") as file:
-                data = yaml.safe_load(file)
-                example = BenchmarkExample(
-                    expected=data.get("expected"),
-                    original_file=data.get("original"),
-                    incident_store=data.get("incident_store"),
-                )
-                benchmarks.append(example)
-    return benchmarks
+    benchmarks_path=os.path.join(os.path.dirname(__file__), "data", "benchmarks")
+) -> tuple[list[BenchmarkConfiguration], list[BenchmarkExample]]:
+
+    examples_path = os.path.join(benchmarks_path, "examples")
+    configs_path = os.path.join(benchmarks_path, "configs")
+
+    configs = []
+    examples = []
+
+    for example_path in os.listdir(examples_path):
+        full_example_path = os.path.join(examples_path, examples_path)
+
+    for config_path in os.listdir(configs_path):
+        full_config_path = os.path.join(configs_path, config_path)
+
+        with open(full_config_path, "r") as f:
+            data = yaml.safe_load(f)
+            config = BenchmarkConfiguration.model_validate(data)
+            configs.append(config)
+
+    return (configs, examples)
 
 
-def evaluate(configs: dict[str, dict]):
+def evaluate(configs: dict[str, BenchmarkConfiguration]):
     configs["default"] = DEFAULT_CONFIGURATION
 
     overall_results: dict[str, list] = {}
@@ -77,16 +93,25 @@ def evaluate(configs: dict[str, dict]):
     for name, config in configs.items():
         overall_results[name] = []
 
-        ModelProviderClass = ModelProvider.model_from_string(
-            config["models"]["provider"]
-        )
-        ModelProviderClass(**config["models"]["args"])
+        model_provider = ModelProvider(config)
 
         # TODO: Make this use directories as opposed to constant
-        for example in BENCHMARK_EXAMPLES:
+        for example in load_benchmarks():
+            pb_vars = {
+                "src_file_name": file_name,
+                "src_file_language": src_file_language,
+                "src_file_contents": updated_file,
+                "incidents": incidents,
+            }
+
+            prompt = build_prompt(
+                model_provider.get_prompt_builder_config("multi_file")
+            )
+            model_provider.llm.invoke()
+
             result = judge_result(
                 example.expected,
-                incident_solutions_for_file(config, example.inputs)["file"],
+                # incident_solutions_for_file(config, example.inputs)["file"],
             )
             overall_results[name].append(result)
 
@@ -131,13 +156,15 @@ def compare_from_cli():
 
     args = parser.parse_args()
 
-    configs = {}
+    configs: dict[str, BenchmarkConfiguration] = {}
     for filepath in args.filepaths:
         try:
-            with open(filepath, "r") as file:
-                configs[filepath] = tomllib.load(file)
+            with open(filepath, "r") as f:
+                configs[filepath] = KaiConfigModels.model_validate(yaml.safe_load(f))
+
         except Exception as e:
             print(f"Failed to load {filepath}: {e}")
+
     print_nicely_formatted_comparison(evaluate(configs))
 
 
