@@ -223,7 +223,7 @@ def run_demo(report):
     total_violations = sum(len(violations) for violations in impacted_files.values())
     print(f"{num_impacted_files} files with a total of {total_violations} violations.")
 
-    max_workers = os.environ.get("KAI_MAX_WORKERS", 8)
+    max_workers = int(os.environ.get("KAI_MAX_WORKERS", 8))
     KAI_LOG.info(f"Running in parallel with {max_workers} workers")
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
