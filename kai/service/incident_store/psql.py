@@ -11,17 +11,17 @@ from git import Repo
 from psycopg2.extensions import connection
 from psycopg2.extras import DictCursor, DictRow
 
+from kai.constants import PATH_SQL
 from kai.embedding_provider import EmbeddingNone
 from kai.kai_logging import KAI_LOG
-from kai.models.kai_config import KaiConfigIncidentStorePostgreSQLArgs
+from kai.models.kai_config import KaiConfig, KaiConfigIncidentStorePostgreSQLArgs
 from kai.report import Report
 from kai.service.incident_store.incident_store import (
     Application,
     IncidentStore,
     Solution,
+    load_reports_from_directory,
 )
-
-BASE_PATH = os.path.join(os.path.dirname(__file__), "../..")
 
 
 def supply_cursor_if_none(func):
@@ -54,30 +54,39 @@ class PSQLIncidentStore(IncidentStore):
                 self.conn: connection = conn
                 self.conn.autocommit = True
 
-            with self.conn.cursor() as cur:
-                # TODO: Figure out portable way to install the pgvector extension.
-                # Containerize? "CREATE EXTENSION IF NOT EXISTS vector;" Only works as
-                # superuser
-
-                # TODO: along with analyzer_types.py, we should really use something
-                # like openapi to nail down the spec and autogenerate the types
-
-                cur.execute(open(f"{BASE_PATH}/data/sql/create_tables.sql", "r").read())
-
-                dim = self.emb_provider.get_dimension()
-                for q in open(
-                    f"{BASE_PATH}/data/sql/add_embedding.sql", "r"
-                ).readlines():
-                    cur.execute(q, (dim,))
+            self.create_tables()
 
         except (psycopg2.DatabaseError, Exception) as error:
             KAI_LOG.error(f"Error initializing PSQLIncidentStore: {error}")
+
+    def create_tables(self):
+        # TODO: Figure out portable way to install the pgvector extension.
+        # Containerize? "CREATE EXTENSION IF NOT EXISTS vector;" Only works as
+        # superuser
+
+        # TODO: along with analyzer_types.py, we should really use something
+        # like openapi to nail down the spec and autogenerate the types
+        sql_create_tables = open(
+            os.path.join(PATH_SQL, "create_tables.sql"), "r"
+        ).read()
+        sql_add_embedding = open(
+            os.path.join(PATH_SQL, "add_embedding.sql"), "r"
+        ).readlines()
+
+        with self.conn.cursor() as cur:
+            cur.execute(sql_create_tables)
+
+            dim = self.emb_provider.get_dimension()
+            for q in sql_add_embedding:
+                cur.execute(q, (dim,))
 
     # Abstract base class implementations
 
     def delete_store(self):
         with self.conn.cursor() as cur:
-            cur.execute(open(f"{BASE_PATH}/data/sql/drop_tables.sql", "r").read())
+            cur.execute(open(os.path.join(PATH_SQL, "drop_tables.sql"), "r").read())
+
+        self.create_tables()
 
     def load_report(self, app: Application, report: Report) -> tuple[int, int, int]:
         """
@@ -107,16 +116,10 @@ class PSQLIncidentStore(IncidentStore):
             cur.execute("DROP TABLE IF EXISTS incidents_temp;")
             cur.execute("CREATE TABLE incidents_temp (LIKE incidents INCLUDING ALL);")
 
-            query_app = self.select_application(
-                app.application_id, app.application_name, cur
-            )
+            query_app = self.select_application(None, app.application_name, cur)
 
             if len(query_app) >= 2:
                 raise Exception(f"Multiple applications found for {app}.")
-            elif len(query_app) == 0 and app.application_id is not None:
-                raise Exception(
-                    f"No application with application_id {app.application_id}."
-                )
             elif len(query_app) == 0:
                 application = self.insert_application(app, cur)
             else:
@@ -430,7 +433,14 @@ WHERE fit.incident_id IS NULL;""",
         cur.execute(
             """INSERT INTO applications(application_name, repo_uri_origin, repo_uri_local, current_branch, current_commit, generated_at)
       VALUES (%s, %s, %s, %s, %s, %s) RETURNING *;""",
-            app.as_tuple()[1:],
+            (
+                app.application_name,
+                app.repo_uri_origin,
+                app.repo_uri_local,
+                app.current_branch,
+                app.current_commit,
+                app.generated_at,
+            ),
         )
 
         return cur.fetchone()
@@ -796,18 +806,14 @@ WHERE fit.incident_id IS NULL;""",
 
 
 def main():
+    KAI_LOG.setLevel("debug".upper())
+
     parser = argparse.ArgumentParser(description="Process some parameters.")
     parser.add_argument(
         "--config_filepath",
         type=str,
-        default="database.ini",
+        default="../../config.toml",
         help="Path to the config file.",
-    )
-    parser.add_argument(
-        "--config_section",
-        type=str,
-        default="postgresql",
-        help="Config section in the config file.",
     )
     parser.add_argument(
         "--drop_tables", type=str, default="False", help="Whether to drop tables."
@@ -815,20 +821,23 @@ def main():
     parser.add_argument(
         "--analysis_dir_path",
         type=str,
-        default="samples/analysis_reports",
-        help="path to analysis reports folder",
+        default="../../samples/analysis_reports",
+        help="Path to analysis reports folder",
     )
+
     args = parser.parse_args()
 
-    psqlis = PSQLIncidentStore(
-        config_filepath=args.config_filepath,
-        config_section=args.config_section,
-        emb_provider=EmbeddingNone(),
-    )
-    path = args.analysis_dir_path
+    config = KaiConfig.model_validate_filepath(args.config_filepath)
+
+    if config.incident_store.provider != "postgresql":
+        raise Exception("This script only works with PostgreSQL incident store.")
+
+    incident_store = PSQLIncidentStore(config.incident_store.args)
+
     if args.drop_tables:
-        psqlis.delete_store()
-    psqlis.load_store(path)
+        incident_store.delete_store()
+
+    load_reports_from_directory(incident_store, args.analysis_dir_path)
 
 
 if __name__ == "__main__":

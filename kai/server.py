@@ -20,6 +20,7 @@ from aiohttp.web_request import Request
 from pydantic import BaseModel
 
 from kai import llm_io_handler
+from kai.constants import PATH_KAI
 from kai.kai_logging import KAI_LOG
 from kai.model_provider import ModelProvider
 from kai.models.analyzer_types import Incident
@@ -243,13 +244,16 @@ def app(log_level: Optional[str] = None, demo_mode: Optional[bool] = None):
     webapp = web.Application()
 
     config: KaiConfig
-    if os.path.exists(os.path.join(os.path.dirname(__file__), "config.toml")):
+    if os.path.exists(os.path.join(PATH_KAI, "config.toml")):
         config = KaiConfig.model_validate_filepath(
-            os.path.join(os.path.dirname(__file__), "config.toml")
+            os.path.join(PATH_KAI, "config.toml")
         )
-    # elif os.path.exists(os.path.join(os.path.dirname(__file__), "config.yaml")):
+    # NOTE(@JonahSussman): For the future in case we switch to supporting yaml
+    # configs.
+
+    # elif os.path.exists(os.path.join(PATH_KAI_ROOT, "config.yaml")):
     #     config = KaiConfig.model_validate_filepath(
-    #         os.path.join(os.path.dirname(__file__), "config.yaml"))
+    #         os.path.join(PATH_KAI_ROOT, "config.yaml"))
     else:
         raise FileNotFoundError("Config file not found.")
 

@@ -5,9 +5,8 @@ from os import path
 
 import yaml
 
+from kai.constants import PATH_TEMPLATES
 from kai.kai_logging import KAI_LOG
-
-T_DIR = path.join(path.dirname(__file__), "data/templates")
 
 
 # TODO: Variants
@@ -51,7 +50,7 @@ class Section:
         if file_path is not None and template is not None:
             raise Exception("Can't provide both file_path and template")
         elif file_path is not None:
-            self.file_path = path.join(T_DIR, file_path)
+            self.file_path = path.join(PATH_TEMPLATES, file_path)
             self.template = open(self.file_path).read()
         elif template is not None:
             self.file_path = "/dev/null"
@@ -368,7 +367,7 @@ def standard_env():
         }
     )
 
-    for dirpath, _dirnames, filenames in os.walk(T_DIR):
+    for dirpath, _dirnames, filenames in os.walk(PATH_TEMPLATES):
         for filename in filenames:
             if filename.endswith(".yaml"):
                 file_path = os.path.join(dirpath, filename)

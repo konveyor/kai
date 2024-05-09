@@ -17,6 +17,7 @@ from typing import Any
 
 import yaml
 
+from kai.constants import PATH_BENCHMARKS
 from kai.model_provider import ModelProvider
 from kai.models.analyzer_types import Incident
 from kai.models.file_solution import guess_language, parse_file_solution_content
@@ -97,9 +98,7 @@ def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
     return BenchmarkExample(example_name, original_file, expected_file, incidents)
 
 
-DEFAULT_EXAMPLES_PATH = os.path.join(
-    os.path.dirname(__file__), "data", "benchmarks", "examples"
-)
+DEFAULT_EXAMPLES_PATH = os.path.join(PATH_BENCHMARKS, "examples")
 
 
 def load_benchmark_examples(

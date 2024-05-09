@@ -7,6 +7,7 @@ from typing import Optional
 import yaml
 from git import Repo
 
+from kai.constants import PATH_GIT_ROOT
 from kai.kai_logging import KAI_LOG
 from kai.models.kai_config import KaiConfigIncidentStore, KaiConfigIncidentStoreProvider
 from kai.report import Report
@@ -32,10 +33,8 @@ def __get_repo_path(app_name):
         "greeter": "samples/sample_repos/greeter",
     }
 
-    basedir = os.path.dirname(os.path.realpath(__file__))
-    parent_dir = os.path.dirname(basedir)
-    path = mapping.get(app_name, None)
-    return os.path.join(parent_dir, path)
+    sample_path = mapping.get(app_name, None)
+    return os.path.join(PATH_GIT_ROOT, sample_path)
 
 
 def __get_app_variables(path: str, app_name: str):
@@ -103,7 +102,6 @@ def load_reports_from_directory(store: "IncidentStore", path: str):
         commit = repo.head.commit
 
         app_initial = Application(
-            application_id=None,
             application_name=app,
             repo_uri_origin=repo.remotes.origin.url,
             repo_uri_local=repo_path,
@@ -133,7 +131,6 @@ def load_reports_from_directory(store: "IncidentStore", path: str):
         repo.git.checkout(solved_branch)
         commit = repo.head.commit
         app_solved = Application(
-            application_id=None,
             application_name=app,
             repo_uri_origin=repo.remotes.origin.url,
             repo_uri_local=repo_path,
