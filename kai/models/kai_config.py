@@ -1,6 +1,9 @@
+import os
+import tomllib
 from enum import Enum
 from typing import Literal, Union
 
+import yaml
 from pydantic import BaseModel, Field
 
 # Incident store providers
@@ -55,3 +58,25 @@ class KaiConfig(BaseModel):
 
     incident_store: KaiConfigIncidentStore = Field(discriminator="provider")
     models: KaiConfigModels
+
+    @staticmethod
+    def model_validate_filepath(filepath: str):
+        """
+        Load a model config from a file and validate it.
+
+        Supported file formats:
+        - TOML
+        - YAML
+        """
+        model_dict: dict
+
+        _, file_ext = os.path.splitext(filepath)
+
+        if file_ext == ".toml":
+            model_dict = tomllib.load(open(filepath, "rb"))
+        elif file_ext == ".yaml" or file_ext == ".yml":
+            model_dict = yaml.safe_load(open(filepath, "r"))
+        else:
+            raise ValueError(f"'{filepath}' has unsupported file type: {file_ext}")
+
+        return KaiConfig.model_validate(model_dict)

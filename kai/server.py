@@ -12,6 +12,7 @@ import json
 import os
 import pprint
 import time
+import tomllib
 from enum import Enum
 from typing import Optional
 
@@ -243,15 +244,21 @@ async def get_incident_solutions_for_file(request: Request):
 def app(log_level: Optional[str] = None, demo_mode: Optional[bool] = None):
     webapp = web.Application()
 
-    with open(os.path.join(os.path.dirname(__file__), "config.yaml"), "r") as f:
-        config_dict: dict = yaml.safe_load(f)
+    config: KaiConfig
+    if os.path.exists(os.path.join(os.path.dirname(__file__), "config.toml")):
+        config = KaiConfig.model_validate_filepath(
+            os.path.join(os.path.dirname(__file__), "config.toml")
+        )
+    # elif os.path.exists(os.path.join(os.path.dirname(__file__), "config.yaml")):
+    #     config = KaiConfig.model_validate_filepath(
+    #         os.path.join(os.path.dirname(__file__), "config.yaml"))
+    else:
+        raise FileNotFoundError(f"Config file not found.")
 
     if log_level:
-        config_dict["log_level"] = log_level
+        config.log_level = log_level
     if demo_mode:
-        config_dict["demo_mode"] = demo_mode
-
-    config = KaiConfig.model_validate(config_dict)
+        config.demo_mode = demo_mode
 
     print(f"Config loaded: {pprint.pformat(config)}")
 

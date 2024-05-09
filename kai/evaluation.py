@@ -13,7 +13,7 @@
 import argparse
 import os
 import tomllib
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any, Optional
 
 import yaml
@@ -22,7 +22,7 @@ from pydantic import BaseModel
 from kai.model_provider import ModelProvider
 from kai.models.analyzer_types import Incident
 from kai.models.file_solution import guess_language, parse_file_solution_content
-from kai.models.kai_config import KaiConfigModels
+from kai.models.kai_config import KaiConfig, KaiConfigModels
 from kai.prompt_builder import build_prompt
 
 """
@@ -38,16 +38,9 @@ output better or worse
 """
 
 
-# NOTE(@JonahSussman): I so desperately want to have this inherit from
-# `BaseModel`, but I can't for some reason.
-@dataclass
-class BenchmarkConfiguration:
-    model_config: KaiConfigModels
-    override_template: Optional[str]
-
-
 @dataclass
 class BenchmarkExample:
+    name: str
     original_file: str
     expected_file: str
     incidents: list[Incident]
@@ -60,102 +53,93 @@ class BenchmarkResult:
     similarity: Any
 
 
-def load_benchmarks(
-    benchmarks_path=os.path.join(os.path.dirname(__file__), "data", "benchmarks")
-) -> tuple[dict[str, BenchmarkConfiguration], dict[str, BenchmarkExample]]:
-    examples_path = os.path.join(benchmarks_path, "examples")
-    configs_path = os.path.join(benchmarks_path, "configs")
+def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
+    """
+    Loads a single benchmark example from a specific directory. Contrast this
+    with `load_benchmark_examples`, which loads all examples in a directory.
+    """
+    if not os.path.isdir(full_example_path):
+        raise ValueError(f"Expected directory, got {full_example_path}")
 
-    configs: dict[str, BenchmarkConfiguration] = {}
+    example_name = os.path.basename(full_example_path)
+    original_file: str = None
+    expected_file: str = None
+    incidents: list[Incident] = None
+
+    for file_path in os.listdir(full_example_path):
+        full_file_path = os.path.join(full_example_path, file_path)
+
+        file_name, _ = os.path.splitext(file_path)
+
+        if file_name == "original":
+            with open(full_file_path, "r") as f:
+                original_file = f.read()
+        elif file_name == "expected":
+            with open(full_file_path, "r") as f:
+                expected_file = f.read()
+        elif file_name == "incidents":
+            incidents: list[Incident] = []
+
+            with open(full_file_path, "r") as f:
+                yaml_incidents = yaml.safe_load(f)
+
+            for yaml_incident in yaml_incidents:
+                incidents.append(Incident.model_validate(yaml_incident))
+
+        else:
+            raise ValueError(
+                f"File must be either `original`, `expected`, or `incidents` in {full_example_path}. Got `{file_name}`."
+            )
+
+    if original_file is None or expected_file is None:
+        raise ValueError(f"Missing original or expected file in {full_example_path}")
+    if incidents is None:
+        raise ValueError(f"Missing incidents file in {full_example_path}")
+
+    return BenchmarkExample(example_name, original_file, expected_file, incidents)
+
+
+def load_benchmark_examples(
+    examples_path=os.path.join(
+        os.path.dirname(__file__), "data", "benchmarks", "examples"
+    )
+) -> dict[str, BenchmarkExample]:
+    """
+    Return a dict of benchmark examples, where the key is the example name. The
+    benchmarks are loaded from `kai/data/benchmarks/examples` by default.
+
+    The structure of the benchmarks directory is as follows:
+
+    ```
+    examples/
+        example1/
+            original.whatever
+            expected.whatever
+            incidents.yaml
+        example2/
+            ...
+    ```
+    """
+
     examples: dict[str, BenchmarkExample] = {}
 
     for example_path in os.listdir(examples_path):
-        full_example_path = os.path.join(examples_path, example_path)
-
-        # Directory structure is as follows:
-        #
-        #   example1/
-        #     original.whatever
-        #     expected.whatever
-        #     incidents.yaml
-        #   example2/
-        #    ...
-
-        if not os.path.isdir(full_example_path):
-            raise ValueError(f"Expected directory, got {full_example_path}")
-
-        original_file: str = None
-        expected_file: str = None
-        incidents: list[Incident] = None
-
-        for file_path in os.listdir(full_example_path):
-            full_file_path = os.path.join(full_example_path, file_path)
-
-            file_name, _ = os.path.splitext(file_path)
-
-            if file_name == "original":
-                with open(full_file_path, "r") as f:
-                    original_file = f.read()
-            elif file_name == "expected":
-                with open(full_file_path, "r") as f:
-                    expected_file = f.read()
-            elif file_name == "incidents":
-                incidents: list[Incident] = []
-
-                with open(full_file_path, "r") as f:
-                    yaml_incidents = yaml.safe_load(f)
-
-                for yaml_incident in yaml_incidents:
-                    incidents.append(Incident.model_validate(yaml_incident))
-
-            else:
-                raise ValueError(
-                    f"File must be either `original`, `expected`, or `incidents` in {example_path}. Got `{file_name}`."
-                )
-
-        if original_file is None or expected_file is None:
-            raise ValueError(
-                f"Missing original or expected file in {full_example_path}"
-            )
-        if incidents is None:
-            raise ValueError(f"Missing incidents file in {full_example_path}")
-
-        examples[example_path] = BenchmarkExample(
-            original_file, expected_file, incidents
+        example = load_single_benchmark_example(
+            os.path.join(examples_path, example_path)
         )
 
-    for config_path in os.listdir(configs_path):
-        config_name, _ = os.path.splitext(config_path)
-        full_config_path = os.path.join(configs_path, config_path)
+        examples[example.name] = example
 
-        with open(full_config_path, "r") as f:
-            data: dict = yaml.safe_load(f)
-
-            if set(data.keys()) != {"model_config", "override_template"}:
-                raise ValueError(
-                    f"Expected keys `model_config` and `override_template` in {full_config_path}. Got {data.keys()}"
-                )
-
-            config = BenchmarkConfiguration(
-                model_config=KaiConfigModels.model_validate(data["model_config"]),
-                override_template=data["override_template"],
-            )
-
-            configs[config_name] = config
-
-    return (configs, examples)
+    return examples
 
 
-def evaluate(
-    configs: dict[str, BenchmarkConfiguration], examples: dict[str, BenchmarkExample]
-):
-    overall_results: dict[tuple[str, str], Any] = {}
+def evaluate(configs: dict[str, KaiConfig], examples: dict[str, BenchmarkExample]):
+    overall_results: dict[tuple[str, str], BenchmarkResult] = {}
 
-    for config_name, config in configs.items():
-        overall_results[config_name] = []
-        model_provider = ModelProvider(config.model_config)
+    for config_path, config in configs.items():
+        model_provider = ModelProvider(config.models)
 
-        for example_name, example in examples.items():
+        for example_path, example in examples.items():
             # TODO(@JonahSussman): Change this after the prompt builder refactor
 
             pb_incidents = []
@@ -184,7 +168,7 @@ def evaluate(
                 model_provider.get_prompt_builder_config("multi_file"), pb_vars
             )
 
-            print(f"{config_name} - {example_name}\n{prompt}\n")
+            print(f"{example_path} - {config_path}\n{prompt}\n")
 
             llm_result = model_provider.llm.invoke(prompt)
             content = parse_file_solution_content(src_file_language, llm_result.content)
@@ -194,10 +178,10 @@ def evaluate(
                 content.updated_file,
             )
 
-            overall_results[(example_name, config_name)] = BenchmarkResult(
+            overall_results[(example_path, config_path)] = BenchmarkResult(
                 similarity=similarity,
                 prompt=prompt,
-                llm_result=llm_result,
+                llm_result=llm_result.content,
             )
 
             # overall_results[f"{config_name}/{example_name}"] = {
@@ -210,13 +194,13 @@ def evaluate(
     return overall_results
 
 
-def print_nicely_formatted_comparison(results: dict[str, list]):
-    for name, result_list in results:
-        print(name)
-        print("---")
+def print_nicely_formatted_comparison(results: dict[tuple[str, str], BenchmarkExample]):
+    print(f'{"Example Name":<15} {"Config Name":<15} {"Benchmark Result"}')
 
-        for i, result in enumerate(result_list):
-            print(f"{i:03d}: {result}")
+    print(results.items())
+
+    for (example_name, config_name), benchmark_result in results.items():
+        print(f"{example_name:<15} {config_name:<15} {benchmark_result.similarity}")
 
 
 def judge_result(expected_file: str, actual_file: str) -> float:
@@ -242,28 +226,59 @@ def levenshtein_distance(s1, s2) -> float:
     return float(distances[-1])
 
 
-# def compare_from_cli():
-#     parser = argparse.ArgumentParser(description="Process a list of filepaths.")
-#     parser.add_argument("filepaths", nargs="+", help="List of filepaths to process")
+def compare_from_cli():
+    parser = argparse.ArgumentParser(description="Compare different Kai configs")
+    parser.add_argument("--configs", nargs="*", help="List of configs to process")
+    parser.add_argument(
+        "--config_directories",
+        nargs="*",
+        help="List of directories, which contain multiple kai configs, to process",
+    )
+    parser.add_argument(
+        "--output", help="Output directory for results", default="results/"
+    )
 
-#     args = parser.parse_args()
+    args = parser.parse_args()
 
-#     configs: dict[str, BenchmarkConfiguration] = {}
-#     for filepath in args.filepaths:
-#         try:
-#             with open(filepath, "r") as f:
-#                 configs[filepath] = KaiConfigModels.model_validate(yaml.safe_load(f))
+    configs: dict[str, KaiConfig] = {}
 
-#         except Exception as e:
-#             print(f"Failed to load {filepath}: {e}")
+    if not os.path.exists(args.output):
+        os.makedirs(args.output)
+    elif os.listdir(args.output):
+        raise ValueError("Output directory is not empty.")
 
-#     print_nicely_formatted_comparison(evaluate(configs))
+    if args.configs is not None:
+        for full_config_filepath in args.configs:
+            configs[full_config_filepath] = KaiConfig.model_validate_filepath(
+                full_config_filepath
+            )
+
+    if args.config_directories is not None:
+        for config_directory in args.config_directories:
+            for full_config_filepath in os.listdir(config_directory):
+                full_config_filepath = os.path.join(
+                    config_directory, full_config_filepath
+                )
+                configs[full_config_filepath] = KaiConfig.model_validate_filepath(
+                    full_config_filepath
+                )
+
+    examples = load_benchmark_examples()
+    results = evaluate(configs, examples)
+
+    print_nicely_formatted_comparison(results)
+
+    for (example_name, config_name), benchmark_result in results.items():
+        example_name = example_name.replace("/", "_")
+        config_name = config_name.replace("/", "_")
+
+        file_path = os.path.join(args.output, f"{config_name}.yaml")
+        with open(file_path, "a") as f:
+            r = asdict(benchmark_result)
+            r["example_name"] = example_name
+            s = yaml.safe_dump([r])
+            f.write(s + "\n")
 
 
 if __name__ == "__main__":
-    configs, examples = load_benchmarks()
-    results = evaluate(configs, examples)
-
-    import json
-
-    print(json.dumps(results))
+    compare_from_cli()
