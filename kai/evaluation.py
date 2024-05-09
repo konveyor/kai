@@ -95,17 +95,12 @@ def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
             application_dict = yaml.safe_load(application_file)
             application = Application(**application_dict)
 
-        else:
-            raise ValueError(
-                f"File must be either `original`, `expected`, or `incidents` in {full_example_path}. Got `{file_name}`."
-            )
-
     if original_file is None or expected_file is None:
-        raise ValueError(f"Missing original or expected file in {full_example_path}")
+        print(f"Missing original or expected file in {full_example_path}")
     if report is None:
-        raise ValueError(f"Missing report file in {full_example_path}")
+        print(f"Missing report file in {full_example_path}")
     if application is None:
-        raise ValueError(f"Missing application file in {full_example_path}")
+        print(f"Missing application file in {full_example_path}")
 
     return BenchmarkExample(
         name=example_name,
