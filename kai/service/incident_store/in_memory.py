@@ -12,12 +12,15 @@ from .incident_store import Application, IncidentStore, Solution
 
 # These classes are just for the in-memory data store. Once we figure out the
 # best way to model the incidents, violations, etc... we can remove these
-@dataclass(frozen=True)
+@dataclass
 class InMemoryIncident:
     uri: str
     snip: str
     line: int
     variables: dict
+
+    def __hash__(self):
+        return hash((self.uri, self.snip, self.line, frozenset(self.variables.items())))
 
 
 @dataclass(frozen=True)
@@ -72,6 +75,7 @@ class InMemoryIncidentStore(IncidentStore):
         #     YES | insert | update (line number, etc...)
 
         repo_path = unquote(urlparse(app.repo_uri_local).path)
+        print(f"repo_path: {repo_path}")
         repo = Repo(repo_path)
         old_commit: str
         new_commit = app.current_commit
@@ -98,7 +102,7 @@ class InMemoryIncidentStore(IncidentStore):
                 "violations", {}
             ).items():
                 violation = ruleset.violations.setdefault(
-                    violation_name, InMemoryViolation({})
+                    violation_name, InMemoryViolation([], [])
                 )
 
                 store_incidents = set(violation.unsolved_incidents)

@@ -1,15 +1,3 @@
-# Make our own test data
-
-# provide full kai config (params, templates, which model i'm using, etc...)
-
-# provider = "IBMGranite"
-# args = { model_id = "ibm/granite-13b-chat-v2" }
-
-# Prompt builder stuff inside examples/prompt_engineering.ipynb
-
-# provide multiple sets
-# run it through the suite and say "hey yo this is worse or better"
-
 import argparse
 import os
 from dataclasses import asdict, dataclass
@@ -23,6 +11,9 @@ from kai.models.analyzer_types import Incident
 from kai.models.file_solution import guess_language, parse_file_solution_content
 from kai.models.kai_config import KaiConfig
 from kai.prompt_builder import build_prompt
+from kai.report import Report
+from kai.service.incident_store.in_memory import InMemoryIncidentStore
+from kai.service.incident_store.incident_store import Application
 
 """
 The point of this file is to automatically see if certain prompts make the
@@ -43,6 +34,8 @@ class BenchmarkExample:
     original_file: str
     expected_file: str
     incidents: list[Incident]
+    report: Report
+    application: Application
 
 
 @dataclass
@@ -64,18 +57,25 @@ def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
     original_file: str = None
     expected_file: str = None
     incidents: list[Incident] = None
+    report: Report = None
+    application: Application = None
 
     for file_path in os.listdir(full_example_path):
         full_file_path = os.path.join(full_example_path, file_path)
 
         file_name, _ = os.path.splitext(file_path)
 
-        if file_name == "original":
+        if file_name == ".git":
+            continue
+
+        elif file_name == "original":
             with open(full_file_path, "r") as f:
                 original_file = f.read()
+
         elif file_name == "expected":
             with open(full_file_path, "r") as f:
                 expected_file = f.read()
+
         elif file_name == "incidents":
             incidents: list[Incident] = []
 
@@ -85,6 +85,16 @@ def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
             for yaml_incident in yaml_incidents:
                 incidents.append(Incident.model_validate(yaml_incident))
 
+        elif file_name == "report":
+            report = Report(full_file_path)
+
+        elif file_name == "application":
+            with open(full_file_path, "r") as f:
+                application_file = f.read()
+
+            application_dict = yaml.safe_load(application_file)
+            application = Application(**application_dict)
+
         else:
             raise ValueError(
                 f"File must be either `original`, `expected`, or `incidents` in {full_example_path}. Got `{file_name}`."
@@ -92,10 +102,19 @@ def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
 
     if original_file is None or expected_file is None:
         raise ValueError(f"Missing original or expected file in {full_example_path}")
-    if incidents is None:
-        raise ValueError(f"Missing incidents file in {full_example_path}")
+    if report is None:
+        raise ValueError(f"Missing report file in {full_example_path}")
+    if application is None:
+        raise ValueError(f"Missing application file in {full_example_path}")
 
-    return BenchmarkExample(example_name, original_file, expected_file, incidents)
+    return BenchmarkExample(
+        name=example_name,
+        original_file=original_file,
+        expected_file=expected_file,
+        report=report,
+        application=application,
+        incidents=incidents,
+    )
 
 
 DEFAULT_EXAMPLES_PATH = os.path.join(PATH_BENCHMARKS, "examples")
@@ -113,9 +132,12 @@ def load_benchmark_examples(
     ```
     examples/
         example1/
+            .git/
             original.whatever
             expected.whatever
             incidents.yaml
+            application.yaml
+            report.yaml
         example2/
             ...
     ```
@@ -133,27 +155,41 @@ def load_benchmark_examples(
     return examples
 
 
-def evaluate(configs: dict[str, KaiConfig], examples: dict[str, BenchmarkExample]):
+def evaluate(
+    configs: dict[str, KaiConfig], examples: dict[str, BenchmarkExample]
+) -> dict[tuple[str, str], BenchmarkResult]:
     overall_results: dict[tuple[str, str], BenchmarkResult] = {}
 
     for config_path, config in configs.items():
         model_provider = ModelProvider(config.models)
 
         for example_path, example in examples.items():
-            # TODO(@JonahSussman): Change this after the prompt builder refactor
+            incident_store = InMemoryIncidentStore(None)
+            incident_store.load_report(example.application, example.report)
 
             pb_incidents = []
             for i, incident in enumerate(example.incidents, 1):
-                pb_incidents.append(
-                    {
-                        "issue_number": i,
-                        "uri": incident.uri,
-                        "analysis_message": incident.analysis_message,
-                        "code_snip": incident.incident_snip,
-                        "analysis_line_number": incident.line_number,
-                        "variables": incident.incident_variables,
-                    }
+                pb_incident = {
+                    "issue_number": i,
+                    "uri": incident.uri,
+                    "analysis_message": incident.analysis_message,
+                    "code_snip": incident.incident_snip,
+                    "analysis_line_number": incident.line_number,
+                    "variables": incident.incident_variables,
+                }
+
+                solutions = incident_store.find_solutions(
+                    incident.ruleset_name,
+                    incident.violation_name,
+                    incident.incident_variables,
+                    incident.incident_snip,
                 )
+
+                if len(solutions) != 0:
+                    pb_incident["solved_example_diff"] = solutions[0].file_diff
+                    pb_incident["solved_example_file_name"] = solutions[0].uri
+
+                pb_incidents.append(pb_incident)
 
             src_file_language = guess_language(example.original_file)
 
@@ -183,13 +219,6 @@ def evaluate(configs: dict[str, KaiConfig], examples: dict[str, BenchmarkExample
                 prompt=prompt,
                 llm_result=llm_result.content,
             )
-
-            # overall_results[f"{config_name}/{example_name}"] = {
-            #     "similarity": similarity,
-            #     "prompt": prompt,
-            #     "llm_result": llm_result.content,
-            #     "updated_file": content.updated_file,
-            # }
 
     return overall_results
 
@@ -228,12 +257,15 @@ def levenshtein_distance(s1, s2) -> float:
 
 def compare_from_cli():
     parser = argparse.ArgumentParser(description="Compare different Kai configs")
+
     parser.add_argument("--configs", nargs="*", help="List of configs to process")
+
     parser.add_argument(
         "--config_directories",
         nargs="*",
         help="List of directories, which contain multiple kai configs, to process",
     )
+
     parser.add_argument(
         "--output", help="Output directory for results", default="results/"
     )
@@ -246,6 +278,9 @@ def compare_from_cli():
         os.makedirs(args.output)
     elif os.listdir(args.output):
         raise ValueError("Output directory is not empty.")
+
+    if args.configs is None and args.config_directories is None:
+        raise ValueError("Must provide at least one config or config directory")
 
     if args.configs is not None:
         for full_config_filepath in args.configs:
