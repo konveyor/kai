@@ -161,7 +161,7 @@ class IBMOpenSourceModel(ModelProvider):
 
         self.models = [
             "mistralai/mistral-7b-instruct-v0-2",
-            "mistralai/mixtral-8x7b-instruct-v0-1",
+            "mistralai/mixtral-8x7b-instruct-v01",
             "codellama/codellama-34b-instruct",
             "codellama/codellama-70b-instruct",
             "deepseek-ai/deepseek-coder-33b-instruct",
