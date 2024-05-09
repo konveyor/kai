@@ -78,6 +78,7 @@ class IBMGraniteModel(ModelProvider):
             "ibm/granite-20b-multilang-lab-rc",
             "ibm/granite-20b-multilingual",
             "ibm/granite-3b-code-plus-v1",
+            "ibm/granite-20b-code-javaenterprise",
         ]
 
         if model_id in self.models:
@@ -160,9 +161,7 @@ class IBMOpenSourceModel(ModelProvider):
 
         self.models = [
             "mistralai/mistral-7b-instruct-v0-2",
-            "mistralai/mixtral-8x7b-instruct-v0-1",
-            "ibm-mistralai/mixtral-8x7b-instruct-v01-q",  # quantized
-            "thebloke/mixtral-8x7b-v0-1-gptq",  # quantized
+            "mistralai/mixtral-8x7b-instruct-v01",
             "codellama/codellama-34b-instruct",
             "codellama/codellama-70b-instruct",
             "deepseek-ai/deepseek-coder-33b-instruct",
