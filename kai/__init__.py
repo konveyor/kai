@@ -4,9 +4,9 @@ from typing import Annotated, List
 
 import typer
 
-from kai.incident_store import IncidentStore
 from kai.report import Report
 from kai.result import LLMResult
+from kai.service.incident_store.incident_store import IncidentStore
 
 # from typing_extensions import Annotated
 

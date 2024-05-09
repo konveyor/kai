@@ -102,66 +102,79 @@ Note: For purposes of this initial prototype we are using an example of Java EE 
 
 ##### Selecting Other Models
 
-We also support other models. To change which llm you are targeting, open `yaml.toml` and change the `models:` section to one of the following:
+We also support other models. To change which llm you are targeting, open `config.toml` and change the `[models]` section to one of the following:
 
 **IBM served granite**
 
-```yaml
-provider: ChatIBMGenAI
-args:
-  model_id: ibm/granite-13b-chat-v2
+```toml
+[models]
+  provider = "ChatIBMGenAI"
+
+  [models.args]
+  model_id = "ibm/granite-13b-chat-v2"
 ```
 
 **IBM served mistral**
 
-```yaml
-provider: ChatIBMGenAI
-args:
-  model_id: ibm-mistralai/mixtral-8x7b-instruct-v01-q
+```toml
+[models]
+  provider = "ChatIBMGenAI"
+
+  [models.args]
+  model_id = "mistralai/mixtral-8x7b-instruct-v01"
 ```
 
-**IBM served CodeLlama**
+**IBM served codellama**
 
-```yaml
-provider: ChatIBMGenAI
-args:
-  model_id: meta-llama/llama-2-13b-chat
+```toml
+[models]
+  provider = "ChatIBMGenAI"
+
+  [models.args]
+  model_id = "meta-llama/llama-2-13b-chat"
 ```
 
 **IBM served llama3**
 
-```yaml
-# Note:  llama3 complains if we use more than 2048 tokens
-# See:  https://github.com/konveyor-ecosystem/kai/issues/172
-provider: ChatIBMGenAI
-args:
-  model_id: meta-llama/llama-3-70b-instruct
-  parameters:
-    max_new_tokens: 2048
+```toml
+  # Note:  llama3 complains if we use more than 2048 tokens
+  # See:  https://github.com/konveyor-ecosystem/kai/issues/172
+[models]
+  provider = "ChatIBMGenAI"
+
+  [models.args]
+  model_id = "meta-llama/llama-3-70b-instruct"
+  parameters.max_new_tokens = 2048
 ```
 
 **Ollama**
 
-```yaml
-provider: ChatOllama
-args:
-  model: mistral
+```toml
+[models]
+  provider = "ChatOllama"
+
+  [models.args]
+  model = "mistral"
 ```
 
 **OpenAI GPT 4**
 
-```yaml
-provider: ChatOpenAI
-args:
-  model: gpt-4
+```toml
+[models]
+  provider = "ChatOpenAI"
+
+  [models.args]
+  model = "gpt-4"
 ```
 
 **OpenAI GPT 3.5**
 
-```yaml
-provider: ChatOpenAI
-args:
-  model: gpt-3.5-turbo
+```toml
+[models]
+  provider = "ChatOpenAI"
+
+  [models.args]
+  model = "gpt-3.5-turbo"
 ```
 
 ### Demo Steps

@@ -22,12 +22,12 @@ from aiohttp.web_request import Request
 from pydantic import BaseModel, validator
 
 from kai import llm_io_handler
-from kai.incident_store import Application, IncidentStore
 from kai.kai_logging import KAI_LOG
 from kai.model_provider import ModelProvider
 from kai.models.analyzer_types import Incident
 from kai.models.kai_config import KaiConfig
 from kai.report import Report
+from kai.service.incident_store.incident_store import Application, IncidentStore
 
 # TODO: Make openapi spec for everything
 

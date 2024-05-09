@@ -3,7 +3,7 @@ import unittest
 
 import yaml
 
-from kai.incident_store import Application, IncidentStore
+from kai.service.incident_store.incident_store import Application, IncidentStore
 
 
 class TestIncidentStore(unittest.TestCase):

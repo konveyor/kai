@@ -9,10 +9,10 @@ import vcr
 from aiohttp import web
 from kai_logging import KAI_LOG
 
-from kai.incident_store import IncidentStore
 from kai.model_provider import ModelProvider
 from kai.models.file_solution import guess_language, parse_file_solution_content
 from kai.prompt_builder import build_prompt
+from kai.service.incident_store.incident_store import IncidentStore
 
 LLM_RETRIES = 5
 LLM_RETRY_DELAY = 10

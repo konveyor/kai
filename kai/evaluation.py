@@ -99,10 +99,13 @@ def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
     return BenchmarkExample(example_name, original_file, expected_file, incidents)
 
 
+DEFAULT_EXAMPLES_PATH = os.path.join(
+    os.path.dirname(__file__), "data", "benchmarks", "examples"
+)
+
+
 def load_benchmark_examples(
-    examples_path=os.path.join(
-        os.path.dirname(__file__), "data", "benchmarks", "examples"
-    )
+    examples_path=DEFAULT_EXAMPLES_PATH,
 ) -> dict[str, BenchmarkExample]:
     """
     Return a dict of benchmark examples, where the key is the example name. The
@@ -281,4 +284,5 @@ def compare_from_cli():
 
 
 if __name__ == "__main__":
+    # example: python evaluation.py --config_directories /full/path/to/kai/data/benchmarks/configs
     compare_from_cli()
