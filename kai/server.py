@@ -12,14 +12,12 @@ import json
 import os
 import pprint
 import time
-import tomllib
 from enum import Enum
 from typing import Optional
 
-import yaml
 from aiohttp import web
 from aiohttp.web_request import Request
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 
 from kai import llm_io_handler
 from kai.kai_logging import KAI_LOG
@@ -253,7 +251,7 @@ def app(log_level: Optional[str] = None, demo_mode: Optional[bool] = None):
     #     config = KaiConfig.model_validate_filepath(
     #         os.path.join(os.path.dirname(__file__), "config.yaml"))
     else:
-        raise FileNotFoundError(f"Config file not found.")
+        raise FileNotFoundError("Config file not found.")
 
     if log_level:
         config.log_level = log_level

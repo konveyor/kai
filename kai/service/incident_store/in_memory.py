@@ -125,8 +125,11 @@ class InMemoryIncidentStore(IncidentStore):
                 for incident in solved_incidents:
                     file_path = os.path.join(
                         repo_path,
+                        # NOTE: When retrieving uris from the report, some of
+                        # them had "/tmp/source-code/" as their root path.
+                        # Unsure where it originates from.
                         unquote(urlparse(incident.uri).path).removeprefix(
-                            "/tmp/source-code/"
+                            "/tmp/source-code/"  # trunk-ignore(bandit/B108)
                         ),
                     )
 
@@ -179,7 +182,7 @@ class InMemoryIncidentStore(IncidentStore):
                 continue
 
             for solved_incident in violation.solved_incidents:
-                if incident_snip != None and solved_incident.snip != incident_snip:
+                if incident_snip is not None and solved_incident.snip != incident_snip:
                     continue
 
                 common = set(solved_incident.variables.items()).intersection(

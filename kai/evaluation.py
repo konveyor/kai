@@ -12,17 +12,15 @@
 
 import argparse
 import os
-import tomllib
 from dataclasses import asdict, dataclass
-from typing import Any, Optional
+from typing import Any
 
 import yaml
-from pydantic import BaseModel
 
 from kai.model_provider import ModelProvider
 from kai.models.analyzer_types import Incident
 from kai.models.file_solution import guess_language, parse_file_solution_content
-from kai.models.kai_config import KaiConfig, KaiConfigModels
+from kai.models.kai_config import KaiConfig
 from kai.prompt_builder import build_prompt
 
 """

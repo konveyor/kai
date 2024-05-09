@@ -278,7 +278,12 @@ WHERE fit.incident_id IS NULL;""",
             for si in solved_incidents:
                 file_path = os.path.join(
                     repo_path,
-                    unquote(urlparse(si[4]).path).removeprefix("/tmp/source-code/"),
+                    # NOTE: When retrieving uris from the report, some of them
+                    # had "/tmp/source-code/" as their root path. Unsure where
+                    # it originates from.
+                    unquote(urlparse(si[4]).path).removeprefix(
+                        "/tmp/source-code/"  # trunk-ignore(bandit/B108)
+                    ),
                 )
                 big_diff = repo.git.diff(old_commit, new_commit)
 

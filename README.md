@@ -4,7 +4,7 @@ Konveyor AI (kai) is Konveyor's approach to easing modernization of application 
 
 Pronunciation of 'kai': https://www.howtopronounce.com/kai
 
-### Approach
+## Approach
 
 Our approach is to use static code analysis to find the areas in source code that need to be transformed. 'kai' will iterate through analysis information and work with LLMs to generate code changes to resolve incidents identified from analysis.
 
@@ -14,7 +14,7 @@ For example, [analyzer-lsp Rules](https://github.com/konveyor/analyzer-lsp/blob/
 
 Note: For purposes of this initial prototype we are using an example of Java EE to Quarkus. That is an arbitrary choice to show viability of this approach. The code and the approach will work on other targets that Konveyor has rules for.
 
-#### What happens technically to make this work?
+### What happens technically to make this work?
 
 - [Konveyor](konveyor.io) contains information related to an Organization's Application Portfolio, a view into all of the applications an Organization is managing. This view includes a history of analysis information over time, access to each applications source repositories, and metadata that tracks work in-progress/completed in regard to each application being migrated to a given technology.
 
@@ -104,7 +104,13 @@ Note: For purposes of this initial prototype we are using an example of Java EE 
 
 We also support other models. To change which llm you are targeting, open `config.toml` and change the `[models]` section to one of the following:
 
+<!-- trunk-ignore-begin(markdownlint/MD036) -->
+
 **IBM served granite**
+
+<!-- trunk-ignore-end(markdownlint/MD036) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD046) -->
 
 ```toml
 [models]
@@ -114,7 +120,15 @@ We also support other models. To change which llm you are targeting, open `confi
   model_id = "ibm/granite-13b-chat-v2"
 ```
 
+<!-- trunk-ignore-end(markdownlint/MD046) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD036) -->
+
 **IBM served mistral**
+
+<!-- trunk-ignore-end(markdownlint/MD036) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD046) -->
 
 ```toml
 [models]
@@ -124,7 +138,15 @@ We also support other models. To change which llm you are targeting, open `confi
   model_id = "mistralai/mixtral-8x7b-instruct-v01"
 ```
 
+<!-- trunk-ignore-end(markdownlint/MD046) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD036) -->
+
 **IBM served codellama**
+
+<!-- trunk-ignore-end(markdownlint/MD036) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD046) -->
 
 ```toml
 [models]
@@ -134,7 +156,15 @@ We also support other models. To change which llm you are targeting, open `confi
   model_id = "meta-llama/llama-2-13b-chat"
 ```
 
+<!-- trunk-ignore-end(markdownlint/MD046) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD036) -->
+
 **IBM served llama3**
+
+<!-- trunk-ignore-end(markdownlint/MD036) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD046) -->
 
 ```toml
   # Note:  llama3 complains if we use more than 2048 tokens
@@ -147,7 +177,15 @@ We also support other models. To change which llm you are targeting, open `confi
   parameters.max_new_tokens = 2048
 ```
 
+<!-- trunk-ignore-end(markdownlint/MD046) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD036) -->
+
 **Ollama**
+
+<!-- trunk-ignore-end(markdownlint/MD036) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD046) -->
 
 ```toml
 [models]
@@ -157,7 +195,15 @@ We also support other models. To change which llm you are targeting, open `confi
   model = "mistral"
 ```
 
+<!-- trunk-ignore-end(markdownlint/MD046) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD036) -->
+
 **OpenAI GPT 4**
+
+<!-- trunk-ignore-end(markdownlint/MD036) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD046) -->
 
 ```toml
 [models]
@@ -167,7 +213,15 @@ We also support other models. To change which llm you are targeting, open `confi
   model = "gpt-4"
 ```
 
+<!-- trunk-ignore-end(markdownlint/MD046) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD036) -->
+
 **OpenAI GPT 3.5**
+
+<!-- trunk-ignore-end(markdownlint/MD036) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD046) -->
 
 ```toml
 [models]
@@ -176,6 +230,8 @@ We also support other models. To change which llm you are targeting, open `confi
   [models.args]
   model = "gpt-3.5-turbo"
 ```
+
+<!-- trunk-ignore-end(markdownlint/MD046) -->
 
 ### Demo Steps
 
