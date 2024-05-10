@@ -7,41 +7,26 @@
 """This module is intended to facilitate using Konveyor with LLMs."""
 
 import argparse
-import itertools
+import datetime
 import json
 import os
 import pprint
 import time
-import tomllib
-import traceback
-import warnings
-from contextlib import contextmanager
-from os import listdir
-from os.path import isfile, join
-from typing import Any, Callable
+from enum import Enum
+from typing import Optional
 
-import aiohttp
-import jsonschema
-import vcr
-import yaml
 from aiohttp import web
 from aiohttp.web_request import Request
+from pydantic import BaseModel
 
-from kai.capture import Capture
-from kai.incident_store_advanced import Application, EmbeddingNone, PSQLIncidentStore
+from kai import llm_io_handler
+from kai.constants import PATH_KAI
 from kai.kai_logging import KAI_LOG
-from kai.model_provider import (
-    IBMGraniteModel,
-    IBMOpenSourceModel,
-    OllamaModel,
-    OpenAIModel,
-)
-from kai.prompt_builder import build_prompt
-from kai.pydantic_models import guess_language, parse_file_solution_content
+from kai.model_provider import ModelProvider
+from kai.models.analyzer_types import Incident
+from kai.models.kai_config import KaiConfig
 from kai.report import Report
-
-LLM_RETRIES = 5
-LLM_RETRY_DELAY = 10
+from kai.service.incident_store.incident_store import Application, IncidentStore
 
 # TODO: Make openapi spec for everything
 
@@ -59,192 +44,40 @@ JSONSCHEMA_DIR = os.path.join(
     "data/jsonschema/",
 )
 
-DEMO_MODE = os.getenv("DEMO_MODE") == "true"
 
-
-@contextmanager
-def playback_if_demo_mode(model_id, application_name, filename):
-    """A context manager to conditionally use a VCR cassette when demo mode is enabled."""
-    record_mode = "once" if DEMO_MODE else "all"
-    my_vcr = vcr.VCR(
-        cassette_library_dir=f"{os.path.dirname(__file__)}/data/vcr/{application_name}/{model_id}/",
-        record_mode=record_mode,
-        match_on=[
-            "uri",
-            "method",
-            "scheme",
-            "host",
-            "port",
-            "path",
-            "query",
-            "headers",
-        ],
-        record_on_exception=False,
-        filter_headers=["authorization", "cookie", "content-length"],
-    )
-    KAI_LOG.debug(
-        f"record_mode='{record_mode}' - Using cassette {application_name}/{model_id}/{filename}.yaml",
-    )
-    # Workaround to actually blow away the cassettes instead of appending
-    if my_vcr.record_mode == "all":
-        my_vcr.persister.load_cassette = lambda cassette_path, serializer: ([], [])
-
-    with my_vcr.use_cassette(f"{filename}.yaml"):
-        yield
-
-
-def load_config():
-    """Load the configuration from a yaml conf file."""
-    config_prefix = "/usr/local/etc"
-    if os.environ.get("KAI_CONFIG_PREFIX"):
-        config_prefix = os.environ.get("KAI_CONFIG_PREFIX")
-
-    config_dir = "kai.conf.d"
-    model_dir = os.path.join(config_prefix, config_dir)
-    files = [f for f in listdir(model_dir) if isfile(join(model_dir, f))]
-    model_templates = {}
-    for f in files:
-        filename, file_extension = os.path.splitext(f)
-        with open(join(model_dir, f), encoding="utf-8") as reader:
-            try:
-                model = reader.read()
-                model_templates[filename] = model
-            except yaml.YAMLError as exc:
-                print(exc)
-                return None
-    return {"model_templates": model_templates}
-
-
-def load_templates():
-    """Get model templates from the loaded configuration."""
-    return load_config()["model_templates"]
-
-
-def load_template(model_name):
-    """Loads the requested template."""
-    model_templates = load_templates()
-    if model_name in model_templates:
-        return model_templates[model_name]
-
-    warnings.warn(
-        "Warning: Model not found, using first available model.",
-        stacklevel=5,
-    )
-    return list(model_templates.items())[0][1]
-
-
-@routes.post("/generate_prompt")
-async def generate_prompt(request):
-    """Generates a prompt based on input using the specified template."""
-    try:
-        data = await request.json()
-
-        language = data.get("language", "")
-        issue_description = data.get("issue_description", "")
-        example_original_code = data.get("example_original_code", "")
-        example_solved_code = data.get("example_solved_code", "")
-        current_original_code = data.get("current_original_code", "")
-        model_template = data.get("model_template", "")
-
-        if model_template == "":
-            warnings.warn(
-                "Model template not specified. For best results specify a model template.",
-                stacklevel=5,
-            )
-
-        response = load_template(model_template).format(
-            language=language,
-            issue_description=issue_description,
-            example_original_code=example_original_code,
-            example_solved_code=example_solved_code,
-            current_original_code=current_original_code,
-            model_template=model_template,
-        )
-
-        warnings.resetwarnings()
-        return web.json_response({"generated_prompt": response})
-    except Exception as e:
-        return web.json_response({"error": str(e)}, status=400)
-
-
-@routes.route("*", "/proxy")
-async def proxy_handler(request):
-    """Proxies a streaming request to an LLM."""
-    upstream_url = request.query.get("upstream_url")
-
-    if not upstream_url:
-        return web.Response(
-            status=400, text="Missing 'upstream_url' parameter in the request"
-        )
-
-    headers = {}
-    if request.headers.get("Authorization"):
-        headers.update({"Authorization": request.headers.get("Authorization")})
-    if request.headers.get("Content-Type"):
-        headers.update({"Content-Type": request.headers.get("Content-Type")})
-    method = request.method
-    data = await request.read()
-
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.request(
-                method, upstream_url, headers=headers, data=data
-            ) as upstream_response:
-                if "chunked" in upstream_response.headers.get("Transfer-Encoding", ""):
-                    response = web.StreamResponse()
-                    await response.prepare(request)
-
-                    async for data in upstream_response.content.iter_any():
-                        await response.write(data)
-
-                    await response.write_eof()
-                    return response
-
-                return web.Response(
-                    status=upstream_response.status,
-                    text=await upstream_response.text(),
-                    headers=upstream_response.headers,
-                )
-        except aiohttp.ClientError as e:
-            return web.Response(
-                status=500, text=f"Error connecting to upstream service: {str(e)}"
-            )
-
-
-async def run_analysis_report():
-    pass
-
-
-@routes.post("/dummy_json_request")
+@routes.post("/health_check")
 async def post_dummy_json_request(request: Request):
-    KAI_LOG.debug(f"post_dummy_json_request recv'd: {request}")
+    KAI_LOG.debug(f"health_check recv'd: {request}")
 
     request_json: dict = await request.json()
 
-    return web.json_response({"feeling": "OK!", "recv": request_json})
+    return web.json_response({"status": "OK!", "recv'd": request_json})
+
+
+# NOTE(@JonahSussman): This class can be removed if the other Application Class
+# inherits from BaseModel.
+class PostLoadAnalysisReportApplication(BaseModel):
+    application_name: str
+    repo_uri_origin: str
+    repo_uri_local: str
+    current_branch: str
+    current_commit: str
+    generated_at: datetime.datetime
+
+
+class PostLoadAnalysisReportParams(BaseModel):
+    path_to_report: str
+    application: PostLoadAnalysisReportApplication
 
 
 @routes.post("/load_analysis_report")
 async def post_load_analysis_report(request: Request):
-    schema: dict = json.loads(
-        open(os.path.join(JSONSCHEMA_DIR, "post_load_analysis_report.json")).read()
-    )
-    request_json: dict = await request.json()
+    params = PostLoadAnalysisReportParams.model_validate(await request.json())
 
-    try:
-        jsonschema.validate(instance=request_json, schema=schema)
-    except jsonschema.ValidationError as err:
-        raise web.HTTPUnprocessableEntity(text=f"{err}") from err
+    application = Application(**params.application.model_dump())
+    report = Report(params.path_to_report)
 
-    request_json["application"].setdefault("application_id")
-
-    application = Application(**request_json["application"])
-    path_to_report: str = request_json["path_to_report"]
-    report = Report(path_to_report)
-
-    count = request.app["incident_store"].insert_and_update_from_report(
-        application, report
-    )
+    count = request.app["incident_store"].load_report(application, report)
 
     return web.json_response(
         {
@@ -260,109 +93,18 @@ async def post_change_model(request: Request):
     pass
 
 
-def get_incident_solution(request_app, request_json: dict, stream: bool = False):
-    start = time.time()
-    capture = Capture()
-    capture.request = request_json
-    capture.model_id = request_app["model_provider"].get_current_model_id()
-
-    application_name: str = request_json["application_name"]
-    application_name = application_name  # NOTE: To please trunk error, remove me
-    ruleset_name: str = request_json["ruleset_name"]
-    violation_name: str = request_json["violation_name"]
-    # FIXME: See my comment here
-    # https://github.com/konveyor-ecosystem/kai/issues/87#issuecomment-2015574994
-    incident_snip: str = request_json.get("incident_snip", "")
-    incident_vars: dict = request_json["incident_variables"]
-    file_name: str = request_json["file_name"]
-    file_contents: str = request_json["file_contents"]
-    line_number: int = request_json["line_number"]
-    analysis_message: str = request_json.get("analysis_message", "")
-
-    KAI_LOG.info(
-        f"START - App: '{application_name}', File: '{file_name}' '{ruleset_name}'/'{violation_name}' @ Line Number '{line_number}' using model_id '{capture.model_id}'"
-    )
-
-    # Gather context
-    # First, let's see if there's an "exact" match
-
-    solved_incident, match_type = request_app[
-        "incident_store"
-    ].get_fuzzy_similar_incident(
-        violation_name, ruleset_name, incident_snip, incident_vars
-    )
-    capture.solved_incident = solved_incident
-
-    if not isinstance(solved_incident, dict):
-        raise Exception("solved_example not a dict")
-
-    pb_vars = {
-        "src_file_name": file_name,
-        "src_file_contents": file_contents,
-        "analysis_line_number": str(line_number),
-        "analysis_message": analysis_message,
-    }
-
-    KAI_LOG.debug(solved_incident)
-
-    if bool(solved_incident) and match_type == "exact":
-        solved_example = request_app["incident_store"].select_accepted_solution(
-            solved_incident["solution_id"]
-        )
-        pb_vars["solved_example_diff"] = solved_example["solution_small_diff"]
-        pb_vars["solved_example_file_name"] = solved_incident["incident_uri"]
-
-    prompt = build_prompt(
-        request_app["model_provider"].get_prompt_builder_config("single_file"), pb_vars
-    )
-    capture.prompt = prompt
-
-    if stream:
-        capture.llm_result = (
-            "TODO consider if we need to implement for streaming responses"
-        )
-        capture.commit()
-        end = time.time()
-        KAI_LOG.info(
-            f"END - completed in '{end-start}s: - App: '{application_name}', File: '{file_name}' '{ruleset_name}'/'{violation_name}' @ Line Number '{line_number}' using model_id '{capture.model_id}'"
-        )
-        return request_app["model_provider"].stream(prompt)
-    else:
-        llm_result = request_app["model_provider"].invoke(prompt)
-        capture.llm_result = request_app["model_provider"].invoke(prompt)
-        capture.commit()
-        end = time.time()
-        KAI_LOG.info(
-            f"END - completed in '{end-start}s: - App: '{application_name}', File: '{file_name}' '{ruleset_name}'/'{violation_name}' @ Line Number '{line_number}' using model_id '{capture.model_id}'"
-        )
-        return llm_result
+class PostGetIncidentSolutionParams(BaseModel):
+    application_name: str
+    ruleset_name: str
+    violation_name: str
+    incident_snip: Optional[str] = ""
+    incident_variables: dict
+    file_name: str
+    file_contents: str
+    line_number: int  # 0-indexed
+    analysis_message: Optional[str] = ""
 
 
-# TODO: Figure out why we have to put this validator wrapping the routes
-# decorator
-def validator(schema_file):
-    def decorator(fn):
-        async def inner(request: Request, *args, **kwargs):
-            request_json = await request.json()
-
-            schema: dict = json.loads(
-                open(os.path.join(JSONSCHEMA_DIR, schema_file)).read()
-            )
-
-            try:
-                jsonschema.validate(instance=request_json, schema=schema)
-            except jsonschema.ValidationError as err:
-                KAI_LOG.error(f"{err}")
-                raise web.HTTPUnprocessableEntity(text=f"{err}") from err
-
-            return fn(request, *args, **kwargs)
-
-        return inner
-
-    return decorator
-
-
-@validator("post_get_incident_solution.json")
 @routes.post("/get_incident_solution")
 async def post_get_incident_solution(request: Request):
     """
@@ -370,25 +112,26 @@ async def post_get_incident_solution(request: Request):
     or rejects it knows what the heck the user is referencing
 
     Stateful, stores it
-
-    params (json):
-    - application_name (str)
-    - ruleset_name (str)
-    - violation_name (str)
-    - incident_snip (str optional)
-    - incident_variables (object)
-    - file_name (str)
-    - file_contents (str)
-    - line_number: 0-indexed (let's keep it consistent)
-    - analysis_message (str)
-
-    return (json):
-    - llm_output:
     """
 
     KAI_LOG.debug(f"post_get_incident_solution recv'd: {request}")
 
-    llm_output = get_incident_solution(request.app, await request.json(), False).content
+    params = PostGetIncidentSolutionParams.model_validate(await request.json())
+
+    llm_output = llm_io_handler.get_incident_solution(
+        request.app["incident_store"],
+        request.app["model_provider"],
+        params.application_name,
+        params.ruleset_name,
+        params.violation_name,
+        params.incident_snip,
+        params.incident_variables,
+        params.file_name,
+        params.file_contents,
+        params.line_number,
+        params.analysis_message,
+        False,
+    ).content
 
     return web.json_response(
         {
@@ -397,7 +140,8 @@ async def post_get_incident_solution(request: Request):
     )
 
 
-@validator("post_get_incident_solution.json")
+# TODO(@JonahSussman): Figure out proper pydantic model validation for this
+# function
 @routes.get("/ws/get_incident_solution")
 async def ws_get_incident_solution(request: Request):
     ws = web.WebSocketResponse()
@@ -407,9 +151,24 @@ async def ws_get_incident_solution(request: Request):
 
     if msg.type == web.WSMsgType.TEXT:
         try:
-            json_request = json.loads(msg.data)
+            request_json = json.loads(msg.data)
 
-            for chunk in get_incident_solution(request.app, json_request, True):
+            chunks = llm_io_handler.get_incident_solution(
+                request.app["incident_store"],
+                request.app["model_provider"],
+                application_name=request_json["application_name"],
+                ruleset_name=request_json["ruleset_name"],
+                violation_name=request_json["violation_name"],
+                incident_snip=request_json.get("incident_snip", ""),
+                incident_vars=request_json["incident_variables"],
+                file_name=request_json["file_name"],
+                file_contents=request_json["file_contents"],
+                line_number=request_json["line_number"],
+                analysis_message=request_json.get("analysis_message", ""),
+                stream=True,
+            )
+
+            for chunk in chunks:
                 await ws.send_str(
                     json.dumps(
                         {
@@ -433,222 +192,98 @@ async def ws_get_incident_solution(request: Request):
     return ws
 
 
-def get_key_and_res_function(
-    batch_mode: str,
-) -> tuple[Callable[[Any], tuple], Callable[[Any, Any], tuple[dict, list]]]:
-    return {
-        "none": (lambda x: (id(x),), lambda k, g: ({}, list(g))),
-        "single_group": (lambda x: (0,), lambda k, g: ({}, list(g))),
-        "ruleset": (
-            lambda x: (x.get("ruleset_name"),),
-            lambda k, g: ({"ruleset_name": k[0]}, list(g)),
-        ),
-        "violation": (
-            lambda x: (x.get("ruleset_name"), x.get("violation_name")),
-            lambda k, g: ({"ruleset_name": k[0], "violation_name": k[1]}, list(g)),
-        ),
-    }.get(batch_mode)
+class PostGetIncidentSolutionsForFileBatchMode(str, Enum):
+    NONE = "none"
+    SINGLE_GROUP = "single_group"
+    RULESET = "ruleset"
+    VIOLATION = "violation"
 
 
-@validator("get_incident_solutions_for_file.json")
+class PostGetIncidentSolutionsForFileParams(BaseModel):
+    file_name: str
+    file_contents: str
+    application_name: str
+    batch_mode: Optional[PostGetIncidentSolutionsForFileBatchMode] = "single_group"
+    include_solved_incidents: Optional[bool] = True
+    include_llm_results: Optional[bool] = False
+    incidents: list[Incident]
+
+
 @routes.post("/get_incident_solutions_for_file")
 async def get_incident_solutions_for_file(request: Request):
-    """
-    - file_name (str)
-    - file_contents (str)
-    - application_name (str)
-    - batch_mode (str optional, one of 'sequential', 'none', 'violation', 'violation_and_variables')
-    - include_solved_incident (bool optional)
-    - incidents (list)
-        - ruleset_name (str)
-        - violation_name (str)
-        - incident_snip (str optional)
-        - incident_variables (object)
-        - line_number: 0-indexed (let's keep it consistent)
-        - analysis_message (str)
-    - include_llm_results (bool)
-    """
     start = time.time()
     KAI_LOG.debug(f"get_incident_solutions_for_file recv'd: {request}")
-
-    request_json = await request.json()
+    params = PostGetIncidentSolutionsForFileParams.model_validate(await request.json())
 
     KAI_LOG.info(
-        f"START - App: '{request_json['application_name']}', File: '{request_json['file_name']}' with {len(request_json['incidents'])} incidents'"
+        f"START - App: '{params.application_name}', File: '{params.file_name}' with {len(params.incidents)} incidents'"
     )
 
-    src_file_language = guess_language(
-        request_json.get("file_contents"), filename=request_json["file_name"]
+    result = await llm_io_handler.get_incident_solutions_for_file(
+        request.app["model_provider"],
+        request.app["incident_store"],
+        params.file_contents,
+        params.file_name,
+        params.application_name,
+        [x.model_dump() for x in params.incidents],
+        params.batch_mode,
+        params.include_solved_incidents,
+        params.include_llm_results,
+        request.app["config"].demo_mode,
     )
-    KAI_LOG.debug(
-        f"{request_json['file_name']} classified as filetype {src_file_language}"
-    )
-
-    batch_mode = request_json.get("batch_mode", "single_group")
-    include_solved_incidents = request_json.get("include_solved_incidents", True)
-
-    # NOTE: Looks worse than it is, `trunk check` mangled the heck out of this
-    # section. It doesn't like lambdas for some reason :(
-    updated_file = request_json["file_contents"]
-    total_reasoning = []
-    llm_results = []
-    additional_info = []
-    used_prompts = []
-    model_id = request.app["model_provider"].get_current_model_id()
-
-    batch_key_fn, batch_res_fn = get_key_and_res_function(batch_mode)
-
-    request_json["incidents"].sort(key=batch_key_fn)
-    batched_groupby = itertools.groupby(request_json["incidents"], batch_key_fn)
-
-    # NOTE: To get out of itertools hell
-    batched: list[tuple[dict, list]] = []
-    for batch_key, batch_group in batched_groupby:
-        batch_dict, batch_list = batch_res_fn(batch_key, batch_group)
-        batched.append((batch_dict, batch_list))
-
-    for count, (_, incidents) in enumerate(batched, 1):
-        for i, incident in enumerate(incidents, 1):
-            incident["issue_number"] = i
-            incident["src_file_language"] = src_file_language
-            incident["analysis_line_number"] = incident["line_number"]
-
-            if include_solved_incidents:
-                solved_incident, match_type = request.app[
-                    "incident_store"
-                ].get_fuzzy_similar_incident(
-                    incident["violation_name"],
-                    incident["ruleset_name"],
-                    incident.get("incident_snip", ""),
-                    incident["incident_variables"],
-                )
-
-                KAI_LOG.debug(solved_incident)
-
-                if not isinstance(solved_incident, dict):
-                    raise Exception("solved_example not a dict")
-
-                if bool(solved_incident) and match_type == "exact":
-                    solved_example = request.app[
-                        "incident_store"
-                    ].select_accepted_solution(solved_incident["solution_id"])
-                    incident["solved_example_diff"] = solved_example[
-                        "solution_small_diff"
-                    ]
-                    incident["solved_example_file_name"] = solved_incident[
-                        "incident_uri"
-                    ]
-
-        args = {
-            "src_file_name": request_json["file_name"],
-            "src_file_language": src_file_language,
-            "src_file_contents": updated_file,
-            "incidents": incidents,
-        }
-
-        prompt = build_prompt(
-            request.app["model_provider"].get_prompt_builder_config("multi_file"), args
-        )
-
-        KAI_LOG.debug(f"Sending prompt: {prompt}")
-
-        KAI_LOG.info(
-            f"Processing incident batch {count}/{len(batched)} for {request_json['file_name']}"
-        )
-        llm_result = None
-        for _ in range(LLM_RETRIES):
-            try:
-                with playback_if_demo_mode(
-                    model_id,
-                    request_json["application_name"],
-                    f'{request_json["file_name"].replace("/", "-")}',
-                ):
-                    llm_result = request.app["model_provider"].invoke(prompt)
-                    content = parse_file_solution_content(
-                        src_file_language, llm_result.content
-                    )
-                    if request_json.get("include_llm_results"):
-                        llm_results.append(llm_result.content)
-
-                    total_reasoning.append(content.reasoning)
-                    used_prompts.append(prompt)
-                    additional_info.append(content.additional_info)
-                    if not content.updated_file:
-                        raise Exception(
-                            f"Error in LLM Response: The LLM did not provide an updated file for {request_json['file_name']}"
-                        )
-                    updated_file = content.updated_file
-                    break
-            except Exception as e:
-                KAI_LOG.warn(
-                    f"Request to model failed for batch {count}/{len(batched)} for {request_json['file_name']} with exception, retrying in {LLM_RETRY_DELAY}s\n{e}"
-                )
-                KAI_LOG.debug(traceback.format_exc())
-                time.sleep(LLM_RETRY_DELAY)
-        else:
-            KAI_LOG.error(f"{request_json['file_name']} failed to migrate")
-            raise web.HTTPInternalServerError(
-                reason="Migration failed",
-                text=f"The LLM did not generate a valid response: {llm_result}",
-            )
 
     end = time.time()
     KAI_LOG.info(
-        f"END - completed in '{end-start}s:  - App: '{request_json['application_name']}', File: '{request_json['file_name']}' with {len(request_json['incidents'])} incidents'"
+        f"END - completed in '{end-start}s:  - App: '{params.application_name}', File: '{params.file_name}' with {len(params.incidents)} incidents'"
     )
-    response = {
-        "updated_file": updated_file,
-        "total_reasoning": total_reasoning,
-        "used_prompts": used_prompts,
-        "model_id": model_id,
-        "additional_information": additional_info,
-    }
-    if request_json.get("include_llm_results"):
-        response["llm_results"] = llm_results
 
-    return web.json_response(response)
+    return web.json_response(result)
 
 
-def app(loglevel):
+def app(log_level: Optional[str] = None, demo_mode: Optional[bool] = None):
     webapp = web.Application()
-    base_path = os.path.dirname(__file__)
-    KAI_LOG.setLevel(loglevel.upper())
+
+    config: KaiConfig
+    if os.path.exists(os.path.join(PATH_KAI, "config.toml")):
+        config = KaiConfig.model_validate_filepath(
+            os.path.join(PATH_KAI, "config.toml")
+        )
+    # NOTE(@JonahSussman): For the future in case we switch to supporting yaml
+    # configs.
+
+    # elif os.path.exists(os.path.join(PATH_KAI_ROOT, "config.yaml")):
+    #     config = KaiConfig.model_validate_filepath(
+    #         os.path.join(PATH_KAI_ROOT, "config.yaml"))
+    else:
+        raise FileNotFoundError("Config file not found.")
+
+    if log_level:
+        config.log_level = log_level
+    if demo_mode:
+        config.demo_mode = demo_mode
+
+    print(f"Config loaded: {pprint.pformat(config)}")
+
+    config: KaiConfig
+    webapp["config"] = config
+
+    print(type(config))
+
+    KAI_LOG.setLevel(config.log_level.upper())
     print(
-        f"Logging for KAI has been initialized and the level set to {loglevel.upper()}"
+        f"Logging for KAI has been initialized and the level set to {config.log_level.upper()}"
     )
 
-    if DEMO_MODE:
+    if config.demo_mode:
         KAI_LOG.info("DEMO_MODE is enabled. LLM responses will be cached")
 
-    with open(os.path.join(base_path, "config.toml"), "rb") as f:
-        config = tomllib.load(f)
-        KAI_LOG.info(f"Config loaded: {pprint.pformat(config)}")
+    webapp["incident_store"] = IncidentStore.from_config(config.incident_store)
+    KAI_LOG.info(f"Selected incident store: {config.incident_store.provider}")
 
-    schema: dict = json.loads(
-        open(os.path.join(JSONSCHEMA_DIR, "server_config.json")).read()
-    )
-    # TODO: Make this error look nicer
-    jsonschema.validate(instance=config, schema=schema)
+    webapp["model_provider"] = ModelProvider(config.models)
+    KAI_LOG.info(f"Selected provider: {config.models.provider}")
+    KAI_LOG.info(f"Selected model: {webapp['model_provider'].model_id}")
 
-    webapp["incident_store"] = PSQLIncidentStore(
-        config=config["postgresql"],
-        # emb_provider=EmbeddingInstructor(model="hkunlp/instructor-base"),
-        emb_provider=EmbeddingNone(),
-        drop_tables=False,
-    )
-
-    if config["models"]["provider"].lower() == "IBMGranite".lower():
-        webapp["model_provider"] = IBMGraniteModel(**config["models"]["args"])
-    elif config["models"]["provider"].lower() == "IBMOpenSource".lower():
-        webapp["model_provider"] = IBMOpenSourceModel(**config["models"]["args"])
-    elif config["models"]["provider"].lower() == "OpenAI".lower():
-        webapp["model_provider"] = OpenAIModel(**config["models"]["args"])
-    elif config["models"]["provider"].lower() == "Ollama".lower():
-        webapp["model_provider"] = OllamaModel(**config["models"]["args"])
-    else:
-        raise Exception(f"Unrecognized model '{config['models']['provider']}'")
-
-    KAI_LOG.info(f"Selected model {config['models']['provider']}")
     webapp.add_routes(routes)
 
     return webapp
@@ -656,10 +291,11 @@ def app(loglevel):
 
 def main():
     arg_parser = argparse.ArgumentParser()
+
     arg_parser.add_argument(
         "-log",
         "--loglevel",
-        default=os.environ.get("KAI_LOG_LEVEL", "info"),
+        default=os.getenv("KAI_LOG_LEVEL", "info"),
         choices=["debug", "info", "warning", "error", "critical"],
         help="""Provide logging level.
 Options:
@@ -671,9 +307,16 @@ Options:
 Example: --loglevel debug (default: warning)""",
     )
 
+    arg_parser.add_argument(
+        "-demo",
+        "--demo_mode",
+        default=(os.getenv("DEMO_MODE").lower() == "true"),
+        action=argparse.BooleanOptionalAction,
+    )
+
     args, _ = arg_parser.parse_known_args()
 
-    web.run_app(app(args.loglevel))
+    web.run_app(app(args.loglevel, args.demo_mode))
 
 
 if __name__ == "__main__":

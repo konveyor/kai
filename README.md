@@ -2,9 +2,9 @@
 
 Konveyor AI (kai) is Konveyor's approach to easing modernization of application source code to a new target by leveraging LLMs with guidance from static code analysis augmented with data in Konveyor that helps to learn how an Organization solved a similar problem in the past.
 
-Pronounciation of 'kai': https://www.howtopronounce.com/kai
+Pronunciation of 'kai': https://www.howtopronounce.com/kai
 
-### Approach
+## Approach
 
 Our approach is to use static code analysis to find the areas in source code that need to be transformed. 'kai' will iterate through analysis information and work with LLMs to generate code changes to resolve incidents identified from analysis.
 
@@ -14,7 +14,7 @@ For example, [analyzer-lsp Rules](https://github.com/konveyor/analyzer-lsp/blob/
 
 Note: For purposes of this initial prototype we are using an example of Java EE to Quarkus. That is an arbitrary choice to show viability of this approach. The code and the approach will work on other targets that Konveyor has rules for.
 
-#### What happens technically to make this work?
+### What happens technically to make this work?
 
 - [Konveyor](konveyor.io) contains information related to an Organization's Application Portfolio, a view into all of the applications an Organization is managing. This view includes a history of analysis information over time, access to each applications source repositories, and metadata that tracks work in-progress/completed in regard to each application being migrated to a given technology.
 
@@ -80,8 +80,8 @@ Note: For purposes of this initial prototype we are using an example of Java EE 
 - Until we fix [this open issue](https://github.com/konveyor-ecosystem/kai/issues/85), you must have an IBM API Key to use kai
 - Set the below environment variables in your shell:
   - `GENAI_KEY=my-secret-api-key-value`
-- We plan to allow alternative ways of specifiying coordinates in future, tracked via: [Allow model credentials to be stored in an .env file #89](https://github.com/konveyor-ecosystem/kai/issues/89)
-  - Once the above issue is fixed we expect to have alternative ways to specifiy model coordinates
+- We plan to allow alternative ways of specifying coordinates in future, tracked via: [Allow model credentials to be stored in an .env file #89](https://github.com/konveyor-ecosystem/kai/issues/89)
+  - Once the above issue is fixed we expect to have alternative ways to specify model coordinates
 
 ##### IBM GenAI
 
@@ -94,7 +94,7 @@ Note: For purposes of this initial prototype we are using an example of Java EE 
   - Related client tooling:
 
     - https://github.com/IBM/ibm-generative-ai
-    - langchain integration: https://ibm.github.io/ibm-generative-ai/v2.2.0/rst_source/examples.extensions.langchain.html#examples-extensions-langchain
+    - LangChain integration: https://ibm.github.io/ibm-generative-ai/v2.2.0/rst_source/examples.extensions.langchain.html#examples-extensions-langchain
 
   - Obtain your API key from IBM BAM:
     - To access via an API you can look at ‘Documentation’ after logging into https://bam.res.ibm.com/
@@ -104,48 +104,140 @@ Note: For purposes of this initial prototype we are using an example of Java EE 
 
 We also support other models. To change which llm you are targeting, open `config.toml` and change the `[models]` section to one of the following:
 
+<!-- trunk-ignore-begin(markdownlint/MD036) -->
+
 **IBM served granite**
 
+<!-- trunk-ignore-end(markdownlint/MD036) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD046) -->
+
 ```toml
-provider = "IBMGranite"
-args = { model_id = "ibm/granite-13b-chat-v2" }
+[models]
+  provider = "ChatIBMGenAI"
+
+  [models.args]
+  model_id = "ibm/granite-13b-chat-v2"
 ```
+
+<!-- trunk-ignore-end(markdownlint/MD046) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD036) -->
 
 **IBM served mistral**
 
+<!-- trunk-ignore-end(markdownlint/MD036) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD046) -->
+
 ```toml
-provider = "IBMOpenSource"
-args = { model_id = "ibm-mistralai/mixtral-8x7b-instruct-v01-q" }
+[models]
+  provider = "ChatIBMGenAI"
+
+  [models.args]
+  model_id = "mistralai/mixtral-8x7b-instruct-v01"
 ```
+
+<!-- trunk-ignore-end(markdownlint/MD046) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD036) -->
 
 **IBM served codellama**
 
-```toml
-provider = "IBMOpenSource"
-args = { model_id = "meta-llama/llama-2-13b-chat" }
-```
+<!-- trunk-ignore-end(markdownlint/MD036) -->
 
-**OpenAI GPT 3.5**
+<!-- trunk-ignore-begin(markdownlint/MD046) -->
 
 ```toml
-provider = "OpenAI"
-args = { model_id = "gpt-4" }
+[models]
+  provider = "ChatIBMGenAI"
+
+  [models.args]
+  model_id = "meta-llama/llama-2-13b-chat"
 ```
+
+<!-- trunk-ignore-end(markdownlint/MD046) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD036) -->
+
+**IBM served llama3**
+
+<!-- trunk-ignore-end(markdownlint/MD036) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD046) -->
+
+```toml
+  # Note:  llama3 complains if we use more than 2048 tokens
+  # See:  https://github.com/konveyor-ecosystem/kai/issues/172
+[models]
+  provider = "ChatIBMGenAI"
+
+  [models.args]
+  model_id = "meta-llama/llama-3-70b-instruct"
+  parameters.max_new_tokens = 2048
+```
+
+<!-- trunk-ignore-end(markdownlint/MD046) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD036) -->
+
+**Ollama**
+
+<!-- trunk-ignore-end(markdownlint/MD036) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD046) -->
+
+```toml
+[models]
+  provider = "ChatOllama"
+
+  [models.args]
+  model = "mistral"
+```
+
+<!-- trunk-ignore-end(markdownlint/MD046) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD036) -->
 
 **OpenAI GPT 4**
 
+<!-- trunk-ignore-end(markdownlint/MD036) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD046) -->
+
 ```toml
-provider = "OpenAI"
-args = { model_id = "gpt-3.5-turbo" }
+[models]
+  provider = "ChatOpenAI"
+
+  [models.args]
+  model = "gpt-4"
 ```
 
-provider = "IBMGranite"
+<!-- trunk-ignore-end(markdownlint/MD046) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD036) -->
+
+**OpenAI GPT 3.5**
+
+<!-- trunk-ignore-end(markdownlint/MD036) -->
+
+<!-- trunk-ignore-begin(markdownlint/MD046) -->
+
+```toml
+[models]
+  provider = "ChatOpenAI"
+
+  [models.args]
+  model = "gpt-3.5-turbo"
+```
+
+<!-- trunk-ignore-end(markdownlint/MD046) -->
 
 ### Demo Steps
 
 #### Backend
 
-- We want to run the 'kai' REST API Server, this will also require a running postgres database and we need to populate that postgress database with a collection of application analysis information from various sample applications. All of the needed data is contained in this repo, we just need to run a command to load it.
+- We want to run the 'kai' REST API Server, this will also require a running postgres database and we need to populate that postgres database with a collection of application analysis information from various sample applications. All of the needed data is contained in this repo, we just need to run a command to load it.
 
 1. Clone Repo and Ensure you have the virtual environment setup
    1. `git clone https://github.com/konveyor-ecosystem/kai.git`
@@ -235,7 +327,7 @@ There are two ways to record new responses:
 
 ### Updating requirements.txt
 
-- If you are a developer working on Kai and you are updating requirements.txt, you will need to do some manual changes beyond just a `pip freeze &> ./requirements.txt`, we have a few directives that address differences in 'darwin' systems that need to be preserved. These need to be added manually after a 'freeze' as the freeze command is not aware of what existe in requirements.txt. Please consult the diff of changes you are making now from prior version and note the extra directions for `python_version` and or `sys_platform`
+- If you are a developer working on Kai and you are updating requirements.txt, you will need to do some manual changes beyond just a `pip freeze &> ./requirements.txt`, we have a few directives that address differences in 'darwin' systems that need to be preserved. These need to be added manually after a 'freeze' as the freeze command is not aware of what exists in requirements.txt. Please consult the diff of changes you are making now from prior version and note the extra directions for `python_version` and or `sys_platform`
 
 ### Ensure you have the source code for the sample applications checked out locally
 
@@ -269,7 +361,7 @@ Analysis data will be stored in: `samples/analysis_reports/{APP_NAME}/<initial|s
 
 #### How to run regression tests
 
-1. Install the prereqs in Setup and activate the python virtual environment
+1. Install the prerequisites in Setup and activate the python virtual environment
 2. Ensure you've checked out the source code for sample applications: Run: [./samples/fetch_sample_apps.sh](./samples/fetch_sample_apps.sh)
 3. Run: [./run_tests.sh](./run_tests.sh)
 
