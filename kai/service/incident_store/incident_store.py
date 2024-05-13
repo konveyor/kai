@@ -95,7 +95,7 @@ def load_reports_from_directory(store: "IncidentStore", path: str):
 
         KAI_LOG.info(f"Loading application {app}\n")
 
-        store.load_report(app_initial, Report(report_path))
+        store.load_report(app_initial, Report.load_report_from_file(report_path))
         KAI_LOG.info(f"Loaded application - initial {app}\n")
 
         solved_folder = os.path.join(app_path, "solved")
@@ -121,7 +121,7 @@ def load_reports_from_directory(store: "IncidentStore", path: str):
             current_commit=commit.hexsha,
             generated_at=datetime.datetime.now(),
         )
-        store.load_report(app_solved, Report(report_path))
+        store.load_report(app_solved, Report.load_report_from_file(report_path))
 
         KAI_LOG.info(f"Loaded application - solved {app}\n")
 

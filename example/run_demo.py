@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import time
+import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 
@@ -211,7 +212,8 @@ def process_file(file_path, violations, num_impacted_files, count):
     response = generate_fix(params)
     KAI_LOG.info(f"Response StatusCode: {response.status_code} for {file_path}\n")
     updated_file_contents = parse_response(response)
-    write_to_disk(file_path, updated_file_contents)
+    if os.getenv("WRITE_TO_DISK", "").lower() not in ("false", "0", "no"):
+        write_to_disk(file_path, updated_file_contents)
     end = time.time()
     return f"{end-start}s to process {file_path} with {len(violations)} violations"
 
@@ -239,6 +241,7 @@ def run_demo(report):
                 KAI_LOG.info(f"Result:  {result}")
             except Exception as exc:
                 KAI_LOG.error(f"Generated an exception: {exc}")
+                KAI_LOG.error(traceback.format_exc())
             remaining_files -= 1
             KAI_LOG.info(
                 f"{remaining_files} files remaining from total of {num_impacted_files}"
@@ -249,7 +252,7 @@ if __name__ == "__main__":
     KAI_LOG.setLevel("info".upper())
     start = time.time()
     coolstore_analysis_dir = "./analysis/coolstore/output.yaml"
-    r = Report(coolstore_analysis_dir)
+    r = Report.load_report_from_file(coolstore_analysis_dir)
     run_demo(r)
     end = time.time()
     KAI_LOG.info(f"Total time to process '{coolstore_analysis_dir}' was {end-start}s")

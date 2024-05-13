@@ -47,7 +47,7 @@ class LLMResult:
         self.report = None
 
     def parse_report(self, path_to_report):
-        self.report = Report(path_to_report).get_report()
+        self.report = dict(Report.load_report_from_file(path_to_report))
 
     def get_prompt_template(self):
         template_file = os.path.join(PATH_TEMPLATES, "template_02.txt")

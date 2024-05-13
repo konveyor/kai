@@ -26,8 +26,8 @@ def report(analysis_path: str, output_dir: str):
     Generate a Markdown report of a given analysis
     YAML to be read by a human
     """
-    report = Report(analysis_path)
-    r = report.get_report()
+    report = Report.load_report_from_file(analysis_path)
+    r = dict(report)
     print(f"We have results from {len(r.keys())} RuleSet(s) in {analysis_path}\n")
     report.write_markdown(output_dir)
 

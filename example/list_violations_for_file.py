@@ -21,7 +21,7 @@ if __name__ == "__main__":
     target_file = sys.argv[1]
 
     coolstore_analysis_dir = "./analysis/coolstore/output.yaml"
-    r = Report(coolstore_analysis_dir)
+    r = Report.load_report_from_file(coolstore_analysis_dir)
     impacted_files = r.get_impacted_files()
     violations = impacted_files.get(target_file, None)
     if not violations:

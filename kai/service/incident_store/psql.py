@@ -127,7 +127,7 @@ class PSQLIncidentStore(IncidentStore):
 
             old_commit = application["current_commit"]
 
-            report_dict = report.get_report()
+            report_dict = dict(report)
 
             for ruleset_name, ruleset_dict in report_dict.items():
                 query_ruleset = self.select_ruleset(
@@ -841,4 +841,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    with __import__("ipdb").launch_ipdb_on_exception():
+        main()

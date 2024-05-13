@@ -89,7 +89,7 @@ class InMemoryIncidentStore(IncidentStore):
         )
 
         old_commit = application.current_commit
-        report_dict = report.get_report()
+        report_dict = dict(report)
 
         number_new_incidents = 0
         number_unsolved_incidents = 0
