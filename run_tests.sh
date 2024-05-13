@@ -1,4 +1,4 @@
-#/usr/bin/sh
+#!/usr/bin/sh
 #
 
 export PYTHONPATH="$(pwd)/kai:${PYTHONPATH}" # trunk-ignore(shellcheck)
