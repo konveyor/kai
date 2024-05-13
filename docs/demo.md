@@ -83,7 +83,13 @@ In this step, we will clone the Coolstore application, which we will be used dem
 
 ### 2.2 Run Analysis
 
-We will kick off by analyzing the Coolstore application using the following targets: cloud-readiness, Jakarta EE, and Quarkus.
+We will kick off by analyzing the Coolstore application using the following targets:
+
+- containterization
+- jakarta-ee
+- jakarta-ee8+
+- jakarata-ee9+
+- quarkus
 
 1. Open VSCode and load coolstore project if it is not already loaded.
 2. Follow steps from 1 through 4 from https://github.com/konveyor-ecosystem/kai/tree/main/ide#usage-summary
