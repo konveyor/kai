@@ -1,47 +1,86 @@
-[postgresql]
+log_level = "info"
+demo_mode = false
+
+[incident_store]
+provider = "postgresql"
+
+[incident_store.args]
 host = "127.0.0.1"
 database = "kai"
 user = "kai"
 password = "dog8code"
 
+# **IBM served granite**
+# ```
+# [models]
+#   provider = "ChatIBMGenAI"
+
+#   [models.args]
+#   model_id = "ibm/granite-13b-chat-v2"
+# ```
+
+# **IBM served mistral**
+# ```
+# [models]
+#   provider = "ChatIBMGenAI"
+
+#   [models.args]
+#   model_id = "mistralai/mixtral-8x7b-instruct-v01"
+# ```
+
+# **IBM served codellama**
+# ```
+# [models]
+#   provider = "ChatIBMGenAI"
+
+#   [models.args]
+#   model_id = "meta-llama/llama-2-13b-chat"
+# ```
+
+# **IBM served llama3**
+# ```
+#   # Note:  llama3 complains if we use more than 2048 tokens
+#   # See:  https://github.com/konveyor-ecosystem/kai/issues/172
+# [models]
+#   provider = "ChatIBMGenAI"
+
+#   [models.args]
+#   model_id = "meta-llama/llama-3-70b-instruct"
+#   parameters.max_new_tokens = 2048
+# ```
+
+# **Ollama**
+# ```
+# [models]
+#   provider = "ChatOllama"
+
+#   [models.args]
+#   model = "mistral"
+# ```
+
+# **OpenAI GPT 4**
+# ```
+# [models]
+#   provider = "ChatOpenAI"
+
+#   [models.args]
+#   model = "gpt-4"
+# ```
+
+# **OpenAI GPT 3.5**
+# ```
+# [models]
+#   provider = "ChatOpenAI"
+
+#   [models.args]
+#   model = "gpt-3.5-turbo"
+# ```
+
 [models]
-# How to run with: (look at model_provider.py for more info)
-#   IBM served granite
-#     provider = "IBMGranite"
-#     args = { model_id = "ibm/granite-13b-chat-v2" }
-#   IBM served mistral
-#     provider = "IBMOpenSource"
-#     args = { model_id = "ibm-mistralai/mixtral-8x7b-instruct-v01-q" }
-#   IBM served codellama
-#     provider = "IBMOpenSource"
-#     args = { model_id = "meta-llama/llama-2-13b-chat" }
-#   IBM served llama3
-# .   Note:  llama3 complains if we use more than 2048 tokens
-# .   See:  https://github.com/konveyor-ecosystem/kai/issues/172
-#     provider = "IBMOpenSource"
-#     args = { model_id = "meta-llama/llama-3-70b-instruct", max_new_tokens = 2048 }
-#   Ollama
-#     provider = "Ollama"
-#     args = { model_id = "mistral" }
-#   OpenAI GPT 3.5
-#     provider = "OpenAI"
-#     args = { model_id = "gpt-4" }
-#   OpenAI GPT 4
-#     provider = "OpenAI"
-#     args = { model_id = "gpt-3.5-turbo" }
+provider = "ChatIBMGenAI"
 
-# Defaulting to granite-13b-chat-v2
-provider = "IBMGranite"
-args = { model_id = "ibm/granite-13b-chat-v2" }
+[models.args]
+model_id = "mistralai/mixtral-8x7b-instruct-v01"
 
-# Most models also support these additional keys in `args`:
-#     temperature (default is 0.1)
-#     top_k (default is 50)
-#     top_p (default is 1)
-#     max_new_tokens (default depends on model)
-#     min_new_tokens (default depends on model)
-
-# Here for later, we want to be able to configure which embeddings are used when
-# we start to integrate them into the project
 [embeddings]
 todo = true

@@ -6,6 +6,7 @@ from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_community.chat_models import ChatOpenAI
 
+from kai.constants import PATH_TEMPLATES
 from kai.kai_logging import KAI_LOG
 
 from .report import Report
@@ -49,8 +50,7 @@ class LLMResult:
         self.report = Report(path_to_report).get_report()
 
     def get_prompt_template(self):
-        rel_dir = os.path.dirname(__file__)
-        template_file = os.path.join(rel_dir, "data/templates/template_02.txt")
+        template_file = os.path.join(PATH_TEMPLATES, "template_02.txt")
         print(f"Loading template from {template_file}")
         with open(template_file, "r") as f:
             template = f.read()
