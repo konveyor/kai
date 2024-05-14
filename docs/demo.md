@@ -47,27 +47,17 @@ args = { model_id = "gpt-3.5-turbo" }
 
 - Run the server using `make run-server`
 
+#### Run Kai with demo mode
+
+If you don't have access to
+
 ## Step 2: Demo
 
-As mentioned earlier, in this demo we will show various capabilities of Kai. We will begin with the example - Change import namespaces. Kai uses hints from the anlaysis results and replaces the javax persistence with Jakarta persistence libraries in the following files:
-
-- `src/main/java/com/redhat/coolstore/model/ShoppingCart.java`
-- `src/main/java/com/redhat/coolstore/model/InventoryEntity.java`
-
-Moving on to slightly more involved tasks, Kai will be migrating the file to use the correct Quarkus cdi bean.
-
-- `src/main/java/com/redhat/coolstore/service/CatalogService.java`
-
-Lastly, for the example - EJB Remote and Message Driven Bean(MBD) changes , we will use the following two files, and we will dive deeper into it later in the demo
-
-- `src/main/java/com/redhat/coolstore/service/ShippingService.java`
-- `src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java`
-
-Through these examples, we aim to provide insights into Kai's ability to address varying degrees of migration challenges within application codebases.
+In this demo, we will explore Kai's capabilities through practical examples within the Coolstore application.
 
 ### 2.1 Clone the coolstore app
 
-In this step, we will clone the Coolstore application, which we will be used demo the migration process to Quarkus.
+Let's clone the Coolstore application, which we will be used demo the migration process to Quarkus.
 
 1. To clone the Coolstore demo from its repository -
 
@@ -83,7 +73,7 @@ In this step, we will clone the Coolstore application, which we will be used dem
 
 ### 2.2 Run Analysis
 
-We will kick off by analyzing the Coolstore application using the following targets:
+We will analyze the Coolstore application using the following migration targets to identify potential areas for improvement:
 
 - containterization
 - jakarta-ee
@@ -101,7 +91,7 @@ We will kick off by analyzing the Coolstore application using the following targ
 - `src/main/java/com/redhat/coolstore/service/ShippingService.java`
 - `src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java`
 
-Once the analysis is complete, the incidents will provide insights into potential issues or areas that require attention during the migration process.
+The incidents in the above files will provide insights into potential issues or areas that require attention during the migration process.
 
 #### 2.2.1 Change import namespaces
 
@@ -112,11 +102,11 @@ Once the analysis is complete, the incidents will provide insights into potentia
 
 ![Change import namespaces](model.png)
 
-Th above steps show how Kai simplifies the translation of import namespaces, ensuring seamless migration of javax libraries to jakarta persistence libraries.
+Th above steps show how Kai simplifies the translation of import namespaces, ensuring seamless automated migration of javax libraries to jakarta persistence libraries.
 
 #### 2.2.2 Modify Scope from CDI bean requirements
 
-In this step, we will use Kai to modify the scope according to Quarkus CDI bean requirements.
+In this step, we will use Kai to modify the scope in `CatalogService.java` to adhere to Quarkus CDI bean requirements. Kai will handle this automatically, ensuring seamless migration.
 
 - Right-click on the file `src/main/java/com/redhat/coolstore/service/CatalogService.java`.
 - Select Kai Fix-All.
@@ -124,9 +114,11 @@ In this step, we will use Kai to modify the scope according to Quarkus CDI bean 
 
 ![Modify Scope from CDI bean requirements](kai_type2.png)
 
-#### 2.2.3 EJB Remote and Message Driven Bean(MBD) changes
+#### 2.2.3 EJB Remote and Message Driven Bean(MDB) changes
 
-In this step, we will use Kai for an example involving EJB remote and MDB (Message-Driven Bean) functionalities.
+We will address EJB Remote and MDB functionalities in `ShippingService.java` and `ShoppingCartOrderProcessor.java` respectively. Kai will guide us through replacing EJBs with REST functionality and updating related imports and annotations.
+
+##### EJB Remote
 
 - Right-click on the file `src/main/java/com/redhat/coolstore/service/ShippingService.java`.
 - Select `Kai Fix-All`.
@@ -134,7 +126,11 @@ In this step, we will use Kai for an example involving EJB remote and MDB (Messa
 
 After applying the changes, you may notice unwanted imports such as `import jakarta.ejb.Singleton;`. Remove this import and save the file.
 
-Due to the absence of support for Remote EJBs in Quarkus, you will notoce that these functionalities are removed and replaced with REST functionality.
+![EJB Remote - Before/After](ejb_remote.png)
+
+Due to the absence of support for Remote EJBs in Quarkus, you will notice that these functionalities are removed and replaced with REST functionality.
+
+##### Message Driven Bean(MDB)
 
 - Right-click on the file `src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java`.
 
@@ -143,6 +139,8 @@ Due to the absence of support for Remote EJBs in Quarkus, you will notoce that t
 - You will notice unwanted imports like `import jakarta.ejb.Singleton;`. Remove this import from the file and save it.
 
 - Check for any missing imports. If you find `import jakarta.enterprise.context.ApplicationScoped;` missing, add it to the file.
+
+![MDB - before/after](mdb.png)
 
 - Note the changes made to `ordersEmitter` channel:
 
@@ -170,6 +168,8 @@ Due to the absence of support for Remote EJBs in Quarkus, you will notoce that t
   import org.eclipse.microprofile.reactive.messaging.Emitter;
   ```
 
+![MDB - Manual updates](mdbchanges.png)
+
 ### 2.3 Deploy app to OpenShift
 
 Now, its time to deploy the coolstore quarkus app on OpenShift cluster.
@@ -192,10 +192,10 @@ oc new-app -e POSTGRESQL_USER=quarkus \
 mvn clean compile package -Dquarkus.kubernetes.deploy=true
 ```
 
-- Once deployed, access the website via `coolstore-<namespace>.apps.ai.migration.redhat.com`
+- Once deployed, access the website via `http://coolstore-<namespace>.apps.ai.migration.redhat.com`
 
 ![deploy app](deploy.gif)
 
 ### Conclusion
 
-In this demo, we showcased the capability of Kai in facilitating various types of code migrations within the Coolstore application. If you are intereted to learn more about our ongoing efforts and future plans, please reach out to us in the [slack channel](https://kubernetes.slack.com/archives/CR85S82A2)
+In this demo, we showcased the capability of Kai in facilitating various types of code migrations within the Coolstore application. By leveraging Kai's capabilities, organizations can expedite the modernization process. If you are intereted to learn more about our ongoing efforts and future plans, please reach out to us in the [slack channel](https://kubernetes.slack.com/archives/CR85S82A2)
