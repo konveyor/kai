@@ -47,10 +47,6 @@ args = { model_id = "gpt-3.5-turbo" }
 
 - Run the server using `make run-server`
 
-#### Run Kai with demo mode
-
-If you don't have access to
-
 ## Step 2: Demo
 
 In this demo, we will explore Kai's capabilities through practical examples within the Coolstore application.
