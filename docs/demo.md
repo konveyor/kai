@@ -25,11 +25,28 @@ In this step, we will configure the Kai IDE plugin within VSCode to showcase the
 
 - Follow along the steps listed in [here](https://github.com/konveyor-ecosystem/kai/tree/main/ide) to intergrate Kai IDE plugin with VSCode.
 
-- Before starting the Kai server, Select model `meta-llama/llama-3-70b-instruct` by adding this to `kai/config.toml` file
+- Before starting the Kai server, Select model `meta-llama/llama-3-70b-instruct` by uncommenting the following block in `kai/config.toml` file
+
+````yaml
+# **IBM served codellama**
+# ```
+ [models]
+   provider = "ChatIBMGenAI"
+
+   [models.args]
+      model_id = "meta-llama/llama-3-70b-instruct"
+      parameters.max_new_tokens = 2048
+# ```
+````
+
+Make sure to comment the default provider, as there can be only one model provider enabled at any given time.
 
 ```yaml
-provider = "IBMOpenSource"
-args = { model_id = "meta-llama/llama-3-70b-instruct", max_new_tokens = 2048 }
+[models]
+provider = "ChatIBMGenAI"
+
+[models.args]
+model_id = "mistralai/mixtral-8x7b-instruct-v01"
 ```
 
 If you are interested in using `gpt-3.5-turbo` refer to the section below,
@@ -38,12 +55,18 @@ If you are interested in using `gpt-3.5-turbo` refer to the section below,
 
 - Export your OpenAI api key `export OPENAI_API_KEY="<your-openai-api-key>"`
 
-- Before starting the Kai server, Select model `gpt-3.5-turbo` by adding this to `kai/config.toml` file
+- Before starting the Kai server, Select model `gpt-3.5-turbo` by uncommenting the following block in `kai/config.toml` file
 
-```yaml
-provider = "OpenAI"
-args = { model_id = "gpt-3.5-turbo" }
-```
+````yaml
+# **OpenAI GPT 3.5**
+# ```
+ [models]
+   provider = "ChatOpenAI"
+
+   [models.args]
+   model = "gpt-3.5-turbo"
+# ```
+````
 
 - Run the server using `make run-server`
 
@@ -51,7 +74,7 @@ args = { model_id = "gpt-3.5-turbo" }
 
 If you don't have access to GEN_AI key, you can run the server in demo mode which will use cached responses
 
-To run the server in demo mode,
+To run the Kai server in demo mode,
 `GENAI_KEY="dummyvalue" DEMO_MODE=true make run-server`
 
 ## Step 2: Demo
