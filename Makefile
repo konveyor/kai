@@ -12,7 +12,7 @@ run-postgres:
 
 # Can adjust logging level by defining env var: KAI_LOG_LEVEL
 run-server:
-	PYTHONPATH=$(KAI_PYTHON_PATH) gunicorn --timeout 3600 -w $(NUM_WORKERS) --bind localhost:8080 --worker-class aiohttp.GunicornWebWorker 'kai.server:app("$(LOGLEVEL)", $(DEMO_MODE))'
+	PYTHONPATH=$(KAI_PYTHON_PATH) gunicorn --timeout 3600 -w $(NUM_WORKERS) --bind localhost:8080 --worker-class aiohttp.GunicornWebWorker 'kai.server:app("$(LOGLEVEL)", "$(DEMO_MODE)")'
 
 load-data:
 	PYTHONPATH=$(KAI_PYTHON_PATH) python ./kai/service/incident_store/psql.py  --config_filepath ./kai/config.toml --drop_tables $(DROP_TABLES)

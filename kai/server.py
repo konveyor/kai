@@ -240,7 +240,10 @@ async def get_incident_solutions_for_file(request: Request):
     return web.json_response(result)
 
 
-def app(log_level: Optional[str] = None, demo_mode: Optional[bool] = None):
+def app(log_level: Optional[str] = None, demo_mode: Optional[bool | str] = None):
+    if isinstance(demo_mode, str):
+        demo_mode = demo_mode.lower() == "true"
+
     webapp = web.Application()
 
     config: KaiConfig
