@@ -62,7 +62,7 @@ Note: For purposes of this initial prototype we are using an example of Java EE 
 
 #### What are the general steps of the demo?
 
-1. We launch VSCode with our Kai VS Code extension which is a [modified version of the MTA VSCode Plugin](https://github.com/hhpatel14/rhamt-vscode-extension/tree/kai-2-29)
+1. We launch VSCode with our Kai VS Code extension which is a [modified version of the MTA VSCode Plugin](https://github.com/konveyor-ecosystem/kai-vscode-plugin/tree/main)
 2. We open a git checkout of a sample application: [coolstore](https://github.com/konveyor-ecosystem/coolstore)
 3. We run [Kantra](https://github.com/konveyor/kantra) inside of VSCode to do an analysis of the application to learn what issues are present that need to be addressed before migrating to Quarkus
 4. We view the analysis information in VSCode
