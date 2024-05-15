@@ -12,6 +12,17 @@ from kai.kai_logging import KAI_LOG
 from kai.models.kai_config import KaiConfigIncidentStore, KaiConfigIncidentStoreProvider
 from kai.report import Report
 
+# These prefixes are sometimes in front of the paths, strip them.
+# Also strip leading slashes since os.path.join can't join two absolute paths
+KNOWN_PREFIXES = ("/tmp/source-code/", "/addon/source/", "/")
+
+
+def remove_known_prefixes(path: str) -> str:
+    for prefix in KNOWN_PREFIXES:
+        if path.startswith(prefix):
+            return path.removeprefix(prefix)
+    return path
+
 
 def __get_repo_path(app_name):
     """

@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import dateutil.parser
 import requests
 import urllib3
-import yaml
 from pydantic import BaseModel, Field, HttpUrl
 
 from kai.constants import PATH_KAI
@@ -48,10 +47,10 @@ class Incident(KaiBaseModel):
     issue: int
     file: str
     uri: str = Field(..., alias="file")
-    line: int
+    lineNumber: int = Field(..., alias="line")
     message: str
     codeSnip: str
-    facts: Dict[str, Any]
+    variables: Dict[str, Any] = Field(..., alias="facts")
 
 
 class Link(KaiBaseModel):
@@ -125,6 +124,13 @@ def process_analyses(base_url: str) -> List[Tuple[Application, Report]]:
             key = issue.ruleset
             if key not in report_data:
                 report_data[key] = {"description": issue.description, "violations": {}}
+            for incident in issue.incidents:
+                incident.file = incident.file.removeprefix(
+                    f"/addon/source/{application.application_name}/"
+                )
+                incident.uri = incident.uri.removeprefix(
+                    f"/addon/source/{application.application_name}/"
+                )
             report_data[key]["violations"][issue.rule] = {
                 "category": issue.category,
                 "description": issue.description,
@@ -221,6 +227,9 @@ Example: --loglevel debug (default: warning)""",
     KAI_LOG.info(f"Config loaded: {pprint.pformat(config)}")
 
     incident_store = IncidentStore.from_config(config.incident_store)
+
+    if args.drop_tables:
+        incident_store.delete_store()
 
     reports = process_analyses(BASE_URL)
     for app, report in reports:
