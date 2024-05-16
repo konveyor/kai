@@ -131,6 +131,7 @@ def process_analyses(base_url: str) -> List[Tuple[Application, Report]]:
                 incident.uri = incident.uri.removeprefix(
                     f"/addon/source/{application.application_name}/"
                 )
+                KAI_LOG.debug(f"{incident.variables=}")
             report_data[key]["violations"][issue.rule] = {
                 "category": issue.category,
                 "description": issue.description,

@@ -20,6 +20,7 @@ from kai.service.incident_store.incident_store import (
     Application,
     IncidentStore,
     Solution,
+    filter_incident_vars,
     load_reports_from_directory,
     remove_known_prefixes,
 )
@@ -172,6 +173,9 @@ class PSQLIncidentStore(IncidentStore):
                         violation = query_violation[0]
 
                     for incident in violation_dict.get("incidents", []):
+                        incident_vars = filter_incident_vars(
+                            incident.get("variables", {})
+                        )
                         cur.execute(
                             """INSERT INTO incidents_temp(violation_id, application_id, incident_uri, incident_snip, incident_line, incident_variables)
               VALUES (%s, %s, %s, %s, %s, %s);""",
@@ -181,7 +185,7 @@ class PSQLIncidentStore(IncidentStore):
                                 incident.get("uri", ""),
                                 incident.get("codeSnip", ""),
                                 incident.get("lineNumber", 0),
-                                json.dumps(incident.get("variables", {})),
+                                json.dumps(incident_vars),
                             ),
                         )
 
@@ -341,7 +345,7 @@ WHERE fit.incident_id IS NULL;""",
             incident_snip = ""
 
         with self.conn.cursor() as cur:
-            incident_vars_str = json.dumps(incident_variables)
+            incident_vars_str = json.dumps(filter_incident_vars(incident_variables))
 
             cur.execute(
                 """
@@ -574,7 +578,7 @@ WHERE fit.incident_id IS NULL;""",
         # if not isinstance(incident_variables, list):
         #   raise Exception(f"incident_variables must be of type list. Got type '{type(incident_variables)}'")
 
-        vars_str = json.dumps(incident_variables)
+        vars_str = json.dumps(filter_incident_vars(incident_variables))
         truncated_vars = (vars_str[:75] + "...") if len(vars_str) > 75 else vars_str
 
         KAI_LOG.info(
@@ -702,7 +706,7 @@ WHERE fit.incident_id IS NULL;""",
         emb = self.emb_provider.get_embedding(incident_snip)
         emb_str = str(emb)
 
-        incident_vars_str = json.dumps(incident_vars)
+        incident_vars_str = json.dumps(filter_incident_vars(incident_vars))
 
         def highest_embedding_similarity_from_all():
             cur.execute(
