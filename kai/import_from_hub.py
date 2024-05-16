@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import argparse
 import os
 import pprint
@@ -93,15 +95,17 @@ class Analysis(KaiBaseModel):
     commit: Optional[str] = None
 
 
-def get_data_from_api(url: str):
-    response = requests.get(url, verify=False)
+def get_data_from_api(url: str, request_timeout: int, request_verify: bool):
+    response = requests.get(url, verify=False, timeout=60)
     response.raise_for_status()
     return response.json()
 
 
-def process_analyses(base_url: str) -> List[Tuple[Application, Report]]:
+def process_analyses(
+    base_url: str, request_timeout: int, request_verify: bool
+) -> List[Tuple[Application, Report]]:
     analyses_url = f"{base_url}/hub/analyses"
-    analyses = get_data_from_api(analyses_url)
+    analyses = get_data_from_api(analyses_url, request_timeout, request_verify)
 
     reports: List[Tuple[Application, Report]] = []
     validated_analyses = [Analysis(**item) for item in analyses]
@@ -110,13 +114,20 @@ def process_analyses(base_url: str) -> List[Tuple[Application, Report]]:
             f"Processing analysis {analysis.id} for application {analysis.application.id}"
         )
         application = parse_application_data(
-            get_data_from_api(f"{base_url}/hub/applications/{analysis.application.id}")
+            get_data_from_api(
+                f"{base_url}/hub/applications/{analysis.application.id}",
+                request_timeout,
+                request_verify,
+            )
         )
         application.current_commit = analysis.commit
         report_data = {}
         app_id = analysis.application.id
         issues_url = f"{base_url}/hub/analyses/{analysis.id}/issues"
-        issues = [Issue(**item) for item in get_data_from_api(issues_url)]
+        issues = [
+            Issue(**item)
+            for item in get_data_from_api(issues_url, request_timeout, request_verify)
+        ]
         for issue in issues:
             KAI_LOG.info(
                 f"Processing issue {issue.id} with effort {issue.effort} on ruleset {issue.ruleset} (commit: {analysis.commit})"
@@ -191,6 +202,7 @@ def clone_repo_at_commit(repo_url, branch, commit, destination_folder):
 
 def main():
     arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("konveyor_url", help="The base URL for konveyor hub")
     arg_parser.add_argument(
         "-log",
         "--loglevel",
@@ -205,6 +217,31 @@ Options:
 - critical: A serious error, indicating that the program itself may be unable to continue running.
 Example: --loglevel debug (default: warning)""",
     )
+
+    # TODO(fabianvf) implement this
+    arg_parser.add_argument(
+        "-p",
+        "--poll",
+        default=False,
+        action="store_true",
+        help="Poll the konveyor API for changes",
+    )
+
+    arg_parser.add_argument(
+        "-k",
+        "--verify",
+        default=True,
+        action="store_true",
+        help="Verify SSL certs when making requests",
+    )
+
+    arg_parser.add_argument(
+        "-t",
+        "--timeout",
+        default=60,
+        help="Set the request timeout for Konveyor API requests",
+    )
+
     arg_parser.add_argument(
         "-d",
         "--drop-tables",
@@ -215,8 +252,6 @@ Example: --loglevel debug (default: warning)""",
 
     args, _ = arg_parser.parse_known_args()
     KAI_LOG.setLevel(args.loglevel.upper())
-    # TODO(fabianvf) make configurable, this one is mine
-    BASE_URL = "https://tackle-konveyor.apps.home.playerof.games"
     base_path = os.path.dirname(__file__)
 
     config: KaiConfig
@@ -229,10 +264,11 @@ Example: --loglevel debug (default: warning)""",
 
     incident_store = IncidentStore.from_config(config.incident_store)
 
+    # TODO(fabianvf): This seems too easy and destructive
     if args.drop_tables:
         incident_store.delete_store()
 
-    reports = process_analyses(BASE_URL)
+    reports = process_analyses(args.konveyor_url, args.timeout, args.verify)
     for app, report in reports:
         clone_repo_at_commit(
             app.repo_uri_origin,
