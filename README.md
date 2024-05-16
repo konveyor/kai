@@ -312,6 +312,16 @@ Running Kai's backend involves running 2 processes:
 The kai server will always cache responses in the `kai/data/vcr/<application_name>/<model>` directory. In non-demo mode, these responses will be overwritten whenever a new request is made.
 When the server is run with `DEMO_MODE=true`, these responses will be played back. The request will be matched on everything except for authorization headers, cookies, content-length and request body.
 
+### `DEMO_MODE` Cached Responses
+
+- We do not actively maintain cached responses for all models/requests.
+- You may look at: [kai/data/vcr/coolstore](kai/data/vcr/coolstore/) to see a list of what models have cached responses.
+  - In general when we cache responses we are running: [example/run_demo.py](example/run_demo.py) and saving those responses.
+    - This corresponds to a 'KAI Fix All' being run per file in Analysis.
+- When running from IDE and attempting to use cached response, we likely only have cached responses for 'Fix All', and we do not have cached responses for individual issues in a file.
+
+### `DEMO_MODE` Updating Cached Responses
+
 There are two ways to record new responses:
 
 1. Run the requests while the server is not in `DEMO_MODE`
