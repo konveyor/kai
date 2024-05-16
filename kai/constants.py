@@ -16,3 +16,5 @@ PATH_BENCHMARKS = os.path.join(PATH_DATA, "benchmarks")
 PATH_MISC = os.path.join(PATH_DATA, "misc")
 PATH_SQL = os.path.join(PATH_DATA, "sql")
 PATH_TEMPLATES = os.path.join(PATH_DATA, "templates")
+
+PATH_LOCAL_REPO = os.path.join(PATH_GIT_ROOT, "samples/sample_repos")
