@@ -4,6 +4,7 @@ import argparse
 import os
 import pprint
 import subprocess
+import tempfile
 from typing import Any, Dict, List, Optional, Tuple
 
 import dateutil.parser
@@ -96,13 +97,16 @@ class Analysis(KaiBaseModel):
 
 
 def get_data_from_api(url: str, request_timeout: int, request_verify: bool):
-    response = requests.get(url, verify=False, timeout=60)
+    response = requests.get(url, timeout=request_timeout, verify=request_verify)
     response.raise_for_status()
     return response.json()
 
 
 def process_analyses(
-    base_url: str, request_timeout: int, request_verify: bool
+    base_url: str,
+    application_dir: str,
+    request_timeout: int = 60,
+    request_verify: bool = True,
 ) -> List[Tuple[Application, Report]]:
     analyses_url = f"{base_url}/hub/analyses"
     analyses = get_data_from_api(analyses_url, request_timeout, request_verify)
@@ -118,11 +122,11 @@ def process_analyses(
                 f"{base_url}/hub/applications/{analysis.application.id}",
                 request_timeout,
                 request_verify,
-            )
+            ),
+            application_dir,
         )
         application.current_commit = analysis.commit
         report_data = {}
-        app_id = analysis.application.id
         issues_url = f"{base_url}/hub/analyses/{analysis.id}/issues"
         issues = [
             Issue(**item)
@@ -154,7 +158,7 @@ def process_analyses(
     return reports
 
 
-def parse_application_data(api_response):
+def parse_application_data(api_response, application_dir):
     application_name = api_response.get("name", "")
     repo_uri_origin = (
         api_response["repository"]["url"]
@@ -175,8 +179,7 @@ def parse_application_data(api_response):
     application = Application(
         application_name=application_name,
         repo_uri_origin=repo_uri_origin,
-        # I think we'll need to set this in config? And clone the applications there manually
-        repo_uri_local=f"/tmp/{application_name}",
+        repo_uri_local=os.path.join(application_dir, application_name),
         current_branch=current_branch,
         current_commit=current_commit,
         generated_at=generated_at,
@@ -252,7 +255,6 @@ Example: --loglevel debug (default: warning)""",
 
     args, _ = arg_parser.parse_known_args()
     KAI_LOG.setLevel(args.loglevel.upper())
-    base_path = os.path.dirname(__file__)
 
     config: KaiConfig
     if os.path.exists(os.path.join(PATH_KAI, "config.toml")):
@@ -268,20 +270,22 @@ Example: --loglevel debug (default: warning)""",
     if args.drop_tables:
         incident_store.delete_store()
 
-    reports = process_analyses(args.konveyor_url, args.timeout, args.verify)
-    for app, report in reports:
-        clone_repo_at_commit(
-            app.repo_uri_origin,
-            app.current_branch,
-            app.current_commit,
-            app.repo_uri_local,
-        )
-        incident_store.load_report(app, report)
+    if not args.verify:
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        reports = process_analyses(args.konveyor_url, tmpdir, args.timeout, args.verify)
+
+        for app, report in reports:
+            clone_repo_at_commit(
+                app.repo_uri_origin,
+                app.current_branch,
+                app.current_commit,
+                app.repo_uri_local,
+            )
+            incident_store.load_report(app, report)
 
 
 if __name__ == "__main__":
-    import urllib3
-
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     with __import__("ipdb").launch_ipdb_on_exception():
         main()
