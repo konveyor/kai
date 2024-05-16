@@ -7,7 +7,7 @@ from typing import Optional
 import yaml
 from git import Repo
 
-from kai.constants import PATH_GIT_ROOT, PATH_LOCAL_REPO
+from kai.constants import PATH_LOCAL_REPO
 from kai.kai_logging import KAI_LOG
 from kai.models.kai_config import KaiConfigIncidentStore, KaiConfigIncidentStoreProvider
 from kai.report import Report
