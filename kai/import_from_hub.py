@@ -94,172 +94,6 @@ class Analysis(KaiBaseModel):
     commit: Optional[str] = None
 
 
-def get_data_from_api(url: str, params=None, timeout: int = 60, verify: bool = True):
-    if not params:
-        params = {}
-    response = requests.get(url, params=params, timeout=timeout, verify=verify)
-    response.raise_for_status()
-    return response.json()
-
-
-def process_analyses(
-    analyses: List[Analysis],
-    base_url: str,
-    application_dir: str,
-    request_timeout: int = 60,
-    request_verify: bool = True,
-) -> List[Tuple[Application, Report]]:
-
-    reports: List[Tuple[Application, Report]] = []
-    for analysis in analyses:
-        KAI_LOG.info(
-            f"Processing analysis {analysis.id} for application {analysis.application.id}"
-        )
-        application = parse_application_data(
-            get_data_from_api(
-                f"{base_url}/hub/applications/{analysis.application.id}",
-                timeout=request_timeout,
-                verify=request_verify,
-            ),
-            application_dir,
-        )
-        application.current_commit = analysis.commit
-        report_data = {}
-        issues_url = f"{base_url}/hub/analyses/{analysis.id}/issues"
-        issues = [
-            Issue(**item)
-            for item in get_data_from_api(
-                issues_url, timeout=request_timeout, verify=request_verify
-            )
-        ]
-        for issue in issues:
-            KAI_LOG.info(
-                f"Processing issue {issue.id} with effort {issue.effort} on ruleset {issue.ruleset} (commit: {analysis.commit})"
-            )
-            key = issue.ruleset
-            if key not in report_data:
-                report_data[key] = {"description": issue.description, "violations": {}}
-            for incident in issue.incidents:
-                incident.file = incident.file.removeprefix(
-                    f"/addon/source/{application.application_name}/"
-                )
-                incident.uri = incident.uri.removeprefix(
-                    f"/addon/source/{application.application_name}/"
-                )
-                KAI_LOG.debug(f"{incident.variables=}")
-            report_data[key]["violations"][issue.rule] = {
-                "category": issue.category,
-                "description": issue.description,
-                "effort": issue.effort,
-                "incidents": issue.incidents,
-            }
-        if report_data:
-            reports.append((application, Report.load_report_from_object(report_data)))
-    return reports
-
-
-def parse_application_data(api_response, application_dir):
-    application_name = api_response.get("name", "")
-    repo_uri_origin = (
-        api_response["repository"]["url"]
-        if "repository" in api_response and "url" in api_response["repository"]
-        else ""
-    )
-    current_branch = (
-        api_response["repository"]["branch"]
-        if "repository" in api_response and "branch" in api_response["repository"]
-        else ""
-    )
-
-    current_commit = api_response["repository"].get("commit", "")
-    generated_at = dateutil.parser.parse(
-        api_response.get("createTime", "1970-01-01T00:00:00Z")
-    )
-
-    application = Application(
-        application_name=application_name,
-        repo_uri_origin=repo_uri_origin,
-        repo_uri_local=os.path.join(application_dir, application_name),
-        current_branch=current_branch,
-        current_commit=current_commit,
-        generated_at=generated_at,
-    )
-
-    return application
-
-
-def clone_repo_at_commit(repo_url, branch, commit, destination_folder):
-    try:
-        subprocess.run(
-            ["git", "clone", "-b", branch, repo_url, destination_folder], check=True
-        )
-    except subprocess.CalledProcessError as e:
-        KAI_LOG.error(f"An error occurred: {e}")
-
-    try:
-        subprocess.run(["git", "checkout", commit], cwd=destination_folder, check=True)
-        KAI_LOG.info(f"Repository cloned at commit {commit} into {destination_folder}")
-    except subprocess.CalledProcessError as e:
-        KAI_LOG.error(f"An error occurred: {e}")
-
-
-def import_from_api(
-    incident_store: IncidentStore,
-    konveyor_url: str,
-    last_analysis: int = 0,
-    timeout: int = 60,
-    verify: bool = True,
-) -> int:
-    analyses_url = f"{konveyor_url}/hub/analyses"
-    request_params = {"filter": f"id>{last_analysis}"}
-    analyses = get_data_from_api(
-        analyses_url, params=request_params, timeout=timeout, verify=verify
-    )
-
-    validated_analyses = [Analysis(**item) for item in analyses]
-
-    # TODO(fabianvf) add mechanism to skip import if a report has already been imported
-    with tempfile.TemporaryDirectory() as tmpdir:
-        reports = process_analyses(
-            validated_analyses, konveyor_url, tmpdir, timeout, verify
-        )
-
-        for app, report in reports:
-            clone_repo_at_commit(
-                app.repo_uri_origin,
-                app.current_branch,
-                app.current_commit,
-                app.repo_uri_local,
-            )
-            incident_store.load_report(app, report)
-    if validated_analyses:
-        return validated_analyses[0].id
-
-    return last_analysis
-
-
-def poll_api(
-    konveyor_url: str,
-    incident_store: IncidentStore,
-    interval: int = 60,
-    timeout: int = 60,
-    verify: bool = True,
-    initial_last_analysis: int = 0,
-):
-    last_analysis = initial_last_analysis
-
-    while True:
-        new_last_analysis = import_from_api(
-            incident_store, konveyor_url, last_analysis, timeout, verify
-        )
-        if new_last_analysis == last_analysis:
-            print(f"No new analyses. Sleeping for {interval} seconds.")
-            time.sleep(interval)
-        else:
-            print(f"New analyses found. Updating last_analysis to {new_last_analysis}.")
-            last_analysis = new_last_analysis
-
-
 def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("konveyor_url", help="The base URL for konveyor hub")
@@ -332,6 +166,172 @@ Example: --loglevel debug (default: warning)""",
         timeout=args.timeout,
         verify=not args.skip_verify,
     )
+
+
+def poll_api(
+    konveyor_url: str,
+    incident_store: IncidentStore,
+    interval: int = 60,
+    timeout: int = 60,
+    verify: bool = True,
+    initial_last_analysis: int = 0,
+):
+    last_analysis = initial_last_analysis
+
+    while True:
+        new_last_analysis = import_from_api(
+            incident_store, konveyor_url, last_analysis, timeout, verify
+        )
+        if new_last_analysis == last_analysis:
+            print(f"No new analyses. Sleeping for {interval} seconds.")
+            time.sleep(interval)
+        else:
+            print(f"New analyses found. Updating last_analysis to {new_last_analysis}.")
+            last_analysis = new_last_analysis
+
+
+def import_from_api(
+    incident_store: IncidentStore,
+    konveyor_url: str,
+    last_analysis: int = 0,
+    timeout: int = 60,
+    verify: bool = True,
+) -> int:
+    analyses_url = f"{konveyor_url}/hub/analyses"
+    request_params = {"filter": f"id>{last_analysis}"}
+    analyses = get_data_from_api(
+        analyses_url, params=request_params, timeout=timeout, verify=verify
+    )
+
+    validated_analyses = [Analysis(**item) for item in analyses]
+
+    # TODO(fabianvf) add mechanism to skip import if a report has already been imported
+    with tempfile.TemporaryDirectory() as tmpdir:
+        reports = process_analyses(
+            validated_analyses, konveyor_url, tmpdir, timeout, verify
+        )
+
+        for app, report in reports:
+            clone_repo_at_commit(
+                app.repo_uri_origin,
+                app.current_branch,
+                app.current_commit,
+                app.repo_uri_local,
+            )
+            incident_store.load_report(app, report)
+    if validated_analyses:
+        return validated_analyses[0].id
+
+    return last_analysis
+
+
+def get_data_from_api(url: str, params=None, timeout: int = 60, verify: bool = True):
+    if not params:
+        params = {}
+    response = requests.get(url, params=params, timeout=timeout, verify=verify)
+    response.raise_for_status()
+    return response.json()
+
+
+def process_analyses(
+    analyses: List[Analysis],
+    base_url: str,
+    application_dir: str,
+    request_timeout: int = 60,
+    request_verify: bool = True,
+) -> List[Tuple[Application, Report]]:
+
+    reports: List[Tuple[Application, Report]] = []
+    for analysis in analyses:
+        KAI_LOG.info(
+            f"Processing analysis {analysis.id} for application {analysis.application.id}"
+        )
+        application = parse_application_data(
+            get_data_from_api(
+                f"{base_url}/hub/applications/{analysis.application.id}",
+                timeout=request_timeout,
+                verify=request_verify,
+            ),
+            application_dir,
+        )
+        application.current_commit = analysis.commit
+        report_data = {}
+        issues_url = f"{base_url}/hub/analyses/{analysis.id}/issues"
+        issues = [
+            Issue(**item)
+            for item in get_data_from_api(
+                issues_url, timeout=request_timeout, verify=request_verify
+            )
+        ]
+        for issue in issues:
+            KAI_LOG.info(
+                f"Processing issue {issue.id} with effort {issue.effort} on ruleset {issue.ruleset} (commit: {analysis.commit})"
+            )
+            key = issue.ruleset
+            if key not in report_data:
+                report_data[key] = {"description": issue.description, "violations": {}}
+            for incident in issue.incidents:
+                incident.file = incident.file.removeprefix(
+                    f"/addon/source/{application.application_name}/"
+                )
+                incident.uri = incident.uri.removeprefix(
+                    f"/addon/source/{application.application_name}/"
+                )
+                KAI_LOG.debug(f"{incident.variables=}")
+            report_data[key]["violations"][issue.rule] = {
+                "category": issue.category,
+                "description": issue.description,
+                "effort": issue.effort,
+                "incidents": issue.incidents,
+            }
+        if report_data:
+            reports.append((application, Report.load_report_from_object(report_data)))
+    return reports
+
+
+def clone_repo_at_commit(repo_url, branch, commit, destination_folder):
+    try:
+        subprocess.run(
+            ["git", "clone", "-b", branch, repo_url, destination_folder], check=True
+        )
+    except subprocess.CalledProcessError as e:
+        KAI_LOG.error(f"An error occurred: {e}")
+
+    try:
+        subprocess.run(["git", "checkout", commit], cwd=destination_folder, check=True)
+        KAI_LOG.info(f"Repository cloned at commit {commit} into {destination_folder}")
+    except subprocess.CalledProcessError as e:
+        KAI_LOG.error(f"An error occurred: {e}")
+
+
+def parse_application_data(api_response, application_dir):
+    application_name = api_response.get("name", "")
+    repo_uri_origin = (
+        api_response["repository"]["url"]
+        if "repository" in api_response and "url" in api_response["repository"]
+        else ""
+    )
+    current_branch = (
+        api_response["repository"]["branch"]
+        if "repository" in api_response and "branch" in api_response["repository"]
+        else ""
+    )
+
+    current_commit = api_response["repository"].get("commit", "")
+    generated_at = dateutil.parser.parse(
+        api_response.get("createTime", "1970-01-01T00:00:00Z")
+    )
+
+    application = Application(
+        application_name=application_name,
+        repo_uri_origin=repo_uri_origin,
+        repo_uri_local=os.path.join(application_dir, application_name),
+        current_branch=current_branch,
+        current_commit=current_commit,
+        generated_at=generated_at,
+    )
+
+    return application
 
 
 if __name__ == "__main__":
