@@ -5,6 +5,7 @@ import os
 import pprint
 import subprocess
 import tempfile
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import dateutil.parser
@@ -12,13 +13,10 @@ import requests
 import urllib3
 from pydantic import BaseModel, Field, HttpUrl
 
-from kai.constants import PATH_KAI
 from kai.kai_logging import KAI_LOG
 from kai.models.kai_config import KaiConfig
 from kai.report import Report
 from kai.service.incident_store import Application, IncidentStore
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 # BaseModel that also acts as a dict
@@ -96,32 +94,32 @@ class Analysis(KaiBaseModel):
     commit: Optional[str] = None
 
 
-def get_data_from_api(url: str, request_timeout: int, request_verify: bool):
-    response = requests.get(url, timeout=request_timeout, verify=request_verify)
+def get_data_from_api(url: str, params=None, timeout: int = 60, verify: bool = True):
+    if not params:
+        params = {}
+    response = requests.get(url, params=params, timeout=timeout, verify=verify)
     response.raise_for_status()
     return response.json()
 
 
 def process_analyses(
+    analyses: List[Analysis],
     base_url: str,
     application_dir: str,
     request_timeout: int = 60,
     request_verify: bool = True,
 ) -> List[Tuple[Application, Report]]:
-    analyses_url = f"{base_url}/hub/analyses"
-    analyses = get_data_from_api(analyses_url, request_timeout, request_verify)
 
     reports: List[Tuple[Application, Report]] = []
-    validated_analyses = [Analysis(**item) for item in analyses]
-    for analysis in validated_analyses:
+    for analysis in analyses:
         KAI_LOG.info(
             f"Processing analysis {analysis.id} for application {analysis.application.id}"
         )
         application = parse_application_data(
             get_data_from_api(
                 f"{base_url}/hub/applications/{analysis.application.id}",
-                request_timeout,
-                request_verify,
+                timeout=request_timeout,
+                verify=request_verify,
             ),
             application_dir,
         )
@@ -130,7 +128,9 @@ def process_analyses(
         issues_url = f"{base_url}/hub/analyses/{analysis.id}/issues"
         issues = [
             Issue(**item)
-            for item in get_data_from_api(issues_url, request_timeout, request_verify)
+            for item in get_data_from_api(
+                issues_url, timeout=request_timeout, verify=request_verify
+            )
         ]
         for issue in issues:
             KAI_LOG.info(
@@ -203,6 +203,63 @@ def clone_repo_at_commit(repo_url, branch, commit, destination_folder):
         KAI_LOG.error(f"An error occurred: {e}")
 
 
+def import_from_api(
+    incident_store: IncidentStore,
+    konveyor_url: str,
+    last_analysis: int = 0,
+    timeout: int = 60,
+    verify: bool = True,
+) -> int:
+    analyses_url = f"{konveyor_url}/hub/analyses"
+    request_params = {"filter": f"id>{last_analysis}"}
+    analyses = get_data_from_api(
+        analyses_url, params=request_params, timeout=timeout, verify=verify
+    )
+
+    validated_analyses = [Analysis(**item) for item in analyses]
+
+    # TODO(fabianvf) add mechanism to skip import if a report has already been imported
+    with tempfile.TemporaryDirectory() as tmpdir:
+        reports = process_analyses(
+            validated_analyses, konveyor_url, tmpdir, timeout, verify
+        )
+
+        for app, report in reports:
+            clone_repo_at_commit(
+                app.repo_uri_origin,
+                app.current_branch,
+                app.current_commit,
+                app.repo_uri_local,
+            )
+            incident_store.load_report(app, report)
+    if validated_analyses:
+        return validated_analyses[0].id
+
+    return last_analysis
+
+
+def poll_api(
+    konveyor_url: str,
+    incident_store: IncidentStore,
+    interval: int = 60,
+    timeout: int = 60,
+    verify: bool = True,
+    initial_last_analysis: int = 0,
+):
+    last_analysis = initial_last_analysis
+
+    while True:
+        new_last_analysis = import_from_api(
+            incident_store, konveyor_url, last_analysis, timeout, verify
+        )
+        if new_last_analysis == last_analysis:
+            print(f"No new analyses. Sleeping for {interval} seconds.")
+            time.sleep(interval)
+        else:
+            print(f"New analyses found. Updating last_analysis to {new_last_analysis}.")
+            last_analysis = new_last_analysis
+
+
 def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("konveyor_url", help="The base URL for konveyor hub")
@@ -221,21 +278,26 @@ Options:
 Example: --loglevel debug (default: warning)""",
     )
 
-    # TODO(fabianvf) implement this
     arg_parser.add_argument(
-        "-p",
-        "--poll",
-        default=False,
-        action="store_true",
-        help="Poll the konveyor API for changes",
+        "--config_filepath",
+        type=str,
+        default="kai/config.toml",
+        help="Path to the config file.",
+    )
+
+    arg_parser.add_argument(
+        "-i",
+        "--interval",
+        default=60,
+        help="Interval to poll the konveyor API for changes",
     )
 
     arg_parser.add_argument(
         "-k",
-        "--verify",
-        default=True,
+        "--skip-verify",
+        default=False,
         action="store_true",
-        help="Verify SSL certs when making requests",
+        help="Skip verifying SSL certs when making requests",
     )
 
     arg_parser.add_argument(
@@ -245,47 +307,32 @@ Example: --loglevel debug (default: warning)""",
         help="Set the request timeout for Konveyor API requests",
     )
 
-    arg_parser.add_argument(
-        "-d",
-        "--drop-tables",
-        default=False,
-        action="store_true",
-        help="Drop the incident store tables before loading reports",
-    )
-
     args, _ = arg_parser.parse_known_args()
     KAI_LOG.setLevel(args.loglevel.upper())
 
     config: KaiConfig
-    if os.path.exists(os.path.join(PATH_KAI, "config.toml")):
-        config = KaiConfig.model_validate_filepath(
-            os.path.join(PATH_KAI, "config.toml")
+    if os.path.exists(args.config_filepath):
+        config = KaiConfig.model_validate_filepath(args.config_filepath)
+    else:
+        raise ValueError(
+            f"A valid config file is required, {args.config_filepath} does not exist"
         )
     config.log_level = args.loglevel
     KAI_LOG.info(f"Config loaded: {pprint.pformat(config)}")
 
     incident_store = IncidentStore.from_config(config.incident_store)
 
-    # TODO(fabianvf): This seems too easy and destructive
-    if args.drop_tables:
-        incident_store.delete_store()
-
-    if not args.verify:
+    if args.skip_verify:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        reports = process_analyses(args.konveyor_url, tmpdir, args.timeout, args.verify)
-
-        for app, report in reports:
-            clone_repo_at_commit(
-                app.repo_uri_origin,
-                app.current_branch,
-                app.current_commit,
-                app.repo_uri_local,
-            )
-            incident_store.load_report(app, report)
+    poll_api(
+        args.konveyor_url,
+        incident_store,
+        interval=args.interval,
+        timeout=args.timeout,
+        verify=not args.skip_verify,
+    )
 
 
 if __name__ == "__main__":
-    with __import__("ipdb").launch_ipdb_on_exception():
-        main()
+    main()
