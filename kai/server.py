@@ -240,7 +240,7 @@ async def get_incident_solutions_for_file(request: Request):
     return web.json_response(result)
 
 
-def app(log_level: Optional[str] = None, demo_mode: Optional[bool] = None):
+def app():
     webapp = web.Application()
 
     config: KaiConfig
@@ -257,10 +257,10 @@ def app(log_level: Optional[str] = None, demo_mode: Optional[bool] = None):
     else:
         raise FileNotFoundError("Config file not found.")
 
-    if log_level:
-        config.log_level = log_level
-    if demo_mode:
-        config.demo_mode = demo_mode
+    if os.getenv("LOGLEVEL") is not None:
+        config.log_level = os.getenv("LOGLEVEL").upper()
+    if os.getenv("DEMO_MODE") is not None:
+        config.demo_mode = os.getenv("DEMO_MODE").lower() == "true"
 
     print(f"Config loaded: {pprint.pformat(config)}")
 
@@ -316,7 +316,10 @@ Example: --loglevel debug (default: warning)""",
 
     args, _ = arg_parser.parse_known_args()
 
-    web.run_app(app(args.loglevel, args.demo_mode))
+    os.environ["LOGLEVEL"] = str(args.loglevel)
+    os.environ["DEMO_MODE"] = str(args.demo_mode).lower()
+
+    web.run_app(app())
 
 
 if __name__ == "__main__":
