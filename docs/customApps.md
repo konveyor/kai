@@ -41,7 +41,7 @@ Here's an example for an application named exampleApp:
 
 ```
 
-1. Add your app information to `sample_apps` dict in the same file
+Add your app information to `sample_apps` dict in the same file
 
 ```python
 "<app_name>" : "sample_repos/<app_name>",
