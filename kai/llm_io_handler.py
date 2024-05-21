@@ -112,7 +112,7 @@ async def get_incident_solutions_for_file(
         batched.append((batch_dict, batch_list))
 
     for count, (_, incidents) in enumerate(batched, 1):
-        for i, incident in enumerate(incidents, 1):
+        for _i, incident in enumerate(incidents, 1):
             incident["src_file_language"] = src_file_language
             incident["analysis_line_number"] = incident["line_number"]
 

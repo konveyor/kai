@@ -11,7 +11,6 @@ from kai.model_provider import ModelProvider
 from kai.models.analyzer_types import Incident
 from kai.models.file_solution import guess_language, parse_file_solution_content
 from kai.models.kai_config import KaiConfig
-from kai.prompt_builder import build_prompt
 from kai.report import Report
 from kai.service.incident_store.in_memory import InMemoryIncidentStore
 from kai.service.incident_store.incident_store import Application
@@ -160,6 +159,7 @@ def evaluate(
         undefined=StrictUndefined,
         trim_blocks=True,
         lstrip_blocks=True,
+        autoescape=True,
     )
 
     overall_results: dict[tuple[str, str], BenchmarkResult] = {}

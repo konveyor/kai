@@ -293,6 +293,7 @@ def app():
         undefined=StrictUndefined,
         trim_blocks=True,
         lstrip_blocks=True,
+        autoescape=True,
     )
     KAI_LOG.info("Initialized Jinja templating environment")
 
