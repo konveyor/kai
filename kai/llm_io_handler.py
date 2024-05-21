@@ -7,11 +7,11 @@ from typing import Any, Callable, Literal, Optional
 
 import vcr
 from aiohttp import web
+from jinja2 import Environment
 from kai_logging import KAI_LOG
 
 from kai.model_provider import ModelProvider
 from kai.models.file_solution import guess_language, parse_file_solution_content
-from kai.prompt_builder import build_prompt
 from kai.service.incident_store.incident_store import IncidentStore
 
 LLM_RETRIES = 5
@@ -70,6 +70,7 @@ def get_key_and_res_function(
 async def get_incident_solutions_for_file(
     model_provider: ModelProvider,
     incident_store: IncidentStore,
+    jinja_env: Environment,
     file_contents: str,
     file_name: str,
     application_name: str,
@@ -112,7 +113,6 @@ async def get_incident_solutions_for_file(
 
     for count, (_, incidents) in enumerate(batched, 1):
         for i, incident in enumerate(incidents, 1):
-            incident["issue_number"] = i
             incident["src_file_language"] = src_file_language
             incident["analysis_line_number"] = incident["line_number"]
 
@@ -133,11 +133,10 @@ async def get_incident_solutions_for_file(
             "src_file_language": src_file_language,
             "src_file_contents": updated_file,
             "incidents": incidents,
+            "model_provider": model_provider,
         }
 
-        prompt = build_prompt(
-            model_provider.get_prompt_builder_config("multi_file"), args
-        )
+        prompt = jinja_env.get_template(model_provider.template).render(args)
 
         KAI_LOG.debug(f"Sending prompt: {prompt}")
 
@@ -203,6 +202,7 @@ async def get_incident_solutions_for_file(
 def get_incident_solution(
     incident_store: IncidentStore,
     model_provider: ModelProvider,
+    jinja_env: Environment,
     application_name: str,
     ruleset_name: str,
     violation_name: str,
@@ -240,9 +240,7 @@ def get_incident_solution(
         pb_vars["solved_example_diff"] = solved_incidents[0].file_diff
         pb_vars["solved_example_file_name"] = solved_incidents[0].uri
 
-    prompt = build_prompt(
-        model_provider.get_prompt_builder_config("single_file"), pb_vars
-    )
+    prompt = jinja_env.get_template(model_provider.template).render(pb_vars)
 
     if stream:
         end = time.time()

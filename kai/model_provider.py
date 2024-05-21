@@ -7,7 +7,6 @@ from langchain_community.chat_models import ChatOllama, ChatOpenAI
 from langchain_core.language_models.chat_models import BaseChatModel
 from pydantic.v1.utils import deep_update
 
-from kai import prompt_builder
 from kai.models.kai_config import KaiConfigModels
 
 
@@ -78,62 +77,26 @@ class ModelProvider:
             case _:
                 raise Exception(f"Unrecognized provider '{config.provider}'")
 
+        self.provider_id: str = config.provider
         self.llm: BaseChatModel = model_class(**model_args)
         self.model_id: str = model_id
         self.template: str = config.template
 
-    # TODO(@JonahSussman): Once the prompt builder component is refactored, this
-    # function should be unnecessary
-    def get_prompt_builder_config(self, query_kind: str, override_template: str = None):
-        if override_template is None:
-            override_template = self.template
-
-        if os.path.isfile(override_template):
-            return prompt_builder.add_to_env_from_file_force(override_template)
-
-        if self.model_id in [
-            "mistralai/mistral-7b-instruct-v0-2",
-            "mistralai/mixtral-8x7b-instruct-v01",
-            "codellama/codellama-34b-instruct",
-            "codellama/codellama-70b-instruct",
-            "deepseek-ai/deepseek-coder-33b-instruct",
-            "tiiuae/falcon-180b",
-            "tiiuae/falcon-40b",
-            "ibm/falcon-40b-8lang-instruct",
-            "meta-llama/llama-2-70b-chat",
-            "meta-llama/llama-2-13b-chat",
-            "meta-llama/llama-2-7b",
-            "meta-llama/llama-3-70b-instruct",
-            "meta-llama/llama-3-8b-instruct",
-        ]:
-            match (query_kind, override_template):
-                case ("single_file", _):
-                    return prompt_builder.CONFIG_IBM_LLAMA
-                case ("multi_file", "preamble_only"):
-                    return prompt_builder.CONFIG_IBM_LLAMA_MF_PREAMBLE_ONLY
-                case ("multi_file", "preamble_with_analysis_only"):
-                    return (
-                        prompt_builder.CONFIG_IBM_LLAMA_MF_PREAMBLE_WITH_ANALYSIS_ONLY
-                    )
-                case ("multi_file", _):
-                    return prompt_builder.CONFIG_IBM_LLAMA_MF
-                case _:
-                    raise Exception(
-                        f"{query_kind=} {override_template=} not supported."
-                    )
+        if config.llama_header is None:
+            self.llama_header = self.model_id in [
+                "mistralai/mistral-7b-instruct-v0-2",
+                "mistralai/mixtral-8x7b-instruct-v01",
+                "codellama/codellama-34b-instruct",
+                "codellama/codellama-70b-instruct",
+                "deepseek-ai/deepseek-coder-33b-instruct",
+                "tiiuae/falcon-180b",
+                "tiiuae/falcon-40b",
+                "ibm/falcon-40b-8lang-instruct",
+                "meta-llama/llama-2-70b-chat",
+                "meta-llama/llama-2-13b-chat",
+                "meta-llama/llama-2-7b",
+                "meta-llama/llama-3-70b-instruct",
+                "meta-llama/llama-3-8b-instruct",
+            ]
         else:
-            match (query_kind, override_template):
-                case ("single_file", _):
-                    return prompt_builder.CONFIG_IBM_GRANITE
-                case ("multi_file", "preamble_only"):
-                    return prompt_builder.CONFIG_IBM_GRANITE_MF_PREAMBLE_ONLY
-                case ("multi_file", "preamble_with_analysis_only"):
-                    return (
-                        prompt_builder.CONFIG_IBM_GRANITE_MF_PREAMBLE_WITH_ANALYSIS_ONLY
-                    )
-                case ("multi_file", _):
-                    return prompt_builder.CONFIG_IBM_GRANITE_MF
-                case _:
-                    raise Exception(
-                        f"{query_kind=} {override_template=} not supported."
-                    )
+            self.llama_header = config.llama_header

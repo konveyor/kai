@@ -1,7 +1,7 @@
 import os
 import tomllib
 from enum import Enum
-from typing import Literal, Union
+from typing import Literal, Optional, Union
 
 import yaml
 from pydantic import BaseModel, Field
@@ -46,7 +46,8 @@ KaiConfigIncidentStore = Union[
 class KaiConfigModels(BaseModel):
     provider: str
     args: dict
-    template: str = Field(default="")  # TODO: Hack until we get better templating
+    template: str = Field(default="main.jinja")
+    llama_header: Optional[bool] = Field(default=None)
 
 
 # Main config

@@ -17,10 +17,11 @@ from typing import Optional
 
 from aiohttp import web
 from aiohttp.web_request import Request
+from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from pydantic import BaseModel
 
 from kai import llm_io_handler
-from kai.constants import PATH_KAI
+from kai.constants import PATH_KAI, PATH_TEMPLATES
 from kai.kai_logging import KAI_LOG
 from kai.model_provider import ModelProvider
 from kai.models.analyzer_types import Incident
@@ -121,6 +122,7 @@ async def post_get_incident_solution(request: Request):
     llm_output = llm_io_handler.get_incident_solution(
         request.app["incident_store"],
         request.app["model_provider"],
+        request.app["jinja_env"],
         params.application_name,
         params.ruleset_name,
         params.violation_name,
@@ -156,6 +158,7 @@ async def ws_get_incident_solution(request: Request):
             chunks = llm_io_handler.get_incident_solution(
                 request.app["incident_store"],
                 request.app["model_provider"],
+                request.app["jinja_env"],
                 application_name=request_json["application_name"],
                 ruleset_name=request_json["ruleset_name"],
                 violation_name=request_json["violation_name"],
@@ -222,6 +225,7 @@ async def get_incident_solutions_for_file(request: Request):
     result = await llm_io_handler.get_incident_solutions_for_file(
         request.app["model_provider"],
         request.app["incident_store"],
+        request.app["jinja_env"],
         params.file_contents,
         params.file_name,
         params.application_name,
@@ -283,6 +287,14 @@ def app():
     webapp["model_provider"] = ModelProvider(config.models)
     KAI_LOG.info(f"Selected provider: {config.models.provider}")
     KAI_LOG.info(f"Selected model: {webapp['model_provider'].model_id}")
+
+    webapp["jinja_env"] = Environment(
+        loader=FileSystemLoader(PATH_TEMPLATES),
+        undefined=StrictUndefined,
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+    KAI_LOG.info("Initialized Jinja templating environment")
 
     webapp.add_routes(routes)
 
