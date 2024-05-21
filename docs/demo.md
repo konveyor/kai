@@ -181,6 +181,13 @@ Due to the absence of support for Remote EJBs in Quarkus, you will notice that t
   Emitter<String> ordersEmitter;
   ```
 
+- Since the LLM doesn't have access to the project's `pom.xml` file, it lacks information about available dependencies. Update the import statements to the following:
+
+  ```java
+  import org.eclipse.microprofile.reactive.messaging.Channel;
+  import org.eclipse.microprofile.reactive.messaging.Emitter;
+  ```
+
 ![MDB - Manual updates](mdbchanges.png)
 
 ### 2.3 Deploy app to OpenShift
