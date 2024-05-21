@@ -117,6 +117,8 @@ We will analyze the Coolstore application using the following migration targets 
 - `src/main/java/com/redhat/coolstore/service/ShippingService.java`
 - `src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java`
 
+_*Note*: While the file `src/main/java/com/redhat/coolstore/rest/RestApplication.java ` is flagged, for the purpose of this demo it is okay to skip that file and proceed._
+
 The incidents in the above files will provide insights into potential issues or areas that require attention during the migration process.
 
 #### 2.2.1 Change import namespaces
