@@ -150,8 +150,6 @@ We will address EJB Remote and MDB functionalities in `ShippingService.java` and
 - Select `Kai Fix-All`.
 - Accept the proposed changes.
 
-After applying the changes, you may notice unwanted imports such as `import jakarta.ejb.Singleton;`. Remove this import and save the file.
-
 ![EJB Remote - Before/After](ejb_remote.png)
 
 Due to the absence of support for Remote EJBs in Quarkus, you will notice that these functionalities are removed and replaced with REST functionality.
@@ -161,10 +159,6 @@ Due to the absence of support for Remote EJBs in Quarkus, you will notice that t
 - Right-click on the file `src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java`.
 
 - Select `Kai Fix-All` and accept the changes.
-
-- You will notice unwanted imports like `import jakarta.ejb.Singleton;`. Remove this import from the file and save it.
-
-- Check for any missing imports. If you find `import jakarta.enterprise.context.ApplicationScoped;` missing, add it to the file.
 
 ![MDB - before/after](mdb.png)
 
@@ -185,13 +179,6 @@ Due to the absence of support for Remote EJBs in Quarkus, you will notice that t
   @Channel("orders")
   @Broadcast
   Emitter<String> ordersEmitter;
-  ```
-
-- Since the LLM doesn't have access to the project's `pom.xml` file, it lacks information about available dependencies. Update the import statements to the following:
-
-  ```java
-  import org.eclipse.microprofile.reactive.messaging.Channel;
-  import org.eclipse.microprofile.reactive.messaging.Emitter;
   ```
 
 ![MDB - Manual updates](mdbchanges.png)
