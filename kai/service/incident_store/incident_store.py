@@ -7,7 +7,7 @@ from typing import Optional
 import yaml
 from git import Repo
 
-from kai.constants import PATH_GIT_ROOT
+from kai.constants import PATH_LOCAL_REPO
 from kai.kai_logging import KAI_LOG
 from kai.models.kai_config import KaiConfigIncidentStore, KaiConfigIncidentStoreProvider
 from kai.report import Report
@@ -17,24 +17,7 @@ def __get_repo_path(app_name):
     """
     Get the repo path
     """
-
-    # TODO: This mapping data should be moved out of the code, consider moving
-    # to a config file
-    mapping = {
-        "eap-coolstore-monolith": "samples/sample_repos/eap-coolstore-monolith",
-        "ticket-monster": "samples/sample_repos/ticket-monster",
-        "kitchensink": "samples/sample_repos/kitchensink",
-        "helloworld-mdb": "samples/sample_repos/helloworld-mdb",
-        "bmt": "samples/sample_repos/bmt",
-        "cmt": "samples/sample_repos/cmt",
-        "ejb-remote": "samples/sample_repos/ejb-remote",
-        "ejb-security": "samples/sample_repos/ejb-security",
-        "tasks-qute": "samples/sample_repos/tasks-qute",
-        "greeter": "samples/sample_repos/greeter",
-    }
-
-    sample_path = mapping.get(app_name, None)
-    return os.path.join(PATH_GIT_ROOT, sample_path)
+    return os.path.join(PATH_LOCAL_REPO, app_name)
 
 
 def __get_app_variables(path: str, app_name: str):
