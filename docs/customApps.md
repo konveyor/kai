@@ -1,6 +1,6 @@
 # Run Kai with your Applications
 
-Konveyor AI (KAI) leverages LLMs to streamline the modernization of application source code. To learn how Kai works, run this demo <insert demo link></insert>
+Konveyor AI (KAI) leverages LLMs to streamline the modernization of application source code. To learn how Kai works, try this [demo](https://github.com/konveyor-ecosystem/kai/blob/main/docs/demo.md) that migrates a JavaEE app to Quarkus.
 
 ## Pre-requisites
 
