@@ -24,11 +24,11 @@ To run Kai with your Applications, follow these steps
     ],
 ```
 
-app name : The name of your application.
-path to repo : The full path to your application's repository on GitHub.
+- app name : The name of your application.
+- path to repo : The full path to your application's repository on GitHub.
 
-source branch : The branch of the repository that contains the current version of your application code.
-migrated/target branch : The branch that will contain the migrated version of your application code. This is optional and will be used to generate solved examples that can be used to solve similar issues in the future.
+- source branch : The branch of the repository that contains the current version of your application code.
+- migrated/target branch : The branch that will contain the migrated version of your application code. This is optional and will be used to generate solved examples that can be used to solve similar issues in the future.
 
 Here's an example for an application named exampleApp:
 
