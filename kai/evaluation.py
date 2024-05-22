@@ -4,9 +4,9 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 import yaml
-from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from kai.constants import PATH_BENCHMARKS
+from kai.llm_io_handler import get_prompt
 from kai.model_provider import ModelProvider
 from kai.models.analyzer_types import Incident
 from kai.models.file_solution import guess_language, parse_file_solution_content
@@ -153,15 +153,6 @@ def load_benchmark_examples(
 def evaluate(
     configs: dict[str, KaiConfig], examples: dict[str, BenchmarkExample]
 ) -> dict[tuple[str, str], BenchmarkResult]:
-    # TODO: Figure out best way to handle templates
-    jinja_env = Environment(
-        loader=FileSystemLoader("data/templates"),
-        undefined=StrictUndefined,
-        trim_blocks=True,
-        lstrip_blocks=True,
-        autoescape=True,
-    )
-
     overall_results: dict[tuple[str, str], BenchmarkResult] = {}
 
     for config_path, config in configs.items():
@@ -205,7 +196,9 @@ def evaluate(
                 "model_provider": model_provider,
             }
 
-            prompt = jinja_env.get_template(model_provider.template).render(pb_vars)
+            prompt = get_prompt(
+                model_provider, pb_vars, os.path.join(PATH_BENCHMARKS, "templates")
+            )
 
             print(f"{example_path} - {config_path}\n{prompt}\n")
 

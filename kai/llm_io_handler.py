@@ -7,15 +7,53 @@ from typing import Any, Callable, Literal, Optional
 
 import vcr
 from aiohttp import web
-from jinja2 import Environment
+from jinja2 import Environment, FileSystemLoader, StrictUndefined, TemplateNotFound
 from kai_logging import KAI_LOG
 
+from kai.constants import PATH_TEMPLATES
 from kai.model_provider import ModelProvider
 from kai.models.file_solution import guess_language, parse_file_solution_content
 from kai.service.incident_store.incident_store import IncidentStore
 
 LLM_RETRIES = 5
 LLM_RETRY_DELAY = 10
+
+
+def get_prompt(
+    model_provider: ModelProvider,
+    pb_vars: dict,
+    path_templates: str = PATH_TEMPLATES,
+    jinja_kwargs: dict = None,
+):
+    """
+    Generate a prompt using Jinja templates based on the provided model
+    provider, variable dictionary, and optional path templates and Jinja
+    arguments.
+    """
+
+    if jinja_kwargs is None:
+        jinja_kwargs = {}
+
+    jinja_kwargs = {
+        "loader": FileSystemLoader(path_templates),
+        "undefined": StrictUndefined,
+        "trim_blocks": True,
+        "lstrip_blocks": True,
+        "autoescape": True,
+        **jinja_kwargs,
+    }
+
+    jinja_env = Environment(**jinja_kwargs)  # trunk-ignore(bandit/B701)
+
+    if model_provider.template is not None:
+        return jinja_env.get_template(model_provider.template).render(pb_vars)
+
+    # Try to render the template corresponding to the model_id, fallback to
+    # main.jinja
+    try:
+        return jinja_env.get_template(model_provider.model_id).render(pb_vars)
+    except TemplateNotFound:
+        return jinja_env.get_template("main.jinja").render(pb_vars)
 
 
 @contextmanager
@@ -70,7 +108,6 @@ def get_key_and_res_function(
 async def get_incident_solutions_for_file(
     model_provider: ModelProvider,
     incident_store: IncidentStore,
-    jinja_env: Environment,
     file_contents: str,
     file_name: str,
     application_name: str,
@@ -89,6 +126,7 @@ async def get_incident_solutions_for_file(
     include_llm_results: bool = False,
     demo_mode: bool = False,
 ):
+
     src_file_language = guess_language(file_contents, filename=file_name)
 
     KAI_LOG.debug(f"{file_name} classified as filetype {src_file_language}")
@@ -128,7 +166,7 @@ async def get_incident_solutions_for_file(
                     incident["solved_example_diff"] = solutions[0].file_diff
                     incident["solved_example_file_name"] = solutions[0].uri
 
-        args = {
+        pb_vars = {
             "src_file_name": file_name,
             "src_file_language": src_file_language,
             "src_file_contents": updated_file,
@@ -136,7 +174,7 @@ async def get_incident_solutions_for_file(
             "model_provider": model_provider,
         }
 
-        prompt = jinja_env.get_template(model_provider.template).render(args)
+        prompt = get_prompt(model_provider, pb_vars)
 
         KAI_LOG.debug(f"Sending prompt: {prompt}")
 
@@ -202,7 +240,6 @@ async def get_incident_solutions_for_file(
 def get_incident_solution(
     incident_store: IncidentStore,
     model_provider: ModelProvider,
-    jinja_env: Environment,
     application_name: str,
     ruleset_name: str,
     violation_name: str,
@@ -240,7 +277,7 @@ def get_incident_solution(
         pb_vars["solved_example_diff"] = solved_incidents[0].file_diff
         pb_vars["solved_example_file_name"] = solved_incidents[0].uri
 
-    prompt = jinja_env.get_template(model_provider.template).render(pb_vars)
+    prompt = get_prompt(model_provider, pb_vars)
 
     if stream:
         end = time.time()

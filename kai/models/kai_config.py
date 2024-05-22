@@ -46,7 +46,7 @@ KaiConfigIncidentStore = Union[
 class KaiConfigModels(BaseModel):
     provider: str
     args: dict
-    template: str = Field(default="main.jinja")
+    template: Optional[str] = Field(default=None)
     llama_header: Optional[bool] = Field(default=None)
 
 
