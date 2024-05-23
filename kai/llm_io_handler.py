@@ -7,15 +7,67 @@ from typing import Any, Callable, Literal, Optional
 
 import vcr
 from aiohttp import web
+from jinja2 import (
+    Environment,
+    FileSystemLoader,
+    StrictUndefined,
+    Template,
+    TemplateNotFound,
+)
 from kai_logging import KAI_LOG
 
+from kai.constants import PATH_TEMPLATES
 from kai.model_provider import ModelProvider
 from kai.models.file_solution import guess_language, parse_file_solution_content
-from kai.prompt_builder import build_prompt
 from kai.service.incident_store.incident_store import IncidentStore
 
 LLM_RETRIES = 5
 LLM_RETRY_DELAY = 10
+
+
+def get_prompt(
+    model_provider: ModelProvider,
+    pb_vars: dict,
+    path_templates: str = PATH_TEMPLATES,
+    jinja_kwargs: dict = None,
+):
+    """
+    Generate a prompt using Jinja templates based on the provided model
+    provider, variable dictionary, and optional path templates and Jinja
+    arguments.
+    """
+
+    if jinja_kwargs is None:
+        jinja_kwargs = {}
+
+    jinja_kwargs = {
+        "loader": FileSystemLoader(path_templates),
+        "undefined": StrictUndefined,
+        "trim_blocks": True,
+        "lstrip_blocks": True,
+        "autoescape": True,
+        **jinja_kwargs,
+    }
+
+    jinja_env = Environment(**jinja_kwargs)  # trunk-ignore(bandit/B701)
+
+    template: Template
+    if model_provider.template is not None:
+        template = jinja_env.get_template(model_provider.template)
+    else:
+        # Try to render the template corresponding to the model_id, fallback to
+        # main.jinja
+        try:
+            template = jinja_env.get_template(model_provider.model_id)
+        except TemplateNotFound:
+            KAI_LOG.debug(
+                f"Template '{model_provider.model_id}' not found. Falling back to main.jinja"
+            )
+            template = jinja_env.get_template("main.jinja")
+
+    KAI_LOG.debug(f"Template {template.filename} loaded")
+
+    return template.render(pb_vars)
 
 
 @contextmanager
@@ -88,6 +140,7 @@ async def get_incident_solutions_for_file(
     include_llm_results: bool = False,
     demo_mode: bool = False,
 ):
+
     src_file_language = guess_language(file_contents, filename=file_name)
 
     KAI_LOG.debug(f"{file_name} classified as filetype {src_file_language}")
@@ -111,8 +164,7 @@ async def get_incident_solutions_for_file(
         batched.append((batch_dict, batch_list))
 
     for count, (_, incidents) in enumerate(batched, 1):
-        for i, incident in enumerate(incidents, 1):
-            incident["issue_number"] = i
+        for _i, incident in enumerate(incidents, 1):
             incident["src_file_language"] = src_file_language
             incident["analysis_line_number"] = incident["line_number"]
 
@@ -128,16 +180,15 @@ async def get_incident_solutions_for_file(
                     incident["solved_example_diff"] = solutions[0].file_diff
                     incident["solved_example_file_name"] = solutions[0].uri
 
-        args = {
+        pb_vars = {
             "src_file_name": file_name,
             "src_file_language": src_file_language,
             "src_file_contents": updated_file,
             "incidents": incidents,
+            "model_provider": model_provider,
         }
 
-        prompt = build_prompt(
-            model_provider.get_prompt_builder_config("multi_file"), args
-        )
+        prompt = get_prompt(model_provider, pb_vars)
 
         KAI_LOG.debug(f"Sending prompt: {prompt}")
 
@@ -240,9 +291,7 @@ def get_incident_solution(
         pb_vars["solved_example_diff"] = solved_incidents[0].file_diff
         pb_vars["solved_example_file_name"] = solved_incidents[0].uri
 
-    prompt = build_prompt(
-        model_provider.get_prompt_builder_config("single_file"), pb_vars
-    )
+    prompt = get_prompt(model_provider, pb_vars)
 
     if stream:
         end = time.time()

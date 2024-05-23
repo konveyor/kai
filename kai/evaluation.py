@@ -6,11 +6,11 @@ from typing import Any
 import yaml
 
 from kai.constants import PATH_BENCHMARKS
+from kai.llm_io_handler import get_prompt
 from kai.model_provider import ModelProvider
 from kai.models.analyzer_types import Incident
 from kai.models.file_solution import guess_language, parse_file_solution_content
 from kai.models.kai_config import KaiConfig
-from kai.prompt_builder import build_prompt
 from kai.report import Report
 from kai.service.incident_store.in_memory import InMemoryIncidentStore
 from kai.service.incident_store.incident_store import Application
@@ -193,10 +193,11 @@ def evaluate(
                 "src_file_language": src_file_language,
                 "src_file_contents": example.original_file,
                 "incidents": pb_incidents,
+                "model_provider": model_provider,
             }
 
-            prompt = build_prompt(
-                model_provider.get_prompt_builder_config("multi_file"), pb_vars
+            prompt = get_prompt(
+                model_provider, pb_vars, os.path.join(PATH_BENCHMARKS, "templates")
             )
 
             print(f"{example_path} - {config_path}\n{prompt}\n")
