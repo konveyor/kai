@@ -7,7 +7,13 @@ from typing import Any, Callable, Literal, Optional
 
 import vcr
 from aiohttp import web
-from jinja2 import Environment, FileSystemLoader, StrictUndefined, TemplateNotFound
+from jinja2 import (
+    Environment,
+    FileSystemLoader,
+    StrictUndefined,
+    Template,
+    TemplateNotFound,
+)
 from kai_logging import KAI_LOG
 
 from kai.constants import PATH_TEMPLATES
@@ -45,15 +51,23 @@ def get_prompt(
 
     jinja_env = Environment(**jinja_kwargs)  # trunk-ignore(bandit/B701)
 
+    template: Template
     if model_provider.template is not None:
-        return jinja_env.get_template(model_provider.template).render(pb_vars)
+        template = jinja_env.get_template(model_provider.template)
+    else:
+        # Try to render the template corresponding to the model_id, fallback to
+        # main.jinja
+        try:
+            template = jinja_env.get_template(model_provider.model_id)
+        except TemplateNotFound:
+            KAI_LOG.debug(
+                f"Template '{model_provider.model_id}' not found. Falling back to main.jinja"
+            )
+            template = jinja_env.get_template("main.jinja")
 
-    # Try to render the template corresponding to the model_id, fallback to
-    # main.jinja
-    try:
-        return jinja_env.get_template(model_provider.model_id).render(pb_vars)
-    except TemplateNotFound:
-        return jinja_env.get_template("main.jinja").render(pb_vars)
+    KAI_LOG.debug(f"Template {template.filename} loaded")
+
+    return template.render(pb_vars)
 
 
 @contextmanager
