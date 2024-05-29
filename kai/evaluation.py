@@ -1,8 +1,10 @@
 import argparse
 import os
+import shutil
 from dataclasses import asdict, dataclass
 from typing import Any
 
+import git
 import yaml
 
 from kai.constants import PATH_BENCHMARKS
@@ -159,73 +161,87 @@ def evaluate(
         model_provider = ModelProvider(config.models)
 
         for example_path, example in examples.items():
-            incident_store = InMemoryIncidentStore(None)
-            incident_store.load_report(example.application, example.report)
+            full_example_path = os.path.join(PATH_BENCHMARKS, "examples", example_path)
+            created_git_repo = False
 
-            pb_incidents = []
-            for i, incident in enumerate(example.incidents, 1):
-                pb_incident = {
-                    "issue_number": i,
-                    "uri": incident.uri,
-                    "analysis_message": incident.analysis_message,
-                    "code_snip": incident.incident_snip,
-                    "analysis_line_number": incident.line_number,
-                    "variables": incident.incident_variables,
+            try:
+                if not os.path.exists(os.path.join(full_example_path, ".git")):
+                    repo = git.Repo.init(full_example_path)
+                    repo.index.add(".")
+                    repo.index.commit("Initial commit")
+
+                    created_git_repo = True
+
+                incident_store = InMemoryIncidentStore(None)
+                incident_store.load_report(example.application, example.report)
+
+                pb_incidents = []
+                for i, incident in enumerate(example.incidents, 1):
+                    pb_incident = {
+                        "issue_number": i,
+                        "uri": incident.uri,
+                        "analysis_message": incident.analysis_message,
+                        "code_snip": incident.incident_snip,
+                        "analysis_line_number": incident.line_number,
+                        "variables": incident.incident_variables,
+                    }
+
+                    solutions = incident_store.find_solutions(
+                        incident.ruleset_name,
+                        incident.violation_name,
+                        incident.incident_variables,
+                        incident.incident_snip,
+                    )
+
+                    if len(solutions) != 0:
+                        pb_incident["solved_example_diff"] = solutions[0].file_diff
+                        pb_incident["solved_example_file_name"] = solutions[0].uri
+
+                    pb_incidents.append(pb_incident)
+
+                src_file_language = guess_language(example.original_file)
+
+                pb_vars = {
+                    "src_file_name": example.incidents[0].uri,
+                    "src_file_language": src_file_language,
+                    "src_file_contents": example.original_file,
+                    "incidents": pb_incidents,
+                    "model_provider": model_provider,
                 }
 
-                solutions = incident_store.find_solutions(
-                    incident.ruleset_name,
-                    incident.violation_name,
-                    incident.incident_variables,
-                    incident.incident_snip,
+                prompt = get_prompt(
+                    model_provider, pb_vars, os.path.join(PATH_BENCHMARKS, "templates")
                 )
 
-                if len(solutions) != 0:
-                    pb_incident["solved_example_diff"] = solutions[0].file_diff
-                    pb_incident["solved_example_file_name"] = solutions[0].uri
+                print(f"{example_path} - {config_path}\n{prompt[:15]}...\n")
 
-                pb_incidents.append(pb_incident)
+                llm_result = model_provider.llm.invoke(prompt)
+                content = parse_file_solution_content(
+                    src_file_language, llm_result.content
+                )
 
-            src_file_language = guess_language(example.original_file)
+                similarity = judge_result(
+                    example.expected_file,
+                    content.updated_file,
+                )
 
-            pb_vars = {
-                "src_file_name": example.incidents[0].uri,
-                "src_file_language": src_file_language,
-                "src_file_contents": example.original_file,
-                "incidents": pb_incidents,
-                "model_provider": model_provider,
-            }
-
-            prompt = get_prompt(
-                model_provider, pb_vars, os.path.join(PATH_BENCHMARKS, "templates")
-            )
-
-            print(f"{example_path} - {config_path}\n{prompt}\n")
-
-            llm_result = model_provider.llm.invoke(prompt)
-            content = parse_file_solution_content(src_file_language, llm_result.content)
-
-            similarity = judge_result(
-                example.expected_file,
-                content.updated_file,
-            )
-
-            overall_results[(example_path, config_path)] = BenchmarkResult(
-                similarity=similarity,
-                prompt=prompt,
-                llm_result=llm_result.content,
-            )
+                overall_results[(example_path, config_path)] = BenchmarkResult(
+                    similarity=similarity,
+                    prompt=prompt,
+                    llm_result=llm_result.content,
+                )
+            finally:
+                if created_git_repo:
+                    shutil.rmtree(os.path.join(full_example_path, ".git"))
 
     return overall_results
 
 
 def print_nicely_formatted_comparison(results: dict[tuple[str, str], BenchmarkExample]):
-    print(f'{"Example Name":<15} {"Config Name":<15} {"Benchmark Result"}')
-
-    print(results.items())
+    print(f'{"Example Name"}\t{"Config Name"}\t{"Benchmark Result"}')
 
     for (example_name, config_name), benchmark_result in results.items():
-        print(f"{example_name:<15} {config_name:<15} {benchmark_result.similarity}")
+        print(f"{example_name}\t{config_name}\t{benchmark_result.similarity}")
 
 
 def judge_result(expected_file: str, actual_file: str) -> float:
