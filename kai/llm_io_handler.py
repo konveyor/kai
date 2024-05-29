@@ -30,13 +30,13 @@ def get_prompt(
     pb_vars: dict,
     path_templates: str = PATH_TEMPLATES,
     jinja_kwargs: dict = None,
-    should_fallback: bool = True,
+    fallback: bool = True,
 ):
     """
     Generate a prompt using Jinja templates based on the provided model
     provider, variable dictionary, and optional path templates and Jinja
-    arguments. `should_fallback` is a boolean that determines whether to fall
-    back to main.jinja or error out.
+    arguments. `fallback` is a boolean that determines whether to fall back to
+    main.jinja or error out.
     """
 
     if jinja_kwargs is None:
@@ -78,7 +78,7 @@ def get_prompt(
         else:
             template = jinja_env.get_template(model_provider.model_id)
     except TemplateNotFound as e:
-        if not should_fallback:
+        if not fallback:
             raise e
 
         KAI_LOG.error(f"Template '{e.name}' not found. Falling back to main.jinja")
