@@ -162,11 +162,14 @@ def evaluate(
 
         for example_path, example in examples.items():
             full_example_path = os.path.join(PATH_BENCHMARKS, "examples", example_path)
+            created_git_repo = False
 
             if not os.path.exists(os.path.join(full_example_path, ".git")):
                 repo = git.Repo.init(full_example_path)
                 repo.index.add(".")
                 repo.index.commit("Initial commit")
+
+                created_git_repo = True
 
             incident_store = InMemoryIncidentStore(None)
             incident_store.load_report(example.application, example.report)
@@ -225,7 +228,8 @@ def evaluate(
                 llm_result=llm_result.content,
             )
 
-            shutil.rmtree(os.path.join(full_example_path, ".git"))
+            if created_git_repo:
+                shutil.rmtree(os.path.join(full_example_path, ".git"))
 
     return overall_results
 
