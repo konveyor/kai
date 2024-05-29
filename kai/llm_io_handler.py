@@ -30,11 +30,13 @@ def get_prompt(
     pb_vars: dict,
     path_templates: str = PATH_TEMPLATES,
     jinja_kwargs: dict = None,
+    should_fallback: bool = True,
 ):
     """
     Generate a prompt using Jinja templates based on the provided model
     provider, variable dictionary, and optional path templates and Jinja
-    arguments.
+    arguments. `should_fallback` is a boolean that determines whether to fall
+    back to main.jinja or error out.
     """
 
     if jinja_kwargs is None:
@@ -52,18 +54,35 @@ def get_prompt(
     jinja_env = Environment(**jinja_kwargs)  # trunk-ignore(bandit/B701)
 
     template: Template
-    if model_provider.template is not None:
-        template = jinja_env.get_template(model_provider.template)
-    else:
-        # Try to render the template corresponding to the model_id, fallback to
-        # main.jinja
-        try:
+
+    try:
+        if model_provider.template is not None:
+            try:
+                template = jinja_env.get_template(model_provider.template)
+            except TemplateNotFound:
+                # Template might be a full path, create new Jinja environment
+                template_dir = os.path.abspath(
+                    os.path.join(model_provider.template, "..")
+                )
+                template_filename = os.path.basename(model_provider.template)
+
+                template_kwargs = {
+                    **jinja_kwargs,
+                    "loader": FileSystemLoader(template_dir),
+                }
+                # trunk-ignore-begin(bandit/B701)
+                template_jinja_env = Environment(**template_kwargs)
+                # trunk-ignore-end(bandit/B701)
+
+                template = template_jinja_env.get_template(template_filename)
+        else:
             template = jinja_env.get_template(model_provider.model_id)
-        except TemplateNotFound:
-            KAI_LOG.debug(
-                f"Template '{model_provider.model_id}' not found. Falling back to main.jinja"
-            )
-            template = jinja_env.get_template("main.jinja")
+    except TemplateNotFound as e:
+        if not should_fallback:
+            raise e
+
+        KAI_LOG.error(f"Template '{e.name}' not found. Falling back to main.jinja")
+        template = jinja_env.get_template("main.jinja")
 
     KAI_LOG.debug(f"Template {template.filename} loaded")
 
