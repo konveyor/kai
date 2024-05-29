@@ -3,10 +3,12 @@
 import argparse
 import os
 import pprint
+
+# trunk-ignore(bandit/B404)
 import subprocess
 import tempfile
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import dateutil.parser
 import requests
@@ -168,6 +170,19 @@ Example: --loglevel debug (default: warning)""",
     )
 
 
+def paginate_api(url: str, timeout: int = 60, verify: bool = True) -> Iterator:
+    previous_offset = None
+    current_offset = 0
+    while previous_offset != current_offset:
+        previous_offset = current_offset
+        request_params = {"offset": f"{current_offset}"}
+        for item in get_data_from_api(
+            url, params=request_params, timeout=timeout, verify=verify
+        ):
+            current_offset += 1
+            yield item
+
+
 def poll_api(
     konveyor_url: str,
     incident_store: IncidentStore,
@@ -228,6 +243,7 @@ def import_from_api(
 def get_data_from_api(url: str, params=None, timeout: int = 60, verify: bool = True):
     if not params:
         params = {}
+    KAI_LOG.debug(f"Making request to {url} with {params=}")
     response = requests.get(url, params=params, timeout=timeout, verify=verify)
     response.raise_for_status()
     return response.json()
@@ -257,13 +273,10 @@ def process_analyses(
         application.current_commit = analysis.commit
         report_data = {}
         issues_url = f"{base_url}/hub/analyses/{analysis.id}/issues"
-        issues = [
-            Issue(**item)
-            for item in get_data_from_api(
-                issues_url, timeout=request_timeout, verify=request_verify
-            )
-        ]
-        for issue in issues:
+        for raw_issue in paginate_api(
+            issues_url, timeout=request_timeout, verify=request_verify
+        ):
+            issue = Issue(**raw_issue)
             KAI_LOG.info(
                 f"Processing issue {issue.id} with effort {issue.effort} on ruleset {issue.ruleset} (commit: {analysis.commit})"
             )
@@ -291,6 +304,7 @@ def process_analyses(
 
 def clone_repo_at_commit(repo_url, branch, commit, destination_folder):
     try:
+        # trunk-ignore(bandit/B603,bandit/B607)
         subprocess.run(
             ["git", "clone", "-b", branch, repo_url, destination_folder], check=True
         )
@@ -298,6 +312,7 @@ def clone_repo_at_commit(repo_url, branch, commit, destination_folder):
         KAI_LOG.error(f"An error occurred: {e}")
 
     try:
+        # trunk-ignore(bandit/B603,bandit/B607)
         subprocess.run(["git", "checkout", commit], cwd=destination_folder, check=True)
         KAI_LOG.info(f"Repository cloned at commit {commit} into {destination_folder}")
     except subprocess.CalledProcessError as e:

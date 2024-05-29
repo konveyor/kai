@@ -10,7 +10,7 @@ from kai.kai_logging import KAI_LOG
 
 
 class Report:
-    report = {}
+    report: dict = None
 
     def __init__(self, report_data: dict):
         self.workaround_counter_for_missing_ruleset_name = 0

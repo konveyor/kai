@@ -16,7 +16,7 @@ run-server:
 	PYTHONPATH=$(KAI_PYTHON_PATH) LOGLEVEL=$(LOGLEVEL) DEMO_MODE=$(DEMO_MODE) gunicorn --timeout 3600 -w $(NUM_WORKERS) --bind localhost:8080 --worker-class aiohttp.GunicornWebWorker 'kai.server:app()'
 
 run-konveyor-importer:
-	PYTHONPATH=$(KAI_PYTHON_PATH) python ./kai/import_from_hub.py --config_filepath ./kai/config.toml ${IMPORTER_ARGS} ${HUB_URL}
+	PYTHONPATH=$(KAI_PYTHON_PATH) python ./kai/hub_importer.py --loglevel ${LOGLEVEL} --config_filepath ./kai/config.toml ${IMPORTER_ARGS} ${HUB_URL}
 
 load-data:
 	PYTHONPATH=$(KAI_PYTHON_PATH) python ./kai/service/incident_store/psql.py  --config_filepath ./kai/config.toml --drop_tables $(DROP_TABLES)

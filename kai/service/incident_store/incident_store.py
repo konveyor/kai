@@ -14,7 +14,12 @@ from kai.report import Report
 
 # These prefixes are sometimes in front of the paths, strip them.
 # Also strip leading slashes since os.path.join can't join two absolute paths
-KNOWN_PREFIXES = ("/tmp/source-code/", "/addon/source/", "/")
+KNOWN_PREFIXES = (
+    # trunk-ignore(bandit/B108)
+    "/tmp/source-code/",
+    "/addon/source/",
+    "/",
+)
 
 
 # These are known unique variables that can be included by incidents
