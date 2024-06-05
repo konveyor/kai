@@ -624,11 +624,15 @@ WHERE fit.incident_id IS NULL;""",
         solution_small_diff = solution_small_diff.encode("utf-8", "ignore").decode(
             "utf-8"
         )
-        solution_original_code = solution_original_code.encode(
-            "utf-8", "ignore"
-        ).decode("utf-8")
-        solution_updated_code = solution_updated_code.encode("utf-8", "ignore").decode(
-            "utf-8"
+        solution_original_code = (
+            solution_original_code.encode("utf-8", "ignore")
+            .decode("utf-8")
+            .replace("\x00", "\uFFFD")
+        )
+        solution_updated_code = (
+            solution_updated_code.encode("utf-8", "ignore")
+            .decode("utf-8")
+            .replace("\x00", "\uFFFD")
         )
 
         cur.execute(
