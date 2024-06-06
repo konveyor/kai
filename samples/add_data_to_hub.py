@@ -5,12 +5,13 @@ import os
 import tempfile
 from typing import Any, Dict, List
 
-import config
 import requests
 import urllib3
 import yaml
 
 from kai.hub_importer import Incident, Issue
+
+from . import config
 
 
 def main():
