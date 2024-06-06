@@ -13,7 +13,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 import dateutil.parser
 import requests
 import urllib3
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 
 from kai.kai_logging import KAI_LOG
 from kai.models.kai_config import KaiConfig
@@ -57,7 +57,7 @@ class Incident(KaiBaseModel):
 
 
 class Link(KaiBaseModel):
-    url: HttpUrl
+    url: str
     title: str
 
 
