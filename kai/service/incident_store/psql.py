@@ -7,6 +7,7 @@ from kai.model_provider import ModelProvider
 from kai.models.kai_config import KaiConfigIncidentStorePostgreSQLArgs
 from kai.service.incident_store.incident_store import IncidentStore, SQLIncident, cmd
 
+# have a logical category of un-mutated reports and one with the mutations
 
 class PSQLIncidentStore(IncidentStore):
     def __init__(
