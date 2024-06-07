@@ -3,9 +3,6 @@
 import argparse
 import os
 import pprint
-
-# trunk-ignore(bandit/B404)
-import subprocess
 import tempfile
 import time
 from typing import Any, Dict, Iterator, List, Optional, Tuple
@@ -13,6 +10,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 import dateutil.parser
 import requests
 import urllib3
+from git import GitCommandError, Repo
 from pydantic import BaseModel, Field
 
 from kai.kai_logging import KAI_LOG
@@ -198,10 +196,12 @@ def poll_api(
             incident_store, konveyor_hub_url, last_analysis, timeout, verify
         )
         if new_last_analysis == last_analysis:
-            print(f"No new analyses. Sleeping for {interval} seconds.")
+            KAI_LOG.info(f"No new analyses. Sleeping for {interval} seconds.")
             time.sleep(interval)
         else:
-            print(f"New analyses found. Updating last_analysis to {new_last_analysis}.")
+            KAI_LOG.info(
+                f"New analyses found. Updating last_analysis to {new_last_analysis}."
+            )
             last_analysis = new_last_analysis
 
 
@@ -304,19 +304,19 @@ def process_analyses(
 
 def clone_repo_at_commit(repo_url, branch, commit, destination_folder):
     try:
-        # trunk-ignore(bandit/B603,bandit/B607)
-        subprocess.run(
-            ["git", "clone", "-b", branch, repo_url, destination_folder], check=True
-        )
-    except subprocess.CalledProcessError as e:
-        KAI_LOG.error(f"An error occurred: {e}")
+        # Clone the repository and checkout the specified branch
+        repo = Repo.clone_from(repo_url, destination_folder, branch=branch)
+        KAI_LOG.info(f"Repository cloned to {destination_folder}")
+    except GitCommandError as e:
+        KAI_LOG.error(f"An error occurred while cloning the repo: {e}")
+        return
 
     try:
-        # trunk-ignore(bandit/B603,bandit/B607)
-        subprocess.run(["git", "checkout", commit], cwd=destination_folder, check=True)
-        KAI_LOG.info(f"Repository cloned at commit {commit} into {destination_folder}")
-    except subprocess.CalledProcessError as e:
-        KAI_LOG.error(f"An error occurred: {e}")
+        # Checkout the specified commit
+        repo.git.checkout(commit)
+        KAI_LOG.info(f"Checked out commit {commit} in {destination_folder}")
+    except GitCommandError as e:
+        KAI_LOG.error(f"An error occurred while checking out the commit: {e}")
 
 
 def parse_application_data(api_response, application_dir):
