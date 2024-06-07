@@ -8,10 +8,15 @@ from typing import Any, Dict, List
 import requests
 import urllib3
 import yaml
+from git import Repo
 
 from kai.hub_importer import Incident, Issue
 
-from . import config
+# Little hack so we can import from test directory
+try:
+    import config
+except ImportError:
+    from . import config
 
 
 def main():
@@ -34,15 +39,16 @@ def add_applications(hub_url, skip_verify):
     analysis_id = 1
     for app_name, _ in config.sample_apps.items():
         repo_info = config.repos.get(app_name)
+        repo_path = config.sample_apps.get(app_name)
         if repo_info:
-            url, branch, _ = repo_info
+            url, initial_branch, solved_branch = repo_info
             payload = {
                 "name": app_name,
                 "description": f"{app_name} application.",
                 "repository": {
                     "kind": "git",
                     "url": url,
-                    "branch": branch,
+                    "branch": solved_branch,
                 },
             }
 
@@ -82,20 +88,35 @@ def add_applications(hub_url, skip_verify):
                     continue
 
                 script_dir = os.path.dirname(os.path.realpath(__file__))
-                analysis_paths = (
-                    os.path.join(
-                        script_dir, f"analysis_reports/{app_name}/initial/output.yaml"
-                    ),
-                    os.path.join(
-                        script_dir, f"analysis_reports/{app_name}/solved/output.yaml"
-                    ),
-                )
+                app_repo = Repo(os.path.join(script_dir, repo_path))
 
-                for analysis_path in analysis_paths:
+                analyses = [
+                    (
+                        os.path.join(
+                            script_dir,
+                            f"analysis_reports/{app_name}/initial/output.yaml",
+                        ),
+                        str(app_repo.branches[initial_branch].checkout().commit),
+                    ),
+                    (
+                        os.path.join(
+                            script_dir,
+                            f"analysis_reports/{app_name}/solved/output.yaml",
+                        ),
+                        str(app_repo.branches[solved_branch].checkout().commit),
+                    ),
+                ]
+
+                for analysis_path, commit in analyses:
                     try:
                         if os.path.exists(analysis_path):
                             add_analysis_report(
-                                hub_url, app_id, analysis_id, analysis_path, skip_verify
+                                hub_url,
+                                app_id,
+                                analysis_id,
+                                analysis_path,
+                                commit,
+                                skip_verify,
                             )
                             analysis_id += 1
                         else:
@@ -120,11 +141,15 @@ def get_application_id(hub_url, app_name, skip_verify):
     return None
 
 
-def add_analysis_report(hub_url, app_id, analysis_id, analysis_path, skip_verify):
+def add_analysis_report(
+    hub_url, app_id, analysis_id, analysis_path, commit, skip_verify
+):
     with open(analysis_path, "r") as f:
         analysis_report = yaml.safe_load(f)
 
-    reformatted_report = reformat_analysis_report(analysis_report, app_id, analysis_id)
+    reformatted_report = reformat_analysis_report(
+        analysis_report, app_id, analysis_id, commit
+    )
 
     with tempfile.NamedTemporaryFile(
         mode="w", delete=False
@@ -182,7 +207,7 @@ def add_analysis_report(hub_url, app_id, analysis_id, analysis_path, skip_verify
 
 
 def reformat_analysis_report(
-    report: List[Dict[str, Any]], app_id: int, analysis_id: int
+    report: List[Dict[str, Any]], app_id: int, analysis_id: int, commit: str
 ) -> Dict[str, Any]:
     issues = []
 
@@ -221,7 +246,7 @@ def reformat_analysis_report(
             )
             issues.append(issue.model_dump(by_alias=True))
 
-    return {"issues": issues, "dependencies": []}
+    return {"commit": commit, "issues": issues, "dependencies": []}
 
 
 if __name__ == "__main__":

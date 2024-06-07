@@ -33,7 +33,7 @@ repos = {
 sample_apps = {
     "eap-coolstore-monolith": "sample_repos/eap-coolstore-monolith",
     "ticket-monster": "sample_repos/ticket-monster",
-    "kitchensink": "sample_repos/kitchensink/kitchensink",
+    "kitchensink": "sample_repos/kitchensink",
     "helloworld-mdb": "sample_repos/helloworld-mdb",
     "bmt": "sample_repos/bmt",
     "cmt": "sample_repos/cmt",
