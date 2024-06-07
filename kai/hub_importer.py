@@ -76,11 +76,21 @@ class Issue(KaiBaseModel):
     labels: List[str]
 
 
+class Identity(KaiBaseModel):
+    id: int
+    kind: Optional[str] = None
+    name: str
+    user: Optional[str] = None
+    password: Optional[str] = None
+    key: Optional[str] = None
+
+
 class HubApplication(KaiBaseModel):
     id: int
     createUser: Optional[str] = None
     updateUser: Optional[str] = None
     createTime: Optional[str] = None
+    identities: List[Identity] = None
 
 
 class Analysis(KaiBaseModel):
@@ -226,12 +236,13 @@ def import_from_api(
             validated_analyses, konveyor_hub_url, tmpdir, timeout, verify
         )
 
-        for app, report in reports:
+        for app, creds, report in reports:
             clone_repo_at_commit(
                 app.repo_uri_origin,
                 app.current_branch,
                 app.current_commit,
                 app.repo_uri_local,
+                identity=creds,
             )
             incident_store.load_report(app, report)
     if validated_analyses:
@@ -262,12 +273,31 @@ def process_analyses(
         KAI_LOG.info(
             f"Processing analysis {analysis.id} for application {analysis.application.id}"
         )
+        resp = get_data_from_api(
+            f"{konveyor_hub_url}/applications/{analysis.application.id}",
+            timeout=request_timeout,
+            verify=request_verify,
+        )
+        # This contains credential information if we need it
+        hub_application = HubApplication(**resp)
+        credentials = None
+        if hub_application.identities:
+            for identity in hub_application.identities:
+                creds = Identity(
+                    **get_data_from_api(
+                        f"{konveyor_hub_url}/identities/{identity.id}",
+                        timeout=request_timeout,
+                        verify=request_verify,
+                    )
+                )
+                # Default to the first identity that provides a key
+                # TODO(fabianvf) what does it mean if there are multiple identities
+                if not credentials:
+                    credentials = creds
+                elif not credentials.key and creds.key:
+                    credentials = creds
         application = parse_application_data(
-            get_data_from_api(
-                f"{konveyor_hub_url}/applications/{analysis.application.id}",
-                timeout=request_timeout,
-                verify=request_verify,
-            ),
+            resp,
             application_dir,
         )
         application.current_commit = analysis.commit
@@ -298,11 +328,25 @@ def process_analyses(
                 "incidents": issue.incidents,
             }
         if report_data:
-            reports.append((application, Report.load_report_from_object(report_data)))
+            reports.append(
+                (application, credentials, Report.load_report_from_object(report_data))
+            )
     return reports
 
 
-def clone_repo_at_commit(repo_url, branch, commit, destination_folder):
+def clone_repo_at_commit(repo_url, branch, commit, destination_folder, identity=None):
+    if identity:
+        user = identity.get("user")
+        password = identity.get("password")
+        key = identity.get("key")
+
+        if user and password:
+            KAI_LOG.debug(f"Using password authentication for {repo_url}")
+            repo_url = repo_url.replace("https://", f"https://{user}:{password}@")
+        elif key:
+            KAI_LOG.debug(f"Using key-based authentication for {repo_url}")
+            ssh_command = f"ssh -i {key}"
+            os.environ["GIT_SSH_COMMAND"] = ssh_command
     try:
         # Clone the repository and checkout the specified branch
         repo = Repo.clone_from(repo_url, destination_folder, branch=branch)
