@@ -245,6 +245,7 @@ Running Kai's backend involves running 2 processes:
       - We've tested this with Python 3.11 and 3.12
    1. `source env/bin/activate`
    1. `pip install -r ./requirements.txt`
+   1. `pip install -e .`
 1. Run the Postgres DB via podman
    1. Open a new shell tab
    1. `source env/bin/activate`
