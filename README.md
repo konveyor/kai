@@ -258,6 +258,8 @@ Running Kai's backend involves running 2 processes:
       - If you want to run with cached LLM responses run with `DEMO_MODE=true`
         - Replace the above command and instead run: `DEMO_MODE=true make run-server`
         - The `DEMO_MODE` option will cache responses and play them back on subsequent runs.
+      - If you want to run with debug information set the environment variable `LOG_LEVEL=debug`
+        - Example: `LOG_LEVEL=debug make run-server`
 1. Load data into the database
    1. `source env/bin/activate`
    1. Fetch sample apps: `pushd samples; ./fetch_apps.py; popd`
@@ -273,10 +275,6 @@ Running Kai's backend involves running 2 processes:
   - CLI that scripts usage to the API
     1. We have a script: [example/run_demo.py](example/run_demo.py) that will look at Kantra analysis of the [coolstore](https://github.com/konveyor-ecosystem/coolstore) application and will issue a series of requests to Kai to generate a Fix and then store those fixes back to the application.
     1. See [example/README.md](example/README.md) to learn more how to run this
-  - We have a simple test client that you can run to test if the backend is functional: [kai-service/mock-client.py](/kai-service/mock-client.py)
-    1.  `source env/bin/activate`
-    1.  `cd kai-service`
-    1.  `python ./mock-client.py` . (This needs the server to be running above)
 
 ## Demo
 
@@ -303,11 +301,15 @@ Running Kai's backend involves running 2 processes:
 9. The file in question has now been updated
 10. We move onto the next file/issue and repeat
 
-## Demo Video
+### Demo Video
 
 ![DemoVideo](/images/Kai_April_26c.gif)
 
 - See [Generative AI Applied to Application Modernization with Konveyor AI](https://www.youtube.com/watch?v=aE8qNY2m4v4) (~15 minute demo with voice)
+
+### Guided walk-through using Kai
+
+- See [docs/demo.md](docs/demo.md) for a guided walkthrough of how to use Kai to aid in a Java EE to Quarkus migration
 
 ## Notes on `DEMO_MODE` and cached responses
 
