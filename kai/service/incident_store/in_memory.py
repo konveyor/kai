@@ -6,8 +6,12 @@ from git import Repo
 
 from kai.models.kai_config import KaiConfigIncidentStoreInMemoryArgs
 from kai.report import Report
-
-from .incident_store import Application, IncidentStore, Solution
+from kai.service.incident_store.incident_store import (
+    Application,
+    IncidentStore,
+    Solution,
+    remove_known_prefixes,
+)
 
 
 # These classes are just for the in-memory data store. Once we figure out the
@@ -89,7 +93,7 @@ class InMemoryIncidentStore(IncidentStore):
         )
 
         old_commit = application.current_commit
-        report_dict = report.get_report()
+        report_dict = dict(report)
 
         number_new_incidents = 0
         number_unsolved_incidents = 0
@@ -132,9 +136,7 @@ class InMemoryIncidentStore(IncidentStore):
                         # NOTE: When retrieving uris from the report, some of
                         # them had "/tmp/source-code/" as their root path.
                         # Unsure where it originates from.
-                        unquote(urlparse(incident.uri).path).removeprefix(
-                            "/tmp/source-code/"  # trunk-ignore(bandit/B108)
-                        ),
+                        remove_known_prefixes(unquote(urlparse(incident.uri).path)),
                     )
 
                     try:

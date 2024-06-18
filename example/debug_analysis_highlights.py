@@ -28,7 +28,7 @@ def print_impacted_files(report):
 
 if __name__ == "__main__":
     coolstore_analysis_dir = "./analysis/coolstore/output.yaml"
-    r = Report(coolstore_analysis_dir)
+    r = Report.load_report_from_file(coolstore_analysis_dir)
     markdown_dir = "./analysis/coolstore/markdown/"
     print(f"\n\nAnalysis summary will be written in markdown to: {markdown_dir} \n\n")
     r.write_markdown(markdown_dir)

@@ -13,15 +13,15 @@ class TestReports(unittest.TestCase):
 
     def test_create_with_bad_path(self):
         with self.assertRaises(FileNotFoundError):
-            badRObj = Report("bad_path")
+            badRObj = Report.load_report_from_file("bad_path")
 
     def test_parse(self):
-        report = Report(self.get_coolstuff_yaml()).get_report()
+        report = dict(Report.load_report_from_file(self.get_coolstuff_yaml()))
         self.assertTrue(report is not None)
 
     def test_impacted_files(self):
         pp = pprint.PrettyPrinter(indent=2)
-        rObj = Report(self.get_coolstuff_yaml())
+        rObj = Report.load_report_from_file(self.get_coolstuff_yaml())
         self.assertTrue(rObj is not None)
         impacted_files = rObj.get_impacted_files()
         for f in impacted_files.keys():

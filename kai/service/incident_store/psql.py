@@ -20,7 +20,9 @@ from kai.service.incident_store.incident_store import (
     Application,
     IncidentStore,
     Solution,
+    filter_incident_vars,
     load_reports_from_directory,
+    remove_known_prefixes,
 )
 
 
@@ -127,7 +129,7 @@ class PSQLIncidentStore(IncidentStore):
 
             old_commit = application["current_commit"]
 
-            report_dict = report.get_report()
+            report_dict = dict(report)
 
             for ruleset_name, ruleset_dict in report_dict.items():
                 query_ruleset = self.select_ruleset(
@@ -171,6 +173,9 @@ class PSQLIncidentStore(IncidentStore):
                         violation = query_violation[0]
 
                     for incident in violation_dict.get("incidents", []):
+                        incident_vars = filter_incident_vars(
+                            incident.get("variables", {})
+                        )
                         cur.execute(
                             """INSERT INTO incidents_temp(violation_id, application_id, incident_uri, incident_snip, incident_line, incident_variables)
               VALUES (%s, %s, %s, %s, %s, %s);""",
@@ -180,7 +185,7 @@ class PSQLIncidentStore(IncidentStore):
                                 incident.get("uri", ""),
                                 incident.get("codeSnip", ""),
                                 incident.get("lineNumber", 0),
-                                json.dumps(incident.get("variables", {})),
+                                json.dumps(incident_vars),
                             ),
                         )
 
@@ -279,29 +284,31 @@ WHERE fit.incident_id IS NULL;""",
 
             self.conn.autocommit = False
             for si in solved_incidents:
-                file_path = os.path.join(
-                    repo_path,
-                    # NOTE: When retrieving uris from the report, some of them
-                    # had "/tmp/source-code/" as their root path. Unsure where
-                    # it originates from.
-                    unquote(urlparse(si[4]).path).removeprefix(
-                        "/tmp/source-code/"  # trunk-ignore(bandit/B108)
-                    ),
-                )
+                # NOTE: When retrieving uris from the report, some of them
+                # had "/tmp/source-code/" as their root path. Unsure where
+                # it originates from.
+                file_path = remove_known_prefixes(unquote(urlparse(si[4]).path))
+                # file_path = os.path.join(
+                #     repo_path,
+                #     in_repo_path,
+                # )
                 big_diff = repo.git.diff(old_commit, new_commit)
 
                 try:
                     original_code = repo.git.show(f"{old_commit}:{file_path}")
-                except Exception:
+                except Exception as e:
+                    KAI_LOG.error(e)
                     original_code = ""
 
                 try:
                     updated_code = repo.git.show(f"{new_commit}:{file_path}")
-                except Exception:
+                except Exception as e:
+                    KAI_LOG.error(e)
                     updated_code = ""
 
                 # file_path = pathlib.Path(os.path.join(repo_path, unquote(urlparse(si[3]).path).removeprefix('/tmp/source-code'))).as_uri()
                 small_diff = repo.git.diff(old_commit, new_commit, "--", file_path)
+                KAI_LOG.debug(small_diff)
 
                 sln = self.insert_accepted_solution(
                     app.generated_at,
@@ -338,7 +345,7 @@ WHERE fit.incident_id IS NULL;""",
             incident_snip = ""
 
         with self.conn.cursor() as cur:
-            incident_vars_str = json.dumps(incident_variables)
+            incident_vars_str = json.dumps(filter_incident_vars(incident_variables))
 
             cur.execute(
                 """
@@ -571,7 +578,7 @@ WHERE fit.incident_id IS NULL;""",
         # if not isinstance(incident_variables, list):
         #   raise Exception(f"incident_variables must be of type list. Got type '{type(incident_variables)}'")
 
-        vars_str = json.dumps(incident_variables)
+        vars_str = json.dumps(filter_incident_vars(incident_variables))
         truncated_vars = (vars_str[:75] + "...") if len(vars_str) > 75 else vars_str
 
         KAI_LOG.info(
@@ -617,11 +624,15 @@ WHERE fit.incident_id IS NULL;""",
         solution_small_diff = solution_small_diff.encode("utf-8", "ignore").decode(
             "utf-8"
         )
-        solution_original_code = solution_original_code.encode(
-            "utf-8", "ignore"
-        ).decode("utf-8")
-        solution_updated_code = solution_updated_code.encode("utf-8", "ignore").decode(
-            "utf-8"
+        solution_original_code = (
+            solution_original_code.encode("utf-8", "ignore")
+            .decode("utf-8")
+            .replace("\x00", "\uFFFD")
+        )
+        solution_updated_code = (
+            solution_updated_code.encode("utf-8", "ignore")
+            .decode("utf-8")
+            .replace("\x00", "\uFFFD")
         )
 
         cur.execute(
@@ -699,7 +710,7 @@ WHERE fit.incident_id IS NULL;""",
         emb = self.emb_provider.get_embedding(incident_snip)
         emb_str = str(emb)
 
-        incident_vars_str = json.dumps(incident_vars)
+        incident_vars_str = json.dumps(filter_incident_vars(incident_vars))
 
         def highest_embedding_similarity_from_all():
             cur.execute(

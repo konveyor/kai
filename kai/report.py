@@ -10,22 +10,49 @@ from kai.kai_logging import KAI_LOG
 
 
 class Report:
-    def __init__(self, path_to_report: str):
-        self.path_to_report = path_to_report
+    report: dict = None
+
+    def __init__(self, report_data: dict):
         self.workaround_counter_for_missing_ruleset_name = 0
-        ## We expect that self._read_report() will be the last statement
-        ## to invoke in this constructor
-        self.report = self._read_report()
+        self.report = self._reformat_report(report_data)
+
+    def __str__(self):
+        return str(self.report)
+
+    def __repr__(self):
+        return str(self)
+
+    def __getitem__(self, key):
+        return self.report[key]
+
+    def keys(self):
+        return self.report.keys()
+
+    def __iter__(self):
+        return iter(self.report)
+
+    def __len__(self):
+        return len(self.report)
+
+    @classmethod
+    def load_report_from_object(cls, report_data: dict):
+        """
+        Class method to create a Report instance directly from a Python dictionary object.
+        """
+        return cls(report_data=report_data)
+
+    @classmethod
+    def load_report_from_file(cls, file_name: str):
+        KAI_LOG.info(f"Reading report from {file_name}")
+        with open(file_name, "r") as f:
+            report: dict = yaml.safe_load(f)
+        report_data = report
+        return cls(report_data)
 
     @staticmethod
     def get_cleaned_file_path(uri: str):
         file_path = uri.replace("file:///tmp/source-code/", "")
         return file_path
-
-    def get_report(self):
-        if self.report is None:
-            self.report = self._read_report()
-        return self.report
 
     def get_impacted_files(self):
         """
@@ -33,12 +60,11 @@ class Report:
             key = file path
             value = list of violations
         """
-        report = self.get_report()
         impacted_files = dict()
         # key = file_path
         # value = list of violations
-        for ruleset_name in report.keys():
-            ruleset = report[ruleset_name]
+        for ruleset_name in self.report.keys():
+            ruleset = self.report[ruleset_name]
             # We iterate over each ruleset
             for violation_name in ruleset["violations"].keys():
                 violation = ruleset["violations"][violation_name]
@@ -67,20 +93,16 @@ class Report:
     def _reformat_report(self, report: dict):
         new_report = {}
         # Reformat from a List to a Dict where the key is the name
-        for item in report:
-            if "violations" in item.keys():
-                # Only add entries that have Violations
-                ruleset_name = self._get_ruleset_name(item)
-                new_report[ruleset_name] = item
-            # We dropped all rulesests with empty violations
+        if isinstance(report, list):
+            for item in report:
+                if "violations" in item.keys():
+                    # Only add entries that have Violations
+                    ruleset_name = self._get_ruleset_name(item)
+                    new_report[ruleset_name] = item
+                # We dropped all rulesests with empty violations
+        else:
+            new_report = report
         return new_report
-
-    def _read_report(self):
-        KAI_LOG.info(f"Reading report from {self.path_to_report}")
-        with open(self.path_to_report, "r") as f:
-            report: dict = yaml.safe_load(f)
-        report = self._reformat_report(report)
-        return report
 
     def _get_ruleset_name(self, item):
         # The 'name' of a ruleset is not guaranteed from what I'm seeing in our
@@ -104,11 +126,10 @@ class Report:
         except OSError as error:
             KAI_LOG.error(f"Error creating directory {output_dir}: {error}")
             raise error
-        report = self.get_report()
         # Iterate through each Ruleset that has data
         # Write a separate file per ruleset
-        for ruleset_name in report.keys():
-            ruleset = report[ruleset_name]
+        for ruleset_name in self.report.keys():
+            ruleset = self.report[ruleset_name]
             ruleset = ruleset  # FIXME: To stop trunk error
             ruleset_name_display = ruleset_name.replace("/", "_")
             with open(f"{output_dir}/{ruleset_name_display}.md", "w") as f:
@@ -124,8 +145,7 @@ class Report:
                 buffer.close()
 
     def _get_markdown_snippet(self, ruleset_name, f):
-        report = self.get_report()
-        ruleset = report[ruleset_name]
+        ruleset = self.report[ruleset_name]
         f.write(f"# {ruleset_name}\n")
         f.write("## Description\n")
         f.write(f"{ruleset.get('description', '')}\n")
@@ -171,8 +191,7 @@ class Report:
                         f.write("```\n")
 
     def get_violation_snippet(self, ruleset_name, violation_name):
-        report = self.get_report()
-        ruleset = report[ruleset_name]
+        ruleset = self.report[ruleset_name]
         violation = ruleset["violations"][violation_name]
         violation = violation  # FIXME: to please trunk error
         buffer = StringIO()

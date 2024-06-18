@@ -194,7 +194,7 @@ async def get_incident_solutions_for_file(
                     incident["incident_variables"],
                     incident.get("incident_snip", ""),
                 )
-
+                KAI_LOG.debug(f"{solutions=}")
                 if len(solutions) != 0:
                     incident["solved_example_diff"] = solutions[0].file_diff
                     incident["solved_example_file_name"] = solutions[0].uri

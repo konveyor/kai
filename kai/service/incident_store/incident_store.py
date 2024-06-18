@@ -12,6 +12,34 @@ from kai.kai_logging import KAI_LOG
 from kai.models.kai_config import KaiConfigIncidentStore, KaiConfigIncidentStoreProvider
 from kai.report import Report
 
+# These prefixes are sometimes in front of the paths, strip them.
+# Also strip leading slashes since os.path.join can't join two absolute paths
+KNOWN_PREFIXES = (
+    # trunk-ignore(bandit/B108)
+    "/tmp/source-code/",
+    "/addon/source/",
+    "/",
+)
+
+
+# These are known unique variables that can be included by incidents
+# They would prevent matches that we actually want, so we filter them
+# before adding to the database or searching
+FILTERED_INCIDENT_VARS = ("file", "package")
+
+
+def remove_known_prefixes(path: str) -> str:
+    for prefix in KNOWN_PREFIXES:
+        if path.startswith(prefix):
+            return path.removeprefix(prefix)
+    return path
+
+
+def filter_incident_vars(incident_vars: dict):
+    for v in FILTERED_INCIDENT_VARS:
+        incident_vars.pop(v, None)
+    return incident_vars
+
 
 def __get_repo_path(app_name):
     """
@@ -95,7 +123,7 @@ def load_reports_from_directory(store: "IncidentStore", path: str):
 
         KAI_LOG.info(f"Loading application {app}\n")
 
-        store.load_report(app_initial, Report(report_path))
+        store.load_report(app_initial, Report.load_report_from_file(report_path))
         KAI_LOG.info(f"Loaded application - initial {app}\n")
 
         solved_folder = os.path.join(app_path, "solved")
@@ -121,7 +149,7 @@ def load_reports_from_directory(store: "IncidentStore", path: str):
             current_commit=commit.hexsha,
             generated_at=datetime.datetime.now(),
         )
-        store.load_report(app_solved, Report(report_path))
+        store.load_report(app_solved, Report.load_report_from_file(report_path))
 
         KAI_LOG.info(f"Loaded application - solved {app}\n")
 

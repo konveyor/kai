@@ -75,7 +75,7 @@ async def post_load_analysis_report(request: Request):
     params = PostLoadAnalysisReportParams.model_validate(await request.json())
 
     application = Application(**params.application.model_dump())
-    report = Report(params.path_to_report)
+    report = Report.load_report_from_file(params.path_to_report)
 
     count = request.app["incident_store"].load_report(application, report)
 
