@@ -88,7 +88,7 @@ def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
                 incidents.append(Incident.model_validate(yaml_incident))
 
         elif file_name == "report":
-            report = Report(full_file_path)
+            report = Report.load_report_from_file(full_file_path)
 
         elif file_name == "application":
             with open(full_file_path, "r") as f:
