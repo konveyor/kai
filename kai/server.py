@@ -1,9 +1,5 @@
 #!/usr/bin/python3
 
-# FIXME: This code should live in 'kai-service' but I couldn't get it to import
-# the required `kai` modules. Someone smarter than me may be able to fix this.
-# For now, I just copied this code wholesale. - jsussman
-
 """This module is intended to facilitate using Konveyor with LLMs."""
 
 import argparse
