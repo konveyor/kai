@@ -47,4 +47,4 @@ git checkout "${BRANCH}"
 popd || exit
 
 mkdir -p "${OUTDIR}"
-time "${KANTRA_BIN}" analyze -i "${PWD}"/"${SOURCE_DIR}" "${SOURCE_ONLY}" --enable-default-rulesets=false -t "quarkus" -t "jakarta-ee" -t "jakarta-ee8+" -t "jakarta-ee9+" -t "cloud-readiness" --rules "${DEFAULT_RULES_DIR}" --rules "${CUSTOM_RULES_DIR}" -o "${OUTDIR}" --overwrite
+time "${KANTRA_BIN}" analyze -i "${PWD}"/"${SOURCE_DIR}" "${SOURCE_ONLY}" --enable-default-rulesets=false -t "quarkus" -t "jakarta-ee" -t "jakarta-ee8" -t "jakarta-ee9" -t "cloud-readiness" --rules "${DEFAULT_RULES_DIR}" --rules "${CUSTOM_RULES_DIR}" -o "${OUTDIR}" --overwrite
