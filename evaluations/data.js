@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1719588633874,
+  "lastUpdate": 1719588782385,
   "repoUrl": "https://github.com/konveyor-ecosystem/kai",
   "entries": {
     "Benchmark": [
@@ -550,6 +550,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
             "value": "1.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jmontleo@redhat.com",
+            "name": "Jason Montleon",
+            "username": "jmontleon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fa2ccb052c3dc45d2bf4245e99637a66c293008b",
+          "message": ":ghost: Unpin python version in evaluation action (#217)\n\nSigned-off-by: Jason Montleon <jmontleo@redhat.com>",
+          "timestamp": "2024-06-28T11:25:42-04:00",
+          "tree_id": "cffad9b1ecad3363ebe9315b81fc0d90b676f5be",
+          "url": "https://github.com/konveyor-ecosystem/kai/commit/fa2ccb052c3dc45d2bf4245e99637a66c293008b"
+        },
+        "date": 1719588781667,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
+            "value": "79.0",
             "unit": "Match"
           }
         ]
