@@ -14,12 +14,13 @@ from jinja2 import (
     Template,
     TemplateNotFound,
 )
-from kai_logging import KAI_LOG
 
 from kai.constants import PATH_TEMPLATES
+from kai.kai_logging import KAI_LOG
 from kai.model_provider import ModelProvider
 from kai.models.file_solution import guess_language, parse_file_solution_content
 from kai.service.incident_store.incident_store import IncidentStore
+from kai.trace import Trace
 
 LLM_RETRIES = 5
 LLM_RETRY_DELAY = 10
@@ -139,6 +140,7 @@ def get_key_and_res_function(
 
 
 async def get_incident_solutions_for_file(
+    trace: Trace,
     model_provider: ModelProvider,
     incident_store: IncidentStore,
     file_contents: str,
@@ -161,7 +163,6 @@ async def get_incident_solutions_for_file(
 ):
 
     src_file_language = guess_language(file_contents, filename=file_name)
-
     KAI_LOG.debug(f"{file_name} classified as filetype {src_file_language}")
 
     updated_file = file_contents
@@ -171,6 +172,14 @@ async def get_incident_solutions_for_file(
     used_prompts = []
     model_id = model_provider.model_id
 
+    ###
+    # Batch mode represents different strategies for how we group the incidents
+    # in each call to the LLM.   updating the code from the previous call/input
+    #  - "none": every incident is passed individually one after the other
+    #  - "single_group": one llm call where we pass all incidents
+    #  - "ruleset": group by ruleset, then call LLM per ruleset group
+    #  - "violation": group by violation, then call LLM per violation group
+    ###
     batch_key_fn, batch_res_fn = get_key_and_res_function(batch_mode)
 
     incidents.sort(key=batch_key_fn)
@@ -208,6 +217,7 @@ async def get_incident_solutions_for_file(
         }
 
         prompt = get_prompt(model_provider, pb_vars)
+        trace.prompt(count, prompt, pb_vars)
 
         KAI_LOG.debug(f"Sending prompt: {prompt}")
 
@@ -215,7 +225,7 @@ async def get_incident_solutions_for_file(
             f"Processing incident batch {count}/{len(batched)} for {file_name}"
         )
         llm_result = None
-        for _ in range(LLM_RETRIES):
+        for retry_attempt_count in range(LLM_RETRIES):
             try:
                 with playback_if_demo_mode(
                     demo_mode,
@@ -224,6 +234,8 @@ async def get_incident_solutions_for_file(
                     f'{file_name.replace("/", "-")}',
                 ):
                     llm_result = model_provider.llm.invoke(prompt)
+                    trace.llm_result(count, retry_attempt_count, llm_result)
+
                     content = parse_file_solution_content(
                         src_file_language, llm_result.content
                     )
@@ -244,6 +256,7 @@ async def get_incident_solutions_for_file(
                     f"Request to model failed for batch {count}/{len(batched)} for {file_name} with exception, retrying in {LLM_RETRY_DELAY}s\n{e}"
                 )
                 KAI_LOG.debug(traceback.format_exc())
+                trace.exception(count, retry_attempt_count, e, traceback.format_exc())
                 time.sleep(LLM_RETRY_DELAY)
         else:
             KAI_LOG.error(f"{file_name} failed to migrate")

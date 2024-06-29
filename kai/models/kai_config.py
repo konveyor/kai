@@ -56,6 +56,7 @@ class KaiConfigModels(BaseModel):
 class KaiConfig(BaseModel):
     log_level: str = "info"
     demo_mode: bool = False
+    trace_enabled: bool = False
 
     incident_store: KaiConfigIncidentStore = Field(discriminator="provider")
     models: KaiConfigModels
