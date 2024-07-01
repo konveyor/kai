@@ -232,6 +232,7 @@ async def get_incident_solutions_for_file(request: Request):
             trace,
             request.app["model_provider"],
             request.app["incident_store"],
+            params.hash,
             params.file_contents,
             params.file_name,
             params.application_name,

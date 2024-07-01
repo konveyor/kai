@@ -160,6 +160,7 @@ async def get_incident_solutions_for_file(
     include_solved_incidents: Optional[bool] = True,
     include_llm_results: bool = False,
     demo_mode: bool = False,
+    hash: str = "nohash",
 ):
 
     src_file_language = guess_language(file_contents, filename=file_name)
@@ -273,6 +274,7 @@ async def get_incident_solutions_for_file(
         "used_prompts": used_prompts,
         "model_id": model_id,
         "additional_information": additional_info,
+        "hash": hash,
     }
     if include_llm_results:
         response["llm_results"] = llm_results
