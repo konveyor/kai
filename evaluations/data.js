@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1719852908683,
+  "lastUpdate": 1719852931496,
   "repoUrl": "https://github.com/konveyor-ecosystem/kai",
   "entries": {
     "Benchmark": [
@@ -665,6 +665,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
+            "value": "1.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "fabian@fabianism.us",
+            "name": "Fabian von Feilitzsch",
+            "username": "fabianvf"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bbd3aade7c6c1299a8ff7a661c14118f6fb58f0c",
+          "message": "Add documentation of how stored incidents are used (#203)\n\n* Add documentation of how stored incidents are used\r\n\r\nSigned-off-by: Fabian von Feilitzsch <fabian@fabianism.us>\r\n\r\n* Respond to code review\r\n\r\nSigned-off-by: Fabian von Feilitzsch <fabian@fabianism.us>\r\n\r\n---------\r\n\r\nSigned-off-by: Fabian von Feilitzsch <fabian@fabianism.us>",
+          "timestamp": "2024-07-01T12:51:09-04:00",
+          "tree_id": "040f6a8a73ce31bfeb6a2f12a6eecb1d72d2bd04",
+          "url": "https://github.com/konveyor-ecosystem/kai/commit/bbd3aade7c6c1299a8ff7a661c14118f6fb58f0c"
+        },
+        "date": 1719852930847,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
             "value": "1.0",
             "unit": "Match"
           }
