@@ -1,0 +1,33 @@
+name: "Build and Push Multi-Arch Image"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "main"
+      - "demo-*"
+    tags:
+      - "v*"
+
+concurrency:
+  group: march-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  push-quay:
+    name: Build and Push Manifest
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+    steps:
+      - name: Build Container
+        uses: konveyor/release-tools/build-push-quay@main
+        with:
+          architectures: "amd64, arm64"
+          containerfile: ./build/Containerfile
+          image_name: kai
+          image_namespace: konveyor
+          image_registry: quay.io
+          quay_publish_robot: ${{ secrets.QUAY_PUBLISH_ROBOT }}
+          quay_publish_token: ${{ secrets.QUAY_PUBLISH_TOKEN }}
+          ref: ${{ github.ref }}
