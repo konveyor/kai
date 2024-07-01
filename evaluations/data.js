@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1719857326854,
+  "lastUpdate": 1719857373877,
   "repoUrl": "https://github.com/konveyor-ecosystem/kai",
   "entries": {
     "Benchmark": [
@@ -782,6 +782,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
             "value": "84.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jwmatthews@gmail.com",
+            "name": "John Matthews",
+            "username": "jwmatthews"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4571a3fceb2ff10e76714f9bb7861cd0e3e19549",
+          "message": "Add tracing info to help us gather relevant info server side to aid debugging and tweaking prompts (#219)\n\n* Update targets to match kantra v0.4.0+\r\n\r\n* Add ability to trace LLM related data",
+          "timestamp": "2024-07-01T14:05:27-04:00",
+          "tree_id": "5e6d61ec343ccc0c7e7498396a3e04d4a213de9b",
+          "url": "https://github.com/konveyor-ecosystem/kai/commit/4571a3fceb2ff10e76714f9bb7861cd0e3e19549"
+        },
+        "date": 1719857372774,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
+            "value": "1.0",
             "unit": "Match"
           }
         ]
