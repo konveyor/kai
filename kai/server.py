@@ -8,7 +8,9 @@ import json
 import os
 import pprint
 import time
+import traceback
 from enum import Enum
+from trace import Trace
 from typing import Optional
 
 from aiohttp import web
@@ -215,23 +217,39 @@ async def get_incident_solutions_for_file(request: Request):
         f"START - App: '{params.application_name}', File: '{params.file_name}' with {len(params.incidents)} incidents'"
     )
 
-    result = await llm_io_handler.get_incident_solutions_for_file(
-        request.app["model_provider"],
-        request.app["incident_store"],
-        params.file_contents,
-        params.file_name,
-        params.application_name,
-        [x.model_dump() for x in params.incidents],
-        params.batch_mode,
-        params.include_solved_incidents,
-        params.include_llm_results,
-        request.app["config"].demo_mode,
+    trace = Trace(
+        config=request.app["config"],
+        model_id=request.app["model_provider"].model_id,
+        application_name=params.application_name,
+        file_name=params.file_name,
+        batch_mode=params.batch_mode,
     )
+    trace.start(start)
+    trace.params(params)
 
-    end = time.time()
-    KAI_LOG.info(
-        f"END - completed in '{end-start}s:  - App: '{params.application_name}', File: '{params.file_name}' with {len(params.incidents)} incidents'"
-    )
+    try:
+        result = await llm_io_handler.get_incident_solutions_for_file(
+            trace,
+            request.app["model_provider"],
+            request.app["incident_store"],
+            params.file_contents,
+            params.file_name,
+            params.application_name,
+            [x.model_dump() for x in params.incidents],
+            params.batch_mode,
+            params.include_solved_incidents,
+            params.include_llm_results,
+            request.app["config"].demo_mode,
+        )
+    except Exception as e:
+        trace.exception(-1, -1, e, traceback.format_exc())
+        raise e
+    finally:
+        end = time.time()
+        trace.end(end)
+        KAI_LOG.info(
+            f"END - completed in '{end-start}s:  - App: '{params.application_name}', File: '{params.file_name}' with {len(params.incidents)} incidents'"
+        )
 
     return web.json_response(result)
 
@@ -257,17 +275,21 @@ def app():
         config.log_level = os.getenv("LOGLEVEL").upper()
     if os.getenv("DEMO_MODE") is not None:
         config.demo_mode = os.getenv("DEMO_MODE").lower() == "true"
+    if os.getenv("TRACE") is not None:
+        config.trace_enabled = os.getenv("TRACE").lower() == "true"
 
     print(f"Config loaded: {pprint.pformat(config)}")
 
     config: KaiConfig
     webapp["config"] = config
 
-    print(type(config))
-
     KAI_LOG.setLevel(config.log_level.upper())
     print(
         f"Logging for KAI has been initialized and the level set to {config.log_level.upper()}"
+    )
+
+    KAI_LOG.info(
+        f"Tracing of actions is {'enabled' if config.trace_enabled else 'disabled'}"
     )
 
     if config.demo_mode:
