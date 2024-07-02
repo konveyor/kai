@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1719885218817,
+  "lastUpdate": 1719885224151,
   "repoUrl": "https://github.com/konveyor-ecosystem/kai",
   "entries": {
     "Benchmark": [
@@ -898,6 +898,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
             "value": "79.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jmontleo@redhat.com",
+            "name": "Jason Montleon",
+            "username": "jmontleon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5859db0c30a6fcbefdb85fadf3187647308f0f97",
+          "message": ":sparkles: Add GH Action to build the image (#223)\n\nSigned-off-by: Jason Montleon <jmontleo@redhat.com>",
+          "timestamp": "2024-07-01T21:50:27-04:00",
+          "tree_id": "ee720dc18a8be139c8152ba4aa7119eeb9d4dcff",
+          "url": "https://github.com/konveyor-ecosystem/kai/commit/5859db0c30a6fcbefdb85fadf3187647308f0f97"
+        },
+        "date": 1719885223602,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
+            "value": "21.0",
             "unit": "Match"
           }
         ]
