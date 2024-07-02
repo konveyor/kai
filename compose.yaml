@@ -1,0 +1,39 @@
+version: "3.4"
+
+x-common-variables: &common-variables
+  POSTGRES_USER: foo
+  POSTGRES_PASSWORD: bar
+  POSTGRES_DB: baz
+
+services:
+  kai:
+    environment:
+      <<: *common-variables
+      LOGLEVEL: info
+      DEMO_MODE: False
+      NUM_WORKERS: 8
+      # Do not edit the variables below otherwise
+      # you risk committing keys to a public repo
+      # These lines will pass in the environment
+      # variables from your host system.
+      GENAI_KEY:
+      OPENAI_API_KEY:
+      OPENAI_API_BASE:
+    image: quay.io/konveyor/kai:latest
+    volumes:
+      - ${PWD}:/podman_compose:ro,z
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kai_db
+  kai_db:
+    image: docker.io/pgvector/pgvector:pg15
+    environment: *common-variables
+    volumes:
+      - kai_db_data:/var/lib/postgresql/data:z
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "$POSTGRES_USER"]
+      interval: 10s
+      start_period: 30s
+volumes:
+  kai_db_data:
