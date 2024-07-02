@@ -6,7 +6,6 @@ RUN echo -e "[almalinux9-appstream]" \
  "\nenabled = 1" \
  "\ngpgcheck = 0" > /etc/yum.repos.d/almalinux.repo
 RUN dnf -y install postgresql && dnf clean all
-RUN mkdir /kai_config && chown 1001:1001 /kai_config
 USER 1001
 COPY --chown=1001:1001 . /kai
 RUN pip install --no-cache -r /kai/requirements.txt
