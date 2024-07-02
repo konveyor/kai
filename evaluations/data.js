@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1719929049091,
+  "lastUpdate": 1719929168472,
   "repoUrl": "https://github.com/konveyor-ecosystem/kai",
   "entries": {
     "Benchmark": [
@@ -1536,6 +1536,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
             "value": "1.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jmontleo@redhat.com",
+            "name": "Jason Montleon",
+            "username": "jmontleon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4ace200baabf999b8029d333fba1f46284a393a9",
+          "message": ":ghost: Remove unnecessary line from Containerfile (#226)\n\nSigned-off-by: Jason Montleon <jmontleo@redhat.com>",
+          "timestamp": "2024-07-02T09:59:19-04:00",
+          "tree_id": "389742937af51365ec29b9f18251d0807f5bb08a",
+          "url": "https://github.com/konveyor-ecosystem/kai/commit/4ace200baabf999b8029d333fba1f46284a393a9"
+        },
+        "date": 1719929167734,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
+            "value": "295.0",
             "unit": "Match"
           }
         ]
