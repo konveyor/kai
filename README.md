@@ -239,7 +239,11 @@ Kai will also work with [OpenAI API Compatible alternatives](docs/OpenAI-API-Com
 1. `cd kai`
 1. Make changes to `kai/config.toml` to select your desired provider and model
 1. Export `GENAI_KEY` or `OPENAI_API_KEY` as appropriate
-1. Run `podman compose up`
+1. Run `podman compose up`. It will take the server several minutes to start while data is loaded, the first time this is run.
+
+After the first run the DB will be populated and subsequent starts will be much faster, as long as the kai_kai_db_data volume is not deleted.
+
+To clean up all resources run `podman compose down && podman volume rm kai_kai_db_data`.
 
 ### Local Development
 

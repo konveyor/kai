@@ -9,18 +9,33 @@ if [ -f /podman_compose/kai/config.toml ]; then
   sed -i "s/^password =.*/password =\"$POSTGRES_PASSWORD\"/g" /kai/kai/config.toml
 fi
 
-TABLE=applications
-SQL_EXISTS=$(printf '\dt "%s"' "$TABLE")
-if [[ $(PGPASSWORD="$POSTGRES_PASSWORD" psql -h "kai_db" -U $POSTGRES_USER -d $POSTGRES_DB -c "$SQL_EXISTS") ]]
-then
-    echo "load-data has run already"
-else
-    echo "load-data has not run yet, starting ..."
-    echo "Fetching examples"
+until PGPASSWORD="$POSTGRES_PASSWORD" pg_isready -q -h kai_db -U $POSTGRES_USER -d $POSTGRES_DB ; do
+  sleep 1
+done
+
+if [ "$USE_HUB_IMPORTER" = "False" ]; then
+  TABLE=applications
+  SQL_EXISTS=$(printf "\dt %s" "$TABLE")
+  STDERR="Did not find any relation"
+  if PGPASSWORD="$POSTGRES_PASSWORD" psql -h kai_db -U $POSTGRES_USER -d $POSTGRES_DB -c "$SQL_EXISTS" 2>&1 | grep -q -v "$STDERR"; then
+    echo "################################################"
+    echo "load-data has run already run, starting server.#"
+    echo "################################################"
+  else
+    echo "################################################"
+    echo "load-data has never been run.                  #"
+    echo "Please wait, this will take a few minutes.     #"
+    echo "################################################"
+    sleep 5
     cd /kai/samples
     ./fetch_apps.py
     cd /kai
-    python ./kai/service/incident_store/psql.py  --config_filepath ./kai/config.toml --drop_tables False
+    python ./kai/service/incident_store/psql.py --config_filepath ./kai/config.toml --drop_tables False
+    echo "################################################"
+    echo "load-data has completed, starting server.      #"
+    echo "################################################"
+    sleep 5
+  fi
 fi
 
 PYTHONPATH="/kai/kai" exec gunicorn --timeout 3600 -w $NUM_WORKERS --bind 0.0.0.0:8080 --worker-class aiohttp.GunicornWebWorker 'kai.server:app()'
