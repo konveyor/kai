@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1719885227455,
+  "lastUpdate": 1719885234682,
   "repoUrl": "https://github.com/konveyor-ecosystem/kai",
   "entries": {
     "Benchmark": [
@@ -956,6 +956,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
             "value": "295.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jmontleo@redhat.com",
+            "name": "Jason Montleon",
+            "username": "jmontleon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "85d39b8ddcf4f4961c2050d86f7aae3453b798a1",
+          "message": ":sparkles: Add Containerfile (#221)\n\nSigned-off-by: Jason Montleon <jmontleo@redhat.com>",
+          "timestamp": "2024-07-01T21:50:46-04:00",
+          "tree_id": "010a987be0812b3aa817837c9ef73365f07be326",
+          "url": "https://github.com/konveyor-ecosystem/kai/commit/85d39b8ddcf4f4961c2050d86f7aae3453b798a1"
+        },
+        "date": 1719885234113,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
+            "value": "79.0",
             "unit": "Match"
           }
         ]
