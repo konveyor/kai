@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1719885329199,
+  "lastUpdate": 1719886069772,
   "repoUrl": "https://github.com/konveyor-ecosystem/kai",
   "entries": {
     "Benchmark": [
@@ -1159,6 +1159,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
             "value": "43.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jmontleo@redhat.com",
+            "name": "Jason Montleon",
+            "username": "jmontleon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bff90e0216545a4391ce6760f0a93af19f8a7d4c",
+          "message": ":sparkles: Add podman / docker compose file (#222)\n\nSigned-off-by: Jason Montleon <jmontleo@redhat.com>",
+          "timestamp": "2024-07-01T22:04:41-04:00",
+          "tree_id": "84a43dc6e961046b005b924b98a59589ad6cd5cc",
+          "url": "https://github.com/konveyor-ecosystem/kai/commit/bff90e0216545a4391ce6760f0a93af19f8a7d4c"
+        },
+        "date": 1719886069257,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
+            "value": "1.0",
             "unit": "Match"
           }
         ]
