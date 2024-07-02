@@ -233,12 +233,22 @@ Kai will also work with [OpenAI API Compatible alternatives](docs/OpenAI-API-Com
 
 ## Setup
 
+### Podman Compose
+
+1. `git clone https://github.com/konveyor-ecosystem/kai.git`
+1. `cd kai`
+1. Make changes to `kai/config.toml` to select your desired provider and model
+1. Export `GENAI_KEY` or `OPENAI_API_KEY` as appropriate
+1. Run `podman compose up`
+
+### Local Development
+
 Running Kai's backend involves running 2 processes:
 
 - Postgres instance which we deliver via container
 - Backend REST API server
 
-### Steps
+#### Steps
 
 1. Clone Repo and Ensure you have the virtual environment setup
    1. `git clone https://github.com/konveyor-ecosystem/kai.git`
