@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1719928939749,
+  "lastUpdate": 1719928943543,
   "repoUrl": "https://github.com/konveyor-ecosystem/kai",
   "entries": {
     "Benchmark": [
@@ -1361,6 +1361,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
+            "value": "1.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jmontleo@redhat.com",
+            "name": "Jason Montleon",
+            "username": "jmontleon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "eddebc8b58144931cf5b56e191ffd2037ec1cbe0",
+          "message": ":book: Add instructions for using podman compose (#224)\n\nSigned-off-by: Jason Montleon <jmontleo@redhat.com>",
+          "timestamp": "2024-07-02T09:58:49-04:00",
+          "tree_id": "1e2d63f57d45c3d5debf539e88ff73448739a7ad",
+          "url": "https://github.com/konveyor-ecosystem/kai/commit/eddebc8b58144931cf5b56e191ffd2037ec1cbe0"
+        },
+        "date": 1719928942427,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
             "value": "1.0",
             "unit": "Match"
           }
