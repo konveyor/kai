@@ -297,13 +297,13 @@ WHERE fit.incident_id IS NULL;""",
                 try:
                     original_code = repo.git.show(f"{old_commit}:{file_path}")
                 except Exception as e:
-                    KAI_LOG.warn(e)
+                    KAI_LOG.warning(e)
                     original_code = ""
 
                 try:
                     updated_code = repo.git.show(f"{new_commit}:{file_path}")
                 except Exception as e:
-                    KAI_LOG.warn(e)
+                    KAI_LOG.warning(e)
                     updated_code = ""
 
                 # file_path = pathlib.Path(os.path.join(repo_path, unquote(urlparse(si[3]).path).removeprefix('/tmp/source-code'))).as_uri()
