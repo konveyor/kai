@@ -297,19 +297,17 @@ WHERE fit.incident_id IS NULL;""",
                 try:
                     original_code = repo.git.show(f"{old_commit}:{file_path}")
                 except Exception as e:
-                    KAI_LOG.error(e)
+                    KAI_LOG.warn(e)
                     original_code = ""
 
                 try:
                     updated_code = repo.git.show(f"{new_commit}:{file_path}")
                 except Exception as e:
-                    KAI_LOG.error(e)
+                    KAI_LOG.warn(e)
                     updated_code = ""
 
                 # file_path = pathlib.Path(os.path.join(repo_path, unquote(urlparse(si[3]).path).removeprefix('/tmp/source-code'))).as_uri()
                 small_diff = repo.git.diff(old_commit, new_commit, "--", file_path)
-                KAI_LOG.debug(small_diff)
-
                 sln = self.insert_accepted_solution(
                     app.generated_at,
                     big_diff,
@@ -612,7 +610,7 @@ WHERE fit.incident_id IS NULL;""",
         solution_updated_code: str,
         cur: DictCursor = None,
     ):
-        KAI_LOG.info(f"Inserting accepted solution {((generated_at))}")
+        KAI_LOG.debug(f"Inserting accepted solution {((generated_at))}")
         small_diff_embedding = str(self.emb_provider.get_embedding(solution_small_diff))
         original_code_embedding = str(
             self.emb_provider.get_embedding(solution_original_code)
@@ -817,8 +815,6 @@ WHERE fit.incident_id IS NULL;""",
 
 
 def main():
-    KAI_LOG.setLevel("debug".upper())
-
     parser = argparse.ArgumentParser(description="Process some parameters.")
     parser.add_argument(
         "--config_filepath",
@@ -837,8 +833,11 @@ def main():
     )
 
     args = parser.parse_args()
-
     config = KaiConfig.model_validate_filepath(args.config_filepath)
+
+    if os.getenv("LOGLEVEL") is not None:
+        config.log_level = os.getenv("LOGLEVEL").upper()
+    KAI_LOG.setLevel(config.log_level.upper())
 
     if config.incident_store.provider != "postgresql":
         raise Exception("This script only works with PostgreSQL incident store.")
