@@ -15,6 +15,7 @@ from kai.report import Report
 # These prefixes are sometimes in front of the paths, strip them.
 # Also strip leading slashes since os.path.join can't join two absolute paths
 KNOWN_PREFIXES = (
+    "/opt/input/source/",
     # trunk-ignore(bandit/B108)
     "/tmp/source-code/",
     "/addon/source/",

@@ -235,6 +235,8 @@ Kai will also work with [OpenAI API Compatible alternatives](docs/OpenAI-API-Com
 
 ### Podman Compose
 
+#### Standalone
+
 1. `git clone https://github.com/konveyor-ecosystem/kai.git`
 1. `cd kai`
 1. Make changes to `kai/config.toml` to select your desired provider and model
@@ -244,6 +246,20 @@ Kai will also work with [OpenAI API Compatible alternatives](docs/OpenAI-API-Com
 After the first run the DB will be populated and subsequent starts will be much faster, as long as the kai_kai_db_data volume is not deleted.
 
 To clean up all resources run `podman compose down && podman volume rm kai_kai_db_data`.
+
+#### With Konveyor Hub
+
+1. `git clone https://github.com/konveyor-ecosystem/kai.git`
+1. `cd kai`
+1. Make changes to `kai/config.toml` to select your desired provider and model
+1. Export `GENAI_KEY` or `OPENAI_API_KEY` as appropriate
+1. Run `USE_HUB_IMPORTER=True HUB_URL=https://tackle-konveyor-tackle.apps.cluster.example.com/hub IMPORTER_ARGS=-k podman compose --profile use_hub_importer up`
+
+Note that you need to use podman >= 1.1.0 to use the `--profile` option. podman does not currently support the alternative `COMPOSE_PROFILES` environment variable.
+
+If your konveyor instance does not use self-signed certificates you may omit `IMPORTER_ARGS=-k`.
+
+To clean up all resources run `podman compose --profile use_hub_importer down && podman volume rm kai_kai_db_data`.
 
 ### Local Development
 
