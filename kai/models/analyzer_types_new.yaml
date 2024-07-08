@@ -1,0 +1,129 @@
+# jsonschema taken from the analyzer-lsp repo. use `datamodel-codegen --input
+# analyzer_types.yaml --input-file-type jsonschema --output o.py
+# --custom-file-header "# AUTO-GENERATED, DO NOT EDIT"` to generate the python
+# file.
+
+$id: "analyzer_types.yaml"
+$schema: http://json-schema.org/draft-07/schema#
+title: AnalysisReport
+type: array
+items:
+  - $ref: "#/definitions/RuleSet"
+
+definitions:
+  RuleSet:
+    properties:
+      # Name is a name for the ruleset.
+      name:
+        type: string
+
+      # Description text description for the ruleset
+      description:
+        type: string
+
+      # Tags list of generated tags from the rules in this ruleset.
+      tags:
+        type: array
+        items:
+          type: number
+
+      # Violations is a map containing violations generated for the matched
+      # rules in this ruleset. Keys are rule IDs, values are their respective
+      # generated violations.
+      violations:
+        type: object
+        additionalProperties:
+          $ref: "#/definitions/Violation"
+
+      # Errors is a map containing errors generated during evaluation of rules
+      # in this ruleset. Keys are rule IDs, values are their respective
+      # generated errors.
+      errors:
+        type: object
+        additionalProperties:
+          type: string
+
+      # Unmatched is a list of rule IDs of the rules that weren't matched.
+      unmatched:
+        type: array
+        items:
+          type: string
+
+      # Skipped is a list of rule IDs that were skipped
+      skipped:
+        type: array
+        items:
+          type: string
+
+  Violation:
+    properties:
+      # Description text description about the violation
+      description:
+        type: string
+
+      # Category category of the violation
+      category:
+        enum:
+          - potential
+          - optional
+          - mandatory
+
+      labels:
+        type: array
+        items:
+          type: string
+
+      # Incidents list of instances of violation found
+      incidents:
+        type: array
+        items:
+          $ref: "#/definitions/Incident"
+
+      # ExternalLinks hyperlinks to external sources of docs, fixes
+      links:
+        type: array
+        items:
+          $ref: "#/definitions/Link"
+
+      # Extras reserved for additional data
+      extras:
+        type: string # NOTE: Best equivalent of Go's json.RawMessage
+
+      # Effort defines expected story points for this incident
+      effort:
+        type: integer
+
+  Incident:
+    properties:
+      uri:
+        type: string # NOTE: Best equivalent of Go's json.RawMessage
+
+      message:
+        type: string
+
+      # NOTE: Why camelCase for these ones? :weary: - JonahSussman
+      codeSnip:
+        type: string
+
+      lineNumber:
+        type: integer
+
+      variables:
+        type: object
+
+    required:
+      - uri
+      - message
+
+  # Link defines an external hyperlink
+  Link:
+    properties:
+      url:
+        type: string
+
+      # Title optional description
+      title:
+        type: string
+
+    required:
+      - url

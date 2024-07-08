@@ -26,6 +26,13 @@ class Incident(BaseModel):
         return value
 
 
+# A report is a list of rule sets
+
+
+class RuleSet(BaseModel):
+    name: str
+
+
 # NOTE: These are copy-pasted from analyzer-lsp and formatted to look a bit more
 # like Python types
 
