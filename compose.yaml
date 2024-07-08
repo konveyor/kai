@@ -1,24 +1,30 @@
-version: "3.4"
+version: "3"
 
-x-common-variables: &common-variables
-  POSTGRES_USER: foo
-  POSTGRES_PASSWORD: bar
-  POSTGRES_DB: baz
+x-common-variables: &kai-variables
+  DEMO_MODE: "False"
+  HUB_URL: ${HUB_URL:-https://tackle-konveyor-tackle.apps.example.com/hub}
+  IMPORTER_ARGS:
+  LOGLEVEL: info
+  NUM_WORKERS: 8
+  USE_HUB_IMPORTER: ${USE_HUB_IMPORTER:-False}
+
+x-common-variables: &db-variables
+  POSTGRES_DB: kai
+  POSTGRES_PASSWORD: dog8code
+  POSTGRES_USER: kai
 
 services:
   kai:
     environment:
-      <<: *common-variables
-      LOGLEVEL: info
-      DEMO_MODE: False
-      NUM_WORKERS: 8
+      <<: *db-variables
+      <<: *kai-variables
       # Do not edit the variables below otherwise
       # you risk committing keys to a public repo
       # These lines will pass in the environment
       # variables from your host system.
       GENAI_KEY:
-      OPENAI_API_KEY:
       OPENAI_API_BASE:
+      OPENAI_API_KEY:
     image: quay.io/konveyor/kai:latest
     volumes:
       - ${PWD}:/podman_compose:ro,z
@@ -26,9 +32,22 @@ services:
       - "8080:8080"
     depends_on:
       - kai_db
+  kai_hub_importer:
+    environment:
+      <<: *db-variables
+      <<: *kai-variables
+      MODE: importer
+    image: quay.io/konveyor/kai:latest
+    volumes:
+      - ${PWD}:/podman_compose:ro,z
+    depends_on:
+      - kai_db
+    profiles:
+      - use_hub_importer
   kai_db:
     image: docker.io/pgvector/pgvector:pg15
-    environment: *common-variables
+    environment:
+      <<: *db-variables
     volumes:
       - kai_db_data:/var/lib/postgresql/data:z
     healthcheck:
