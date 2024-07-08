@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1720457360041,
+  "lastUpdate": 1720457406982,
   "repoUrl": "https://github.com/konveyor-ecosystem/kai",
   "entries": {
     "Benchmark": [
@@ -1710,6 +1710,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
             "value": "1.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jmontleo@redhat.com",
+            "name": "Jason Montleon",
+            "username": "jmontleon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "413dbcd30b89d7f285d846e25fb12c0851165d53",
+          "message": "entrypoint.sh container script improvements (#225)\n\n* :sparkles: entrypoint.sh container script improvements\r\n\r\nSigned-off-by: Jason Montleon <jmontleo@redhat.com>\r\n\r\n* Add hub importer support\r\n\r\nSigned-off-by: Jason Montleon <jmontleo@redhat.com>\r\n\r\n---------\r\n\r\nSigned-off-by: Jason Montleon <jmontleo@redhat.com>",
+          "timestamp": "2024-07-08T12:44:42-04:00",
+          "tree_id": "3fce1041d50f0bedb279fdd52f04b7a1bd99ca65",
+          "url": "https://github.com/konveyor-ecosystem/kai/commit/413dbcd30b89d7f285d846e25fb12c0851165d53"
+        },
+        "date": 1720457406471,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
+            "value": "79.0",
             "unit": "Match"
           }
         ]
