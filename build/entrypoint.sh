@@ -29,8 +29,6 @@ if [[ ${MODE} != "importer" ]]; then
 			echo "Please wait, this will take a few minutes.     #"
 			echo "################################################"
 			sleep 5
-			cd /kai/samples || exit
-			./fetch_apps.py
 			cd /kai || exit
 			python ./kai/service/incident_store/psql.py --config_filepath ./kai/config.toml --drop_tables False
 			echo "################################################"
