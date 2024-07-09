@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1720554829878,
+  "lastUpdate": 1720554863841,
   "repoUrl": "https://github.com/konveyor-ecosystem/kai",
   "entries": {
     "Benchmark": [
@@ -1825,6 +1825,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
+            "value": "1.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jmontleo@redhat.com",
+            "name": "Jason Montleon",
+            "username": "jmontleon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e29049c282cf7102e3f7e50357f6fab968500e8c",
+          "message": ":sparkles: Container and Compose Improvements (#231)\n\nSigned-off-by: Jason Montleon <jmontleo@redhat.com>",
+          "timestamp": "2024-07-09T15:49:57-04:00",
+          "tree_id": "cdf36136c05d4c55764922305bbd0233fb8720f8",
+          "url": "https://github.com/konveyor-ecosystem/kai/commit/e29049c282cf7102e3f7e50357f6fab968500e8c"
+        },
+        "date": 1720554863053,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
             "value": "1.0",
             "unit": "Match"
           }
