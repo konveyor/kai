@@ -8,6 +8,14 @@ from kai.models.kai_config import KaiConfigIncidentStorePostgreSQLArgs
 from kai.service.incident_store.incident_store import IncidentStore, SQLIncident, cmd
 
 
+"""
+Responsible for 3 main things:
+- Solution storage
+- Solution detection
+- Solution generation
+"""
+
+
 class PSQLIncidentStore(IncidentStore):
     def __init__(
         self, args: KaiConfigIncidentStorePostgreSQLArgs, model_provider: ModelProvider

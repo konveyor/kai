@@ -204,8 +204,11 @@ class Solution:
     uri: str
     file_diff: str
     repo_diff: str
+
     original_code: Optional[str] = None
     updated_code: Optional[str] = None
+
+    llm_summary: Optional[str] = None
 
 
 class SQLBase(DeclarativeBase):
