@@ -6,7 +6,7 @@ from kai.kai_logging import initLogging
 from kai.model_provider import ModelProvider
 from kai.models.kai_config import KaiConfigIncidentStorePostgreSQLArgs
 from kai.service.incident_store.incident_store import IncidentStore, SQLIncident, cmd
-
+from kai.service.solution_handling.detector import SOLUTION_DETECTION_ALGORITHMS
 
 """
 Responsible for 3 main things:
@@ -29,6 +29,8 @@ class PSQLIncidentStore(IncidentStore):
             )
 
         self.model_provider = model_provider
+
+        self.solution_detector = SOLUTION_DETECTION_ALGORITHMS[args.solution_detection]
 
     def json_exactly_equal(self, json_dict: dict):
         return and_(

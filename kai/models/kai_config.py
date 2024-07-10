@@ -6,6 +6,22 @@ from typing import Literal, Optional, Union
 import yaml
 from pydantic import BaseModel, Field, validator
 
+from kai.service.solution_handling.detection import SolutionDetectionKind
+
+"""
+https://docs.pydantic.dev/2.0/migration/#required-optional-and-nullable-fields
+
+State                                               | Field Definition
+----------------------------------------------------+---------------------------
+Required, cannot be None                            | f1: str
+Not required, cannot be None, is 'abc' by default   | f2: str = 'abc'
+Required, can be None                               | f3: Optional[str]
+Not required, can be None, is None by default       | f4: Optional[str] = None
+Not required, can be None, is 'abc' by default      | f5: Optional[str] = 'abc'
+Required, can be any type (including None)          | f6: Any
+Not required, can be any type (including None)      | f7: Any = None
+"""
+
 # Incident store providers
 
 
@@ -37,6 +53,8 @@ class KaiConfigIncidentStorePostgreSQLArgs(BaseModel):
 
         return v
 
+    solution_detection: SolutionDetectionKind = SolutionDetectionKind.NAIVE
+
 
 class KaiConfigIncidentStorePostgreSQL(BaseModel):
     provider: Literal["postgresql"]
@@ -65,6 +83,8 @@ class KaiConfigIncidentStoreSQLiteArgs(BaseModel):
             )
 
         return v
+
+    solution_detection: SolutionDetectionKind = SolutionDetectionKind.NAIVE
 
 
 class KaiConfigIncidentStoreSQLIte(BaseModel):

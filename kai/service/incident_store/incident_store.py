@@ -10,13 +10,16 @@ from urllib.parse import unquote, urlparse
 
 import yaml
 from git import Repo
+from pydantic import BaseModel, Field
 from sqlalchemy import (
+    VARCHAR,
     Column,
     DateTime,
     Engine,
     ForeignKey,
     ForeignKeyConstraint,
     String,
+    TypeDecorator,
     func,
     select,
 )
@@ -32,6 +35,9 @@ from kai.models.kai_config import (
     KaiConfigIncidentStoreProvider,
 )
 from kai.report import Report
+from kai.service.incident_store.psql import PSQLIncidentStore
+from kai.service.incident_store.sqlite import SQLiteIncidentStore
+from kai.service.solution_handling.detection import SolutionDetectionAlgorithm
 
 KAI_LOG = logging.getLogger(__name__)
 
@@ -197,20 +203,6 @@ class Application:
     generated_at: datetime.datetime
 
 
-# NOTE(@JonahSussman): Should we include the incident that this solution is for
-# inside the class?
-@dataclass
-class Solution:
-    uri: str
-    file_diff: str
-    repo_diff: str
-
-    original_code: Optional[str] = None
-    updated_code: Optional[str] = None
-
-    llm_summary: Optional[str] = None
-
-
 class SQLBase(DeclarativeBase):
     type_annotation_map = {
         dict[str, Any]: JSON()
@@ -285,20 +277,63 @@ class SQLViolation(SQLBase):
     )
 
 
+# U = TypeVar("U", BaseModel)
+
+
+class Solution(BaseModel):
+    uri: str
+    generated_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
+
+    file_diff: str
+    repo_diff: Optional[str] = None
+
+    original_code: Optional[str] = None
+    updated_code: Optional[str] = None
+
+    llm_summary_generated: Optional[bool] = None
+    llm_summary: Optional[str] = None
+
+
+class SolutionType(TypeDecorator):
+    impl = VARCHAR
+    cache_ok = True
+
+    def process_bind_param(self, value: Optional[Solution], dialect):
+        # Into the db
+        if value is None:
+            return None
+
+        return value.model_dump_json()
+
+    def process_result_value(self, value: str, dialect):
+        # Out of the db
+        if value is None:
+            return None
+
+        return Solution.model_validate(value)
+
+
 class SQLAcceptedSolution(SQLBase):
     __tablename__ = "accepted_solutions"
 
     solution_id: Mapped[int] = mapped_column(primary_key=True)
+    solution: Mapped[Solution]
 
-    generated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(), server_default=func.now()
-    )
-    solution_big_diff: Mapped[str]
-    solution_small_diff: Mapped[str]
-    solution_original_code: Mapped[str]
-    solution_updated_code: Mapped[str]
+    # generated_at: Mapped[datetime.datetime] = mapped_column(
+    #     DateTime(), server_default=func.now()
+    # )
 
-    llm_summary: Mapped[Optional[str]]
+    # solution_big_diff: Mapped[str]
+    # solution_small_diff: Mapped[str]
+    # solution_original_code: Mapped[str]
+    # solution_updated_code: Mapped[str]
+
+    # llm_summary: Mapped[Optional[str]]
+    # json something
+
+    # Solution generator and solution consumer
+    # - lazy llm summary
+    # - eager llm summary
 
     incidents: Mapped[list["SQLIncident"]] = relationship(
         back_populates="solution", cascade="all, delete-orphan"
@@ -352,6 +387,7 @@ class IncidentStore(ABC):
 
     engine: Engine
     model_provider: ModelProvider
+    solution_detector: SolutionDetectionAlgorithm
 
     @staticmethod
     def from_config(config: KaiConfigIncidentStore, model_provider: ModelProvider):
@@ -359,21 +395,17 @@ class IncidentStore(ABC):
         Factory method to produce whichever incident store is needed.
         """
 
-        # TODO: Come up with some sort of "solution generator strategy" so we
-        # don't blow up our llm API usage. Lazy, immediate, other etc...
-
+        store: IncidentStore
         if config.provider == "postgresql":
-            from kai.service.incident_store.psql import PSQLIncidentStore
-
-            return PSQLIncidentStore(config.args, model_provider)
+            store = PSQLIncidentStore(config.args, model_provider)
         elif config.provider == "sqlite":
-            from kai.service.incident_store.sqlite import SQLiteIncidentStore
-
             return SQLiteIncidentStore(config.args, model_provider)
         else:
             raise ValueError(
                 f"Unsupported provider: {config.provider}\ntype: {type(config.provider)}\nlmao: {KaiConfigIncidentStoreProvider.POSTGRESQL}"
             )
+
+        return store
 
     def load_report(self, app: Application, report: Report) -> tuple[int, int, int]:
         """
@@ -407,10 +439,6 @@ class IncidentStore(ABC):
         repo = Repo(repo_path)
         old_commit: str
         new_commit = app.current_commit
-
-        number_new_incidents = 0
-        number_unsolved_incidents = 0
-        number_solved_incidents = 0
 
         with Session(self.engine) as session:
             incidents_temp: list[SQLIncident] = []
@@ -492,24 +520,17 @@ class IncidentStore(ABC):
                             )
                         )
 
-            # incidents_temp - incidents
-            new_incidents = set(incidents_temp) - set(application.incidents)
-            number_new_incidents = len(new_incidents)
+            new_incidents, unsolved_incidents, solved_incidents = (
+                self.solution_detector(application.incidents, incidents_temp)
+            )
 
             for new_incident in new_incidents:
                 session.add(new_incident)
 
             session.commit()
 
-            # incidents `intersect` incidents_temp
-            unsolved_incidents = set(application.incidents).intersection(incidents_temp)
-            number_unsolved_incidents = len(unsolved_incidents)
-
             # incidents - incidents_temp
-            solved_incidents = set(application.incidents) - set(incidents_temp)
-            number_solved_incidents = len(solved_incidents)
             KAI_LOG.debug(f"Number of solved incidents: {len(solved_incidents)}")
-            # KAI_LOG.debug(f"{solved_incidents=}")
 
             for solved_incident in solved_incidents:
                 file_path = os.path.join(
@@ -585,7 +606,7 @@ class IncidentStore(ABC):
             session.merge(unmodified_report)
             session.commit()
 
-        return number_new_incidents, number_unsolved_incidents, number_solved_incidents
+        return len(new_incidents), len(unsolved_incidents), len(solved_incidents)
 
     def create_tables(self):
         """
