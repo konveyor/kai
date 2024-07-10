@@ -1,5 +1,7 @@
 __all__ = ["Report"]
 
+import hashlib
+import json
 import os
 import shutil
 from io import StringIO
@@ -12,9 +14,10 @@ from kai.kai_logging import KAI_LOG
 class Report:
     report: dict = None
 
-    def __init__(self, report_data: dict):
+    def __init__(self, report_data: dict, report_id: str):
         self.workaround_counter_for_missing_ruleset_name = 0
         self.report = self._reformat_report(report_data)
+        self.report_id = report_id
 
     def __str__(self):
         return str(self.report)
@@ -35,11 +38,11 @@ class Report:
         return len(self.report)
 
     @classmethod
-    def load_report_from_object(cls, report_data: dict):
+    def load_report_from_object(cls, report_data: dict, report_id: str):
         """
         Class method to create a Report instance directly from a Python dictionary object.
         """
-        return cls(report_data=report_data)
+        return cls(report_data=report_data, report_id=report_id)
 
     @classmethod
     def load_report_from_file(cls, file_name: str):
@@ -47,7 +50,13 @@ class Report:
         with open(file_name, "r") as f:
             report: dict = yaml.safe_load(f)
         report_data = report
-        return cls(report_data)
+        # report_id is the hash of the json.dumps of the report_data
+        return cls(
+            report_data,
+            hashlib.sha256(
+                json.dumps(report_data, sort_keys=True).encode()
+            ).hexdigest(),
+        )
 
     @staticmethod
     def get_cleaned_file_path(uri: str):
