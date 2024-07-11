@@ -1,5 +1,6 @@
 __all__ = ["LLMResult"]
 
+import logging
 import os
 
 from langchain.chains import LLMChain
@@ -7,10 +8,11 @@ from langchain.prompts import PromptTemplate
 from langchain_community.chat_models import ChatOpenAI
 
 from kai.constants import PATH_TEMPLATES
-from kai.kai_logging import KAI_LOG
 
 from .report import Report
 from .scm import GitDiff
+
+KAI_LOG = logging.getLogger(__name__)
 
 
 class LLMResult:

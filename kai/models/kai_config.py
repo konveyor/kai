@@ -92,6 +92,10 @@ class KaiConfigModels(BaseModel):
 
 class KaiConfig(BaseModel):
     log_level: str = "info"
+    file_log_level: str = "info"
+    log_dir: str = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "../../logs"
+    )
     demo_mode: bool = False
     trace_enabled: bool = False
 

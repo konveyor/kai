@@ -1,3 +1,4 @@
+import logging
 import random
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -9,7 +10,7 @@ from InstructorEmbedding import INSTRUCTOR
 from psycopg2 import sql
 from psycopg2.extensions import connection
 
-from kai.kai_logging import KAI_LOG
+KAI_LOG = logging.getLogger(__name__)
 
 
 class TrimStrategy(Enum):
