@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1720668768964,
+  "lastUpdate": 1720668775800,
   "repoUrl": "https://github.com/konveyor-ecosystem/kai",
   "entries": {
     "Benchmark": [
@@ -1999,6 +1999,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "42743659+JonahSussman@users.noreply.github.com",
+            "name": "Jonah Sussman",
+            "username": "JonahSussman"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d0e93bcb94434e47f907b7f845c4f79f345b85bf",
+          "message": "✨ Refactor PSQL incident store into ORM (SQLAlchemy) (#211)\n\n* Initial migration to sqlalchemy\r\n\r\nSigned-off-by: Jonah Sussman <sussmanjonah@gmail.com>\r\n\r\n* Fixed utf-8 encoding and switched to pg16\r\n\r\nSigned-off-by: Jonah Sussman <sussmanjonah@gmail.com>\r\n\r\n* Added unmodified reports\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Fixed some logs\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Fixed trunk errors\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Implemented report_id and SQLite provider\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed extraneous comment\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: Jonah Sussman <sussmanjonah@gmail.com>\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>",
+          "timestamp": "2024-07-10T23:29:21-04:00",
+          "tree_id": "ca986c0a02f192732ec6f1a7e5a9498524e7cb1f",
+          "url": "https://github.com/konveyor-ecosystem/kai/commit/d0e93bcb94434e47f907b7f845c4f79f345b85bf"
+        },
+        "date": 1720668774670,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
             "value": "",
             "unit": "Match"
           }
