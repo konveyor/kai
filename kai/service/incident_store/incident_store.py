@@ -337,15 +337,6 @@ class SQLIncident(SQLBase):
         return f"SQLIncident(violation_name={self.violation_name}, ruleset_name={self.ruleset_name}, application_name={self.application_name}, incident_uri={self.incident_uri}, incident_snip={self.incident_snip:.10}, incident_line={self.incident_line}, incident_variables={self.incident_variables}, solution_id={self.solution_id})"
 
 
-# def dump(sql, *multiparams, **params):
-#     print(sql.compile(dialect=engine.dialect))
-
-# engine = create_engine('postgresql://', strategy='mock', executor=dump)
-# Base.metadata.create_all(engine, checkfirst=False)
-
-# exit()
-
-
 class IncidentStore(ABC):
     """
     Responsible for 3 main things:
