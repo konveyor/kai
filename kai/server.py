@@ -295,12 +295,14 @@ def app():
     if config.demo_mode:
         KAI_LOG.info("DEMO_MODE is enabled. LLM responses will be cached")
 
-    webapp["incident_store"] = IncidentStore.from_config(config.incident_store)
-    KAI_LOG.info(f"Selected incident store: {config.incident_store.provider}")
-
     webapp["model_provider"] = ModelProvider(config.models)
     KAI_LOG.info(f"Selected provider: {config.models.provider}")
     KAI_LOG.info(f"Selected model: {webapp['model_provider'].model_id}")
+
+    webapp["incident_store"] = IncidentStore.from_config(
+        config.incident_store, webapp["model_provider"]
+    )
+    KAI_LOG.info(f"Selected incident store: {config.incident_store.provider}")
 
     webapp.add_routes(routes)
 

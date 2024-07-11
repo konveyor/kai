@@ -12,10 +12,10 @@ from kai.llm_io_handler import get_prompt
 from kai.model_provider import ModelProvider
 from kai.models.analyzer_types import Incident
 from kai.models.file_solution import guess_language, parse_file_solution_content
-from kai.models.kai_config import KaiConfig
+from kai.models.kai_config import KaiConfig, KaiConfigIncidentStoreSQLiteArgs
 from kai.report import Report
-from kai.service.incident_store.in_memory import InMemoryIncidentStore
 from kai.service.incident_store.incident_store import Application
+from kai.service.incident_store.sqlite import SQLiteIncidentStore
 
 """
 The point of this file is to automatically see if certain prompts make the
@@ -172,7 +172,12 @@ def evaluate(
 
                     created_git_repo = True
 
-                incident_store = InMemoryIncidentStore(None)
+                incident_store = SQLiteIncidentStore(
+                    KaiConfigIncidentStoreSQLiteArgs(
+                        connection_string="sqlite:///:memory:"
+                    ),
+                    None,
+                )
                 incident_store.load_report(example.application, example.report)
 
                 pb_incidents = []

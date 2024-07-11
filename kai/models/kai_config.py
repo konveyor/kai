@@ -4,21 +4,38 @@ from enum import Enum
 from typing import Literal, Optional, Union
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 # Incident store providers
 
 
 class KaiConfigIncidentStoreProvider(Enum):
     POSTGRESQL = "postgresql"
-    IN_MEMORY = "in_memory"
+    SQLITE = "sqlite"
 
 
 class KaiConfigIncidentStorePostgreSQLArgs(BaseModel):
-    host: str
-    database: str
-    user: str
-    password: str
+    host: Optional[str] = None
+    database: Optional[str] = None
+    user: Optional[str] = None
+    password: Optional[str] = None
+
+    connection_string: Optional[str] = None
+
+    @validator("connection_string", always=True)
+    def validate_connection_string(cls, v, values):
+        connection_string_present = v is not None
+        parameters_present = all(
+            values.get(key) is not None
+            for key in ["host", "database", "user", "password"]
+        )
+
+        if connection_string_present == parameters_present:
+            raise ValueError(
+                "Must provide one of connection_string or [host, database, user, password]"
+            )
+
+        return v
 
 
 class KaiConfigIncidentStorePostgreSQL(BaseModel):
@@ -26,18 +43,38 @@ class KaiConfigIncidentStorePostgreSQL(BaseModel):
     args: KaiConfigIncidentStorePostgreSQLArgs
 
 
-class KaiConfigIncidentStoreInMemoryArgs(BaseModel):
-    dummy: bool
+class KaiConfigIncidentStoreSQLiteArgs(BaseModel):
+    host: Optional[str] = None
+    database: Optional[str] = None
+    user: Optional[str] = None
+    password: Optional[str] = None
+
+    connection_string: Optional[str] = None
+
+    @validator("connection_string", always=True)
+    def validate_connection_string(cls, v, values):
+        connection_string_present = v is not None
+        parameters_present = all(
+            values.get(key) is not None
+            for key in ["host", "database", "user", "password"]
+        )
+
+        if connection_string_present == parameters_present:
+            raise ValueError(
+                "Must provide one of connection_string or [host, database, user, password]"
+            )
+
+        return v
 
 
-class KaiConfigIncidentStoreInMemory(BaseModel):
-    provider: Literal["in_memory"]
-    args: KaiConfigIncidentStoreInMemoryArgs
+class KaiConfigIncidentStoreSQLIte(BaseModel):
+    provider: Literal["sqlite"]
+    args: KaiConfigIncidentStoreSQLiteArgs
 
 
 KaiConfigIncidentStore = Union[
     KaiConfigIncidentStorePostgreSQL,
-    KaiConfigIncidentStoreInMemory,
+    KaiConfigIncidentStoreSQLIte,
 ]
 
 # Model providers

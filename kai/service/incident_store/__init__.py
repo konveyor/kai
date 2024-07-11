@@ -1,11 +1,11 @@
-from .in_memory import InMemoryIncidentStore
 from .incident_store import Application, IncidentStore, Solution
 from .psql import PSQLIncidentStore
+from .sqlite import SQLiteIncidentStore
 
 __all__ = [
     "IncidentStore",
     "Solution",
     "PSQLIncidentStore",
-    "InMemoryIncidentStore",
+    "SQLiteIncidentStore",
     "Application",
 ]
