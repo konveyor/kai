@@ -2,11 +2,8 @@ import os
 
 from sqlalchemy import and_, create_engine
 
-from kai.kai_logging import initLogging
-from kai.model_provider import ModelProvider
 from kai.models.kai_config import KaiConfigIncidentStorePostgreSQLArgs
 from kai.service.incident_store.incident_store import IncidentStore, SQLIncident, cmd
-from kai.service.solution_handling.detector import SOLUTION_DETECTION_ALGORITHMS
 
 """
 Responsible for 3 main things:
@@ -18,7 +15,11 @@ Responsible for 3 main things:
 
 class PSQLIncidentStore(IncidentStore):
     def __init__(
-        self, args: KaiConfigIncidentStorePostgreSQLArgs, model_provider: ModelProvider
+        self,
+        args: KaiConfigIncidentStorePostgreSQLArgs,
+        solution_detector,
+        solution_producer,
+        solution_consumer,
     ):
         if args.connection_string:
             self.engine = create_engine(args.connection_string)
@@ -28,9 +29,9 @@ class PSQLIncidentStore(IncidentStore):
                 client_encoding="utf8",
             )
 
-        self.model_provider = model_provider
-
-        self.solution_detector = SOLUTION_DETECTION_ALGORITHMS[args.solution_detection]
+        self.solution_detector = solution_detector
+        self.solution_producer = solution_producer
+        self.solution_consumer = solution_consumer
 
     def json_exactly_equal(self, json_dict: dict):
         return and_(

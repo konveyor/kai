@@ -1,13 +1,16 @@
 from sqlalchemy import bindparam, create_engine, text
 
-from kai.model_provider import ModelProvider
 from kai.models.kai_config import KaiConfigIncidentStoreSQLiteArgs
 from kai.service.incident_store.incident_store import IncidentStore
 
 
 class SQLiteIncidentStore(IncidentStore):
     def __init__(
-        self, args: KaiConfigIncidentStoreSQLiteArgs, model_provider: ModelProvider
+        self,
+        args: KaiConfigIncidentStoreSQLiteArgs,
+        solution_detector,
+        solution_producer,
+        solution_consumer,
     ):
         if args.connection_string:
             self.engine = create_engine(args.connection_string)
@@ -17,7 +20,9 @@ class SQLiteIncidentStore(IncidentStore):
                 client_encoding="utf8",
             )
 
-        self.model_provider = model_provider
+        self.solution_detector = solution_detector
+        self.solution_producer = solution_producer
+        self.solution_consumer = solution_consumer
 
     def json_exactly_equal(self, json_dict: dict):
         return text(

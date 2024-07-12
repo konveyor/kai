@@ -15,6 +15,7 @@ from sqlalchemy import (
     VARCHAR,
     Column,
     DateTime,
+    Dialect,
     Engine,
     ForeignKey,
     ForeignKeyConstraint,
@@ -37,7 +38,12 @@ from kai.models.kai_config import (
 from kai.report import Report
 from kai.service.incident_store.psql import PSQLIncidentStore
 from kai.service.incident_store.sqlite import SQLiteIncidentStore
-from kai.service.solution_handling.detection import SolutionDetectionAlgorithm
+from kai.service.solution_handling.consumption import SolutionConsumer
+from kai.service.solution_handling.detection import (
+    SolutionDetectionAlgorithm,
+    SolutionDetectorContext,
+)
+from kai.service.solution_handling.production import SolutionProducer
 
 KAI_LOG = logging.getLogger(__name__)
 
@@ -277,35 +283,33 @@ class SQLViolation(SQLBase):
     )
 
 
-# U = TypeVar("U", BaseModel)
-
-
 class Solution(BaseModel):
-    uri: str
+    uri: str  # NOTE: This kinda doesn't make sense if we start to have multiple incidents associated with one solution
     generated_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
 
     file_diff: str
     repo_diff: Optional[str] = None
 
-    original_code: Optional[str] = None
-    updated_code: Optional[str] = None
+    original_code: str
+    updated_code: str
 
+    # If None, then llm summary should not be generated.
     llm_summary_generated: Optional[bool] = None
     llm_summary: Optional[str] = None
 
 
-class SolutionType(TypeDecorator):
+class SQLSolutionType(TypeDecorator):
     impl = VARCHAR
     cache_ok = True
 
-    def process_bind_param(self, value: Optional[Solution], dialect):
+    def process_bind_param(self, value: Optional[Solution], dialect: Dialect):
         # Into the db
         if value is None:
             return None
 
         return value.model_dump_json()
 
-    def process_result_value(self, value: str, dialect):
+    def process_result_value(self, value: str, dialect: Dialect):
         # Out of the db
         if value is None:
             return None
@@ -317,30 +321,11 @@ class SQLAcceptedSolution(SQLBase):
     __tablename__ = "accepted_solutions"
 
     solution_id: Mapped[int] = mapped_column(primary_key=True)
-    solution: Mapped[Solution]
-
-    # generated_at: Mapped[datetime.datetime] = mapped_column(
-    #     DateTime(), server_default=func.now()
-    # )
-
-    # solution_big_diff: Mapped[str]
-    # solution_small_diff: Mapped[str]
-    # solution_original_code: Mapped[str]
-    # solution_updated_code: Mapped[str]
-
-    # llm_summary: Mapped[Optional[str]]
-    # json something
-
-    # Solution generator and solution consumer
-    # - lazy llm summary
-    # - eager llm summary
+    solution: Mapped[SQLSolutionType]
 
     incidents: Mapped[list["SQLIncident"]] = relationship(
         back_populates="solution", cascade="all, delete-orphan"
     )
-
-    def __repr__(self):
-        return f"SQLAcceptedSolution(solution_id={self.solution_id}, generated_at={self.generated_at}, solution_big_diff={self.solution_big_diff:.10}, solution_small_diff={self.solution_small_diff:.10}, solution_original_code={self.solution_original_code:.10}, solution_updated_code={self.solution_updated_code:.10})"
 
 
 class SQLIncident(SQLBase):
@@ -354,6 +339,7 @@ class SQLIncident(SQLBase):
         ForeignKey("applications.application_name")
     )
     incident_uri: Mapped[str]
+    incident_message: Mapped[str]
     incident_snip: Mapped[str]
     incident_line: Mapped[int]
     incident_variables: Mapped[dict[str, Any]]
@@ -386,20 +372,30 @@ class IncidentStore(ABC):
     """
 
     engine: Engine
-    model_provider: ModelProvider
     solution_detector: SolutionDetectionAlgorithm
+    solution_producer: SolutionProducer
+    solution_consumer: SolutionConsumer
 
     @staticmethod
-    def from_config(config: KaiConfigIncidentStore, model_provider: ModelProvider):
+    def from_config(
+        config: KaiConfigIncidentStore,
+        solution_detector: SolutionDetectionAlgorithm,
+        solution_producer: SolutionProducer,
+        solution_consumer: SolutionConsumer,
+    ):
         """
         Factory method to produce whichever incident store is needed.
         """
 
         store: IncidentStore
         if config.provider == "postgresql":
-            store = PSQLIncidentStore(config.args, model_provider)
+            store = PSQLIncidentStore(
+                config.args, solution_detector, solution_producer, solution_consumer
+            )
         elif config.provider == "sqlite":
-            return SQLiteIncidentStore(config.args, model_provider)
+            return SQLiteIncidentStore(
+                config.args, solution_detector, solution_producer, solution_consumer
+            )
         else:
             raise ValueError(
                 f"Unsupported provider: {config.provider}\ntype: {type(config.provider)}\nlmao: {KaiConfigIncidentStoreProvider.POSTGRESQL}"
@@ -408,7 +404,8 @@ class IncidentStore(ABC):
         return store
 
     def load_report(self, app: Application, report: Report) -> tuple[int, int, int]:
-        """
+        """def __init__(self) -> None:
+        super().__init__()
         Load incidents from a report and given application object. Returns a
         tuple containing (# of new incidents, # of unsolved incidents, # of
         solved incidents) in that order.
@@ -517,75 +514,36 @@ class IncidentStore(ABC):
                                 incident_variables=deep_sort(
                                     incident.get("variables", {})
                                 ),
+                                incident_message=incident.get("message", ""),
                             )
                         )
 
-            new_incidents, unsolved_incidents, solved_incidents = (
-                self.solution_detector(application.incidents, incidents_temp)
+            solution_detector_ctx = SolutionDetectorContext(
+                db_incidents=application.incidents,
+                report_incidents=incidents_temp,
             )
 
-            for new_incident in new_incidents:
+            categorized_incidents = self.solution_detector(solution_detector_ctx)
+
+            for new_incident in categorized_incidents.new:
                 session.add(new_incident)
 
             session.commit()
 
             # incidents - incidents_temp
-            KAI_LOG.debug(f"Number of solved incidents: {len(solved_incidents)}")
+            KAI_LOG.debug(
+                f"Number of solved incidents: {len(categorized_incidents.solved)}"
+            )
 
-            for solved_incident in solved_incidents:
-                file_path = os.path.join(
-                    repo_path,
-                    # NOTE: When retrieving uris from the report, some of them
-                    # had "/tmp/source-code/" as their root path. Unsure where
-                    # it originates from.
-                    unquote(urlparse(solved_incident.incident_uri).path).removeprefix(
-                        "/tmp/source-code/"  # trunk-ignore(bandit/B108)
-                    ),
+            for solved_incident in categorized_incidents.solved:
+                solution = self.solution_producer.produce_one(
+                    solved_incident, repo, old_commit, new_commit
                 )
-
-                # NOTE: The `big_diff` functionality is currently disabled
-
-                # big_diff: str = repo.git.diff(old_commit, new_commit).encode('utf-8', errors="ignore").decode()
-                big_diff = ""
-
-                # TODO: Some of the sample repos have invalid utf-8 characters,
-                # thus the encode-then-decode hack. Not very performant, there's
-                # probably a better way to handle this.
-
-                try:
-                    original_code = (
-                        repo.git.show(f"{old_commit}:{file_path}")
-                        .encode("utf-8", errors="ignore")
-                        .decode()
-                    )
-                except Exception:
-                    original_code = ""
-
-                try:
-                    updated_code = (
-                        repo.git.show(f"{new_commit}:{file_path}")
-                        .encode("utf-8", errors="ignore")
-                        .decode()
-                    )
-                except Exception:
-                    updated_code = ""
-
-                small_diff = (
-                    repo.git.diff(old_commit, new_commit, "--", file_path)
-                    .encode("utf-8", errors="ignore")
-                    .decode()
-                )
-
-                # TODO: Strings must be utf-8 encodable, so I'm removing the `big_diff` functionality for now
                 solved_incident.solution = SQLAcceptedSolution(
-                    generated_at=app.generated_at,
-                    solution_big_diff=big_diff,
-                    solution_small_diff=small_diff,
-                    solution_original_code=original_code,
-                    solution_updated_code=updated_code,
+                    solution=solution,
                 )
 
-                session.commit()
+            session.commit()
 
             application.repo_uri_origin = app.repo_uri_origin
             application.repo_uri_local = app.repo_uri_local
@@ -606,7 +564,11 @@ class IncidentStore(ABC):
             session.merge(unmodified_report)
             session.commit()
 
-        return len(new_incidents), len(unsolved_incidents), len(solved_incidents)
+        return (
+            len(categorized_incidents.new),
+            len(categorized_incidents.unsolved),
+            len(categorized_incidents.solved),
+        )
 
     def create_tables(self):
         """
@@ -668,13 +630,13 @@ class IncidentStore(ABC):
                     select_accepted_solution_stmt
                 ).first()
 
-                result.append(
-                    Solution(
-                        uri=incident.incident_uri,
-                        file_diff=accepted_solution.solution_small_diff,
-                        repo_diff=accepted_solution.solution_big_diff,
-                    )
+                processed_solution = self.solution_consumer.consume_one(
+                    accepted_solution.solution
                 )
+                accepted_solution.solution = processed_solution
+                result.append(processed_solution)
+
+            session.commit()
 
             return result
 

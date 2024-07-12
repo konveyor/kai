@@ -26,6 +26,19 @@ from kai.models.analyzer_types import Incident
 from kai.models.kai_config import KaiConfig
 from kai.report import Report
 from kai.service.incident_store.incident_store import Application, IncidentStore
+from kai.service.solution_handling.consumption import (
+    SolutionConsumer,
+    SolutionConsumerKind,
+    SolutionConsumerLLMLazy,
+    SolutionConsumerTextOnly,
+)
+from kai.service.solution_handling.detection import solution_detection_factory
+from kai.service.solution_handling.production import (
+    SolutionProducer,
+    SolutionProducerKind,
+    SolutionProducerLLMLazy,
+    SolutionProducerTextOnly,
+)
 
 log = logging.getLogger(__name__)
 
@@ -302,8 +315,29 @@ def app():
     log.info(f"Selected provider: {config.models.provider}")
     log.info(f"Selected model: {webapp['model_provider'].model_id}")
 
+    solution_detector = solution_detection_factory(
+        config.incident_store.solution_detectors
+    )
+    solution_producer: SolutionProducer
+    solution_consumer: SolutionConsumer
+
+    match config.incident_store.solution_producers:
+        case SolutionProducerKind.TEXT_ONLY:
+            solution_producer = SolutionProducerTextOnly()
+        case SolutionProducerKind.LLM_LAZY:
+            solution_producer = SolutionProducerLLMLazy(webapp["model_provider"])
+
+    match config.incident_store.solution_consumers:
+        case SolutionConsumerKind.TEXT_ONLY:
+            solution_consumer = SolutionConsumerTextOnly()
+        case SolutionConsumerKind.LLM_LAZY:
+            solution_consumer = SolutionConsumerLLMLazy(webapp["model_provider"])
+
     webapp["incident_store"] = IncidentStore.from_config(
-        config.incident_store, webapp["model_provider"]
+        config.incident_store,
+        solution_detector,
+        solution_producer,
+        solution_consumer,
     )
     log.info(f"Selected incident store: {config.incident_store.provider}")
 

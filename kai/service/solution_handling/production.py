@@ -2,38 +2,106 @@
 # don't blow up our llm API usage. Lazy, immediate, other etc...
 
 import enum
-from typing import Callable, Optional
+import os
+from abc import ABC, abstractmethod
+from urllib.parse import unquote, urlparse
 
-from kai.service.incident_store.incident_store import Solution, SQLIncident
+from git import Repo
+
+from kai.model_provider import ModelProvider
+from kai.service.incident_store.incident_store import (
+    Solution,
+    SQLIncident,
+    remove_known_prefixes,
+)
 
 
-class SolutionProductionKind(enum.Enum):
-    DIFF = "diff"
-    LLM_EAGER = "llm_eager"
+class SolutionProducerKind(enum.Enum):
+    TEXT_ONLY = "text_only"
     LLM_LAZY = "llm_lazy"
 
 
-SolutionProductionAlgorithm = Callable[
-    [list[SQLIncident], list[Optional[Solution]]], list[Solution]
-]
+class SolutionProducer(ABC):
+    @abstractmethod
+    def produce_one(
+        self, incident: SQLIncident, repo: Repo, old_commit: str, new_commit: str
+    ) -> Solution:
+        pass
+
+    def produce_many(
+        self, incidents: list[SQLIncident], repo: Repo, old_commit: str, new_commit: str
+    ) -> list[Solution]:
+        return [
+            self.produce_one(incident, repo, old_commit, new_commit)
+            for incident in incidents
+        ]
 
 
-def solution_production_diff(
-    incidents: list[SQLIncident], solutions: list[Optional[Solution]]
-) -> list[Solution]:
-    pass
+class SolutionProducerTextOnly(SolutionProducer):
+    def produce_one(
+        self, incidents: SQLIncident, repo: Repo, old_commit: str, new_commit: str
+    ) -> Solution:
+        solutions: list[Solution] = []
+
+        for incident in incidents:
+            file_path = os.path.join(
+                repo.working_tree_dir,
+                remove_known_prefixes(unquote(urlparse(incident.file_path).path)),
+            )
+
+            # NOTE: `repo_diff` functionality is not implemented
+
+            # TODO: Some of the sample repos have invalid utf-8 characters,
+            # thus the encode-then-decode hack. Not very performant, there's
+            # probably a better way to handle this.
+            try:
+                original_code = (
+                    repo.git.show(f"{new_commit}:{file_path}")
+                    .encode("utf-8")
+                    .decode("utf-8")
+                )
+            except Exception:
+                original_code = ""
+
+            try:
+                updated_code = (
+                    repo.git.show(f"{new_commit}:{file_path}")
+                    .encode("utf-8")
+                    .decode("utf-8")
+                )
+            except Exception:
+                updated_code = ""
+
+            file_diff = (
+                repo.git.diff(old_commit, new_commit, "--", file_path)
+                .encode("utf-8", errors="ignore")
+                .decode()
+            )
+
+            solutions.append(
+                Solution(
+                    uri=incident.incident_uri,
+                    file_diff=file_diff,
+                    original_code=original_code,
+                    updated_code=updated_code,
+                )
+            )
+
+        return solutions
 
 
-# TODO: Figure out how to best pass the model_provider
+class SolutionProducerLLMLazy(SolutionProducer):
+    def __init__(self, model_provider: ModelProvider):
+        self.model_provider = model_provider
 
+    def produce_many(
+        self, incidents: SQLIncident, repo: Repo, old_commit: str, new_commit: str
+    ) -> Solution:
+        solutions = SolutionProducerTextOnly().produce_many(
+            incidents, repo, old_commit, new_commit
+        )
 
-def solution_production_llm_eager(
-    incidents: list[SQLIncident], solutions: list[Optional[Solution]]
-) -> list[Solution]:
-    pass
+        for solution in solutions:
+            solution.llm_summary_generated = False
 
-
-def solution_production_llm_lazy(
-    incidents: list[SQLIncident], solutions: list[Optional[Solution]]
-) -> list[Solution]:
-    pass
+        return solutions

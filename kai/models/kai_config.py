@@ -6,7 +6,9 @@ from typing import Literal, Optional, Union
 import yaml
 from pydantic import BaseModel, Field, validator
 
-from kai.service.solution_handling.detection import SolutionDetectionKind
+from kai.service.solution_handling.consumption import SolutionConsumerKind
+from kai.service.solution_handling.detection import SolutionDetectorKind
+from kai.service.solution_handling.production import SolutionProducerKind
 
 """
 https://docs.pydantic.dev/2.0/migration/#required-optional-and-nullable-fields
@@ -31,6 +33,8 @@ class KaiConfigIncidentStoreProvider(Enum):
 
 
 class KaiConfigIncidentStorePostgreSQLArgs(BaseModel):
+    provider: Literal["postgresql"]
+
     host: Optional[str] = None
     database: Optional[str] = None
     user: Optional[str] = None
@@ -53,15 +57,12 @@ class KaiConfigIncidentStorePostgreSQLArgs(BaseModel):
 
         return v
 
-    solution_detection: SolutionDetectionKind = SolutionDetectionKind.NAIVE
-
-
-class KaiConfigIncidentStorePostgreSQL(BaseModel):
-    provider: Literal["postgresql"]
-    args: KaiConfigIncidentStorePostgreSQLArgs
+    solution_detection: SolutionDetectorKind = SolutionDetectorKind.NAIVE
 
 
 class KaiConfigIncidentStoreSQLiteArgs(BaseModel):
+    provider: Literal["sqlite"]
+
     host: Optional[str] = None
     database: Optional[str] = None
     user: Optional[str] = None
@@ -84,18 +85,19 @@ class KaiConfigIncidentStoreSQLiteArgs(BaseModel):
 
         return v
 
-    solution_detection: SolutionDetectionKind = SolutionDetectionKind.NAIVE
+    solution_detection: SolutionDetectorKind = SolutionDetectorKind.NAIVE
 
 
-class KaiConfigIncidentStoreSQLIte(BaseModel):
-    provider: Literal["sqlite"]
-    args: KaiConfigIncidentStoreSQLiteArgs
+class KaiConfigIncidentStore(BaseModel):
+    solution_detectors: SolutionDetectorKind
+    solution_producers: SolutionProducerKind
+    solution_consumers: SolutionConsumerKind
 
+    args: Union[
+        KaiConfigIncidentStorePostgreSQLArgs,
+        KaiConfigIncidentStoreSQLiteArgs,
+    ] = Field(discriminator="provider")
 
-KaiConfigIncidentStore = Union[
-    KaiConfigIncidentStorePostgreSQL,
-    KaiConfigIncidentStoreSQLIte,
-]
 
 # Model providers
 
@@ -119,7 +121,7 @@ class KaiConfig(BaseModel):
     demo_mode: bool = False
     trace_enabled: bool = False
 
-    incident_store: KaiConfigIncidentStore = Field(discriminator="provider")
+    incident_store: KaiConfigIncidentStore
     models: KaiConfigModels
 
     @staticmethod
