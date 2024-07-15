@@ -3,32 +3,17 @@ import datetime
 import enum
 import logging
 import os
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Optional, TypeVar
+from typing import Optional, TypeVar
 from urllib.parse import unquote, urlparse
 
 import yaml
 from git import Repo
-from pydantic import BaseModel, Field
-from sqlalchemy import (
-    VARCHAR,
-    Column,
-    DateTime,
-    Dialect,
-    Engine,
-    ForeignKey,
-    ForeignKeyConstraint,
-    String,
-    TypeDecorator,
-    func,
-    select,
-)
-from sqlalchemy.dialects import postgresql, sqlite
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship
-from sqlalchemy.types import JSON
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from kai.constants import PATH_LOCAL_REPO
+from kai.kai_logging import initLogging
 from kai.model_provider import ModelProvider
 from kai.models.kai_config import (
     KaiConfig,
@@ -36,9 +21,18 @@ from kai.models.kai_config import (
     KaiConfigIncidentStoreProvider,
 )
 from kai.report import Report
-from kai.service.incident_store.psql import PSQLIncidentStore
-from kai.service.incident_store.sqlite import SQLiteIncidentStore
-from kai.service.solution_handling.consumption import SolutionConsumer
+from kai.service.incident_store.psql import psql_engine, psql_json_exactly_equal
+from kai.service.incident_store.sql_types import (
+    SQLAcceptedSolution,
+    SQLApplication,
+    SQLBase,
+    SQLIncident,
+    SQLRuleset,
+    SQLUnmodifiedReport,
+    SQLViolation,
+)
+from kai.service.incident_store.sqlite import sqlite_engine, sqlite_json_exactly_equal
+from kai.service.incident_store.util import filter_incident_vars
 from kai.service.solution_handling.detection import (
     SolutionDetectionAlgorithm,
     SolutionDetectorContext,
@@ -76,6 +70,7 @@ def filter_incident_vars(incident_vars: dict):
         incident_vars.pop(v, None)
     return incident_vars
 
+from kai.service.solution_handling.types import Solution
 
 T = TypeVar("T")
 
@@ -209,203 +204,28 @@ class Application:
     generated_at: datetime.datetime
 
 
-class SQLBase(DeclarativeBase):
-    type_annotation_map = {
-        dict[str, Any]: JSON()
-        .with_variant(postgresql.JSONB(), "postgresql")
-        .with_variant(sqlite.JSON(), "sqlite"),
-        list[str]: JSON()
-        .with_variant(postgresql.JSONB(), "postgresql")
-        .with_variant(sqlite.JSON(), "sqlite"),
-    }
-
-
-class SQLUnmodifiedReport(SQLBase):
-    __tablename__ = "unmodified_reports"
-
-    application_name: Mapped[str] = mapped_column(primary_key=True)
-    report_id: Mapped[str] = mapped_column(primary_key=True)
-
-    generated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(), server_default=func.now()
-    )
-    report: Mapped[dict[str, Any]]
-
-
-class ViolationCategory(enum.Enum):
-    potential = "potential"
-    optional = "optional"
-    mandatory = "mandatory"
-
-
-class SQLApplication(SQLBase):
-    __tablename__ = "applications"
-
-    application_name: Mapped[str] = mapped_column(primary_key=True)
-
-    repo_uri_origin: Mapped[str]
-    repo_uri_local: Mapped[str]
-    current_branch: Mapped[str]
-    current_commit: Mapped[str]
-    generated_at: Mapped[datetime.datetime]
-
-    incidents: Mapped[list["SQLIncident"]] = relationship(
-        back_populates="application", cascade="all, delete-orphan"
-    )
-
-
-class SQLRuleset(SQLBase):
-    __tablename__ = "rulesets"
-
-    ruleset_name: Mapped[str] = mapped_column(primary_key=True)
-
-    tags: Mapped[list[str]]
-
-    violations: Mapped[list["SQLViolation"]] = relationship(
-        back_populates="ruleset", cascade="all, delete-orphan"
-    )
-
-
-class SQLViolation(SQLBase):
-    __tablename__ = "violations"
-
-    violation_name: Mapped[str] = mapped_column(primary_key=True)
-    ruleset_name: Mapped[int] = mapped_column(
-        ForeignKey("rulesets.ruleset_name"), primary_key=True
-    )
-
-    category: Mapped[ViolationCategory]
-    labels: Mapped[list[str]]
-
-    ruleset: Mapped[SQLRuleset] = relationship(back_populates="violations")
-    incidents: Mapped[list["SQLIncident"]] = relationship(
-        back_populates="violation", cascade="all, delete-orphan"
-    )
-
-
-class Solution(BaseModel):
-    uri: str  # NOTE: This kinda doesn't make sense if we start to have multiple incidents associated with one solution
-    generated_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
-
-    file_diff: str
-    repo_diff: Optional[str] = None
-
-    original_code: str
-    updated_code: str
-
-    # If None, then llm summary should not be generated.
-    llm_summary_generated: Optional[bool] = None
-    llm_summary: Optional[str] = None
-
-
-class SQLSolutionType(TypeDecorator):
-    impl = VARCHAR
-    cache_ok = True
-
-    def process_bind_param(self, value: Optional[Solution], dialect: Dialect):
-        # Into the db
-        if value is None:
-            return None
-
-        return value.model_dump_json()
-
-    def process_result_value(self, value: str, dialect: Dialect):
-        # Out of the db
-        if value is None:
-            return None
-
-        return Solution.model_validate(value)
-
-
-class SQLAcceptedSolution(SQLBase):
-    __tablename__ = "accepted_solutions"
-
-    solution_id: Mapped[int] = mapped_column(primary_key=True)
-    solution: Mapped[SQLSolutionType]
-
-    incidents: Mapped[list["SQLIncident"]] = relationship(
-        back_populates="solution", cascade="all, delete-orphan"
-    )
-
-
-class SQLIncident(SQLBase):
-    __tablename__ = "incidents"
-
-    incident_id: Mapped[int] = mapped_column(primary_key=True)
-
-    violation_name = Column(String)
-    ruleset_name = Column(String)
-    application_name: Mapped[str] = mapped_column(
-        ForeignKey("applications.application_name")
-    )
-    incident_uri: Mapped[str]
-    incident_message: Mapped[str]
-    incident_snip: Mapped[str]
-    incident_line: Mapped[int]
-    incident_variables: Mapped[dict[str, Any]]
-    solution_id: Mapped[Optional[str]] = mapped_column(
-        ForeignKey("accepted_solutions.solution_id")
-    )
-
-    __table_args__ = (
-        ForeignKeyConstraint(
-            [violation_name, ruleset_name],
-            [SQLViolation.violation_name, SQLViolation.ruleset_name],
-        ),
-        {},
-    )
-
-    violation: Mapped[SQLViolation] = relationship(back_populates="incidents")
-    application: Mapped[SQLApplication] = relationship(back_populates="incidents")
-    solution: Mapped[SQLAcceptedSolution] = relationship(back_populates="incidents")
-
-    def __repr__(self) -> str:
-        return f"SQLIncident(violation_name={self.violation_name}, ruleset_name={self.ruleset_name}, application_name={self.application_name}, incident_uri={self.incident_uri}, incident_snip={self.incident_snip:.10}, incident_line={self.incident_line}, incident_variables={self.incident_variables}, solution_id={self.solution_id})"
-
-
-class IncidentStore(ABC):
-    """
-    Responsible for 3 main things:
-    - Incident/Solution storage
-    - Solution detection
-    - Solution generation
-    """
-
-    engine: Engine
-    solution_detector: SolutionDetectionAlgorithm
-    solution_producer: SolutionProducer
-    solution_consumer: SolutionConsumer
-
-    @staticmethod
-    def from_config(
+class IncidentStore:
+    def __init__(
+        self,
         config: KaiConfigIncidentStore,
         solution_detector: SolutionDetectionAlgorithm,
         solution_producer: SolutionProducer,
-        solution_consumer: SolutionConsumer,
     ):
-        """
-        Factory method to produce whichever incident store is needed.
-        """
+        match config.args.provider:
+            case KaiConfigIncidentStoreProvider.SQLITE:
+                self.engine = sqlite_engine(config.args)
+                self.json_exactly_equal = sqlite_json_exactly_equal
+            case KaiConfigIncidentStoreProvider.POSTGRESQL:
+                self.engine = psql_engine(config.args)
+                self.json_exactly_equal = psql_json_exactly_equal
+            case _:
+                raise Exception(f"Unknown provider: {config.args.provider}")
 
-        store: IncidentStore
-        if config.provider == "postgresql":
-            store = PSQLIncidentStore(
-                config.args, solution_detector, solution_producer, solution_consumer
-            )
-        elif config.provider == "sqlite":
-            return SQLiteIncidentStore(
-                config.args, solution_detector, solution_producer, solution_consumer
-            )
-        else:
-            raise ValueError(
-                f"Unsupported provider: {config.provider}\ntype: {type(config.provider)}\nlmao: {KaiConfigIncidentStoreProvider.POSTGRESQL}"
-            )
-
-        return store
+        self.solution_detector = solution_detector
+        self.solution_producer = solution_producer
 
     def load_report(self, app: Application, report: Report) -> tuple[int, int, int]:
-        """def __init__(self) -> None:
-        super().__init__()
+        """
         Load incidents from a report and given application object. Returns a
         tuple containing (# of new incidents, # of unsolved incidents, # of
         solved incidents) in that order.
@@ -640,17 +460,23 @@ class IncidentStore(ABC):
 
             return result
 
-    @abstractmethod
-    def json_exactly_equal(self, json_dict: dict):
-        """
-        Each incident store must implement this method as JSON is handled
-        slightly differently between SQLite and PostgreSQL.
-        """
-        pass
-
 
 def cmd(provider: str = None):
     KAI_LOG.setLevel("debug".upper())
+
+    if os.getenv("LOG_DIR") is not None:
+        log_dir = os.getenv("LOG_DIR")
+    else:
+        log_dir = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "../../../logs"
+        )
+
+    if os.getenv("LOG_LEVEL") is not None:
+        log_level = os.getenv("LOG_LEVEL").upper()
+    else:
+        log_level = "INFO"
+
+    initLogging(log_level, "DEBUG", log_dir, "kai_psql.log")
 
     parser = argparse.ArgumentParser(description="Process some parameters.")
     parser.add_argument(
@@ -673,11 +499,11 @@ def cmd(provider: str = None):
 
     config = KaiConfig.model_validate_filepath(args.config_filepath)
 
-    if provider is not None and config.incident_store.provider != provider:
+    if provider is not None and config.incident_store.args.provider != provider:
         raise Exception(f"This script only works with {provider} incident store.")
 
     model_provider = ModelProvider(config.models)
-    incident_store = IncidentStore.from_config(config.incident_store, model_provider)
+    incident_store = IncidentStore(config.incident_store, model_provider)
 
     if args.drop_tables:
         incident_store.delete_store()

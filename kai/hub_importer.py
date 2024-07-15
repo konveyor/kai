@@ -14,9 +14,16 @@ import urllib3
 from git import GitCommandError, Repo
 from pydantic import BaseModel, Field
 
-from kai.models.kai_config import KaiConfig
+from kai.model_provider import ModelProvider
+from kai.models.kai_config import KaiConfig, SolutionProducerKind
 from kai.report import Report
 from kai.service.incident_store import Application, IncidentStore
+from kai.service.solution_handling.detection import solution_detection_factory
+from kai.service.solution_handling.production import (
+    SolutionProducer,
+    SolutionProducerLLMLazy,
+    SolutionProducerTextOnly,
+)
 
 KAI_LOG = logging.getLogger(__name__)
 
@@ -166,7 +173,22 @@ Example: --loglevel debug (default: warning)""",
     config.log_level = args.loglevel
     KAI_LOG.info(f"Config loaded: {pprint.pformat(config)}")
 
-    incident_store = IncidentStore.from_config(config.incident_store)
+    model_provider = ModelProvider(config.models)
+
+    solution_detector = solution_detection_factory(
+        config.incident_store.solution_detectors
+    )
+    solution_producer: SolutionProducer
+
+    match config.incident_store.solution_producers:
+        case SolutionProducerKind.TEXT_ONLY:
+            solution_producer = SolutionProducerTextOnly()
+        case SolutionProducerKind.LLM_LAZY:
+            solution_producer = SolutionProducerLLMLazy(model_provider)
+
+    incident_store = IncidentStore(
+        config.incident_store, solution_detector, solution_producer
+    )
 
     if args.skip_verify:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)

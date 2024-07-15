@@ -270,6 +270,7 @@ async def get_incident_solutions_for_file(request: Request):
     return web.json_response(result)
 
 
+# TODO: See https://github.com/konveyor-ecosystem/kai/issues/233
 def app():
     webapp = web.Application()
 
@@ -278,12 +279,6 @@ def app():
         config = KaiConfig.model_validate_filepath(
             os.path.join(PATH_KAI, "config.toml")
         )
-    # NOTE(@JonahSussman): For the future in case we switch to supporting yaml
-    # configs.
-
-    # elif os.path.exists(os.path.join(PATH_KAI_ROOT, "config.yaml")):
-    #     config = KaiConfig.model_validate_filepath(
-    #         os.path.join(PATH_KAI_ROOT, "config.yaml"))
     else:
         raise FileNotFoundError("Config file not found.")
 
@@ -297,6 +292,7 @@ def app():
         config.log_dir = os.getenv("LOG_DIR")
 
     print(f"Config loaded: {pprint.pformat(config)}")
+    
     webapp["config"] = config
     initLoggingFromConfig(config)
 
@@ -319,7 +315,6 @@ def app():
         config.incident_store.solution_detectors
     )
     solution_producer: SolutionProducer
-    solution_consumer: SolutionConsumer
 
     match config.incident_store.solution_producers:
         case SolutionProducerKind.TEXT_ONLY:
@@ -327,17 +322,10 @@ def app():
         case SolutionProducerKind.LLM_LAZY:
             solution_producer = SolutionProducerLLMLazy(webapp["model_provider"])
 
-    match config.incident_store.solution_consumers:
-        case SolutionConsumerKind.TEXT_ONLY:
-            solution_consumer = SolutionConsumerTextOnly()
-        case SolutionConsumerKind.LLM_LAZY:
-            solution_consumer = SolutionConsumerLLMLazy(webapp["model_provider"])
-
-    webapp["incident_store"] = IncidentStore.from_config(
+    webapp["incident_store"] = IncidentStore(
         config.incident_store,
         solution_detector,
         solution_producer,
-        solution_consumer,
     )
     log.info(f"Selected incident store: {config.incident_store.provider}")
 
