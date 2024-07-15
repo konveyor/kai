@@ -1,24 +1,19 @@
 # TODO: Come up with some sort of "solution generator strategy" so we
 # don't blow up our llm API usage. Lazy, immediate, other etc...
 
-import enum
 import os
 from abc import ABC, abstractmethod
 from urllib.parse import unquote, urlparse
 
+import jinja2
 from git import Repo
 
+from kai.constants import PATH_TEMPLATES
 from kai.model_provider import ModelProvider
-from kai.service.incident_store.incident_store import (
-    Solution,
-    SQLIncident,
-    remove_known_prefixes,
-)
-
-
-class SolutionProducerKind(enum.Enum):
-    TEXT_ONLY = "text_only"
-    LLM_LAZY = "llm_lazy"
+from kai.models.file_solution import guess_language
+from kai.service.incident_store.incident_store import SQLIncident
+from kai.service.incident_store.util import remove_known_prefixes
+from kai.service.solution_handling.types import Solution
 
 
 class SolutionProducer(ABC):
@@ -26,14 +21,46 @@ class SolutionProducer(ABC):
     def produce_one(
         self, incident: SQLIncident, repo: Repo, old_commit: str, new_commit: str
     ) -> Solution:
+        """
+        Creates a single solution for a single incident. Designed to be called
+        right before inserting it into the store.
+        """
         pass
 
     def produce_many(
         self, incidents: list[SQLIncident], repo: Repo, old_commit: str, new_commit: str
     ) -> list[Solution]:
+        """
+        Creates multiple solutions for multiple incidents. Designed to be called
+        right before inserting it into the store.
+        """
         return [
             self.produce_one(incident, repo, old_commit, new_commit)
             for incident in incidents
+        ]
+
+    @abstractmethod
+    def post_process_one(self, incident: SQLIncident, solution: Solution) -> Solution:
+        """
+        After a solution has been generated, this method performs any additional
+        processing needed, deferring any labor-intensive work.
+
+        Think about trying to generated LLM summaries for every single solution
+        from the get-go. Not every solution will be used!
+
+        Designed to be called right after selecting an incident from the store.
+        """
+        pass
+
+    def post_process_many(
+        self, incidents: list[SQLIncident], solutions: list[Solution]
+    ) -> list[Solution]:
+        """
+        See `post_process_one`.
+        """
+        return [
+            self.post_process_one(incident, solution)
+            for incident, solution in zip(incidents, solutions)
         ]
 
 
@@ -89,6 +116,9 @@ class SolutionProducerTextOnly(SolutionProducer):
 
         return solutions
 
+    def post_process_one(self, incident: SQLIncident, solution: Solution) -> Solution:
+        return solution
+
 
 class SolutionProducerLLMLazy(SolutionProducer):
     def __init__(self, model_provider: ModelProvider):
@@ -105,3 +135,43 @@ class SolutionProducerLLMLazy(SolutionProducer):
             solution.llm_summary_generated = False
 
         return solutions
+
+    def post_process_one(self, incident: SQLIncident, solution: Solution) -> Solution:
+        jinja_env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(
+                os.path.join(PATH_TEMPLATES, "solution_handling")
+            ),
+            undefined=jinja2.StrictUndefined,
+            trim_blocks=True,
+            lstrip_blocks=True,
+            autoescape=True,
+        )
+
+        template = jinja_env.get_template("generation.jinja2")
+
+        # get just the file name and extension from solution.uri
+        rendered_template = template.render(
+            src_file_name=solution.uri,
+            src_file_language=guess_language(
+                solution.original_code, os.path.basename(solution.uri)
+            ),
+            src_file_contents=solution.original_code,
+            incident={
+                "analysis_message": incident.incident_message,
+                "analysis_line_number": incident.incident_line,
+            },
+            sln_file_name=solution.uri,
+            sln_file_language=guess_language(
+                solution.updated_code, os.path.basename(solution.uri)
+            ),
+            sln_file_contents=solution.updated_code,
+        )
+
+        llm_result = self.model_provider.llm.invoke(rendered_template)
+
+        # TODO Parse LLM result. For now, just returning the content fully
+
+        solution.llm_summary_generated = True
+        solution.llm_summary = llm_result.content
+
+        return solution

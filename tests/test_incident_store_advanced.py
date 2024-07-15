@@ -1,10 +1,16 @@
+# FIXME: All of these tests are now out of date and need to be updated to use
+# the new incident store API.
+
 import subprocess  # trunk-ignore(bandit)
 import time
 import unittest
 
 import psycopg2
 
-from kai.service.incident_store.incident_store import EmbeddingNone, PSQLIncidentStore
+from kai.service.incident_store.incident_store import (
+    EmbeddingNone,
+    PSQLIncidentStoreBackend,
+)
 
 
 class TestIncidentStoreAdvanced(unittest.TestCase):
@@ -122,7 +128,7 @@ class TestIncidentStoreAdvanced(unittest.TestCase):
         conn.close()
 
     def create_instance(self):
-        psqlis = PSQLIncidentStore(
+        psqlis = PSQLIncidentStoreBackend(
             config_filepath="tests/test_data/data/database.toml",
             config_section="postgresql",
             emb_provider=EmbeddingNone(),

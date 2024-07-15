@@ -35,19 +35,8 @@ Source file contents:
 ### incident {{ loop.index0 }}
 incident to fix: "{{ incident.analysis_message }}"
 Line number: {{ incident.analysis_line_number }}
-{% if incident.solved_example_diff is defined %}
-Solved example:
-```diff
-{{ incident.solved_example_diff }}
-```{# {% elif incident.solved_example_file is defined %}
-Solved example before changes:
-```{{ incident.src_file_language }}
-{{ incident.solved_example_file.before }}
-```
-Solved example after changes:
-```{{ incident.src_file_language }}
-{{ incident.solved_example_file.after }}
-``` #}
+{% if incident.solution_str is defined %}
+{{ incident.solution_str }}
 {% endif %}
 {% endfor %}
 

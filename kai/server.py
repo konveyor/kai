@@ -23,19 +23,13 @@ from kai.constants import PATH_KAI
 from kai.kai_logging import initLoggingFromConfig
 from kai.model_provider import ModelProvider
 from kai.models.analyzer_types import Incident
-from kai.models.kai_config import KaiConfig
+from kai.models.kai_config import KaiConfig, SolutionProducerKind
 from kai.report import Report
 from kai.service.incident_store.incident_store import Application, IncidentStore
-from kai.service.solution_handling.consumption import (
-    SolutionConsumer,
-    SolutionConsumerKind,
-    SolutionConsumerLLMLazy,
-    SolutionConsumerTextOnly,
-)
+from kai.service.solution_handling.consumption import solution_consumer_factory
 from kai.service.solution_handling.detection import solution_detection_factory
 from kai.service.solution_handling.production import (
     SolutionProducer,
-    SolutionProducerKind,
     SolutionProducerLLMLazy,
     SolutionProducerTextOnly,
 )
@@ -135,6 +129,7 @@ async def post_get_incident_solution(request: Request):
     llm_output = llm_io_handler.get_incident_solution(
         request.app["incident_store"],
         request.app["model_provider"],
+        request.app["solution_consumer"],
         params.application_name,
         params.ruleset_name,
         params.violation_name,
@@ -252,6 +247,7 @@ async def get_incident_solutions_for_file(request: Request):
             params.file_name,
             params.application_name,
             [x.model_dump() for x in params.incidents],
+            request.app["solution_consumer"],
             params.batch_mode,
             params.include_solved_incidents,
             params.include_llm_results,
@@ -327,7 +323,9 @@ def app():
         solution_detector,
         solution_producer,
     )
-    log.info(f"Selected incident store: {config.incident_store.provider}")
+    log.info(f"Selected incident store: {config.incident_store.args.provider}")
+
+    webapp["solution_consumer"] = solution_consumer_factory(config.solution_consumers)
 
     webapp.add_routes(routes)
 

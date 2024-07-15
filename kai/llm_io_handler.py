@@ -20,6 +20,7 @@ from kai.constants import PATH_TEMPLATES
 from kai.model_provider import ModelProvider
 from kai.models.file_solution import guess_language, parse_file_solution_content
 from kai.service.incident_store.incident_store import IncidentStore
+from kai.service.solution_handling.consumption import SolutionConsumerAlgorithm
 from kai.trace import Trace
 
 LLM_RETRIES = 5
@@ -152,6 +153,7 @@ async def get_incident_solutions_for_file(
     file_name: str,
     application_name: str,
     incidents: list[dict],  # TODO(@JonahSussman): Add a type for this
+    solution_consumer: SolutionConsumerAlgorithm,
     # Dict keys are:
     # - ruleset_name: str
     # - violation_name: str
@@ -210,8 +212,7 @@ async def get_incident_solutions_for_file(
                 )
                 KAI_LOG.debug(f"{solutions=}")
                 if len(solutions) != 0:
-                    incident["solved_example_diff"] = solutions[0].file_diff
-                    incident["solved_example_file_name"] = solutions[0].uri
+                    incident["solution_str"] = solution_consumer(solutions[0])
 
         pb_vars = {
             "src_file_name": file_name,
@@ -291,6 +292,7 @@ async def get_incident_solutions_for_file(
 def get_incident_solution(
     incident_store: IncidentStore,
     model_provider: ModelProvider,
+    solution_consumer: SolutionConsumerAlgorithm,
     application_name: str,
     ruleset_name: str,
     violation_name: str,
@@ -325,8 +327,7 @@ def get_incident_solution(
     }
 
     if len(solved_incidents) >= 1:
-        pb_vars["solved_example_diff"] = solved_incidents[0].file_diff
-        pb_vars["solved_example_file_name"] = solved_incidents[0].uri
+        pb_vars["solution_str"] = solution_consumer(solved_incidents[0])
 
     prompt = get_prompt(model_provider.template, pb_vars)
 

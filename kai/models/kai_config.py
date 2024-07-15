@@ -1,14 +1,13 @@
 import os
 import tomllib
-from enum import Enum
+from enum import StrEnum
 from typing import Literal, Optional, Union
 
 import yaml
 from pydantic import BaseModel, Field, validator
 
-from kai.service.solution_handling.consumption import SolutionConsumerKind
-from kai.service.solution_handling.detection import SolutionDetectorKind
-from kai.service.solution_handling.production import SolutionProducerKind
+# from kai.service.solution_handling.consumption import SolutionConsumerKind
+# from kai.service.solution_handling.production import SolutionProducerKind
 
 """
 https://docs.pydantic.dev/2.0/migration/#required-optional-and-nullable-fields
@@ -27,13 +26,29 @@ Not required, can be any type (including None)      | f7: Any = None
 # Incident store providers
 
 
-class KaiConfigIncidentStoreProvider(Enum):
+class KaiConfigIncidentStoreProvider(StrEnum):
     POSTGRESQL = "postgresql"
     SQLITE = "sqlite"
 
 
+class SolutionDetectorKind(StrEnum):
+    NAIVE = "naive"
+    LINE_MATCH = "line_match"
+
+
+class SolutionProducerKind(StrEnum):
+    TEXT_ONLY = "text_only"
+    LLM_LAZY = "llm_lazy"
+
+
+class SolutionConsumerKind(StrEnum):
+    DIFF_ONLY = "diff_only"
+    BEFORE_AND_AFTER = "before_and_after"
+    LLM_SUMMARY = "llm_summary"
+
+
 class KaiConfigIncidentStorePostgreSQLArgs(BaseModel):
-    provider: Literal["postgresql"]
+    provider: Literal[KaiConfigIncidentStoreProvider.POSTGRESQL]
 
     host: Optional[str] = None
     database: Optional[str] = None
@@ -61,7 +76,7 @@ class KaiConfigIncidentStorePostgreSQLArgs(BaseModel):
 
 
 class KaiConfigIncidentStoreSQLiteArgs(BaseModel):
-    provider: Literal["sqlite"]
+    provider: Literal[KaiConfigIncidentStoreProvider.SQLITE]
 
     host: Optional[str] = None
     database: Optional[str] = None
@@ -91,7 +106,6 @@ class KaiConfigIncidentStoreSQLiteArgs(BaseModel):
 class KaiConfigIncidentStore(BaseModel):
     solution_detectors: SolutionDetectorKind
     solution_producers: SolutionProducerKind
-    solution_consumers: SolutionConsumerKind
 
     args: Union[
         KaiConfigIncidentStorePostgreSQLArgs,
@@ -123,6 +137,10 @@ class KaiConfig(BaseModel):
 
     incident_store: KaiConfigIncidentStore
     models: KaiConfigModels
+
+    solution_consumers: list[SolutionConsumerKind] = Field(
+        default_factory=lambda: [SolutionConsumerKind.DIFF_ONLY]
+    )
 
     @staticmethod
     def model_validate_filepath(filepath: str):

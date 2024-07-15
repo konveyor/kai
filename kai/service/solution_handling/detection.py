@@ -1,13 +1,8 @@
-import enum
 from dataclasses import dataclass
 from typing import Callable, Iterable
 
-from kai.service.incident_store.incident_store import SQLIncident
-
-
-class SolutionDetectorKind(enum.Enum):
-    NAIVE = "naive"
-    LINE_MATCH = "line_match"
+from kai.models.kai_config import SolutionDetectorKind
+from kai.service.incident_store.sql_types import SQLIncident
 
 
 @dataclass
