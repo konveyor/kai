@@ -215,7 +215,9 @@ def evaluate(
                 }
 
                 prompt = get_prompt(
-                    model_provider, pb_vars, os.path.join(PATH_BENCHMARKS, "templates")
+                    model_provider.template,
+                    pb_vars,
+                    os.path.join(PATH_BENCHMARKS, "templates"),
                 )
 
                 print(f"{example_path} - {config_path}\n{prompt[:15]}...\n")

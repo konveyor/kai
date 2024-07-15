@@ -78,7 +78,11 @@ class ModelProvider:
         self.provider_id: str = config.provider
         self.llm: BaseChatModel = model_class(**model_args)
         self.model_id: str = model_id
-        self.template: str = config.template
+
+        if config.template is None:
+            self.template = self.model_id
+        else:
+            self.template = config.template
 
         if config.llama_header is None:
             self.llama_header = self.model_id in [

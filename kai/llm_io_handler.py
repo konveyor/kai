@@ -29,11 +29,12 @@ KAI_LOG = logging.getLogger(__name__)
 
 
 def get_prompt(
-    model_provider: ModelProvider,
+    template_name: str,
     pb_vars: dict,
     path_templates: str = PATH_TEMPLATES,
     jinja_kwargs: dict = None,
     fallback: bool = True,
+    add_ext_if_not_present: bool = True,
 ):
     """
     Generate a prompt using Jinja templates based on the provided model
@@ -41,6 +42,9 @@ def get_prompt(
     arguments. `fallback` is a boolean that determines whether to fall back to
     main.jinja or error out.
     """
+
+    if add_ext_if_not_present and not template_name.endswith(".jinja"):
+        template_name = f"{template_name}.jinja"
 
     if jinja_kwargs is None:
         jinja_kwargs = {}
@@ -59,27 +63,26 @@ def get_prompt(
     template: Template
 
     try:
-        if model_provider.template is not None:
-            try:
-                template = jinja_env.get_template(model_provider.template)
-            except TemplateNotFound:
-                # Template might be a full path, create new Jinja environment
-                template_dir = os.path.abspath(
-                    os.path.join(model_provider.template, "..")
-                )
-                template_filename = os.path.basename(model_provider.template)
+        try:
+            template = jinja_env.get_template(template_name)
+        except TemplateNotFound:
+            # Template might be a full path, create new Jinja environment
+            template_dir = os.path.abspath(os.path.join(template_name, ".."))
+            template_filename = os.path.basename(template_name)
 
-                template_kwargs = {
-                    **jinja_kwargs,
-                    "loader": FileSystemLoader(template_dir),
-                }
-                # trunk-ignore-begin(bandit/B701)
-                template_jinja_env = Environment(**template_kwargs)
-                # trunk-ignore-end(bandit/B701)
+            template_kwargs = {
+                **jinja_kwargs,
+                "loader": FileSystemLoader(template_dir),
+            }
 
-                template = template_jinja_env.get_template(template_filename)
-        else:
-            template = jinja_env.get_template(model_provider.model_id)
+            # NOTE: Have to use ignore-begin and ignore-end because `trunk` will
+            # push the comments to the next line, which will break the ignore
+
+            # trunk-ignore-begin(bandit/B701)
+            template_jinja_env = Environment(**template_kwargs)
+            # trunk-ignore-end(bandit/B701)
+
+            template = template_jinja_env.get_template(template_filename)
     except TemplateNotFound as e:
         if not fallback:
             raise e
@@ -218,7 +221,7 @@ async def get_incident_solutions_for_file(
             "model_provider": model_provider,
         }
 
-        prompt = get_prompt(model_provider, pb_vars)
+        prompt = get_prompt(model_provider.template, pb_vars)
         trace.prompt(count, prompt, pb_vars)
 
         KAI_LOG.debug(f"Sending prompt: {prompt}")
@@ -325,7 +328,7 @@ def get_incident_solution(
         pb_vars["solved_example_diff"] = solved_incidents[0].file_diff
         pb_vars["solved_example_file_name"] = solved_incidents[0].uri
 
-    prompt = get_prompt(model_provider, pb_vars)
+    prompt = get_prompt(model_provider.template, pb_vars)
 
     if stream:
         end = time.time()
