@@ -1,5 +1,4 @@
 import os
-from functools import singledispatch
 from typing import Callable
 
 import jinja2
@@ -50,13 +49,14 @@ def solution_consumer_llm_summary(solution: Solution) -> str:
     )
 
 
-@singledispatch
-def solution_consumer_factory(kind) -> SolutionConsumerAlgorithm:
-    raise ValueError(f"Unknown solution consumer kind: {kind}")
+def solution_consumer_factory(
+    kind: SolutionConsumerKind | list[SolutionConsumerKind],
+) -> SolutionConsumerAlgorithm:
+    if isinstance(kind, list):
+        return lambda solution: "\n".join(
+            solution_consumer_factory(single_kind)(solution) for single_kind in kind
+        )
 
-
-@solution_consumer_factory.register
-def _(kind: SolutionConsumerKind) -> SolutionConsumerAlgorithm:
     match kind:
         case "diff_only":
             return solution_consumer_diff_only
@@ -66,9 +66,3 @@ def _(kind: SolutionConsumerKind) -> SolutionConsumerAlgorithm:
             return solution_consumer_llm_summary
         case _:
             raise ValueError(f"Unknown solution consumer kind: {kind}")
-
-
-@solution_consumer_factory.register
-def _(kinds: list[SolutionConsumerKind]) -> SolutionConsumerAlgorithm:
-    algorithms = [solution_consumer_factory(kind) for kind in kinds]
-    return lambda solution: "\n".join(algo(solution) for algo in algorithms)

@@ -6,9 +6,6 @@ from typing import Literal, Optional, Union
 import yaml
 from pydantic import BaseModel, Field, validator
 
-# from kai.service.solution_handling.consumption import SolutionConsumerKind
-# from kai.service.solution_handling.production import SolutionProducerKind
-
 """
 https://docs.pydantic.dev/2.0/migration/#required-optional-and-nullable-fields
 
