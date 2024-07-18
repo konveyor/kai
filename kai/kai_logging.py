@@ -39,9 +39,6 @@ def setup_file_handler(
     # Ensure any needed log directories exist
     log_dir = process_log_dir_replacements(log_dir)
     log_file_path = os.path.join(log_dir, log_file_name)
-    print(
-        f"ATTEMPT:  File logging for '{logger.name}' is set to level '{log_level}' writing to file: '{log_file_path}'"
-    )
     if log_dir.startswith("$pwd"):
         log_dir = os.path.join(os.getcwd(), log_dir[5:])
     os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
