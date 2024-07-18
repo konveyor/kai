@@ -13,8 +13,8 @@ import requests
 
 # Ensure that we have 'kai' in our import path
 sys.path.append("../../kai")
-from kai import Report
 from kai.kai_logging import formatter
+from kai.report import Report
 
 KAI_LOG = logging.getLogger(__name__)
 
