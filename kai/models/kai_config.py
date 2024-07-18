@@ -1,10 +1,11 @@
 import os
 import tomllib
 from enum import StrEnum
-from typing import Literal, Optional, Union
+from typing import Literal, Optional, Self, Union
 
 import yaml
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, model_validator
+from pydantic_settings import BaseSettings
 
 """
 https://docs.pydantic.dev/2.0/migration/#required-optional-and-nullable-fields
@@ -54,12 +55,14 @@ class KaiConfigIncidentStorePostgreSQLArgs(BaseModel):
 
     connection_string: Optional[str] = None
 
-    @validator("connection_string", always=True)
-    def validate_connection_string(cls, v, values):
-        connection_string_present = v is not None
-        parameters_present = all(
-            values.get(key) is not None
-            for key in ["host", "database", "user", "password"]
+    @model_validator(mode="after")
+    def validate_connection_string(self) -> Self:
+        connection_string_present = self.connection_string is not None
+        parameters_present = (
+            (self.host is not None)
+            and (self.database is not None)
+            and (self.user is not None)
+            and (self.password is not None)
         )
 
         if connection_string_present == parameters_present:
@@ -67,7 +70,7 @@ class KaiConfigIncidentStorePostgreSQLArgs(BaseModel):
                 "Must provide one of connection_string or [host, database, user, password]"
             )
 
-        return v
+        return self
 
     solution_detection: SolutionDetectorKind = SolutionDetectorKind.NAIVE
 
@@ -82,12 +85,14 @@ class KaiConfigIncidentStoreSQLiteArgs(BaseModel):
 
     connection_string: Optional[str] = None
 
-    @validator("connection_string", always=True)
-    def validate_connection_string(cls, v, values):
-        connection_string_present = v is not None
-        parameters_present = all(
-            values.get(key) is not None
-            for key in ["host", "database", "user", "password"]
+    @model_validator(mode="after")
+    def validate_connection_string(self) -> Self:
+        connection_string_present = self.connection_string is not None
+        parameters_present = (
+            (self.host is not None)
+            and (self.database is not None)
+            and (self.user is not None)
+            and (self.password is not None)
         )
 
         if connection_string_present == parameters_present:
@@ -95,9 +100,15 @@ class KaiConfigIncidentStoreSQLiteArgs(BaseModel):
                 "Must provide one of connection_string or [host, database, user, password]"
             )
 
-        return v
+        return self
 
     solution_detection: SolutionDetectorKind = SolutionDetectorKind.NAIVE
+
+
+KaiConfigIncidentStoreArgs = Union[
+    KaiConfigIncidentStorePostgreSQLArgs,
+    KaiConfigIncidentStoreSQLiteArgs,
+]
 
 
 class KaiConfigIncidentStore(BaseModel):

@@ -1,7 +1,9 @@
 # jsonschema taken from the analyzer-lsp repo. Use `./generate_models.sh`
 
+# TODO: Refine what the defaults should be
+
 $id: analyzer_types.yaml
-$schema: http://json-schema.org/draft-07/schema#
+$schema: https://json-schema.org/draft/2020-12/schema#
 title: AnalysisReport
 type: array
 items:
@@ -17,6 +19,7 @@ definitions:
       # Description text description for the ruleset
       description:
         type: string
+        default: ""
 
       # Tags list of generated tags from the rules in this ruleset.
       tags:
@@ -31,6 +34,7 @@ definitions:
         type: object
         additionalProperties:
           $ref: "#/definitions/Violation"
+        default: {}
 
       # Errors is a map containing errors generated during evaluation of rules
       # in this ruleset. Keys are rule IDs, values are their respective
@@ -57,6 +61,7 @@ definitions:
       # Description text description about the violation
       description:
         type: string
+        default: ""
 
       # Category category of the violation
       category:
@@ -64,23 +69,27 @@ definitions:
           - potential
           - optional
           - mandatory
+        default: ""
 
       labels:
         type: array
         items:
           type: string
+        default: []
 
       # Incidents list of instances of violation found
       incidents:
         type: array
         items:
           $ref: "#/definitions/Incident"
+        default: []
 
       # ExternalLinks hyperlinks to external sources of docs, fixes
       links:
         type: array
         items:
           $ref: "#/definitions/Link"
+        default: []
 
       # Extras reserved for additional data
       extras:
@@ -101,12 +110,15 @@ definitions:
       # NOTE: Why camelCase for these ones? :weary: - JonahSussman
       codeSnip:
         type: string
+        default: ""
 
       lineNumber:
         type: integer
+        default: -1
 
       variables:
         type: object
+        default: {}
 
     required:
       - uri
@@ -121,6 +133,7 @@ definitions:
       # Title optional description
       title:
         type: string
+        default: ""
 
     required:
       - url

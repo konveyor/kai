@@ -1,56 +1,59 @@
-__all__ = ["Report"]
-
 import hashlib
 import json
 import logging
 import os
+import pathlib
 import shutil
-from io import StringIO
+from io import StringIO, TextIOWrapper
+from urllib.parse import urlparse
 
 import yaml
 
 KAI_LOG = logging.getLogger(__name__)
+from kai.models.report_types import Incident, RuleSet
+from kai.service.incident_store.util import remove_known_prefixes
 
 
 class Report:
-    report: dict = None
-
-    def __init__(self, report_data: dict, report_id: str):
+    def __init__(self, report_data: dict | list[dict], report_id: str):
         self.workaround_counter_for_missing_ruleset_name = 0
-        self.report = self._reformat_report(report_data)
         self.report_id = report_id
+        self.rulesets: dict[str, RuleSet] = {}
+
+        if isinstance(report_data, dict):
+            self.add_ruleset(report_data)
+        else:
+            for ruleset in report_data:
+                self.add_ruleset(ruleset)
 
     def __str__(self):
-        return str(self.report)
+        return str(self.rulesets)
 
     def __repr__(self):
         return str(self)
 
     def __getitem__(self, key):
-        return self.report[key]
+        return self.rulesets[key]
 
     def keys(self):
-        return self.report.keys()
+        return self.rulesets.keys()
 
     def __iter__(self):
-        return iter(self.report)
+        return iter(self.rulesets)
 
     def __len__(self):
-        return len(self.report)
+        return len(self.rulesets)
 
     @classmethod
-    def load_report_from_object(cls, report_data: dict, report_id: str):
-        """
-        Class method to create a Report instance directly from a Python dictionary object.
-        """
+    def load_report_from_object(cls, report_data: dict | list[dict], report_id: str):
         return cls(report_data=report_data, report_id=report_id)
 
     @classmethod
     def load_report_from_file(cls, file_name: str):
-        KAI_LOG.info(f"Reading report from {file_name}")
         with open(file_name, "r") as f:
             report: dict = yaml.safe_load(f)
         report_data = report
+
         # report_id is the hash of the json.dumps of the report_data
         return cls(
             report_data,
@@ -59,94 +62,64 @@ class Report:
             ).hexdigest(),
         )
 
-    @staticmethod
-    def get_cleaned_file_path(uri: str):
-        file_path = uri.replace("file:///tmp/source-code/", "")
-        return file_path
+    def add_ruleset(self, ruleset_dict: dict):
+        if "name" not in ruleset_dict:
+            ruleset_dict["name"] = (
+                f"Unnamed ruleset {self.workaround_counter_for_missing_ruleset_name}"
+            )
+            self.workaround_counter_for_missing_ruleset_name += 1
 
-    def get_impacted_files(self):
-        """
-        Return a dictionary of impacted files:
-            key = file path
-            value = list of violations
-        """
-        impacted_files = dict()
-        # key = file_path
-        # value = list of violations
-        for ruleset_name in self.report.keys():
-            ruleset = self.report[ruleset_name]
-            # We iterate over each ruleset
-            for violation_name in ruleset["violations"].keys():
-                violation = ruleset["violations"][violation_name]
-                # We look at each violation
-                for incid in violation["incidents"]:
-                    if "uri" in incid:
-                        if not self.should_we_skip_incident(incid):
-                            file_path = Report.get_cleaned_file_path(incid["uri"])
-                            current_entry = {
-                                "ruleset_name": ruleset_name,
-                                "violation_name": violation_name,
-                                "ruleset_description": ruleset.get("description", ""),
-                                "violation_description": violation.get(
-                                    "description", ""
-                                ),
-                                "message": incid.get("message", ""),
-                                "codeSnip": incid.get("codeSnip", ""),
-                                "lineNumber": incid.get("lineNumber", ""),
-                                "variables": incid.get("variables", {}),
-                            }
-                            if impacted_files.get(file_path) is None:
-                                impacted_files[file_path] = []
-                            impacted_files[file_path].append(current_entry)
+        ruleset = RuleSet.model_validate(ruleset_dict)
+        self.rulesets[ruleset.name] = ruleset
+
+    def get_impacted_files(self) -> dict[pathlib.Path, list[dict]]:
+        impacted_files: dict[pathlib.Path, list[dict]] = {}
+
+        for ruleset_name, ruleset in self.rulesets.items():
+            for violation_name, violation in ruleset.violations.items():
+                for incident in violation.incidents:
+                    if self.should_we_skip_incident(incident):
+                        continue
+
+                    file_path = remove_known_prefixes(urlparse(incident.uri).path)
+
+                    current_entry = {
+                        "ruleset_name": ruleset_name,
+                        "violation_name": violation_name,
+                        "ruleset_description": ruleset.description,
+                        "violation_description": violation.description,
+                        "message": incident.message,
+                        "codeSnip": incident.codeSnip,
+                        "lineNumber": incident.lineNumber,
+                        "variables": incident.variables,
+                    }
+
+                    if impacted_files.get(file_path) is None:
+                        impacted_files[file_path] = []
+
+                    impacted_files[file_path].append(current_entry)
+
         return impacted_files
 
-    def _reformat_report(self, report: dict):
-        new_report = {}
-        # Reformat from a List to a Dict where the key is the name
-        if isinstance(report, list):
-            for item in report:
-                if "violations" in item.keys():
-                    # Only add entries that have Violations
-                    ruleset_name = self._get_ruleset_name(item)
-                    new_report[ruleset_name] = item
-                # We dropped all rulesests with empty violations
-        else:
-            new_report = report
-        return new_report
-
-    def _get_ruleset_name(self, item):
-        # The 'name' of a ruleset is not guaranteed from what I'm seeing in our
-        # rulesets.  We need a way to distinguish rulesets if no name is present
-        # hence this workaround.
-        # See https://github.com/konveyor/rulesets/issues/36 for what motivated
-        # this workaround
-        name = ""
-        if "name" not in item.keys():
-            self.workaround_counter_for_missing_ruleset_name += 1
-            name = f"mising_ruleset_name_{self.workaround_counter_for_missing_ruleset_name}"
-        else:
-            name = item["name"]
-        return name
-
-    def write_markdown(self, output_dir):
-        # We will create a single directory per source app
-        # Where each ruleset with data is in its own file
+    def write_markdown(self, output_dir: str):
+        # We will create a single directory per source app where each ruleset
+        # with data is in its own file
         try:
             os.makedirs(output_dir, exist_ok=True)
         except OSError as error:
             KAI_LOG.error(f"Error creating directory {output_dir}: {error}")
             raise error
-        # Iterate through each Ruleset that has data
-        # Write a separate file per ruleset
-        for ruleset_name in self.report.keys():
-            ruleset = self.report[ruleset_name]
-            ruleset = ruleset  # FIXME: To stop trunk error
+
+        # Iterate through each Ruleset that has data. Write a separate file per
+        # ruleset
+        for ruleset_name, ruleset in self.rulesets.items():
             ruleset_name_display = ruleset_name.replace("/", "_")
+
             with open(f"{output_dir}/{ruleset_name_display}.md", "w") as f:
                 # We want to start each run with a clean file
                 f.truncate(0)
                 buffer = StringIO()
-                self._get_markdown_snippet(ruleset_name, buffer)
+                self._write_markdown_snippet(ruleset_name, ruleset, buffer)
                 buffer.seek(0)
                 shutil.copyfileobj(buffer, f)
                 KAI_LOG.info(
@@ -154,19 +127,20 @@ class Report:
                 )
                 buffer.close()
 
-    def _get_markdown_snippet(self, ruleset_name, f):
-        ruleset = self.report[ruleset_name]
+    # TODO: Migrate to a jinja template
+    def _write_markdown_snippet(
+        self, ruleset_name: str, ruleset: RuleSet, f: TextIOWrapper
+    ):
         f.write(f"# {ruleset_name}\n")
         f.write("## Description\n")
-        f.write(f"{ruleset.get('description', '')}\n")
+        f.write(f"{ruleset.description}\n")
         f.write(
             "* Source of rules: https://github.com/konveyor/rulesets/tree/main/default/generated\n"
         )
         f.write("## Violations\n")
-        f.write(f"Number of Violations: {len(ruleset['violations'])}\n")
-        # counter = 0
-        for count, key in enumerate(ruleset["violations"]):
-            items = ruleset["violations"][key]
+        f.write(f"Number of Violations: {len(ruleset.violations)}\n")
+
+        for count, (key, items) in enumerate(ruleset.violations.items()):
             f.write(f"### #{count} - {key}\n")
             # Break out below for violation
             # Then we can weave in an example perhaps?
@@ -174,49 +148,53 @@ class Report:
             # . - Report
             # . - Per Violation create a prompt/run/example
 
-            f.write(f"* Category: {items['category']}\n")
-            if "effort" in items:
-                f.write(f"* Effort: {items['effort']}\n")
-            f.write(f"* Description: {items['description']}\n")
-            if "labels" in items:
-                f.write(f"* Labels: {', '.join(items['labels'])}\n")
-            if "links" in items:
+            f.write(f"* Category: {items.category}\n")
+            if items.effort is not None:
+                f.write(f"* Effort: {items.effort}\n")
+            f.write(f"* Description: {items.description}\n")
+            if items.labels:
+                f.write(f"* Labels: {', '.join(items.labels)}\n")
+            if items.links:
                 f.write("* Links\n")
-                for l in items["links"]:
+                for l in items.links:
                     f.write(f"  * {l['title']}: {l['url']}\n")
-            if "incidents" in items:
+            if items.incidents:
                 f.write("* Incidents\n")
-                for incid in items["incidents"]:
+                for incident in items.incidents:
                     # Possible keys of 'uri', 'message', 'codeSnip'
-                    if "uri" in incid:
-                        f.write(f"  * {incid['uri']}\n")
-                    if "lineNumber" in incid:
-                        f.write(f"      * Line Number: {incid['lineNumber']}\n")
-                    if "message" in incid and incid["message"].strip() != "":
-                        f.write(f"      * Message: '{incid['message'].strip()}'\n")
-                    if "codeSnip" in incid:
+                    if incident.uri:
+                        f.write(f"  * {incident.uri}\n")
+                    if incident.lineNumber:
+                        f.write(f"      * Line Number: {incident.lineNumber}\n")
+                    if incident.message and incident.message.strip() != "":
+                        f.write(f"      * Message: '{incident.message.strip()}'\n")
+                    if incident.codeSnip:
                         f.write("      * Code Snippet:\n")
                         f.write("```java\n")
-                        f.write(f"{incid['codeSnip']}\n")
+                        f.write(f"{incident.codeSnip}\n")
                         f.write("```\n")
 
-    def get_violation_snippet(self, ruleset_name, violation_name):
-        ruleset = self.report[ruleset_name]
-        violation = ruleset["violations"][violation_name]
-        violation = violation  # FIXME: to please trunk error
+    def get_violation_snippet(self, ruleset_name: str, violation_name: str):
+        ruleset = self.rulesets[ruleset_name]
+        # violation = ruleset.violations[violation_name]
+
         buffer = StringIO()
         buffer.write(f"# {ruleset_name}\n")
         buffer.write("## Description\n")
-        buffer.write(f"{ruleset['description']}\n")
+        buffer.write(f"{ruleset.description}\n")
         buffer.write("* Source of rules:")
 
-    def should_we_skip_incident(self, incid):
+    def should_we_skip_incident(self, incident: Incident) -> bool:
         # Filter out known issues
-        file_path = Report.get_cleaned_file_path(incid["uri"])
+        file_path = remove_known_prefixes(urlparse(incident.uri).path)
+
         if file_path.startswith("target/"):
             # Skip any incident that begins with 'target/'
             # Related to: https://github.com/konveyor/analyzer-lsp/issues/358
             return True
+
         if file_path.endswith(".svg"):
             # See https://github.com/konveyor/rulesets/issues/41
             return True
+
+        return False
