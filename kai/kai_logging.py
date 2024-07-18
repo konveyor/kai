@@ -18,7 +18,6 @@ def process_log_dir_replacements(log_dir: str):
     # this is needed to help with specifying from configuration
     ##
     if log_dir.startswith("$pwd"):
-        # We assume the Kai project directory is levels up from where this file resides
         log_dir = log_dir.replace(
             "$pwd", os.path.join(os.path.dirname(os.path.realpath(__file__)), "../")
         )

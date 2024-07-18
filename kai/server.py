@@ -274,8 +274,8 @@ def app():
     else:
         raise FileNotFoundError("Config file not found.")
 
-    if os.getenv("LOGLEVEL") is not None:
-        config.log_level = os.getenv("LOGLEVEL").upper()
+    if os.getenv("LOG_LEVEL") is not None:
+        config.log_level = os.getenv("LOG_LEVEL").upper()
     if os.getenv("DEMO_MODE") is not None:
         config.demo_mode = os.getenv("DEMO_MODE").lower() == "true"
     if os.getenv("TRACE") is not None:
@@ -283,18 +283,10 @@ def app():
     if os.getenv("LOG_DIR") is not None:
         config.log_dir = os.getenv("LOG_DIR")
 
-    # We are storing the log directory in the config object so tracing can write to same location
     print(f"Config loaded: {pprint.pformat(config)}")
-
     webapp["config"] = config
-
     initLoggingFromConfig(config)
-    log.info("This is a log message from %s", log.name)
 
-    # WE ARE NOT seeing debug messages to file.
-    # Perhaps split out console and file level of debug
-
-    log.debug("This is a test at DEBUG")
     print(
         f"Logging for KAI has been initialized and the level set to {config.log_level.upper()}"
     )
@@ -326,7 +318,7 @@ def main():
     arg_parser.add_argument(
         "-log",
         "--loglevel",
-        default=os.getenv("log_LEVEL", "info"),
+        default=os.getenv("LOG_LEVEL", "info"),
         choices=["debug", "info", "warning", "error", "critical"],
         help="""Provide logging level.
 Options:
@@ -347,7 +339,7 @@ Example: --loglevel debug (default: warning)""",
 
     args, _ = arg_parser.parse_known_args()
 
-    os.environ["LOGLEVEL"] = str(args.loglevel)
+    os.environ["LOG_LEVEL"] = str(args.loglevel)
     os.environ["DEMO_MODE"] = str(args.demo_mode).lower()
 
     web.run_app(app())
