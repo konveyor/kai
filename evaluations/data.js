@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1721407920697,
+  "lastUpdate": 1721408009396,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -2289,6 +2289,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jwmatthews@gmail.com",
+            "name": "John Matthews",
+            "username": "jwmatthews"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "74efb3d72c2f9458f37d6473146eeb3d5a11a320",
+          "message": "Fix warning on docker build, issue #241 (#242)\n\nSigned-off-by: John Matthews <jwmatthews@gmail.com>",
+          "timestamp": "2024-07-19T12:48:12-04:00",
+          "tree_id": "7a6870b234d4e6c68ba057308fbbe07dca28b17b",
+          "url": "https://github.com/konveyor/kai/commit/74efb3d72c2f9458f37d6473146eeb3d5a11a320"
+        },
+        "date": 1721408008019,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
             "value": "",
             "unit": "Match"
           }
