@@ -30,7 +30,18 @@ class PSQLIncidentStore(IncidentStore):
 
 
 if __name__ == "__main__":
-    log_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../../logs")
-    initLogging("INFO", "DEBUG", log_dir, "kai_psql.log")
+    if os.getenv("LOG_DIR") is not None:
+        log_dir = os.getenv("LOG_DIR")
+    else:
+        log_dir = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "../../../logs"
+        )
+
+    if os.getenv("LOG_LEVEL") is not None:
+        log_level = os.getenv("LOG_LEVEL").upper()
+    else:
+        log_level = "INFO"
+
+    initLogging(log_level, "DEBUG", log_dir, "kai_psql.log")
 
     cmd("postgresql")
