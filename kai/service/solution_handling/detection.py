@@ -1,5 +1,8 @@
+import json
 from dataclasses import dataclass
-from typing import Callable, Iterable
+from typing import Callable
+
+from git import Repo
 
 from kai.models.kai_config import SolutionDetectorKind
 from kai.service.incident_store.sql_types import SQLIncident
@@ -7,15 +10,18 @@ from kai.service.incident_store.sql_types import SQLIncident
 
 @dataclass
 class SolutionDetectorContext:
-    db_incidents: list[SQLIncident]
-    report_incidents: list[SQLIncident]
+    old_incidents: list[SQLIncident]
+    new_incidents: list[SQLIncident]
+    repo: Repo
+    old_commit: str
+    new_commit: str
 
 
 @dataclass
 class SolutionDetectorResult:
-    new: Iterable[SQLIncident]
-    unsolved: Iterable[SQLIncident]
-    solved: Iterable[SQLIncident]
+    new: list[SQLIncident]
+    unsolved: list[SQLIncident]
+    solved: list[SQLIncident]
 
 
 # Returns tuple of:
@@ -25,22 +31,43 @@ class SolutionDetectorResult:
 SolutionDetectionAlgorithm = Callable[[SolutionDetectorContext], SolutionDetectorResult]
 
 
-def solution_detection_naive(ctx: SolutionDetectorContext) -> SolutionDetectorResult:
-    return SolutionDetectorResult(
-        new=list(set(ctx.report_incidents) - set(ctx.db_incidents)),
-        unsolved=list(set(ctx.db_incidents).intersection(ctx.report_incidents)),
-        solved=list(set(ctx.db_incidents) - set(ctx.report_incidents)),
+def naive_hash(x: SQLIncident) -> int:
+    return hash(
+        (
+            x.violation_name,
+            x.ruleset_name,
+            x.application_name,
+            x.incident_uri,
+            x.incident_line,
+            json.dumps(x.incident_variables, sort_keys=True),
+        )
     )
+
+
+def solution_detection_naive(ctx: SolutionDetectorContext) -> SolutionDetectorResult:
+    result = SolutionDetectorResult([], [], [])
+
+    updating_set: dict[int, SQLIncident] = {naive_hash(x): x for x in ctx.old_incidents}
+
+    for incident in ctx.new_incidents:
+        incident_hash = naive_hash(incident)
+
+        if incident_hash in updating_set:
+            result.unsolved.append(updating_set.pop(incident_hash))
+        else:
+            result.new.append(incident)
+
+    result.solved = list(updating_set.values())
+
+    return result
 
 
 def solution_detection_line_match(
     ctx: SolutionDetectorContext,
 ) -> SolutionDetectorResult:
-    new_incidents = set(ctx.report_incidents) - set(ctx.db_incidents)
-    unsolved_incidents = set(ctx.db_incidents).intersection(ctx.report_incidents)
-    solved_incidents = set(ctx.db_incidents) - set(ctx.report_incidents)
-
-    return new_incidents, unsolved_incidents, solved_incidents
+    # TODO: Implement line matching solution detection with sequoia-diff or
+    # gumtree
+    return solution_detection_naive(ctx)
 
 
 def solution_detection_factory(

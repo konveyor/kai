@@ -14,12 +14,12 @@ from sqlalchemy.orm import Session
 
 from kai.constants import PATH_LOCAL_REPO
 from kai.kai_logging import initLogging
-from kai.model_provider import ModelProvider
 from kai.models.kai_config import (
     KaiConfig,
     KaiConfigIncidentStore,
     KaiConfigIncidentStoreProvider,
 )
+from kai.models.util import filter_incident_vars
 from kai.report import Report
 from kai.service.incident_store.psql import psql_engine, psql_json_exactly_equal
 from kai.service.incident_store.sql_types import (
@@ -32,7 +32,7 @@ from kai.service.incident_store.sql_types import (
     SQLViolation,
 )
 from kai.service.incident_store.sqlite import sqlite_engine, sqlite_json_exactly_equal
-from kai.service.incident_store.util import filter_incident_vars
+from kai.service.llm_interfacing.model_provider import ModelProvider
 from kai.service.solution_handling.detection import (
     SolutionDetectionAlgorithm,
     SolutionDetectorContext,
@@ -40,37 +40,8 @@ from kai.service.solution_handling.detection import (
 from kai.service.solution_handling.production import SolutionProducer
 
 KAI_LOG = logging.getLogger(__name__)
+from kai.service.solution_handling.solution_types import Solution
 
-# These prefixes are sometimes in front of the paths, strip them.
-# Also strip leading slashes since os.path.join can't join two absolute paths
-KNOWN_PREFIXES = (
-    "/opt/input/source/",
-    # trunk-ignore(bandit/B108)
-    "/tmp/source-code/",
-    "/addon/source/",
-    "/",
-)
-
-
-# These are known unique variables that can be included by incidents
-# They would prevent matches that we actually want, so we filter them
-# before adding to the database or searching
-FILTERED_INCIDENT_VARS = ("file", "package")
-
-
-def remove_known_prefixes(path: str) -> str:
-    for prefix in KNOWN_PREFIXES:
-        if path.startswith(prefix):
-            return path.removeprefix(prefix)
-    return path
-
-
-def filter_incident_vars(incident_vars: dict):
-    for v in FILTERED_INCIDENT_VARS:
-        incident_vars.pop(v, None)
-    return incident_vars
-
-from kai.service.solution_handling.types import Solution
 
 T = TypeVar("T")
 
@@ -252,14 +223,12 @@ class IncidentStore:
         # new NO  | -      | update (SOLVED, embeddings)
         #     YES | insert | update (line number, etc...)
 
-        repo_path = unquote(urlparse(app.repo_uri_local).path)
-        repo = Repo(repo_path)
+        repo = Repo(unquote(urlparse(app.repo_uri_local).path))
         old_commit: str
         new_commit = app.current_commit
+        report_incidents: list[SQLIncident] = []
 
         with Session(self.engine) as session:
-            incidents_temp: list[SQLIncident] = []
-
             select_application_stmt = select(SQLApplication).where(
                 SQLApplication.application_name == app.application_name
             )
@@ -284,9 +253,12 @@ class IncidentStore:
 
             old_commit = application.current_commit
 
-            report_dict = dict(report)
+            for ruleset_name, ruleset_obj in report.rulesets.items():
+                if ruleset_obj is None:
+                    continue
 
-            for ruleset_name, ruleset_dict in report_dict.items():
+                ruleset_obj.model_dump_json()
+
                 select_ruleset_stmt = select(SQLRuleset).where(
                     SQLRuleset.ruleset_name == ruleset_name
                 )
@@ -296,14 +268,15 @@ class IncidentStore:
                 if ruleset is None:
                     ruleset = SQLRuleset(
                         ruleset_name=ruleset_name,
-                        tags=ruleset_dict.get("tags", []),
+                        tags=ruleset_obj.tags,
                     )
                     session.add(ruleset)
                     session.commit()
 
-                for violation_name, violation_dict in ruleset_dict.get(
-                    "violations", {}
-                ).items():
+                for violation_name, violation_obj in ruleset_obj.violations.items():
+                    if violation_obj is None:
+                        continue
+
                     select_violation_stmt = (
                         select(SQLViolation)
                         .where(SQLViolation.violation_name == violation_name)
@@ -316,31 +289,32 @@ class IncidentStore:
                         violation = SQLViolation(
                             violation_name=violation_name,
                             ruleset_name=ruleset.ruleset_name,
-                            category=violation_dict.get("category", "potential"),
-                            labels=violation_dict.get("labels", []),
+                            category=violation_obj.category,
+                            labels=violation_obj.labels,
                         )
                         session.add(violation)
                         session.commit()
 
-                    for incident in violation_dict.get("incidents", []):
-                        incidents_temp.append(
+                    for incident in violation_obj.incidents:
+                        report_incidents.append(
                             SQLIncident(
                                 violation_name=violation.violation_name,
                                 ruleset_name=ruleset.ruleset_name,
                                 application_name=application.application_name,
-                                incident_uri=incident.get("uri", ""),
-                                incident_snip=incident.get("codeSnip", ""),
-                                incident_line=incident.get("lineNumber", 0),
-                                incident_variables=deep_sort(
-                                    incident.get("variables", {})
-                                ),
-                                incident_message=incident.get("message", ""),
+                                incident_uri=incident.uri,
+                                incident_snip=incident.codeSnip,
+                                incident_line=incident.lineNumber,
+                                incident_variables=deep_sort(incident.variables),
+                                incident_message=incident.message,
                             )
                         )
 
             solution_detector_ctx = SolutionDetectorContext(
-                db_incidents=application.incidents,
-                report_incidents=incidents_temp,
+                old_incidents=application.incidents,
+                new_incidents=report_incidents,
+                repo=repo,
+                old_commit=old_commit,
+                new_commit=new_commit,
             )
 
             categorized_incidents = self.solution_detector(solution_detector_ctx)
@@ -350,7 +324,6 @@ class IncidentStore:
 
             session.commit()
 
-            # incidents - incidents_temp
             KAI_LOG.debug(
                 f"Number of solved incidents: {len(categorized_incidents.solved)}"
             )
@@ -373,6 +346,9 @@ class IncidentStore:
 
             session.commit()
 
+            report_dict = {
+                k: v.model_dump(mode="json") for k, v in report.rulesets.items()
+            }
             unmodified_report = SQLUnmodifiedReport(
                 application_name=app.application_name,
                 report_id=report.report_id,
@@ -450,8 +426,8 @@ class IncidentStore:
                     select_accepted_solution_stmt
                 ).first()
 
-                processed_solution = self.solution_consumer.consume_one(
-                    accepted_solution.solution
+                processed_solution = self.solution_producer.post_process_one(
+                    incident, accepted_solution.solution
                 )
                 accepted_solution.solution = processed_solution
                 result.append(processed_solution)

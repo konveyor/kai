@@ -17,7 +17,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON
 
 from kai.models import report_types
-from kai.service.solution_handling.types import Solution
+from kai.service.solution_handling.solution_types import Solution
 
 
 class SQLSolutionType(TypeDecorator):
@@ -36,7 +36,7 @@ class SQLSolutionType(TypeDecorator):
         if value is None:
             return None
 
-        return Solution.model_validate(value)
+        return Solution.model_validate_json(value)
 
 
 class SQLBase(DeclarativeBase):

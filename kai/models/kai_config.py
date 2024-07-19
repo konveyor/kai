@@ -5,7 +5,6 @@ from typing import Literal, Optional, Self, Union
 
 import yaml
 from pydantic import BaseModel, Field, model_validator
-from pydantic_settings import BaseSettings
 
 """
 https://docs.pydantic.dev/2.0/migration/#required-optional-and-nullable-fields

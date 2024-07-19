@@ -9,13 +9,13 @@ import yaml
 
 from kai.constants import PATH_BENCHMARKS
 from kai.llm_io_handler import get_prompt
-from kai.model_provider import ModelProvider
 from kai.models.analyzer_types import Incident
 from kai.models.file_solution import guess_language, parse_file_solution_content
 from kai.models.kai_config import KaiConfig, KaiConfigIncidentStoreSQLiteArgs
 from kai.report import Report
 from kai.service.incident_store.incident_store import Application
 from kai.service.incident_store.sqlite import SQLiteIncidentStore
+from kai.service.llm_interfacing.model_provider import ModelProvider
 
 """
 The point of this file is to automatically see if certain prompts make the

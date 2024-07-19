@@ -11,7 +11,7 @@ import yaml
 
 KAI_LOG = logging.getLogger(__name__)
 from kai.models.report_types import Incident, RuleSet
-from kai.service.incident_store.util import remove_known_prefixes
+from kai.models.util import remove_known_prefixes
 
 
 class Report:
@@ -156,8 +156,8 @@ class Report:
                 f.write(f"* Labels: {', '.join(items.labels)}\n")
             if items.links:
                 f.write("* Links\n")
-                for l in items.links:
-                    f.write(f"  * {l['title']}: {l['url']}\n")
+                for link in items.links:
+                    f.write(f"  * {link['title']}: {link['url']}\n")
             if items.incidents:
                 f.write("* Incidents\n")
                 for incident in items.incidents:

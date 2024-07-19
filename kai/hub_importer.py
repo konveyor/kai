@@ -14,10 +14,10 @@ import urllib3
 from git import GitCommandError, Repo
 from pydantic import BaseModel, Field
 
-from kai.model_provider import ModelProvider
 from kai.models.kai_config import KaiConfig, SolutionProducerKind
 from kai.report import Report
 from kai.service.incident_store import Application, IncidentStore
+from kai.service.llm_interfacing.model_provider import ModelProvider
 from kai.service.solution_handling.detection import solution_detection_factory
 from kai.service.solution_handling.production import (
     SolutionProducer,

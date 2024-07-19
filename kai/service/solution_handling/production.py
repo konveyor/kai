@@ -9,11 +9,11 @@ import jinja2
 from git import Repo
 
 from kai.constants import PATH_TEMPLATES
-from kai.model_provider import ModelProvider
 from kai.models.file_solution import guess_language
+from kai.models.util import remove_known_prefixes
 from kai.service.incident_store.incident_store import SQLIncident
-from kai.service.incident_store.util import remove_known_prefixes
-from kai.service.solution_handling.types import Solution
+from kai.service.llm_interfacing.model_provider import ModelProvider
+from kai.service.solution_handling.solution_types import Solution
 
 
 class SolutionProducer(ABC):
@@ -66,55 +66,48 @@ class SolutionProducer(ABC):
 
 class SolutionProducerTextOnly(SolutionProducer):
     def produce_one(
-        self, incidents: SQLIncident, repo: Repo, old_commit: str, new_commit: str
+        self, incident: SQLIncident, repo: Repo, old_commit: str, new_commit: str
     ) -> Solution:
-        solutions: list[Solution] = []
+        file_path = os.path.join(
+            repo.working_tree_dir,
+            remove_known_prefixes(unquote(urlparse(incident.incident_uri).path)),
+        )
 
-        for incident in incidents:
-            file_path = os.path.join(
-                repo.working_tree_dir,
-                remove_known_prefixes(unquote(urlparse(incident.file_path).path)),
+        # NOTE: `repo_diff` functionality is not implemented
+
+        # TODO: Some of the sample repos have invalid utf-8 characters,
+        # thus the encode-then-decode hack. Not very performant, there's
+        # probably a better way to handle this.
+        try:
+            original_code = (
+                repo.git.show(f"{new_commit}:{file_path}")
+                .encode("utf-8")
+                .decode("utf-8")
             )
+        except Exception:
+            original_code = ""
 
-            # NOTE: `repo_diff` functionality is not implemented
-
-            # TODO: Some of the sample repos have invalid utf-8 characters,
-            # thus the encode-then-decode hack. Not very performant, there's
-            # probably a better way to handle this.
-            try:
-                original_code = (
-                    repo.git.show(f"{new_commit}:{file_path}")
-                    .encode("utf-8")
-                    .decode("utf-8")
-                )
-            except Exception:
-                original_code = ""
-
-            try:
-                updated_code = (
-                    repo.git.show(f"{new_commit}:{file_path}")
-                    .encode("utf-8")
-                    .decode("utf-8")
-                )
-            except Exception:
-                updated_code = ""
-
-            file_diff = (
-                repo.git.diff(old_commit, new_commit, "--", file_path)
-                .encode("utf-8", errors="ignore")
-                .decode()
+        try:
+            updated_code = (
+                repo.git.show(f"{new_commit}:{file_path}")
+                .encode("utf-8")
+                .decode("utf-8")
             )
+        except Exception:
+            updated_code = ""
 
-            solutions.append(
-                Solution(
-                    uri=incident.incident_uri,
-                    file_diff=file_diff,
-                    original_code=original_code,
-                    updated_code=updated_code,
-                )
-            )
+        file_diff = (
+            repo.git.diff(old_commit, new_commit, "--", file_path)
+            .encode("utf-8", errors="ignore")
+            .decode()
+        )
 
-        return solutions
+        return Solution(
+            uri=incident.incident_uri,
+            file_diff=file_diff,
+            original_code=original_code,
+            updated_code=updated_code,
+        )
 
     def post_process_one(self, incident: SQLIncident, solution: Solution) -> Solution:
         return solution
@@ -124,17 +117,16 @@ class SolutionProducerLLMLazy(SolutionProducer):
     def __init__(self, model_provider: ModelProvider):
         self.model_provider = model_provider
 
-    def produce_many(
-        self, incidents: SQLIncident, repo: Repo, old_commit: str, new_commit: str
+    def produce_one(
+        self, incident: SQLIncident, repo: Repo, old_commit: str, new_commit: str
     ) -> Solution:
-        solutions = SolutionProducerTextOnly().produce_many(
-            incidents, repo, old_commit, new_commit
+        solution = SolutionProducerTextOnly().produce_one(
+            incident, repo, old_commit, new_commit
         )
 
-        for solution in solutions:
-            solution.llm_summary_generated = False
+        solution.llm_summary_generated = False
 
-        return solutions
+        return solution
 
     def post_process_one(self, incident: SQLIncident, solution: Solution) -> Solution:
         jinja_env = jinja2.Environment(
@@ -147,10 +139,11 @@ class SolutionProducerLLMLazy(SolutionProducer):
             autoescape=True,
         )
 
-        template = jinja_env.get_template("generation.jinja2")
+        template = jinja_env.get_template("generation.jinja")
 
         # get just the file name and extension from solution.uri
         rendered_template = template.render(
+            model_provider=self.model_provider,
             src_file_name=solution.uri,
             src_file_language=guess_language(
                 solution.original_code, os.path.basename(solution.uri)
@@ -169,7 +162,7 @@ class SolutionProducerLLMLazy(SolutionProducer):
 
         llm_result = self.model_provider.llm.invoke(rendered_template)
 
-        # TODO Parse LLM result. For now, just returning the content fully
+        # TODO: Parse LLM result. For now, just returning the content fully
 
         solution.llm_summary_generated = True
         solution.llm_summary = llm_result.content

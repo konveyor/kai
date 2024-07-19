@@ -13,10 +13,10 @@ from aiohttp import web
 
 from kai.constants import PATH_KAI
 from kai.kai_logging import initLoggingFromConfig
-from kai.model_provider import ModelProvider
 from kai.models.kai_config import KaiConfig, SolutionProducerKind
 from kai.routes import kai_routes
 from kai.service.incident_store.incident_store import IncidentStore
+from kai.service.llm_interfacing.model_provider import ModelProvider
 from kai.service.solution_handling.consumption import solution_consumer_factory
 from kai.service.solution_handling.detection import solution_detection_factory
 from kai.service.solution_handling.production import (

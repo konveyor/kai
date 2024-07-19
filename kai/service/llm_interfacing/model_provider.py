@@ -2,6 +2,7 @@ from genai import Client, Credentials
 from genai.extensions.langchain.chat_llm import LangChainChatInterface
 from genai.schema import DecodingMethod
 from langchain_community.chat_models import ChatOllama, ChatOpenAI
+from langchain_community.chat_models.fake import FakeListChatModel
 from langchain_core.language_models.chat_models import BaseChatModel
 from pydantic.v1.utils import deep_update
 
@@ -11,9 +12,11 @@ from kai.models.kai_config import KaiConfigModels
 class ModelProvider:
     def __init__(self, config: KaiConfigModels):
         model_class: BaseChatModel
+        defaults: dict
         model_args: dict
         model_id: str
 
+        # Set the model class, model args, and model id based on the provider
         match config.provider:
             case "ChatOllama":
                 model_class = ChatOllama
@@ -71,6 +74,17 @@ class ModelProvider:
 
                 model_args = deep_update(defaults, config.args)
                 model_id = model_args["model_id"]
+
+            case "FakeListChatModel":
+                model_class = FakeListChatModel
+
+                defaults = {
+                    "responses": ["foo", "bar"],
+                    "sleep": None,
+                }
+
+                model_args = deep_update(defaults, config.args)
+                model_id = "fake-list-chat-model"
 
             case _:
                 raise Exception(f"Unrecognized provider '{config.provider}'")

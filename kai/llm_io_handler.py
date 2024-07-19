@@ -17,9 +17,9 @@ from jinja2 import (
 )
 
 from kai.constants import PATH_TEMPLATES
-from kai.model_provider import ModelProvider
 from kai.models.file_solution import guess_language, parse_file_solution_content
 from kai.service.incident_store.incident_store import IncidentStore
+from kai.service.llm_interfacing.model_provider import ModelProvider
 from kai.service.solution_handling.consumption import SolutionConsumerAlgorithm
 from kai.trace import Trace
 

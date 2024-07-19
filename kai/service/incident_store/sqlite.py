@@ -1,3 +1,5 @@
+import json
+
 from sqlalchemy import bindparam, create_engine, text
 
 from kai.models.kai_config import KaiConfigIncidentStoreSQLiteArgs
@@ -18,14 +20,14 @@ def sqlite_json_exactly_equal(json_dict: dict):
         """
     (
         SELECT key, value
-        FROM json_tree(SQLIncident.incident_variables)
+        FROM json_tree(incidents.incident_variables)
         WHERE type != 'object'
         ORDER BY key, value
     ) = (
         SELECT key, value
-        FROM json_tree(:json_dict)
+        FROM json_tree(json(:json_dict))
         WHERE type != 'object'
         ORDER BY key, value
     )
     """
-    ).bindparams(bindparam("json_dict", json_dict))
+    ).bindparams(bindparam("json_dict", json.dumps(json_dict)))
