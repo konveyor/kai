@@ -89,8 +89,8 @@ class Report:
                         "ruleset_description": ruleset.description,
                         "violation_description": violation.description,
                         "message": incident.message,
-                        "codeSnip": incident.codeSnip,
-                        "lineNumber": incident.lineNumber,
+                        "codeSnip": incident.code_snip,
+                        "lineNumber": incident.line_number,
                         "variables": incident.variables,
                     }
 
@@ -164,14 +164,14 @@ class Report:
                     # Possible keys of 'uri', 'message', 'codeSnip'
                     if incident.uri:
                         f.write(f"  * {incident.uri}\n")
-                    if incident.lineNumber:
-                        f.write(f"      * Line Number: {incident.lineNumber}\n")
+                    if incident.line_number:
+                        f.write(f"      * Line Number: {incident.line_number}\n")
                     if incident.message and incident.message.strip() != "":
                         f.write(f"      * Message: '{incident.message.strip()}'\n")
-                    if incident.codeSnip:
+                    if incident.code_snip:
                         f.write("      * Code Snippet:\n")
                         f.write("```java\n")
-                        f.write(f"{incident.codeSnip}\n")
+                        f.write(f"{incident.code_snip}\n")
                         f.write("```\n")
 
     def get_violation_snippet(self, ruleset_name: str, violation_name: str):

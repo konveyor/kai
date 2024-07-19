@@ -302,8 +302,8 @@ class IncidentStore:
                                 ruleset_name=ruleset.ruleset_name,
                                 application_name=application.application_name,
                                 incident_uri=incident.uri,
-                                incident_snip=incident.codeSnip,
-                                incident_line=incident.lineNumber,
+                                incident_snip=incident.code_snip,
+                                incident_line=incident.line_number,
                                 incident_variables=deep_sort(incident.variables),
                                 incident_message=incident.message,
                             )
