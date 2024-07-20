@@ -187,7 +187,7 @@ def evaluate(
                         "uri": incident.uri,
                         "analysis_message": incident.analysis_message,
                         "code_snip": incident.incident_snip,
-                        "analysis_line_number": incident.line_number,
+                        "line_number": incident.line_number,
                         "variables": incident.incident_variables,
                     }
 

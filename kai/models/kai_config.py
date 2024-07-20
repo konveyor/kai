@@ -128,6 +128,8 @@ class KaiConfigModels(BaseModel):
     args: dict
     template: Optional[str] = Field(default=None)
     llama_header: Optional[bool] = Field(default=None)
+    llm_retries: int = 5
+    llm_retry_delay: float = 10.0
 
 
 # Main config

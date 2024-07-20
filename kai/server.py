@@ -15,15 +15,7 @@ from kai.constants import PATH_KAI
 from kai.kai_logging import initLoggingFromConfig
 from kai.models.kai_config import KaiConfig, SolutionProducerKind
 from kai.routes import kai_routes
-from kai.service.incident_store.incident_store import IncidentStore
-from kai.service.llm_interfacing.model_provider import ModelProvider
-from kai.service.solution_handling.consumption import solution_consumer_factory
-from kai.service.solution_handling.detection import solution_detection_factory
-from kai.service.solution_handling.production import (
-    SolutionProducer,
-    SolutionProducerLLMLazy,
-    SolutionProducerTextOnly,
-)
+from kai.service.kai_application.kai_application import KaiApplication
 
 log = logging.getLogger(__name__)
 
@@ -37,15 +29,10 @@ log = logging.getLogger(__name__)
 
 
 def app() -> web.Application:
-    webapp = web.Application()
-
-    config: KaiConfig
-    if os.path.exists(os.path.join(PATH_KAI, "config.toml")):
-        config = KaiConfig.model_validate_filepath(
-            os.path.join(PATH_KAI, "config.toml")
-        )
-    else:
+    if not os.path.exists(os.path.join(PATH_KAI, "config.toml")):
         raise FileNotFoundError("Config file not found.")
+
+    config = KaiConfig.model_validate_filepath(os.path.join(PATH_KAI, "config.toml"))
 
     if os.getenv("LOG_LEVEL") is not None:
         config.log_level = os.getenv("LOG_LEVEL").upper()
@@ -57,45 +44,9 @@ def app() -> web.Application:
         config.log_dir = os.getenv("LOG_DIR")
 
     print(f"Config loaded: {pprint.pformat(config)}")
-    
-    webapp["config"] = config
-    initLoggingFromConfig(config)
 
-    print(
-        f"Logging for KAI has been initialized and the level set to {config.log_level.upper()}"
-    )
-
-    log.info(
-        f"Tracing of actions is {'enabled' if config.trace_enabled else 'disabled'}"
-    )
-
-    if config.demo_mode:
-        log.info("DEMO_MODE is enabled. LLM responses will be cached")
-
-    webapp["model_provider"] = ModelProvider(config.models)
-    log.info(f"Selected provider: {config.models.provider}")
-    log.info(f"Selected model: {webapp['model_provider'].model_id}")
-
-    solution_detector = solution_detection_factory(
-        config.incident_store.solution_detectors
-    )
-    solution_producer: SolutionProducer
-
-    match config.incident_store.solution_producers:
-        case SolutionProducerKind.TEXT_ONLY:
-            solution_producer = SolutionProducerTextOnly()
-        case SolutionProducerKind.LLM_LAZY:
-            solution_producer = SolutionProducerLLMLazy(webapp["model_provider"])
-
-    webapp["incident_store"] = IncidentStore(
-        config.incident_store,
-        solution_detector,
-        solution_producer,
-    )
-    log.info(f"Selected incident store: {config.incident_store.args.provider}")
-
-    webapp["solution_consumer"] = solution_consumer_factory(config.solution_consumers)
-
+    webapp = web.Application()
+    webapp["kai_application"] = KaiApplication(config)
     webapp.add_routes(kai_routes)
 
     return webapp

@@ -1,34 +1,27 @@
 import time
 import traceback
-from enum import StrEnum
 from trace import Trace
-from typing import Optional
 
 from aiohttp import web
 from aiohttp.web_request import Request
 from pydantic import BaseModel
 
-from kai import llm_io_handler
 from kai.kai_logging import KAI_LOG
 from kai.models.report_types import ExtendedIncident
 from kai.routes.util import to_route
-
-
-class PostGetIncidentSolutionsForFileBatchMode(StrEnum):
-    NONE = "none"
-    SINGLE_GROUP = "single_group"
-    RULESET = "ruleset"
-    VIOLATION = "violation"
+from kai.service.kai_application.kai_application import KaiApplication
+from kai.service.kai_application.util import BatchMode
 
 
 class PostGetIncidentSolutionsForFileParams(BaseModel):
     file_name: str
     file_contents: str
     application_name: str
-    batch_mode: Optional[PostGetIncidentSolutionsForFileBatchMode] = "single_group"
-    include_solved_incidents: Optional[bool] = True
-    include_llm_results: Optional[bool] = False
     incidents: list[ExtendedIncident]
+
+    batch_mode: BatchMode = "single_group"
+    include_solved_incidents: bool = True
+    include_llm_results: bool = False
 
 
 @to_route("post", "/get_incident_solutions_for_file")
@@ -53,20 +46,9 @@ async def post_get_incident_solutions_for_file(request: Request):
     trace.params(params)
 
     try:
-        result = await llm_io_handler.get_incident_solutions_for_file(
-            trace,
-            request.app["model_provider"],
-            request.app["incident_store"],
-            params.file_contents,
-            params.file_name,
-            params.application_name,
-            [x.model_dump() for x in params.incidents],
-            request.app["solution_consumer"],
-            params.batch_mode,
-            params.include_solved_incidents,
-            params.include_llm_results,
-            request.app["config"].demo_mode,
-        )
+        result = request.app[
+            web.AppKey("kai_application", KaiApplication)
+        ].get_incident_solutions_for_file(**params.model_dump())
     except Exception as e:
         trace.exception(-1, -1, e, traceback.format_exc())
         raise e

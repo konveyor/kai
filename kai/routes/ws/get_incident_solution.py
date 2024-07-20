@@ -1,10 +1,12 @@
 import json
+from typing import Iterator
 
 from aiohttp import web
 from aiohttp.web_request import Request
+from langchain_core.messages import BaseMessageChunk
 
-from kai import llm_io_handler
 from kai.routes.util import to_route
+from kai.service.kai_application.kai_application import KaiApplication
 
 # TODO(@JonahSussman): Figure out proper pydantic model validation for this
 # function
@@ -19,11 +21,11 @@ async def get_ws_get_incident_solution(request: Request):
 
     if msg.type == web.WSMsgType.TEXT:
         try:
-            request_json = json.loads(msg.data)
+            request_json: dict = json.loads(msg.data)
 
-            chunks = llm_io_handler.get_incident_solution(
-                request.app["incident_store"],
-                request.app["model_provider"],
+            chunks: Iterator[BaseMessageChunk] = request.app[
+                web.AppKey("kai_application", KaiApplication)
+            ].get_incident_solution(
                 application_name=request_json["application_name"],
                 ruleset_name=request_json["ruleset_name"],
                 violation_name=request_json["violation_name"],

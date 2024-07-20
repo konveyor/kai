@@ -11,6 +11,9 @@ from kai.models.kai_config import KaiConfigModels
 
 class ModelProvider:
     def __init__(self, config: KaiConfigModels):
+        self.llm_retries: int = config.llm_retries
+        self.llm_retry_delay: float = config.llm_retry_delay
+
         model_class: BaseChatModel
         defaults: dict
         model_args: dict

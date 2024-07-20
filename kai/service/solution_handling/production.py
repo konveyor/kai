@@ -151,7 +151,7 @@ class SolutionProducerLLMLazy(SolutionProducer):
             src_file_contents=solution.original_code,
             incident={
                 "analysis_message": incident.incident_message,
-                "analysis_line_number": incident.incident_line,
+                "line_number": incident.incident_line,
             },
             sln_file_name=solution.uri,
             sln_file_language=guess_language(
