@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 from aiohttp import web
 from langchain_core.messages import BaseMessage, BaseMessageChunk
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from kai.kai_logging import KAI_LOG
 from kai.models.file_solution import guess_language, parse_file_solution_content
@@ -43,6 +43,9 @@ class UpdatedFileContent(BaseModel):
     additional_information: list[str]
 
     llm_results: Optional[list[str | list[str | dict]]]
+
+    # "model_" is a Pydantic protected namespace
+    model_config = ConfigDict(protected_namespaces=())
 
 
 class KaiApplication:
