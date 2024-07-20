@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from kai import llm_io_handler
 from kai.kai_logging import KAI_LOG
-from kai.models.analyzer_types import Incident
+from kai.models.report_types import ExtendedIncident
 from kai.routes.util import to_route
 
 
@@ -28,7 +28,7 @@ class PostGetIncidentSolutionsForFileParams(BaseModel):
     batch_mode: Optional[PostGetIncidentSolutionsForFileBatchMode] = "single_group"
     include_solved_incidents: Optional[bool] = True
     include_llm_results: Optional[bool] = False
-    incidents: list[Incident]
+    incidents: list[ExtendedIncident]
 
 
 @to_route("post", "/get_incident_solutions_for_file")

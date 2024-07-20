@@ -9,9 +9,9 @@ import yaml
 
 from kai.constants import PATH_BENCHMARKS
 from kai.llm_io_handler import get_prompt
-from kai.models.analyzer_types import Incident
 from kai.models.file_solution import guess_language, parse_file_solution_content
 from kai.models.kai_config import KaiConfig, KaiConfigIncidentStoreSQLiteArgs
+from kai.models.report_types import ExtendedIncident
 from kai.report import Report
 from kai.service.incident_store.incident_store import Application
 from kai.service.incident_store.sqlite import SQLiteIncidentStore
@@ -35,7 +35,7 @@ class BenchmarkExample:
     name: str
     original_file: str
     expected_file: str
-    incidents: list[Incident]
+    incidents: list[ExtendedIncident]
     report: Report
     application: Application
 
@@ -58,7 +58,7 @@ def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
     example_name = os.path.basename(full_example_path)
     original_file: str = None
     expected_file: str = None
-    incidents: list[Incident] = None
+    incidents: list[ExtendedIncident] = None
     report: Report = None
     application: Application = None
 
@@ -79,13 +79,13 @@ def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
                 expected_file = f.read()
 
         elif file_name == "incidents":
-            incidents: list[Incident] = []
+            incidents: list[ExtendedIncident] = []
 
             with open(full_file_path, "r") as f:
                 yaml_incidents = yaml.safe_load(f)
 
             for yaml_incident in yaml_incidents:
-                incidents.append(Incident.model_validate(yaml_incident))
+                incidents.append(ExtendedIncident.model_validate(yaml_incident))
 
         elif file_name == "report":
             report = Report.load_report_from_file(full_file_path)
