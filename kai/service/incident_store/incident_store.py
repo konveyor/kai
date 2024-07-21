@@ -14,14 +14,10 @@ from sqlalchemy.orm import Session
 
 from kai.constants import PATH_LOCAL_REPO
 from kai.kai_logging import initLogging
-from kai.models.kai_config import (
-    KaiConfig,
-    KaiConfigIncidentStore,
-    KaiConfigIncidentStoreProvider,
-)
+from kai.models.kai_config import KaiConfig
 from kai.models.util import filter_incident_vars
 from kai.report import Report
-from kai.service.incident_store.psql import psql_engine, psql_json_exactly_equal
+from kai.service.incident_store.backend import IncidentStoreBackend
 from kai.service.incident_store.sql_types import (
     SQLAcceptedSolution,
     SQLApplication,
@@ -31,7 +27,6 @@ from kai.service.incident_store.sql_types import (
     SQLUnmodifiedReport,
     SQLViolation,
 )
-from kai.service.incident_store.sqlite import sqlite_engine, sqlite_json_exactly_equal
 from kai.service.llm_interfacing.model_provider import ModelProvider
 from kai.service.solution_handling.detection import (
     SolutionDetectionAlgorithm,
@@ -178,19 +173,12 @@ class Application:
 class IncidentStore:
     def __init__(
         self,
-        config: KaiConfigIncidentStore,
+        backend: IncidentStoreBackend,
         solution_detector: SolutionDetectionAlgorithm,
         solution_producer: SolutionProducer,
     ):
-        match config.args.provider:
-            case KaiConfigIncidentStoreProvider.SQLITE:
-                self.engine = sqlite_engine(config.args)
-                self.json_exactly_equal = sqlite_json_exactly_equal
-            case KaiConfigIncidentStoreProvider.POSTGRESQL:
-                self.engine = psql_engine(config.args)
-                self.json_exactly_equal = psql_json_exactly_equal
-            case _:
-                raise Exception(f"Unknown provider: {config.args.provider}")
+        self.backend = backend
+        self.engine = self.backend.create_engine()
 
         self.solution_detector = solution_detector
         self.solution_producer = solution_producer
@@ -411,7 +399,7 @@ class IncidentStore:
                 .where(SQLIncident.violation_name == violation.violation_name)
                 .where(SQLIncident.ruleset_name == violation.ruleset_name)
                 .where(SQLIncident.solution_id.isnot(None))
-                .where(self.json_exactly_equal(incident_variables))
+                .where(self.backend.json_exactly_equal(incident_variables))
             )
 
             result: list[Solution] = []

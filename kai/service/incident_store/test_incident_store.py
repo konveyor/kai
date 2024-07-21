@@ -10,12 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from kai.constants import PATH_TEST_DATA
-from kai.models.kai_config import (
-    KaiConfigIncidentStore,
-    KaiConfigIncidentStoreSQLiteArgs,
-    KaiConfigModels,
-)
+from kai.models.kai_config import KaiConfigIncidentStoreSQLiteArgs, KaiConfigModels
 from kai.report import Report
+from kai.service.incident_store.backend import incident_store_backend_factory
 from kai.service.incident_store.incident_store import Application, IncidentStore
 from kai.service.incident_store.sql_types import (
     SQLAcceptedSolution,
@@ -26,7 +23,7 @@ from kai.service.incident_store.sql_types import (
     SQLViolation,
 )
 from kai.service.llm_interfacing.model_provider import ModelProvider
-from kai.service.solution_handling.detection import solution_detection_factory
+from kai.service.solution_handling.detection import solution_detection_naive
 from kai.service.solution_handling.production import (
     SolutionProducerLLMLazy,
     SolutionProducerTextOnly,
@@ -79,22 +76,17 @@ def fixture(*fixtures: Fixture):
 class BasicIncidentStore(Fixture):
     @staticmethod
     def setUp(self: unittest.TestCase):
-        self.incident_store_config = KaiConfigIncidentStore(
-            solution_detectors="naive",
-            solution_producers="text_only",
-            args=KaiConfigIncidentStoreSQLiteArgs(
-                provider="sqlite",
-                connection_string="sqlite:///:memory:",
-            ),
+        args = KaiConfigIncidentStoreSQLiteArgs(
+            provider="sqlite",
+            connection_string="sqlite:///:memory:",
         )
 
-        solution_detector = solution_detection_factory(
-            self.incident_store_config.solution_detectors
-        )
+        backend = incident_store_backend_factory(args)
+        solution_detector = solution_detection_naive
         solution_producer = SolutionProducerTextOnly()
 
         self.incident_store = IncidentStore(
-            self.incident_store_config, solution_detector, solution_producer
+            backend, solution_detector, solution_producer
         )
 
         self.incident_store.create_tables()
@@ -103,16 +95,13 @@ class BasicIncidentStore(Fixture):
 class FakeLLMIncidentStore(Fixture):
     @staticmethod
     def setUp(self: unittest.TestCase):
-        self.config = KaiConfigIncidentStore(
-            solution_detectors="naive",
-            solution_producers="llm_lazy",
-            args=KaiConfigIncidentStoreSQLiteArgs(
-                provider="sqlite",
-                connection_string="sqlite:///:memory:",
-            ),
+        args = KaiConfigIncidentStoreSQLiteArgs(
+            provider="sqlite",
+            connection_string="sqlite:///:memory:",
         )
 
-        solution_detector = solution_detection_factory(self.config.solution_detectors)
+        backend = incident_store_backend_factory(args)
+        solution_detector = solution_detection_naive
         solution_producer = SolutionProducerLLMLazy(
             ModelProvider(
                 KaiConfigModels(
@@ -128,7 +117,7 @@ class FakeLLMIncidentStore(Fixture):
         )
 
         self.incident_store = IncidentStore(
-            self.config, solution_detector, solution_producer
+            backend, solution_detector, solution_producer
         )
         self.incident_store.create_tables()
 

@@ -10,6 +10,7 @@ from git import Repo
 
 from kai.constants import PATH_TEMPLATES
 from kai.models.file_solution import guess_language
+from kai.models.kai_config import SolutionProducerKind
 from kai.models.util import remove_known_prefixes
 from kai.service.incident_store.incident_store import SQLIncident
 from kai.service.llm_interfacing.model_provider import ModelProvider
@@ -168,3 +169,17 @@ class SolutionProducerLLMLazy(SolutionProducer):
         solution.llm_summary = llm_result.content
 
         return solution
+
+
+def solution_producer_factory(
+    kind: SolutionProducerKind, model_provider: ModelProvider
+):
+    # NOTE: Model provider is passed in as a parameter because it's required for
+    # the llm stuff. I couldn't figure out a more elegant way of doing this.
+    match kind:
+        case SolutionProducerKind.TEXT_ONLY:
+            return SolutionProducerTextOnly()
+        case SolutionProducerKind.LLM_LAZY:
+            return SolutionProducerLLMLazy(model_provider)
+        case _:
+            raise ValueError(f"Unknown solution producer kind: {kind}")

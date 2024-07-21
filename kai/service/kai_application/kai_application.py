@@ -9,8 +9,9 @@ from pydantic import BaseModel, ConfigDict
 
 from kai.kai_logging import KAI_LOG
 from kai.models.file_solution import guess_language, parse_file_solution_content
-from kai.models.kai_config import KaiConfig, SolutionProducerKind
+from kai.models.kai_config import KaiConfig
 from kai.models.report_types import ExtendedIncident
+from kai.service.incident_store.backend import incident_store_backend_factory
 from kai.service.incident_store.incident_store import IncidentStore
 from kai.service.kai_application.util import (
     BatchMode,
@@ -24,11 +25,7 @@ from kai.service.solution_handling.consumption import (
     solution_consumer_factory,
 )
 from kai.service.solution_handling.detection import solution_detection_factory
-from kai.service.solution_handling.production import (
-    SolutionProducer,
-    SolutionProducerLLMLazy,
-    SolutionProducerTextOnly,
-)
+from kai.service.solution_handling.production import solution_producer_factory
 
 # FIXME: Add back in tracing
 trace = MagicMock()
@@ -58,40 +55,42 @@ class KaiApplication:
         self.config = config
 
         KAI_LOG.setLevel(config.log_level.upper())
-        print(
-            f"Logging for KAI has been initialized and the level set to {config.log_level.upper()}"
-        )
 
-        KAI_LOG.info(
-            f"Tracing of actions is {'enabled' if config.trace_enabled else 'disabled'}"
-        )
+        print(f"KAI logging initialized to {config.log_level.upper()}.")
+
+        KAI_LOG.info(f"Tracing {'enabled' if config.trace_enabled else 'disabled'}.")
 
         if config.demo_mode:
-            KAI_LOG.info("DEMO_MODE is enabled. LLM responses will be cached")
+            KAI_LOG.info("DEMO_MODE enabled. LLM responses will be cached.")
+
+        # Create model provider
 
         self.model_provider = ModelProvider(config.models)
 
         KAI_LOG.info(f"Selected provider: {config.models.provider}")
         KAI_LOG.info(f"Selected model: {self.model_provider.model_id}")
 
+        # Create incident store
+
+        backend = incident_store_backend_factory(config.incident_store.args)
+
         solution_detector = solution_detection_factory(
             config.incident_store.solution_detectors
         )
-        solution_producer: SolutionProducer
 
-        match config.incident_store.solution_producers:
-            case SolutionProducerKind.TEXT_ONLY:
-                solution_producer = SolutionProducerTextOnly()
-            case SolutionProducerKind.LLM_LAZY:
-                solution_producer = SolutionProducerLLMLazy(self.model_provider)
+        solution_producer = solution_producer_factory(
+            config.incident_store.solution_producers, self.model_provider
+        )
 
         self.incident_store = IncidentStore(
-            config.incident_store,
+            backend,
             solution_detector,
             solution_producer,
         )
 
         KAI_LOG.info(f"Selected incident store: {config.incident_store.args.provider}")
+
+        # Create solution consumer
 
         self.solution_consumer = solution_consumer_factory(config.solution_consumers)
 
