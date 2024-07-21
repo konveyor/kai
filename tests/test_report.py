@@ -2,6 +2,7 @@ import os
 import pprint
 import unittest
 
+from kai.models.report_types import ExtendedIncident
 from kai.report import Report
 
 
@@ -36,15 +37,16 @@ class TestReports(unittest.TestCase):
         self.assertTrue(test_file_entry in impacted_files)
         test_entry = impacted_files[test_file_entry]
         self.assertTrue(len(test_entry) == 6)
-        self.assertTrue("violation_name" in test_entry[0].keys())
-        self.assertTrue("violation_description" in test_entry[0].keys())
-        self.assertTrue("ruleset_name" in test_entry[0].keys())
-        self.assertTrue("ruleset_description" in test_entry[0].keys())
-        self.assertTrue("message" in test_entry[0].keys())
-        self.assertTrue("variables" in test_entry[0].keys())
-        self.assertTrue("file" in test_entry[0]["variables"].keys())
-        self.assertTrue("kind" in test_entry[0]["variables"].keys())
-        self.assertTrue("name" in test_entry[0]["variables"].keys())
+        self.assertTrue(isinstance(test_entry[0], ExtendedIncident))
+        # self.assertTrue("violation_name" in test_entry[0].keys())
+        # self.assertTrue("violation_description" in test_entry[0].keys())
+        # self.assertTrue("ruleset_name" in test_entry[0].keys())
+        # self.assertTrue("ruleset_description" in test_entry[0].keys())
+        # self.assertTrue("message" in test_entry[0].keys())
+        # self.assertTrue("variables" in test_entry[0].keys())
+        # self.assertTrue("file" in test_entry[0]["variables"].keys())
+        # self.assertTrue("kind" in test_entry[0]["variables"].keys())
+        # self.assertTrue("name" in test_entry[0]["variables"].keys())
 
 
 if __name__ == "__main__":

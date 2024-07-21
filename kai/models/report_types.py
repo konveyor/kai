@@ -49,9 +49,9 @@ class ExtendedIncident(Incident):
     """
 
     ruleset_name: str
-    ruleset_description: Optional[str]
+    ruleset_description: Optional[str] = None
     violation_name: str
-    violation_description: Optional[str]
+    violation_description: Optional[str] = None
 
 
 # Link defines an external hyperlink
