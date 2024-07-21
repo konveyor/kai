@@ -82,7 +82,7 @@ class ModelProvider:
                 model_class = FakeListChatModel
 
                 defaults = {
-                    "responses": ["foo", "bar"],
+                    "responses": ["Default LLM response."],
                     "sleep": None,
                 }
 

@@ -77,7 +77,7 @@ def get_prompt(
         if not fallback:
             raise e
 
-        KAI_LOG.warning(f"Template '{e.name}' not found. Falling back to main.jinja")
+        KAI_LOG.debug(f"Template '{e.name}' not found. Falling back to main.jinja")
         template = jinja_env.get_template("main.jinja")
 
     KAI_LOG.debug(f"Template {template.filename} loaded")
@@ -94,10 +94,12 @@ def playback_if_demo_mode(
     enabled.
     """
 
-    record_mode = ("once" if demo_mode else "all",)
+    record_mode = "once" if demo_mode else "all"
 
     my_vcr = vcr.VCR(
-        cassette_library_dir=f"{os.path.join(PATH_DATA, 'vcr/{application_name}/{model_id}/')}",
+        cassette_library_dir=os.path.join(
+            PATH_DATA, f"vcr/{application_name}/{model_id}/"
+        ),
         record_mode=record_mode,
         match_on=[
             "uri",

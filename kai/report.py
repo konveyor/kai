@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 import yaml
 
 KAI_LOG = logging.getLogger(__name__)
-from kai.models.report_types import Incident, RuleSet
+from kai.models.report_types import ExtendedIncident, Incident, RuleSet
 from kai.models.util import remove_known_prefixes
 
 
@@ -49,7 +49,7 @@ class Report:
         return cls(report_data=report_data, report_id=report_id)
 
     @classmethod
-    def load_report_from_file(cls, file_name: str):
+    def load_report_from_file(cls, file_name: str | pathlib.Path):
         with open(file_name, "r") as f:
             report: dict = yaml.safe_load(f)
         report_data = report
@@ -72,8 +72,8 @@ class Report:
         ruleset = RuleSet.model_validate(ruleset_dict)
         self.rulesets[ruleset.name] = ruleset
 
-    def get_impacted_files(self) -> dict[pathlib.Path, list[dict]]:
-        impacted_files: dict[pathlib.Path, list[dict]] = {}
+    def get_impacted_files(self) -> dict[pathlib.Path, list[ExtendedIncident]]:
+        impacted_files: dict[pathlib.Path, list[ExtendedIncident]] = {}
 
         for ruleset_name, ruleset in self.rulesets.items():
             for violation_name, violation in ruleset.violations.items():
@@ -83,16 +83,19 @@ class Report:
 
                     file_path = remove_known_prefixes(urlparse(incident.uri).path)
 
-                    current_entry = {
-                        "ruleset_name": ruleset_name,
-                        "violation_name": violation_name,
-                        "ruleset_description": ruleset.description,
-                        "violation_description": violation.description,
-                        "message": incident.message,
-                        "codeSnip": incident.code_snip,
-                        "lineNumber": incident.line_number,
-                        "variables": incident.variables,
-                    }
+                    current_entry = ExtendedIncident.model_validate(
+                        {
+                            "uri": incident.uri,
+                            "message": incident.message,
+                            "codeSnip": incident.code_snip,
+                            "lineNumber": incident.line_number,
+                            "variables": incident.variables,
+                            "ruleset_name": ruleset_name,
+                            "violation_name": violation_name,
+                            "ruleset_description": ruleset.description,
+                            "violation_description": violation.description,
+                        }
+                    )
 
                     if impacted_files.get(file_path) is None:
                         impacted_files[file_path] = []

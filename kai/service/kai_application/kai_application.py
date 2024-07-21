@@ -120,7 +120,7 @@ class KaiApplication:
 
         for count, (_group_by, incidents) in enumerate(batched_incidents, 1):
             KAI_LOG.info(
-                f"Processing incident batch {count}/{len(batched_incidents)} for {file_name}"
+                f"Processing incident batch {count}/{len(batched_incidents)} with {len(incidents)} incident(s) for {file_name}"
             )
 
             # Transform incidents into a format that can be passed to Jinja

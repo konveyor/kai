@@ -18,7 +18,7 @@ SolutionConsumerAlgorithm = Callable[[Solution], str]
 def __create_jinja_env() -> jinja2.Environment:
     return jinja2.Environment(
         loader=jinja2.FileSystemLoader(
-            os.path.join(PATH_TEMPLATES, "solution_handling")
+            os.path.join(PATH_TEMPLATES, "solution_handling/")
         ),
         undefined=jinja2.StrictUndefined,
         trim_blocks=True,
@@ -29,23 +29,21 @@ def __create_jinja_env() -> jinja2.Environment:
 
 def solution_consumer_diff_only(solution: Solution) -> str:
     return (
-        __create_jinja_env().get_template("diff_only.jinja2").render(solution=solution)
+        __create_jinja_env().get_template("diff_only.jinja").render(solution=solution)
     )
 
 
 def solution_consumer_before_and_after(solution: Solution) -> str:
     return (
         __create_jinja_env()
-        .get_template("before_and_after.jinja2")
+        .get_template("before_and_after.jinja")
         .render(solution=solution)
     )
 
 
 def solution_consumer_llm_summary(solution: Solution) -> str:
     return (
-        __create_jinja_env()
-        .get_template("llm_summary.jinja2")
-        .render(solution=solution)
+        __create_jinja_env().get_template("llm_summary.jinja").render(solution=solution)
     )
 
 

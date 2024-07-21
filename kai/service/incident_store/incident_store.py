@@ -12,8 +12,8 @@ from git import Repo
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from kai.constants import PATH_LOCAL_REPO
 from kai.kai_logging import initLogging
+from kai.constants import PATH_GIT_ROOT, PATH_KAI, PATH_LOCAL_REPO
 from kai.models.kai_config import KaiConfig
 from kai.models.util import filter_incident_vars
 from kai.report import Report
@@ -27,7 +27,6 @@ from kai.service.incident_store.sql_types import (
     SQLUnmodifiedReport,
     SQLViolation,
 )
-from kai.service.llm_interfacing.model_provider import ModelProvider
 from kai.service.solution_handling.detection import (
     SolutionDetectionAlgorithm,
     SolutionDetectorContext,
@@ -446,7 +445,7 @@ def cmd(provider: str = None):
     parser.add_argument(
         "--config_filepath",
         type=str,
-        default="../../config.toml",
+        default=os.path.join(PATH_KAI, "config.toml"),
         help="Path to the config file.",
     )
     parser.add_argument(
@@ -455,7 +454,7 @@ def cmd(provider: str = None):
     parser.add_argument(
         "--analysis_dir_path",
         type=str,
-        default="../../samples/analysis_reports",
+        default=os.path.join(PATH_GIT_ROOT, "samples/analysis_reports/"),
         help="Path to analysis reports folder",
     )
 
@@ -466,8 +465,10 @@ def cmd(provider: str = None):
     if provider is not None and config.incident_store.args.provider != provider:
         raise Exception(f"This script only works with {provider} incident store.")
 
-    model_provider = ModelProvider(config.models)
-    incident_store = IncidentStore(config.incident_store, model_provider)
+    from kai.service.kai_application.kai_application import KaiApplication
+
+    kai_application = KaiApplication(config)
+    incident_store = kai_application.incident_store
 
     if args.drop_tables:
         incident_store.delete_store()
