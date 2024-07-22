@@ -6,7 +6,6 @@ from kai.models.kai_config import KaiConfig
 parent_log = logging.getLogger("kai")
 
 # console_handler = logging.StreamHandler()
-# formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 formatter = logging.Formatter(
     "%(levelname)s - %(asctime)s - %(name)s - [%(filename)20s:%(lineno)-4s - %(funcName)20s()] - %(message)s"
 )
@@ -55,7 +54,7 @@ def initLogging(console_log_level, file_log_level, log_dir, log_file="kai_server
     setup_console_handler(parent_log, console_log_level)
     setup_file_handler(parent_log, log_file, log_dir, file_log_level)
     # Attempt to set the parent log level to
-    # most persmissive and allow child loggers to control what is filtered or not
+    # most permissive and allow child loggers to control what is filtered or not
     parent_log.setLevel("DEBUG")
 
 

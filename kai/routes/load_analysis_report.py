@@ -32,7 +32,9 @@ async def post_load_analysis_report(request: Request):
     application = Application(**params.application.model_dump())
     report = Report.load_report_from_file(params.path_to_report)
 
-    count = request.app["incident_store"].load_report(application, report)
+    count = request.app["kai_application"].incident_store.load_report(
+        application, report
+    )
 
     return web.json_response(
         {

@@ -8,14 +8,16 @@ import git
 import yaml
 
 from kai.constants import PATH_BENCHMARKS
-from kai.llm_io_handler import get_prompt
 from kai.models.file_solution import guess_language, parse_file_solution_content
 from kai.models.kai_config import KaiConfig, KaiConfigIncidentStoreSQLiteArgs
 from kai.models.report_types import ExtendedIncident
 from kai.report import Report
-from kai.service.incident_store.incident_store import Application
-from kai.service.incident_store.sqlite import SQLiteIncidentStore
+from kai.service.incident_store.backend import SQLiteBackend
+from kai.service.incident_store.incident_store import Application, IncidentStore
+from kai.service.kai_application.util import get_prompt
 from kai.service.llm_interfacing.model_provider import ModelProvider
+from kai.service.solution_handling.detection import solution_detection_naive
+from kai.service.solution_handling.production import SolutionProducerTextOnly
 
 """
 The point of this file is to automatically see if certain prompts make the
@@ -172,11 +174,14 @@ def evaluate(
 
                     created_git_repo = True
 
-                incident_store = SQLiteIncidentStore(
-                    KaiConfigIncidentStoreSQLiteArgs(
-                        connection_string="sqlite:///:memory:"
+                incident_store = IncidentStore(
+                    backend=SQLiteBackend(
+                        KaiConfigIncidentStoreSQLiteArgs(
+                            connection_string="sqlite:///:memory:"
+                        ),
                     ),
-                    None,
+                    solution_detector=solution_detection_naive,
+                    solution_producer=SolutionProducerTextOnly(),
                 )
                 incident_store.load_report(example.application, example.report)
 
