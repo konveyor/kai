@@ -1,11 +1,15 @@
 import json
+import logging
 import os
 from time import localtime, strftime
 from typing import Any
 
 from langchain.schema.messages import BaseMessage
 
+from kai.kai_logging import process_log_dir_replacements
 from kai.models.kai_config import KaiConfig
+
+log = logging.getLogger(__name__)
 
 
 def enabled_check(func):
@@ -49,10 +53,9 @@ class Trace:
         self.time_start = -1
         self.time_end = -1
 
-        # TODO:  Specify trace directory in config
-        self.top_trace_dir = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), "../logs/trace"
-        )
+        # We use the same parent directory of logging for trace data
+        log_dir = process_log_dir_replacements(self.config.log_dir)
+        self.top_trace_dir = os.path.join(log_dir, "trace")
 
         self.trace_dir = os.path.join(
             self.top_trace_dir, model_id, application_name, file_name, batch_mode
