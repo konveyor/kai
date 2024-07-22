@@ -9,9 +9,10 @@ from urllib.parse import urlparse
 
 import yaml
 
-KAI_LOG = logging.getLogger(__name__)
 from kai.models.report_types import ExtendedIncident, Incident, RuleSet
 from kai.models.util import remove_known_prefixes
+
+KAI_LOG = logging.getLogger(__name__)
 
 
 class Report:

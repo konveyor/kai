@@ -3,8 +3,6 @@
 """This module is intended to facilitate using Konveyor with LLMs."""
 
 import argparse
-import datetime
-import json
 import logging
 import os
 import pprint
@@ -12,8 +10,7 @@ import pprint
 from aiohttp import web
 
 from kai.constants import PATH_KAI
-from kai.kai_logging import initLoggingFromConfig
-from kai.models.kai_config import KaiConfig, SolutionProducerKind
+from kai.models.kai_config import KaiConfig
 from kai.routes import kai_routes
 from kai.service.kai_application.kai_application import KaiApplication
 

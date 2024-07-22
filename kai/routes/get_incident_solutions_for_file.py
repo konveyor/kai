@@ -1,3 +1,4 @@
+import logging
 import time
 import traceback
 from unittest.mock import MagicMock
@@ -6,11 +7,12 @@ from aiohttp import web
 from aiohttp.web_request import Request
 from pydantic import BaseModel
 
-from kai.kai_logging import KAI_LOG
 from kai.models.report_types import ExtendedIncident
 from kai.routes.util import to_route
 from kai.service.kai_application.kai_application import UpdatedFileContent
 from kai.service.kai_application.util import BatchMode
+
+KAI_LOG = logging.getLogger(__name__)
 
 Trace = MagicMock()  # FIXME: Re-implement tracing
 

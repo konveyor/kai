@@ -1,3 +1,4 @@
+import logging
 import time
 import traceback
 from typing import Iterator, Optional
@@ -7,7 +8,6 @@ from aiohttp import web
 from langchain_core.messages import BaseMessage, BaseMessageChunk
 from pydantic import BaseModel, ConfigDict
 
-from kai.kai_logging import KAI_LOG
 from kai.models.file_solution import guess_language, parse_file_solution_content
 from kai.models.kai_config import KaiConfig
 from kai.models.report_types import ExtendedIncident
@@ -26,6 +26,8 @@ from kai.service.solution_handling.consumption import (
 )
 from kai.service.solution_handling.detection import solution_detection_factory
 from kai.service.solution_handling.production import solution_producer_factory
+
+KAI_LOG = logging.getLogger(__name__)
 
 # FIXME: Add back in tracing
 trace = MagicMock()

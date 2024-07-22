@@ -1,8 +1,11 @@
+import logging
+
 from aiohttp import web
 from aiohttp.web_request import Request
 
-from kai.kai_logging import KAI_LOG
 from kai.routes.util import to_route
+
+KAI_LOG = logging.getLogger(__name__)
 
 
 @to_route("post", "/health_check")

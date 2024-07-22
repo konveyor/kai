@@ -1,6 +1,5 @@
 import argparse
 import datetime
-import enum
 import logging
 import os
 from dataclasses import dataclass
@@ -12,8 +11,8 @@ from git import Repo
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from kai.kai_logging import initLogging
 from kai.constants import PATH_GIT_ROOT, PATH_KAI, PATH_LOCAL_REPO
+from kai.kai_logging import initLogging
 from kai.models.kai_config import KaiConfig
 from kai.models.util import filter_incident_vars
 from kai.report import Report
@@ -32,10 +31,9 @@ from kai.service.solution_handling.detection import (
     SolutionDetectorContext,
 )
 from kai.service.solution_handling.production import SolutionProducer
-
-KAI_LOG = logging.getLogger(__name__)
 from kai.service.solution_handling.solution_types import Solution
 
+KAI_LOG = logging.getLogger(__name__)
 
 T = TypeVar("T")
 

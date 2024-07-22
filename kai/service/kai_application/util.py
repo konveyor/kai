@@ -1,4 +1,5 @@
 import itertools
+import logging
 import os
 from contextlib import contextmanager
 from enum import StrEnum
@@ -14,8 +15,9 @@ from jinja2 import (
 )
 
 from kai.constants import PATH_DATA, PATH_TEMPLATES
-from kai.kai_logging import KAI_LOG
 from kai.models.report_types import ExtendedIncident
+
+KAI_LOG = logging.getLogger(__name__)
 
 
 def get_prompt(
