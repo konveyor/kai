@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import logging
 import os
 import pprint
 import tempfile
@@ -13,10 +14,11 @@ import urllib3
 from git import GitCommandError, Repo
 from pydantic import BaseModel, Field
 
-from kai.kai_logging import KAI_LOG
 from kai.models.kai_config import KaiConfig
 from kai.report import Report
 from kai.service.incident_store import Application, IncidentStore
+
+KAI_LOG = logging.getLogger(__name__)
 
 
 # BaseModel that also acts as a dict

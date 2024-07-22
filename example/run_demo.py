@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import json
+import logging
 import os
 import sys
 import time
@@ -12,8 +13,10 @@ import requests
 
 # Ensure that we have 'kai' in our import path
 sys.path.append("../../kai")
-from kai import Report
-from kai.kai_logging import KAI_LOG
+from kai.kai_logging import formatter
+from kai.report import Report
+
+KAI_LOG = logging.getLogger(__name__)
 
 SERVER_URL = "http://0.0.0.0:8080"
 APP_NAME = "coolstore"
@@ -249,7 +252,11 @@ def run_demo(report):
 
 
 if __name__ == "__main__":
-    KAI_LOG.setLevel("info".upper())
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    KAI_LOG.addHandler(console_handler)
+    KAI_LOG.setLevel("DEBUG")
+
     start = time.time()
     coolstore_analysis_dir = "./analysis/coolstore/output.yaml"
     r = Report.load_report_from_file(coolstore_analysis_dir)

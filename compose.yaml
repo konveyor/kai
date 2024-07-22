@@ -4,7 +4,8 @@ x-common-variables: &kai-variables
   DEMO_MODE: "False"
   HUB_URL: ${HUB_URL:-https://tackle-konveyor-tackle.apps.example.com/hub}
   IMPORTER_ARGS:
-  LOGLEVEL: info
+  LOG_LEVEL: info
+  LOG_DIR: "/podman_compose/logs"
   NUM_WORKERS: 8
   USE_HUB_IMPORTER: ${USE_HUB_IMPORTER:-False}
 
@@ -27,7 +28,7 @@ services:
       OPENAI_API_KEY:
     image: ${IMAGE:-quay.io/konveyor/kai}:${TAG:-stable}
     volumes:
-      - ${PWD}:/podman_compose:ro,z
+      - ${PWD}:/podman_compose:rw,z
     ports:
       - "8080:8080"
     depends_on:
@@ -39,7 +40,7 @@ services:
       MODE: importer
     image: ${IMAGE:-quay.io/konveyor/kai}:${TAG:-stable}
     volumes:
-      - ${PWD}:/podman_compose:ro,z
+      - ${PWD}:/podman_compose:rw,z
     depends_on:
       - kai_db
     profiles:

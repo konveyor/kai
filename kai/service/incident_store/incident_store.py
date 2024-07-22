@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import enum
+import logging
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -24,7 +25,6 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, rela
 from sqlalchemy.types import JSON
 
 from kai.constants import PATH_LOCAL_REPO
-from kai.kai_logging import KAI_LOG
 from kai.model_provider import ModelProvider
 from kai.models.kai_config import (
     KaiConfig,
@@ -32,6 +32,8 @@ from kai.models.kai_config import (
     KaiConfigIncidentStoreProvider,
 )
 from kai.report import Report
+
+KAI_LOG = logging.getLogger(__name__)
 
 # These prefixes are sometimes in front of the paths, strip them.
 # Also strip leading slashes since os.path.join can't join two absolute paths

@@ -5,6 +5,7 @@
 import argparse
 import datetime
 import json
+import logging
 import os
 import pprint
 import time
@@ -19,12 +20,14 @@ from pydantic import BaseModel
 
 from kai import llm_io_handler
 from kai.constants import PATH_KAI
-from kai.kai_logging import KAI_LOG
+from kai.kai_logging import initLoggingFromConfig
 from kai.model_provider import ModelProvider
 from kai.models.analyzer_types import Incident
 from kai.models.kai_config import KaiConfig
 from kai.report import Report
 from kai.service.incident_store.incident_store import Application, IncidentStore
+
+log = logging.getLogger(__name__)
 
 # TODO: Make openapi spec for everything
 
@@ -45,7 +48,7 @@ JSONSCHEMA_DIR = os.path.join(
 
 @routes.post("/health_check")
 async def post_dummy_json_request(request: Request):
-    KAI_LOG.debug(f"health_check recv'd: {request}")
+    log.debug(f"health_check recv'd: {request}")
 
     request_json: dict = await request.json()
 
@@ -112,7 +115,7 @@ async def post_get_incident_solution(request: Request):
     Stateful, stores it
     """
 
-    KAI_LOG.debug(f"post_get_incident_solution recv'd: {request}")
+    log.debug(f"post_get_incident_solution recv'd: {request}")
 
     params = PostGetIncidentSolutionParams.model_validate(await request.json())
 
@@ -210,10 +213,10 @@ class PostGetIncidentSolutionsForFileParams(BaseModel):
 @routes.post("/get_incident_solutions_for_file")
 async def get_incident_solutions_for_file(request: Request):
     start = time.time()
-    KAI_LOG.debug(f"get_incident_solutions_for_file recv'd: {request}")
+    log.debug(f"get_incident_solutions_for_file recv'd: {request}")
     params = PostGetIncidentSolutionsForFileParams.model_validate(await request.json())
 
-    KAI_LOG.info(
+    log.info(
         f"START - App: '{params.application_name}', File: '{params.file_name}' with {len(params.incidents)} incidents'"
     )
 
@@ -247,7 +250,7 @@ async def get_incident_solutions_for_file(request: Request):
     finally:
         end = time.time()
         trace.end(end)
-        KAI_LOG.info(
+        log.info(
             f"END - completed in '{end-start}s:  - App: '{params.application_name}', File: '{params.file_name}' with {len(params.incidents)} incidents'"
         )
 
@@ -271,38 +274,38 @@ def app():
     else:
         raise FileNotFoundError("Config file not found.")
 
-    if os.getenv("LOGLEVEL") is not None:
-        config.log_level = os.getenv("LOGLEVEL").upper()
+    if os.getenv("LOG_LEVEL") is not None:
+        config.log_level = os.getenv("LOG_LEVEL").upper()
     if os.getenv("DEMO_MODE") is not None:
         config.demo_mode = os.getenv("DEMO_MODE").lower() == "true"
     if os.getenv("TRACE") is not None:
         config.trace_enabled = os.getenv("TRACE").lower() == "true"
+    if os.getenv("LOG_DIR") is not None:
+        config.log_dir = os.getenv("LOG_DIR")
 
     print(f"Config loaded: {pprint.pformat(config)}")
-
-    config: KaiConfig
     webapp["config"] = config
+    initLoggingFromConfig(config)
 
-    KAI_LOG.setLevel(config.log_level.upper())
     print(
         f"Logging for KAI has been initialized and the level set to {config.log_level.upper()}"
     )
 
-    KAI_LOG.info(
+    log.info(
         f"Tracing of actions is {'enabled' if config.trace_enabled else 'disabled'}"
     )
 
     if config.demo_mode:
-        KAI_LOG.info("DEMO_MODE is enabled. LLM responses will be cached")
+        log.info("DEMO_MODE is enabled. LLM responses will be cached")
 
     webapp["model_provider"] = ModelProvider(config.models)
-    KAI_LOG.info(f"Selected provider: {config.models.provider}")
-    KAI_LOG.info(f"Selected model: {webapp['model_provider'].model_id}")
+    log.info(f"Selected provider: {config.models.provider}")
+    log.info(f"Selected model: {webapp['model_provider'].model_id}")
 
     webapp["incident_store"] = IncidentStore.from_config(
         config.incident_store, webapp["model_provider"]
     )
-    KAI_LOG.info(f"Selected incident store: {config.incident_store.provider}")
+    log.info(f"Selected incident store: {config.incident_store.provider}")
 
     webapp.add_routes(routes)
 
@@ -315,7 +318,7 @@ def main():
     arg_parser.add_argument(
         "-log",
         "--loglevel",
-        default=os.getenv("KAI_LOG_LEVEL", "info"),
+        default=os.getenv("LOG_LEVEL", "info"),
         choices=["debug", "info", "warning", "error", "critical"],
         help="""Provide logging level.
 Options:
@@ -336,7 +339,7 @@ Example: --loglevel debug (default: warning)""",
 
     args, _ = arg_parser.parse_known_args()
 
-    os.environ["LOGLEVEL"] = str(args.loglevel)
+    os.environ["LOG_LEVEL"] = str(args.loglevel)
     os.environ["DEMO_MODE"] = str(args.demo_mode).lower()
 
     web.run_app(app())

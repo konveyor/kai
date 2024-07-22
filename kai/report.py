@@ -2,13 +2,14 @@ __all__ = ["Report"]
 
 import hashlib
 import json
+import logging
 import os
 import shutil
 from io import StringIO
 
 import yaml
 
-from kai.kai_logging import KAI_LOG
+KAI_LOG = logging.getLogger(__name__)
 
 
 class Report:

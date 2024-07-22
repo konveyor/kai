@@ -1,10 +1,11 @@
+import logging
 import re
 
 from pydantic import BaseModel
 from pygments import lexers
 from pygments.util import ClassNotFound
 
-from kai.kai_logging import KAI_LOG
+KAI_LOG = logging.getLogger(__name__)
 
 
 class FileSolutionContent(BaseModel):

@@ -12,9 +12,8 @@ def fetch_sample_apps():
     for repo in repos:
         print(f"Cloning {repo}...")
         if os.path.exists(f"sample_repos/{repo}"):
-            print(f"*** Exiting since 'sample_repos/{repo}' already exists")
-            print("*** Delete 'sample_repos' and rerun this script")
-            sys.exit(1)
+            print(f"*** Skipping since 'sample_repos/{repo}' already exists")
+            continue
         gitCloneStatus = subprocess.run(  # trunk-ignore(bandit)
             ["git", "clone", repos[repo][0], f"sample_repos/{repo}"]
         )
