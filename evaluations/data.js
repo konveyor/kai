@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1721659104907,
+  "lastUpdate": 1721659106358,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -2405,6 +2405,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jwmatthews@gmail.com",
+            "name": "John Matthews",
+            "username": "jwmatthews"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ece6b128aa80d78fcbd5be0b215c2bf28e9c0bfa",
+          "message": ":sparkles:  Allow logging to disk (#237)\n\n* WIP logging updates\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>\r\n\r\n* Logging to disk via podman compose working\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>\r\n\r\n* Tweak to log levels\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>\r\n\r\n* Cleanup tweaks\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>\r\n\r\n* Ensure 'load-data' from podman compose up can log to disk\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>",
+          "timestamp": "2024-07-22T10:32:51-04:00",
+          "tree_id": "02762c9587287fc02ba468168bde4c92e72c8d00",
+          "url": "https://github.com/konveyor/kai/commit/ece6b128aa80d78fcbd5be0b215c2bf28e9c0bfa"
+        },
+        "date": 1721659104929,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
             "value": "",
             "unit": "Match"
           }
