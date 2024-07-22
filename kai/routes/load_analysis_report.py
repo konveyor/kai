@@ -4,7 +4,7 @@ from aiohttp import web
 from aiohttp.web_request import Request
 from pydantic import BaseModel
 
-from kai.report import Report
+from kai.models.report import Report
 from kai.routes.util import to_route
 from kai.service.incident_store.incident_store import Application
 

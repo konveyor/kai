@@ -135,6 +135,8 @@ class KaiConfigModels(BaseModel):
 # Main config
 
 
+# TODO: Evaluate the usage of pydantic-settings to simplify environment variable
+# and command line argument management.
 class KaiConfig(BaseModel):
     log_level: str = "info"
     file_log_level: str = "info"

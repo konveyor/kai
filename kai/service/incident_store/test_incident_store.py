@@ -10,8 +10,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from kai.constants import PATH_TEST_DATA
-from kai.models.kai_config import KaiConfigIncidentStoreSQLiteArgs, KaiConfigModels
-from kai.report import Report
+from kai.models.kai_config import (
+    KaiConfigIncidentStore,
+    KaiConfigIncidentStoreSQLiteArgs,
+    KaiConfigModels,
+)
+from kai.models.report import Report
 from kai.service.incident_store.backend import incident_store_backend_factory
 from kai.service.incident_store.incident_store import Application, IncidentStore
 from kai.service.incident_store.sql_types import (
@@ -23,7 +27,10 @@ from kai.service.incident_store.sql_types import (
     SQLViolation,
 )
 from kai.service.llm_interfacing.model_provider import ModelProvider
-from kai.service.solution_handling.detection import solution_detection_naive
+from kai.service.solution_handling.detection import (
+    solution_detection_factory,
+    solution_detection_naive,
+)
 from kai.service.solution_handling.production import (
     SolutionProducerLLMLazy,
     SolutionProducerTextOnly,
@@ -244,7 +251,6 @@ class TestIncidentStore(unittest.TestCase):
 
         self.incident_store.load_report(solved_application, solved_report)
 
-        # TODO: Check these values
         self.check_number_of_entities(SQLApplication, 1)
         self.check_number_of_entities(SQLRuleset, 23)
         self.check_number_of_entities(SQLViolation, 25)
@@ -326,10 +332,8 @@ class TestIncidentStore(unittest.TestCase):
                 self.assertTrue(len(solution.llm_summary) > 0)
 
 
-# TODO: Add these tests
-
-"""
-class TestIncidentStore(unittest.TestCase):
+@unittest.skip("Migrated old tests, need to be updated")
+class TestIncidentStoreOld(unittest.TestCase):
     def setUp(self):
         # Initialize the IncidentStore
         self.folder_path = os.path.join(PATH_TEST_DATA, "sample")
@@ -583,5 +587,3 @@ class TestIncidentStore(unittest.TestCase):
         self.assertIsNotNone(violations)
         self.assertEqual(len(violations), 1)
         self.incident_store.cleanup()
-
-"""

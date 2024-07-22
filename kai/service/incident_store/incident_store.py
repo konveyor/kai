@@ -14,8 +14,8 @@ from sqlalchemy.orm import Session
 from kai.constants import PATH_GIT_ROOT, PATH_KAI, PATH_LOCAL_REPO
 from kai.kai_logging import initLogging
 from kai.models.kai_config import KaiConfig
+from kai.models.report import Report
 from kai.models.util import filter_incident_vars
-from kai.report import Report
 from kai.service.incident_store.backend import IncidentStoreBackend
 from kai.service.incident_store.sql_types import (
     SQLAcceptedSolution,
@@ -157,6 +157,7 @@ def load_reports_from_directory(store: "IncidentStore", path: str):
         KAI_LOG.info(f"Loaded application - solved {app}\n")
 
 
+# NOTE: This application object is more like metadata than anything.
 @dataclass
 class Application:
     application_name: str
@@ -186,10 +187,9 @@ class IncidentStore:
         tuple containing (# of new incidents, # of unsolved incidents, # of
         solved incidents) in that order.
 
-        NOTE: This application object is more like metadata than anything.
-        """
 
-        # FIXME: Only does stuff within the same application. Maybe fixed?
+        TODO: Only does stuff within the same application. Maybe fixed?
+        """
 
         # NEW: Store whole report in table
         # - if we get the same report again, we should skip adding it. Have some identifier
@@ -199,14 +199,6 @@ class IncidentStore:
 
         # Iterate through all incidents in the report
         # - change so theres an identified like "commit application ruleset violation"
-
-        # create entries if not exists
-        # reference the old-new matrix
-        #           old
-        #         | NO     | YES
-        # --------|--------+-----------------------------
-        # new NO  | -      | update (SOLVED, embeddings)
-        #     YES | insert | update (line number, etc...)
 
         repo = Repo(unquote(urlparse(app.repo_uri_local).path))
         old_commit: str
@@ -304,14 +296,23 @@ class IncidentStore:
 
             categorized_incidents = self.solution_detector(solution_detector_ctx)
 
-            for new_incident in categorized_incidents.new:
-                session.add(new_incident)
+            # create entries if not exists
+            #           old
+            #         | NO     | YES
+            # --------|--------+-----------------------------
+            # new NO  | -      | update (SOLVED, embeddings)
+            #     YES | insert | update (line number, etc...)
 
+            # Add new incidents
+
+            session.add_all(categorized_incidents.new)
             session.commit()
 
             KAI_LOG.debug(
                 f"Number of solved incidents: {len(categorized_incidents.solved)}"
             )
+
+            # Update solved incidents with their respective solutions
 
             for solved_incident in categorized_incidents.solved:
                 solution = self.solution_producer.produce_one(

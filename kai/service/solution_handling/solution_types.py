@@ -5,7 +5,15 @@ from pydantic import BaseModel, Field
 
 
 class Solution(BaseModel):
-    uri: str  # NOTE: This kinda doesn't make sense if we start to have multiple incidents associated with one solution
+    """
+    A solution for an incident. It is stored as a json object inside the
+    database for maximum flexibility.
+
+    NOTE: This doesn't make sense if we start to have multiple incidents
+    associated with one solution
+    """
+
+    uri: str
     generated_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
 
     file_diff: str

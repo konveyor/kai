@@ -3,10 +3,14 @@ from __future__ import annotations
 import os
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import yaml
 from pydantic import AliasChoices, BaseModel, Field, RootModel
+
+"""
+Report types ripped straight from analyzer-lsp.
+"""
 
 
 class Category(StrEnum):
@@ -16,6 +20,10 @@ class Category(StrEnum):
 
 
 class Incident(BaseModel):
+    """
+    An Incident is a specific instance of a rule being violated.
+    """
+
     # NOTE: `str` is the best equivalent of Go's `json.RawMessage`
     uri: str
 
@@ -38,14 +46,14 @@ class Incident(BaseModel):
         serialization_alias="lineNumber",
     )
 
-    variables: Dict[str, Any] = Field(
+    variables: dict[str, Any] = Field(
         {}, validation_alias=AliasChoices("variables", "incident_variables")
     )
 
 
 class ExtendedIncident(Incident):
     """
-    A "flattened" incident, containing its ruleset and violation names.
+    An Incident with extra metadata.
     """
 
     ruleset_name: str
@@ -54,8 +62,11 @@ class ExtendedIncident(Incident):
     violation_description: Optional[str] = None
 
 
-# Link defines an external hyperlink
 class Link(BaseModel):
+    """
+    Link defines an external hyperlink.
+    """
+
     url: str
 
     # Title optional description
@@ -63,6 +74,11 @@ class Link(BaseModel):
 
 
 class Violation(BaseModel):
+    """
+    A Violation is a specific rule being broken, i.e. a rule being "violated".
+    It may have many different incidents throughout the codebase.
+    """
+
     # Description text description about the violation
     description: str = ""
 
@@ -70,13 +86,13 @@ class Violation(BaseModel):
     category: Category = "potential"
 
     # Labels list of labels for the violation
-    labels: List[str] = []
+    labels: list[str] = []
 
     # Incidents list of instances of violation found
-    incidents: List[Incident] = []
+    incidents: list[Incident] = []
 
     # ExternalLinks hyperlinks to external sources of docs, fixes, etc.
-    links: List[Link] = []
+    links: list[Link] = []
 
     # Extras reserved for additional data
     # NOTE: `str` is the best equivalent of Go's `json.RawMessage`
@@ -87,6 +103,12 @@ class Violation(BaseModel):
 
 
 class RuleSet(BaseModel):
+    """
+    A RuleSet is a collection of rules that are evaluated together. It different
+    data on its rules: which rules were unmatched, which rules where skipped,
+    and which rules generated errors or violations.
+    """
+
     # Name is a name for the ruleset.
     name: Optional[str] = None
 
@@ -94,27 +116,31 @@ class RuleSet(BaseModel):
     description: str = ""
 
     # Tags list of generated tags from the rules in this ruleset.
-    tags: Optional[List[str]] = None
+    tags: Optional[list[str]] = None
 
     # Violations is a map containing violations generated for the matched rules
     # in this ruleset. Keys are rule IDs, values are their respective generated
     # violations.
-    violations: Dict[str, Violation] = {}
+    violations: dict[str, Violation] = {}
 
     # Errors is a map containing errors generated during evaluation of rules in
     # this ruleset. Keys are rule IDs, values are their respective generated
     # errors.
-    errors: Optional[Dict[str, str]] = None
+    errors: Optional[dict[str, str]] = None
 
     # Unmatched is a list of rule IDs of the rules that weren't matched.
-    unmatched: Optional[List[str]] = None
+    unmatched: Optional[list[str]] = None
 
     # Skipped is a list of rule IDs that were skipped
-    skipped: Optional[List[str]] = None
+    skipped: Optional[list[str]] = None
 
 
-class AnalysisReport(RootModel[List[RuleSet]]):
-    root: List[RuleSet] = Field(..., title="AnalysisReport")
+class AnalysisReport(RootModel[list[RuleSet]]):
+    """
+    An analysis report is simply a list of rule sets.
+    """
+
+    root: list[RuleSet] = Field(..., title="AnalysisReport")
 
 
 def generate_json_schema():

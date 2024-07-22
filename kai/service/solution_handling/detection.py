@@ -24,10 +24,13 @@ class SolutionDetectorResult:
     solved: list[SQLIncident]
 
 
-# Returns tuple of:
-# - list of new incidents
-# - list of unsolved incidents
-# - list of solved incidents
+# Produce new, unsolved, and solved incidents. Statefully modify the unsolved
+# incidents
+#
+# NOTE: Due to the way that SQLAlchemy works, the return value of unsolved
+# incidents MUST be references to incidents in old_incidents, not new_incidents
+# or any incidents created in the function. That way, we can call
+# session.commit().
 SolutionDetectionAlgorithm = Callable[[SolutionDetectorContext], SolutionDetectorResult]
 
 

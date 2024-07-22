@@ -1,6 +1,3 @@
-# TODO: Come up with some sort of "solution generator strategy" so we
-# don't blow up our llm API usage. Lazy, immediate, other etc...
-
 import os
 from abc import ABC, abstractmethod
 from urllib.parse import unquote, urlparse
@@ -32,8 +29,7 @@ class SolutionProducer(ABC):
         self, incidents: list[SQLIncident], repo: Repo, old_commit: str, new_commit: str
     ) -> list[Solution]:
         """
-        Creates multiple solutions for multiple incidents. Designed to be called
-        right before inserting it into the store.
+        See `produce_one`.
         """
         return [
             self.produce_one(incident, repo, old_commit, new_commit)

@@ -80,6 +80,6 @@ class TestDetection(unittest.TestCase):
         self.assertTrue(report_incidents[0] != result.unsolved[0])
         self.assertTrue(report_incidents[1] == result.new[0])
 
-
-def test_line_match():
-    pass
+    @unittest.skip("Not implemented")
+    def test_line_match(self):
+        pass

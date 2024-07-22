@@ -9,7 +9,7 @@ from langchain_community.chat_models import ChatOpenAI
 
 from kai.constants import PATH_TEMPLATES
 
-from .report import Report
+from .models.report import Report
 from .scm import GitDiff
 
 KAI_LOG = logging.getLogger(__name__)

@@ -45,6 +45,11 @@ class UpdatedFileContent(BaseModel):
 
 
 class KaiApplication:
+    """
+    A Kai application that can be used to interact with the LLM and incident
+    store. Its main job is to generate "fixes" for given incidents.
+    """
+
     config: KaiConfig
     model_provider: ModelProvider
     incident_store: IncidentStore
@@ -104,6 +109,13 @@ class KaiApplication:
         include_solved_incidents: bool = True,
         include_llm_results: bool = False,
     ):
+        """
+        Get the updated file content for a given file and set of incidents.
+
+        TODO: Add checks on the incidents' uri to ensure they all match
+        file_name.
+        """
+
         trace = KaiTrace(
             trace_enabled=self.config.trace_enabled,
             model_id=self.model_provider.model_id,
@@ -214,9 +226,9 @@ class KaiApplication:
 
         return result
 
-    # NOTE(@JonahSussman): This function should probably become deprecated at some
-    # point. `get_incident_solutions_for_file` does everything this function does,
-    # aside from streaming.
+    # NOTE(@JonahSussman): This function should probably become deprecated at
+    # some point. `get_incident_solutions_for_file` does everything this
+    # function does, aside from streaming.
     def get_incident_solution(
         self,
         application_name: str,

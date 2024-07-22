@@ -10,8 +10,8 @@ import yaml
 from kai.constants import PATH_BENCHMARKS
 from kai.models.file_solution import guess_language, parse_file_solution_content
 from kai.models.kai_config import KaiConfig, KaiConfigIncidentStoreSQLiteArgs
+from kai.models.report import Report
 from kai.models.report_types import ExtendedIncident
-from kai.report import Report
 from kai.service.incident_store.backend import SQLiteBackend
 from kai.service.incident_store.incident_store import Application, IncidentStore
 from kai.service.kai_application.util import get_prompt

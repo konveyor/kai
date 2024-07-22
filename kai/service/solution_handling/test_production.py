@@ -105,7 +105,7 @@ class TestSolutionProducerLLMLazy(unittest.TestCase):
         mock_template = mock_jinja_env.return_value.get_template.return_value
         mock_template.render.return_value = "rendered template"
 
-        model_provider = MagicMock()  # spec=ModelProvider
+        model_provider = MagicMock()
         model_provider.llm.invoke.return_value.content = "LLM summary"
         solution_producer = SolutionProducerLLMLazy(model_provider=model_provider)
 

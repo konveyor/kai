@@ -16,7 +16,6 @@ from kai.service.kai_application.kai_application import KaiApplication
 
 log = logging.getLogger(__name__)
 
-# TODO: Make openapi spec for everything
 
 # TODO: Repo lives both on client and on server. Determine either A) Best way to
 # rectify differences or B) Only have the code on one and pass stuff between

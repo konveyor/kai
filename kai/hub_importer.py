@@ -15,7 +15,7 @@ from git import GitCommandError, Repo
 from pydantic import BaseModel, Field
 
 from kai.models.kai_config import KaiConfig
-from kai.report import Report
+from kai.models.report import Report
 from kai.service.incident_store import Application, IncidentStore
 from kai.service.kai_application.kai_application import KaiApplication
 

@@ -146,11 +146,13 @@ class Report:
 
         for count, (key, items) in enumerate(ruleset.violations.items()):
             f.write(f"### #{count} - {key}\n")
-            # Break out below for violation
-            # Then we can weave in an example perhaps?
-            # Or should there be a Markdown class that is responsible for blending
-            # . - Report
-            # . - Per Violation create a prompt/run/example
+            # Break out below for violation. Then we can weave in an example
+            # perhaps?
+            #
+            # Or should there be a Markdown class that is responsible for
+            # blending:
+            #   - Report
+            #   - Per Violation create a prompt/run/example
 
             f.write(f"* Category: {items.category}\n")
             if items.effort is not None:
@@ -189,7 +191,10 @@ class Report:
         buffer.write("* Source of rules:")
 
     def should_we_skip_incident(self, incident: Incident) -> bool:
-        # Filter out known issues
+        """
+        Filter out known issues
+        """
+
         file_path = remove_known_prefixes(urlparse(incident.uri).path)
 
         if file_path.startswith("target/"):

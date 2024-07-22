@@ -15,7 +15,7 @@ from kai.models.kai_config import (
     KaiConfigIncidentStoreSQLiteArgs,
     KaiConfigModels,
 )
-from kai.report import Report
+from kai.models.report import Report
 from kai.service.kai_application.kai_application import KaiApplication
 
 
