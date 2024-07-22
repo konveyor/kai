@@ -2,12 +2,12 @@ import logging
 import time
 import traceback
 from typing import Iterator, Optional
-from unittest.mock import MagicMock
 
 from aiohttp import web
 from langchain_core.messages import BaseMessage, BaseMessageChunk
 from pydantic import BaseModel, ConfigDict
 
+from kai.kai_trace import KaiTrace
 from kai.models.file_solution import guess_language, parse_file_solution_content
 from kai.models.kai_config import KaiConfig
 from kai.models.report_types import ExtendedIncident
@@ -29,9 +29,6 @@ from kai.service.solution_handling.production import solution_producer_factory
 
 KAI_LOG = logging.getLogger(__name__)
 
-# FIXME: Add back in tracing
-trace = MagicMock()
-
 
 # TODO: Possibly merge with FileSolutionContent?
 class UpdatedFileContent(BaseModel):
@@ -43,7 +40,7 @@ class UpdatedFileContent(BaseModel):
 
     llm_results: Optional[list[str | list[str | dict]]]
 
-    # "model_" is a Pydantic protected namespace
+    # "model_" is a Pydantic protected namespace, so we must remove it
     model_config = ConfigDict(protected_namespaces=())
 
 
@@ -60,7 +57,8 @@ class KaiApplication:
 
         print(f"KAI logging initialized to {config.log_level.upper()}.")
 
-        KAI_LOG.info(f"Tracing {'enabled' if config.trace_enabled else 'disabled'}.")
+        if config.trace_enabled:
+            KAI_LOG.info("Tracing enabled.")
 
         if config.demo_mode:
             KAI_LOG.info("DEMO_MODE enabled. LLM responses will be cached.")
@@ -106,6 +104,14 @@ class KaiApplication:
         include_solved_incidents: bool = True,
         include_llm_results: bool = False,
     ):
+        trace = KaiTrace(
+            trace_enabled=self.config.trace_enabled,
+            model_id=self.model_provider.model_id,
+            batch_mode=batch_mode,
+            application_name=application_name,
+            file_name=file_name,
+        )
+
         src_file_language = guess_language(file_contents, filename=file_name)
         KAI_LOG.debug(f"{file_name} classified as language {src_file_language}")
 

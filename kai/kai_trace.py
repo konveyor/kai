@@ -7,7 +7,6 @@ from typing import Any
 from langchain.schema.messages import BaseMessage
 
 from kai.kai_logging import process_log_dir_replacements
-from kai.models.kai_config import KaiConfig
 
 log = logging.getLogger(__name__)
 
@@ -23,7 +22,7 @@ def enabled_check(func):
     return wrapper
 
 
-class Trace:
+class KaiTrace:
     """Captures information to aid debugging and prompt tweaking
 
     This class is instantiated for a given request, so all of the data/actions
@@ -37,15 +36,14 @@ class Trace:
 
     def __init__(
         self,
-        config: KaiConfig,
+        trace_enabled: bool,
         model_id: str,
         batch_mode: str,
         application_name: str,
         file_name: str,
     ):
         super()
-        self.config = config
-        self.enabled = config.trace_enabled
+        self.enabled = trace_enabled
         self.model_id = model_id
         self.batch_mode = batch_mode
         self.application_name = application_name

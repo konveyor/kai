@@ -1,20 +1,21 @@
 import logging
 import time
 import traceback
-from unittest.mock import MagicMock
 
 from aiohttp import web
 from aiohttp.web_request import Request
 from pydantic import BaseModel
 
+from kai.kai_trace import KaiTrace
 from kai.models.report_types import ExtendedIncident
 from kai.routes.util import to_route
-from kai.service.kai_application.kai_application import UpdatedFileContent
+from kai.service.kai_application.kai_application import (
+    KaiApplication,
+    UpdatedFileContent,
+)
 from kai.service.kai_application.util import BatchMode
 
 KAI_LOG = logging.getLogger(__name__)
-
-Trace = MagicMock()  # FIXME: Re-implement tracing
 
 
 class PostGetIncidentSolutionsForFileParams(BaseModel):
@@ -38,20 +39,21 @@ async def post_get_incident_solutions_for_file(request: Request):
         f"START - App: '{params.application_name}', File: '{params.file_name}' with {len(params.incidents)} incidents'"
     )
 
-    trace = Trace(
-        # config=request.app["config"],
-        # model_id=request.app["model_provider"].model_id,
+    kai_application: KaiApplication = request.app["kai_application"]
+
+    trace = KaiTrace(
+        trace_enabled=kai_application.config.trace_enabled,
+        model_id=kai_application.model_provider.model_id,
+        batch_mode=params.batch_mode,
         application_name=params.application_name,
         file_name=params.file_name,
-        batch_mode=params.batch_mode,
     )
+
     trace.start(start)
     trace.params(params)
 
     try:
-        result: UpdatedFileContent = request.app[
-            "kai_application"
-        ].get_incident_solutions_for_file(
+        result: UpdatedFileContent = kai_application.get_incident_solutions_for_file(
             file_name=params.file_name,
             file_contents=params.file_contents,
             application_name=params.application_name,
