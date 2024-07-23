@@ -11,6 +11,10 @@ from kai.service.kai_application.kai_application import KaiApplication
 KAI_LOG = logging.getLogger(__name__)
 
 
+# TODO: Figure out if we should remove this. See
+# KaiApplication.get_incident_solution for more information.
+
+
 class PostGetIncidentSolutionParams(BaseModel):
     application_name: str
     ruleset_name: str

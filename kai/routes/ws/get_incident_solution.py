@@ -11,6 +11,9 @@ from kai.service.kai_application.kai_application import KaiApplication
 # TODO(@JonahSussman): Figure out proper pydantic model validation for this
 # function
 
+# TODO: Figure out if we should remove this. See
+# KaiApplication.get_incident_solution for more information.
+
 
 @to_route("get", "/ws/get_incident_solution")
 async def get_ws_get_incident_solution(request: Request):
