@@ -1,6 +1,6 @@
 version: "3"
 
-x-common-variables: &kai-variables
+x-kai-variables: &kai-variables
   DEMO_MODE: "False"
   HUB_URL: ${HUB_URL:-https://tackle-konveyor-tackle.apps.example.com/hub}
   IMPORTER_ARGS:
@@ -9,7 +9,7 @@ x-common-variables: &kai-variables
   NUM_WORKERS: 8
   USE_HUB_IMPORTER: ${USE_HUB_IMPORTER:-False}
 
-x-common-variables: &db-variables
+x-db-variables: &db-variables
   POSTGRES_DB: kai
   POSTGRES_PASSWORD: dog8code
   POSTGRES_USER: kai
@@ -17,8 +17,7 @@ x-common-variables: &db-variables
 services:
   kai:
     environment:
-      <<: *db-variables
-      <<: *kai-variables
+      <<: [*db-variables, *kai-variables]
       # Do not edit the variables below otherwise
       # you risk committing keys to a public repo
       # These lines will pass in the environment
@@ -35,8 +34,7 @@ services:
       - kai_db
   kai_hub_importer:
     environment:
-      <<: *db-variables
-      <<: *kai-variables
+      <<: [*db-variables, *kai-variables]
       MODE: importer
     image: ${IMAGE:-quay.io/konveyor/kai}:${TAG:-stable}
     volumes:
