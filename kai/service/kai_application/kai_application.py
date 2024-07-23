@@ -20,10 +20,7 @@ from kai.service.kai_application.util import (
     playback_if_demo_mode,
 )
 from kai.service.llm_interfacing.model_provider import ModelProvider
-from kai.service.solution_handling.consumption import (
-    SolutionConsumerAlgorithm,
-    solution_consumer_factory,
-)
+from kai.service.solution_handling.consumption import solution_consumer_factory
 from kai.service.solution_handling.detection import solution_detection_factory
 from kai.service.solution_handling.production import solution_producer_factory
 
@@ -50,17 +47,8 @@ class KaiApplication:
     store. Its main job is to generate "fixes" for given incidents.
     """
 
-    config: KaiConfig
-    model_provider: ModelProvider
-    incident_store: IncidentStore
-    solution_consumer: SolutionConsumerAlgorithm
-
     def __init__(self, config: KaiConfig):
         self.config = config
-
-        KAI_LOG.setLevel(config.log_level.upper())
-
-        print(f"KAI logging initialized to {config.log_level.upper()}.")
 
         if config.trace_enabled:
             KAI_LOG.info("Tracing enabled.")
@@ -118,6 +106,7 @@ class KaiApplication:
 
         trace = KaiTrace(
             trace_enabled=self.config.trace_enabled,
+            log_dir=self.config.log_dir,
             model_id=self.model_provider.model_id,
             batch_mode=batch_mode,
             application_name=application_name,

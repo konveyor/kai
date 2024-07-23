@@ -10,6 +10,7 @@ import pprint
 from aiohttp import web
 
 from kai.constants import PATH_KAI
+from kai.kai_logging import initLoggingFromConfig
 from kai.models.kai_config import KaiConfig
 from kai.routes import kai_routes
 from kai.service.kai_application.kai_application import KaiApplication
@@ -40,6 +41,8 @@ def app() -> web.Application:
         config.log_dir = os.getenv("LOG_DIR")
 
     print(f"Config loaded: {pprint.pformat(config)}")
+
+    initLoggingFromConfig(config)
 
     webapp = web.Application()
     webapp["kai_application"] = KaiApplication(config)

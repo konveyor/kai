@@ -43,6 +43,7 @@ async def post_get_incident_solutions_for_file(request: Request):
 
     trace = KaiTrace(
         trace_enabled=kai_application.config.trace_enabled,
+        log_dir=kai_application.config.log_dir,
         model_id=kai_application.model_provider.model_id,
         batch_mode=params.batch_mode,
         application_name=params.application_name,

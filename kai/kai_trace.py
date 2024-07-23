@@ -37,6 +37,7 @@ class KaiTrace:
     def __init__(
         self,
         trace_enabled: bool,
+        log_dir: str,
         model_id: str,
         batch_mode: str,
         application_name: str,
@@ -44,6 +45,7 @@ class KaiTrace:
     ):
         super()
         self.enabled = trace_enabled
+        self.log_dir = log_dir
         self.model_id = model_id
         self.batch_mode = batch_mode
         self.application_name = application_name
@@ -52,7 +54,7 @@ class KaiTrace:
         self.time_end = -1
 
         # We use the same parent directory of logging for trace data
-        log_dir = process_log_dir_replacements(self.config.log_dir)
+        log_dir = process_log_dir_replacements(self.log_dir)
         self.top_trace_dir = os.path.join(log_dir, "trace")
 
         self.trace_dir = os.path.join(
