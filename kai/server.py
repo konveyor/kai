@@ -309,6 +309,7 @@ def app():
 
     webapp.add_routes(routes)
 
+    log.info("Kai server is ready to receive requests.")
     return webapp
 
 
