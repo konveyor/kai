@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1721768408758,
+  "lastUpdate": 1721773920004,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -3043,6 +3043,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jmontleo@redhat.com",
+            "name": "Jason Montleon",
+            "username": "jmontleon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b36fa342023698605b0f8fc2c62e77b6df911312",
+          "message": ":sparkles: Add automatic builds for stable tag (#250)",
+          "timestamp": "2024-07-23T18:27:54-04:00",
+          "tree_id": "77893d5406ea36addb92a1bf0442c58f43ea40f7",
+          "url": "https://github.com/konveyor/kai/commit/b36fa342023698605b0f8fc2c62e77b6df911312"
+        },
+        "date": 1721773918751,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
             "value": "",
             "unit": "Match"
           }
