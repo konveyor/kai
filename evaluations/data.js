@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1721744551350,
+  "lastUpdate": 1721744566852,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -2811,6 +2811,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jwmatthews@gmail.com",
+            "name": "John Matthews",
+            "username": "jwmatthews"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "be0a3e86c19038231e98a3403879f007fe2dfd2c",
+          "message": "Fix for docker compose issue 234 (#246)\n\nSigned-off-by: John Matthews <jwmatthews@gmail.com>",
+          "timestamp": "2024-07-23T09:54:52-04:00",
+          "tree_id": "672191e1587367f41007d7c08fd46208397d84f1",
+          "url": "https://github.com/konveyor/kai/commit/be0a3e86c19038231e98a3403879f007fe2dfd2c"
+        },
+        "date": 1721744565726,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
             "value": "",
             "unit": "Match"
           }
