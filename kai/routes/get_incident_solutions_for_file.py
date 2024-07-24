@@ -24,7 +24,7 @@ class PostGetIncidentSolutionsForFileParams(BaseModel):
     application_name: str
     incidents: list[ExtendedIncident]
 
-    batch_mode: BatchMode = "single_group"
+    batch_mode: BatchMode = BatchMode.SINGLE_GROUP
     include_solved_incidents: bool = True
     include_llm_results: bool = False
 

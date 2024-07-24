@@ -14,9 +14,9 @@ Report types ripped straight from analyzer-lsp.
 
 
 class Category(StrEnum):
-    potential = "potential"
-    optional = "optional"
-    mandatory = "mandatory"
+    POTENTIAL = "potential"
+    OPTIONAL = "optional"
+    MANDATORY = "mandatory"
 
 
 class Incident(BaseModel):
@@ -83,7 +83,7 @@ class Violation(BaseModel):
     description: str = ""
 
     # Category category of the violation
-    category: Category = "potential"
+    category: Category = Category.POTENTIAL
 
     # Labels list of labels for the violation
     labels: list[str] = []
