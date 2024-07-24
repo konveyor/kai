@@ -8,14 +8,16 @@ import git
 import yaml
 
 from kai.constants import PATH_BENCHMARKS
-from kai.llm_io_handler import get_prompt
-from kai.model_provider import ModelProvider
-from kai.models.analyzer_types import Incident
 from kai.models.file_solution import guess_language, parse_file_solution_content
 from kai.models.kai_config import KaiConfig, KaiConfigIncidentStoreSQLiteArgs
-from kai.report import Report
-from kai.service.incident_store.incident_store import Application
-from kai.service.incident_store.sqlite import SQLiteIncidentStore
+from kai.models.report import Report
+from kai.models.report_types import ExtendedIncident
+from kai.service.incident_store.backend import SQLiteBackend
+from kai.service.incident_store.incident_store import Application, IncidentStore
+from kai.service.kai_application.util import get_prompt
+from kai.service.llm_interfacing.model_provider import ModelProvider
+from kai.service.solution_handling.detection import solution_detection_naive
+from kai.service.solution_handling.production import SolutionProducerTextOnly
 
 """
 The point of this file is to automatically see if certain prompts make the
@@ -35,7 +37,7 @@ class BenchmarkExample:
     name: str
     original_file: str
     expected_file: str
-    incidents: list[Incident]
+    incidents: list[ExtendedIncident]
     report: Report
     application: Application
 
@@ -58,7 +60,7 @@ def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
     example_name = os.path.basename(full_example_path)
     original_file: str = None
     expected_file: str = None
-    incidents: list[Incident] = None
+    incidents: list[ExtendedIncident] = None
     report: Report = None
     application: Application = None
 
@@ -79,13 +81,13 @@ def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
                 expected_file = f.read()
 
         elif file_name == "incidents":
-            incidents: list[Incident] = []
+            incidents: list[ExtendedIncident] = []
 
             with open(full_file_path, "r") as f:
                 yaml_incidents = yaml.safe_load(f)
 
             for yaml_incident in yaml_incidents:
-                incidents.append(Incident.model_validate(yaml_incident))
+                incidents.append(ExtendedIncident.model_validate(yaml_incident))
 
         elif file_name == "report":
             report = Report.load_report_from_file(full_file_path)
@@ -172,11 +174,14 @@ def evaluate(
 
                     created_git_repo = True
 
-                incident_store = SQLiteIncidentStore(
-                    KaiConfigIncidentStoreSQLiteArgs(
-                        connection_string="sqlite:///:memory:"
+                incident_store = IncidentStore(
+                    backend=SQLiteBackend(
+                        KaiConfigIncidentStoreSQLiteArgs(
+                            connection_string="sqlite:///:memory:"
+                        ),
                     ),
-                    None,
+                    solution_detector=solution_detection_naive,
+                    solution_producer=SolutionProducerTextOnly(),
                 )
                 incident_store.load_report(example.application, example.report)
 
@@ -187,7 +192,7 @@ def evaluate(
                         "uri": incident.uri,
                         "analysis_message": incident.analysis_message,
                         "code_snip": incident.incident_snip,
-                        "analysis_line_number": incident.line_number,
+                        "line_number": incident.line_number,
                         "variables": incident.incident_variables,
                     }
 
@@ -215,7 +220,9 @@ def evaluate(
                 }
 
                 prompt = get_prompt(
-                    model_provider, pb_vars, os.path.join(PATH_BENCHMARKS, "templates")
+                    model_provider.template,
+                    pb_vars,
+                    os.path.join(PATH_BENCHMARKS, "templates"),
                 )
 
                 print(f"{example_path} - {config_path}\n{prompt[:15]}...\n")

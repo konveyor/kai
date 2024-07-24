@@ -2,7 +2,8 @@ import os
 import pprint
 import unittest
 
-from kai.report import Report
+from kai.models.report import Report
+from kai.models.report_types import ExtendedIncident
 
 
 class TestReports(unittest.TestCase):
@@ -13,14 +14,14 @@ class TestReports(unittest.TestCase):
 
     def test_create_with_bad_path(self):
         with self.assertRaises(FileNotFoundError):
-            badRObj = Report.load_report_from_file("bad_path")
+            Report.load_report_from_file("bad_path")
 
     def test_parse(self):
         report = dict(Report.load_report_from_file(self.get_coolstuff_yaml()))
         self.assertTrue(report is not None)
 
     def test_impacted_files(self):
-        pp = pprint.PrettyPrinter(indent=2)
+        pprint.PrettyPrinter(indent=2)
         rObj = Report.load_report_from_file(self.get_coolstuff_yaml())
         self.assertTrue(rObj is not None)
         impacted_files = rObj.get_impacted_files()
@@ -36,15 +37,7 @@ class TestReports(unittest.TestCase):
         self.assertTrue(test_file_entry in impacted_files)
         test_entry = impacted_files[test_file_entry]
         self.assertTrue(len(test_entry) == 6)
-        self.assertTrue("violation_name" in test_entry[0].keys())
-        self.assertTrue("violation_description" in test_entry[0].keys())
-        self.assertTrue("ruleset_name" in test_entry[0].keys())
-        self.assertTrue("ruleset_description" in test_entry[0].keys())
-        self.assertTrue("message" in test_entry[0].keys())
-        self.assertTrue("variables" in test_entry[0].keys())
-        self.assertTrue("file" in test_entry[0]["variables"].keys())
-        self.assertTrue("kind" in test_entry[0]["variables"].keys())
-        self.assertTrue("name" in test_entry[0]["variables"].keys())
+        self.assertTrue(isinstance(test_entry[0], ExtendedIncident))
 
 
 if __name__ == "__main__":

@@ -15,8 +15,9 @@ from git import GitCommandError, Repo
 from pydantic import BaseModel, Field
 
 from kai.models.kai_config import KaiConfig
-from kai.report import Report
+from kai.models.report import Report
 from kai.service.incident_store import Application, IncidentStore
+from kai.service.kai_application.kai_application import KaiApplication
 
 KAI_LOG = logging.getLogger(__name__)
 
@@ -166,14 +167,14 @@ Example: --loglevel debug (default: warning)""",
     config.log_level = args.loglevel
     KAI_LOG.info(f"Config loaded: {pprint.pformat(config)}")
 
-    incident_store = IncidentStore.from_config(config.incident_store)
+    app = KaiApplication(config)
 
     if args.skip_verify:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     poll_api(
         args.konveyor_hub_url,
-        incident_store,
+        app.incident_store,
         interval=args.interval,
         timeout=args.timeout,
         verify=not args.skip_verify,

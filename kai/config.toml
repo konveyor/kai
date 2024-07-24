@@ -4,28 +4,56 @@ log_dir = "$pwd/logs"
 demo_mode = false
 trace_enabled = true
 
-# **Postgresql incident store**
-# [incident_store]
-# provider = "postgresql"
+# **Solution consumers** This controls the strategies the LLM uses to consume
+# solutions.
+# - "diff_only": consumes only the diff between the the initial and solved
+#   states
+# - "llm_summary": If the incident store's `solution_producers` field is
+#   configured to use "llm_lazy", the solution used will include an
+#   llm-generated summary of the changes required.
 
+solution_consumers = ["diff_only", "llm_summary"]
+
+# **Postgresql incident store**
+# ```
 # [incident_store.args]
+# provider = "postgresql"
 # host = "127.0.0.1"
 # database = "kai"
 # user = "kai"
 # password = "dog8code"
+# ```
 
 # **In-memory sqlite incident store**
 # ```
-# [incident_store]
-# provider = "sqlite"
-#
 # [incident_store.args]
+# provider = "sqlite"
 # connection_string = "sqlite:///:memory:"
+# ```
 
 [incident_store]
-provider = "postgresql"
+
+# **incident_store.solution_detectors** This controls the strategies the
+# incident store uses to detect when an incident was solved.
+# - "naive": Incidents are considered the same if every field in the incident is
+#   the exact same.
+# - "line_match": Same as "naive", except we take into account if the line has
+#   moved about in the file.
+
+solution_detectors = "naive"
+
+# **incident_store.solution_producers** This controls the strategies the
+# incident store uses to produce incidents.
+# - "text_only": Only the textual information (diff, code before, code after) of
+#   the incident is stored.
+# - "llm_lazy": Same as "text_only", but will earmark the solution for LLM
+#   summary generation upon retrieval.
+
+solution_producers = "text_only"
 
 [incident_store.args]
+provider = "postgresql"
+
 host = "127.0.0.1"
 database = "kai"
 user = "kai"

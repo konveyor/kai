@@ -1,69 +1,39 @@
 import argparse
 import datetime
-import enum
 import logging
 import os
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Optional, TypeVar
+from typing import Optional, TypeVar
 from urllib.parse import unquote, urlparse
 
 import yaml
 from git import Repo
-from sqlalchemy import (
-    Column,
-    DateTime,
-    Engine,
-    ForeignKey,
-    ForeignKeyConstraint,
-    String,
-    func,
-    select,
-)
-from sqlalchemy.dialects import postgresql, sqlite
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship
-from sqlalchemy.types import JSON
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from kai.constants import PATH_LOCAL_REPO
-from kai.model_provider import ModelProvider
-from kai.models.kai_config import (
-    KaiConfig,
-    KaiConfigIncidentStore,
-    KaiConfigIncidentStoreProvider,
+from kai.constants import PATH_GIT_ROOT, PATH_KAI, PATH_LOCAL_REPO
+from kai.kai_logging import initLogging
+from kai.models.kai_config import KaiConfig
+from kai.models.report import Report
+from kai.models.util import filter_incident_vars
+from kai.service.incident_store.backend import IncidentStoreBackend
+from kai.service.incident_store.sql_types import (
+    SQLAcceptedSolution,
+    SQLApplication,
+    SQLBase,
+    SQLIncident,
+    SQLRuleset,
+    SQLUnmodifiedReport,
+    SQLViolation,
 )
-from kai.report import Report
+from kai.service.solution_handling.detection import (
+    SolutionDetectionAlgorithm,
+    SolutionDetectorContext,
+)
+from kai.service.solution_handling.production import SolutionProducer
+from kai.service.solution_handling.solution_types import Solution
 
 KAI_LOG = logging.getLogger(__name__)
-
-# These prefixes are sometimes in front of the paths, strip them.
-# Also strip leading slashes since os.path.join can't join two absolute paths
-KNOWN_PREFIXES = (
-    "/opt/input/source/",
-    # trunk-ignore(bandit/B108)
-    "/tmp/source-code/",
-    "/addon/source/",
-    "/",
-)
-
-
-# These are known unique variables that can be included by incidents
-# They would prevent matches that we actually want, so we filter them
-# before adding to the database or searching
-FILTERED_INCIDENT_VARS = ("file", "package")
-
-
-def remove_known_prefixes(path: str) -> str:
-    for prefix in KNOWN_PREFIXES:
-        if path.startswith(prefix):
-            return path.removeprefix(prefix)
-    return path
-
-
-def filter_incident_vars(incident_vars: dict):
-    for v in FILTERED_INCIDENT_VARS:
-        incident_vars.pop(v, None)
-    return incident_vars
-
 
 T = TypeVar("T")
 
@@ -187,6 +157,7 @@ def load_reports_from_directory(store: "IncidentStore", path: str):
         KAI_LOG.info(f"Loaded application - solved {app}\n")
 
 
+# NOTE: This application object is more like metadata than anything.
 @dataclass
 class Application:
     application_name: str
@@ -197,180 +168,18 @@ class Application:
     generated_at: datetime.datetime
 
 
-# NOTE(@JonahSussman): Should we include the incident that this solution is for
-# inside the class?
-@dataclass
-class Solution:
-    uri: str
-    file_diff: str
-    repo_diff: str
-    original_code: Optional[str] = None
-    updated_code: Optional[str] = None
+class IncidentStore:
+    def __init__(
+        self,
+        backend: IncidentStoreBackend,
+        solution_detector: SolutionDetectionAlgorithm,
+        solution_producer: SolutionProducer,
+    ):
+        self.backend = backend
+        self.engine = self.backend.create_engine()
 
-
-class SQLBase(DeclarativeBase):
-    type_annotation_map = {
-        dict[str, Any]: JSON()
-        .with_variant(postgresql.JSONB(), "postgresql")
-        .with_variant(sqlite.JSON(), "sqlite"),
-        list[str]: JSON()
-        .with_variant(postgresql.JSONB(), "postgresql")
-        .with_variant(sqlite.JSON(), "sqlite"),
-    }
-
-
-class SQLUnmodifiedReport(SQLBase):
-    __tablename__ = "unmodified_reports"
-
-    application_name: Mapped[str] = mapped_column(primary_key=True)
-    report_id: Mapped[str] = mapped_column(primary_key=True)
-
-    generated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(), server_default=func.now()
-    )
-    report: Mapped[dict[str, Any]]
-
-
-class ViolationCategory(enum.Enum):
-    potential = "potential"
-    optional = "optional"
-    mandatory = "mandatory"
-
-
-class SQLApplication(SQLBase):
-    __tablename__ = "applications"
-
-    application_name: Mapped[str] = mapped_column(primary_key=True)
-
-    repo_uri_origin: Mapped[str]
-    repo_uri_local: Mapped[str]
-    current_branch: Mapped[str]
-    current_commit: Mapped[str]
-    generated_at: Mapped[datetime.datetime]
-
-    incidents: Mapped[list["SQLIncident"]] = relationship(
-        back_populates="application", cascade="all, delete-orphan"
-    )
-
-
-class SQLRuleset(SQLBase):
-    __tablename__ = "rulesets"
-
-    ruleset_name: Mapped[str] = mapped_column(primary_key=True)
-
-    tags: Mapped[list[str]]
-
-    violations: Mapped[list["SQLViolation"]] = relationship(
-        back_populates="ruleset", cascade="all, delete-orphan"
-    )
-
-
-class SQLViolation(SQLBase):
-    __tablename__ = "violations"
-
-    violation_name: Mapped[str] = mapped_column(primary_key=True)
-    ruleset_name: Mapped[int] = mapped_column(
-        ForeignKey("rulesets.ruleset_name"), primary_key=True
-    )
-
-    category: Mapped[ViolationCategory]
-    labels: Mapped[list[str]]
-
-    ruleset: Mapped[SQLRuleset] = relationship(back_populates="violations")
-    incidents: Mapped[list["SQLIncident"]] = relationship(
-        back_populates="violation", cascade="all, delete-orphan"
-    )
-
-
-class SQLAcceptedSolution(SQLBase):
-    __tablename__ = "accepted_solutions"
-
-    solution_id: Mapped[int] = mapped_column(primary_key=True)
-
-    generated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(), server_default=func.now()
-    )
-    solution_big_diff: Mapped[str]
-    solution_small_diff: Mapped[str]
-    solution_original_code: Mapped[str]
-    solution_updated_code: Mapped[str]
-
-    llm_summary: Mapped[Optional[str]]
-
-    incidents: Mapped[list["SQLIncident"]] = relationship(
-        back_populates="solution", cascade="all, delete-orphan"
-    )
-
-    def __repr__(self):
-        return f"SQLAcceptedSolution(solution_id={self.solution_id}, generated_at={self.generated_at}, solution_big_diff={self.solution_big_diff:.10}, solution_small_diff={self.solution_small_diff:.10}, solution_original_code={self.solution_original_code:.10}, solution_updated_code={self.solution_updated_code:.10})"
-
-
-class SQLIncident(SQLBase):
-    __tablename__ = "incidents"
-
-    incident_id: Mapped[int] = mapped_column(primary_key=True)
-
-    violation_name = Column(String)
-    ruleset_name = Column(String)
-    application_name: Mapped[str] = mapped_column(
-        ForeignKey("applications.application_name")
-    )
-    incident_uri: Mapped[str]
-    incident_snip: Mapped[str]
-    incident_line: Mapped[int]
-    incident_variables: Mapped[dict[str, Any]]
-    solution_id: Mapped[Optional[str]] = mapped_column(
-        ForeignKey("accepted_solutions.solution_id")
-    )
-
-    __table_args__ = (
-        ForeignKeyConstraint(
-            [violation_name, ruleset_name],
-            [SQLViolation.violation_name, SQLViolation.ruleset_name],
-        ),
-        {},
-    )
-
-    violation: Mapped[SQLViolation] = relationship(back_populates="incidents")
-    application: Mapped[SQLApplication] = relationship(back_populates="incidents")
-    solution: Mapped[SQLAcceptedSolution] = relationship(back_populates="incidents")
-
-    def __repr__(self) -> str:
-        return f"SQLIncident(violation_name={self.violation_name}, ruleset_name={self.ruleset_name}, application_name={self.application_name}, incident_uri={self.incident_uri}, incident_snip={self.incident_snip:.10}, incident_line={self.incident_line}, incident_variables={self.incident_variables}, solution_id={self.solution_id})"
-
-
-class IncidentStore(ABC):
-    """
-    Responsible for 3 main things:
-    - Incident/Solution storage
-    - Solution detection
-    - Solution generation
-    """
-
-    engine: Engine
-    model_provider: ModelProvider
-
-    @staticmethod
-    def from_config(config: KaiConfigIncidentStore, model_provider: ModelProvider):
-        """
-        Factory method to produce whichever incident store is needed.
-        """
-
-        # TODO: Come up with some sort of "solution generator strategy" so we
-        # don't blow up our llm API usage. Lazy, immediate, other etc...
-
-        if config.provider == "postgresql":
-            from kai.service.incident_store.psql import PSQLIncidentStore
-
-            return PSQLIncidentStore(config.args, model_provider)
-        elif config.provider == "sqlite":
-            from kai.service.incident_store.sqlite import SQLiteIncidentStore
-
-            return SQLiteIncidentStore(config.args, model_provider)
-        else:
-            raise ValueError(
-                f"Unsupported provider: {config.provider}\ntype: {type(config.provider)}\nlmao: {KaiConfigIncidentStoreProvider.POSTGRESQL}"
-            )
+        self.solution_detector = solution_detector
+        self.solution_producer = solution_producer
 
     def load_report(self, app: Application, report: Report) -> tuple[int, int, int]:
         """
@@ -378,10 +187,9 @@ class IncidentStore(ABC):
         tuple containing (# of new incidents, # of unsolved incidents, # of
         solved incidents) in that order.
 
-        NOTE: This application object is more like metadata than anything.
-        """
 
-        # FIXME: Only does stuff within the same application. Maybe fixed?
+        TODO: Only does stuff within the same application. Maybe fixed?
+        """
 
         # NEW: Store whole report in table
         # - if we get the same report again, we should skip adding it. Have some identifier
@@ -392,26 +200,12 @@ class IncidentStore(ABC):
         # Iterate through all incidents in the report
         # - change so theres an identified like "commit application ruleset violation"
 
-        # create entries if not exists
-        # reference the old-new matrix
-        #           old
-        #         | NO     | YES
-        # --------|--------+-----------------------------
-        # new NO  | -      | update (SOLVED, embeddings)
-        #     YES | insert | update (line number, etc...)
-
-        repo_path = unquote(urlparse(app.repo_uri_local).path)
-        repo = Repo(repo_path)
+        repo = Repo(unquote(urlparse(app.repo_uri_local).path))
         old_commit: str
         new_commit = app.current_commit
-
-        number_new_incidents = 0
-        number_unsolved_incidents = 0
-        number_solved_incidents = 0
+        report_incidents: list[SQLIncident] = []
 
         with Session(self.engine) as session:
-            incidents_temp: list[SQLIncident] = []
-
             select_application_stmt = select(SQLApplication).where(
                 SQLApplication.application_name == app.application_name
             )
@@ -436,9 +230,12 @@ class IncidentStore(ABC):
 
             old_commit = application.current_commit
 
-            report_dict = dict(report)
+            for ruleset_name, ruleset_obj in report.rulesets.items():
+                if ruleset_obj is None:
+                    continue
 
-            for ruleset_name, ruleset_dict in report_dict.items():
+                ruleset_obj.model_dump_json()
+
                 select_ruleset_stmt = select(SQLRuleset).where(
                     SQLRuleset.ruleset_name == ruleset_name
                 )
@@ -448,14 +245,15 @@ class IncidentStore(ABC):
                 if ruleset is None:
                     ruleset = SQLRuleset(
                         ruleset_name=ruleset_name,
-                        tags=ruleset_dict.get("tags", []),
+                        tags=ruleset_obj.tags,
                     )
                     session.add(ruleset)
                     session.commit()
 
-                for violation_name, violation_dict in ruleset_dict.get(
-                    "violations", {}
-                ).items():
+                for violation_name, violation_obj in ruleset_obj.violations.items():
+                    if violation_obj is None:
+                        continue
+
                     select_violation_stmt = (
                         select(SQLViolation)
                         .where(SQLViolation.violation_name == violation_name)
@@ -468,100 +266,63 @@ class IncidentStore(ABC):
                         violation = SQLViolation(
                             violation_name=violation_name,
                             ruleset_name=ruleset.ruleset_name,
-                            category=violation_dict.get("category", "potential"),
-                            labels=violation_dict.get("labels", []),
+                            category=violation_obj.category,
+                            labels=violation_obj.labels,
                         )
                         session.add(violation)
                         session.commit()
 
-                    for incident in violation_dict.get("incidents", []):
-                        incidents_temp.append(
+                    for incident in violation_obj.incidents:
+                        report_incidents.append(
                             SQLIncident(
                                 violation_name=violation.violation_name,
                                 ruleset_name=ruleset.ruleset_name,
                                 application_name=application.application_name,
-                                incident_uri=incident.get("uri", ""),
-                                incident_snip=incident.get("codeSnip", ""),
-                                incident_line=incident.get("lineNumber", 0),
-                                incident_variables=deep_sort(
-                                    incident.get("variables", {})
-                                ),
+                                incident_uri=incident.uri,
+                                incident_snip=incident.code_snip,
+                                incident_line=incident.line_number,
+                                incident_variables=deep_sort(incident.variables),
+                                incident_message=incident.message,
                             )
                         )
 
-            # incidents_temp - incidents
-            new_incidents = set(incidents_temp) - set(application.incidents)
-            number_new_incidents = len(new_incidents)
+            solution_detector_ctx = SolutionDetectorContext(
+                old_incidents=application.incidents,
+                new_incidents=report_incidents,
+                repo=repo,
+                old_commit=old_commit,
+                new_commit=new_commit,
+            )
 
-            for new_incident in new_incidents:
-                session.add(new_incident)
+            categorized_incidents = self.solution_detector(solution_detector_ctx)
 
+            # create entries if not exists
+            #           old
+            #         | NO     | YES
+            # --------|--------+-----------------------------
+            # new NO  | -      | update (SOLVED, embeddings)
+            #     YES | insert | update (line number, etc...)
+
+            # Add new incidents
+
+            session.add_all(categorized_incidents.new)
             session.commit()
 
-            # incidents `intersect` incidents_temp
-            unsolved_incidents = set(application.incidents).intersection(incidents_temp)
-            number_unsolved_incidents = len(unsolved_incidents)
+            KAI_LOG.debug(
+                f"Number of solved incidents: {len(categorized_incidents.solved)}"
+            )
 
-            # incidents - incidents_temp
-            solved_incidents = set(application.incidents) - set(incidents_temp)
-            number_solved_incidents = len(solved_incidents)
-            KAI_LOG.debug(f"Number of solved incidents: {len(solved_incidents)}")
-            # KAI_LOG.debug(f"{solved_incidents=}")
+            # Update solved incidents with their respective solutions
 
-            for solved_incident in solved_incidents:
-                file_path = os.path.join(
-                    repo_path,
-                    # NOTE: When retrieving uris from the report, some of them
-                    # had "/tmp/source-code/" as their root path. Unsure where
-                    # it originates from.
-                    unquote(urlparse(solved_incident.incident_uri).path).removeprefix(
-                        "/tmp/source-code/"  # trunk-ignore(bandit/B108)
-                    ),
+            for solved_incident in categorized_incidents.solved:
+                solution = self.solution_producer.produce_one(
+                    solved_incident, repo, old_commit, new_commit
                 )
-
-                # NOTE: The `big_diff` functionality is currently disabled
-
-                # big_diff: str = repo.git.diff(old_commit, new_commit).encode('utf-8', errors="ignore").decode()
-                big_diff = ""
-
-                # TODO: Some of the sample repos have invalid utf-8 characters,
-                # thus the encode-then-decode hack. Not very performant, there's
-                # probably a better way to handle this.
-
-                try:
-                    original_code = (
-                        repo.git.show(f"{old_commit}:{file_path}")
-                        .encode("utf-8", errors="ignore")
-                        .decode()
-                    )
-                except Exception:
-                    original_code = ""
-
-                try:
-                    updated_code = (
-                        repo.git.show(f"{new_commit}:{file_path}")
-                        .encode("utf-8", errors="ignore")
-                        .decode()
-                    )
-                except Exception:
-                    updated_code = ""
-
-                small_diff = (
-                    repo.git.diff(old_commit, new_commit, "--", file_path)
-                    .encode("utf-8", errors="ignore")
-                    .decode()
-                )
-
-                # TODO: Strings must be utf-8 encodable, so I'm removing the `big_diff` functionality for now
                 solved_incident.solution = SQLAcceptedSolution(
-                    generated_at=app.generated_at,
-                    solution_big_diff=big_diff,
-                    solution_small_diff=small_diff,
-                    solution_original_code=original_code,
-                    solution_updated_code=updated_code,
+                    solution=solution,
                 )
 
-                session.commit()
+            session.commit()
 
             application.repo_uri_origin = app.repo_uri_origin
             application.repo_uri_local = app.repo_uri_local
@@ -571,6 +332,9 @@ class IncidentStore(ABC):
 
             session.commit()
 
+            report_dict = {
+                k: v.model_dump(mode="json") for k, v in report.rulesets.items()
+            }
             unmodified_report = SQLUnmodifiedReport(
                 application_name=app.application_name,
                 report_id=report.report_id,
@@ -582,7 +346,11 @@ class IncidentStore(ABC):
             session.merge(unmodified_report)
             session.commit()
 
-        return number_new_incidents, number_unsolved_incidents, number_solved_incidents
+        return (
+            len(categorized_incidents.new),
+            len(categorized_incidents.unsolved),
+            len(categorized_incidents.solved),
+        )
 
     def create_tables(self):
         """
@@ -629,7 +397,7 @@ class IncidentStore(ABC):
                 .where(SQLIncident.violation_name == violation.violation_name)
                 .where(SQLIncident.ruleset_name == violation.ruleset_name)
                 .where(SQLIncident.solution_id.isnot(None))
-                .where(self.json_exactly_equal(incident_variables))
+                .where(self.backend.json_exactly_equal(incident_variables))
             )
 
             result: list[Solution] = []
@@ -644,33 +412,39 @@ class IncidentStore(ABC):
                     select_accepted_solution_stmt
                 ).first()
 
-                result.append(
-                    Solution(
-                        uri=incident.incident_uri,
-                        file_diff=accepted_solution.solution_small_diff,
-                        repo_diff=accepted_solution.solution_big_diff,
-                    )
+                processed_solution = self.solution_producer.post_process_one(
+                    incident, accepted_solution.solution
                 )
+                accepted_solution.solution = processed_solution
+                result.append(processed_solution)
+
+            session.commit()
 
             return result
-
-    @abstractmethod
-    def json_exactly_equal(self, json_dict: dict):
-        """
-        Each incident store must implement this method as JSON is handled
-        slightly differently between SQLite and PostgreSQL.
-        """
-        pass
 
 
 def cmd(provider: str = None):
     KAI_LOG.setLevel("debug".upper())
 
+    if os.getenv("LOG_DIR") is not None:
+        log_dir = os.getenv("LOG_DIR")
+    else:
+        log_dir = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "../../../logs"
+        )
+
+    if os.getenv("LOG_LEVEL") is not None:
+        log_level = os.getenv("LOG_LEVEL").upper()
+    else:
+        log_level = "INFO"
+
+    initLogging(log_level, "DEBUG", log_dir, "kai_psql.log")
+
     parser = argparse.ArgumentParser(description="Process some parameters.")
     parser.add_argument(
         "--config_filepath",
         type=str,
-        default="../../config.toml",
+        default=os.path.join(PATH_KAI, "config.toml"),
         help="Path to the config file.",
     )
     parser.add_argument(
@@ -679,7 +453,7 @@ def cmd(provider: str = None):
     parser.add_argument(
         "--analysis_dir_path",
         type=str,
-        default="../../samples/analysis_reports",
+        default=os.path.join(PATH_GIT_ROOT, "samples/analysis_reports/"),
         help="Path to analysis reports folder",
     )
 
@@ -687,11 +461,13 @@ def cmd(provider: str = None):
 
     config = KaiConfig.model_validate_filepath(args.config_filepath)
 
-    if provider is not None and config.incident_store.provider != provider:
+    if provider is not None and config.incident_store.args.provider != provider:
         raise Exception(f"This script only works with {provider} incident store.")
 
-    model_provider = ModelProvider(config.models)
-    incident_store = IncidentStore.from_config(config.incident_store, model_provider)
+    from kai.service.kai_application.kai_application import KaiApplication
+
+    kai_application = KaiApplication(config)
+    incident_store = kai_application.incident_store
 
     if args.drop_tables:
         incident_store.delete_store()

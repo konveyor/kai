@@ -5,9 +5,9 @@ from time import localtime, strftime
 from typing import Any
 
 from langchain.schema.messages import BaseMessage
+from pydantic import BaseModel
 
 from kai.kai_logging import process_log_dir_replacements
-from kai.models.kai_config import KaiConfig
 
 log = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ def enabled_check(func):
     return wrapper
 
 
-class Trace:
+class KaiTrace:
     """Captures information to aid debugging and prompt tweaking
 
     This class is instantiated for a given request, so all of the data/actions
@@ -37,15 +37,16 @@ class Trace:
 
     def __init__(
         self,
-        config: KaiConfig,
+        trace_enabled: bool,
+        log_dir: str,
         model_id: str,
         batch_mode: str,
         application_name: str,
         file_name: str,
     ):
         super()
-        self.config = config
-        self.enabled = config.trace_enabled
+        self.enabled = trace_enabled
+        self.log_dir = log_dir
         self.model_id = model_id
         self.batch_mode = batch_mode
         self.application_name = application_name
@@ -54,7 +55,7 @@ class Trace:
         self.time_end = -1
 
         # We use the same parent directory of logging for trace data
-        log_dir = process_log_dir_replacements(self.config.log_dir)
+        log_dir = process_log_dir_replacements(self.log_dir)
         self.top_trace_dir = os.path.join(log_dir, "trace")
 
         self.trace_dir = os.path.join(
@@ -83,8 +84,12 @@ class Trace:
         params_file_path = os.path.join(self.trace_dir, "params.json")
         os.makedirs(os.path.dirname(params_file_path), exist_ok=True)
         with open(params_file_path, "w") as f:
-            # f.write(json.dumps(params, indent=4))
-            f.write(params.json())
+            if isinstance(params, dict):
+                f.write(json.dumps(params))
+            elif isinstance(params, BaseModel):
+                f.write(params.model_dump_json())
+            else:  # Fallback to json() method, which may or may not exist
+                f.write(params.json())
 
     ##############
     # Assumptions:

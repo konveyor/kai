@@ -6,15 +6,20 @@ import os
 import sys
 import time
 import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import asdict, dataclass
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from pathlib import Path
 
 import requests
+
+from kai.models.report_types import ExtendedIncident
+from kai.routes.get_incident_solutions_for_file import (
+    PostGetIncidentSolutionsForFileParams,
+)
 
 # Ensure that we have 'kai' in our import path
 sys.path.append("../../kai")
 from kai.kai_logging import formatter
-from kai.report import Report
+from kai.models.report import Report
 
 KAI_LOG = logging.getLogger(__name__)
 
@@ -27,59 +32,7 @@ SAMPLE_APP_DIR = "./coolstore"
 # 2) Limit to specific rulesets/violations we are interested in
 
 
-@dataclass
-class KaiIncident:
-    violation_name: str
-    ruleset_name: str
-    analysis_message: str
-    line_number: int | None = None
-    incident_variables: dict | None = None
-    incident_snip: str | None = None
-
-    @staticmethod
-    def from_incident(incident) -> "KaiIncident":
-        return KaiIncident(
-            incident["violation_name"],
-            incident["ruleset_name"],
-            incident["message"],
-            incident["lineNumber"],  # this may be empty in the report
-            incident["variables"],
-            "",  # We don't plan to use 'incident_snip'
-        )
-
-
-@dataclass
-class KaiRequestParams:
-    application_name: str
-    file_name: str
-    file_contents: str
-    incidents: list[KaiIncident]
-    include_llm_results: bool = True
-
-    @staticmethod
-    def from_incidents(
-        app_name, file_path, file_contents, incidents
-    ) -> "KaiRequestParams":
-        kai_incidents = []
-        for incident in incidents:
-            kai_incidents.append(KaiIncident.from_incident(incident))
-        return KaiRequestParams(app_name, file_path, file_contents, kai_incidents)
-
-    def to_json(self):
-        return json.dumps(asdict(self))
-
-
-def collect_parameters(file_path, violations) -> KaiRequestParams:
-    with open(f"{SAMPLE_APP_DIR}/{file_path}", "r") as f:
-        file_contents = f.read()
-
-    params = KaiRequestParams.from_incidents(
-        APP_NAME, file_path, file_contents, violations
-    )
-    return params
-
-
-def _generate_fix(params: KaiRequestParams):
+def _generate_fix(params: PostGetIncidentSolutionsForFileParams):
     headers = {"Content-type": "application/json", "Accept": "text/plain"}
     response = requests.post(
         ###
@@ -87,14 +40,14 @@ def _generate_fix(params: KaiRequestParams):
         # f"{SERVER_URL}/get_incident_solution",
         ###
         f"{SERVER_URL}/get_incident_solutions_for_file",
-        data=params.to_json(),
+        data=params.model_dump_json(),
         headers=headers,
         timeout=3600,
     )
     return response
 
 
-def generate_fix(params: KaiRequestParams):
+def generate_fix(params: PostGetIncidentSolutionsForFileParams):
     retries_left = 6
     for i in range(retries_left):
         try:
@@ -117,22 +70,37 @@ def generate_fix(params: KaiRequestParams):
     )
 
 
-def parse_response(response):
+def parse_response(response: requests.Response):
     try:
-        return response.json()
+        result = response.json()
+
+        if isinstance(result, str):
+            return json.loads(result)
+        elif isinstance(result, dict):
+            return result
+        else:
+            KAI_LOG.error(f"Unexpected response type: {type(result)}")
+            KAI_LOG.error(f"Response: {response}")
+            sys.exit(1)
+
     except Exception as e:
         KAI_LOG.error(f"Failed to parse response with error: {e}")
         KAI_LOG.error(f"Response: {response}")
         sys.exit(1)
+
     ## TODO:  Below is rough guess at error handling, need to confirm
     # if "error" in response_json:
     #    print(f"Error: {response_json['error']}")
     #    return ""
-    # TODO: When we are batching incidents we get back a parse result so we dont need below
-    # return pydantic_models.parse_file_solution_content(response_json["updated_file"])
+
+    # TODO: When we are batching incidents we get back a parse result so we dont
+    # need below return
+    # pydantic_models.parse_file_solution_content(response_json["updated_file"])
 
 
-def write_to_disk(file_path, updated_file_contents):
+def write_to_disk(file_path: Path, updated_file_contents: dict):
+    file_path = str(file_path)  # Temporary fix for Path object
+
     # We expect that we are overwriting the file, so all directories should exist
     intended_file_path = f"{SAMPLE_APP_DIR}/{file_path}"
     if not os.path.exists(intended_file_path):
@@ -205,36 +173,54 @@ def write_to_disk(file_path, updated_file_contents):
             sys.exit(1)
 
 
-def process_file(file_path, violations, num_impacted_files, count):
+def process_file(
+    file_path: Path,
+    incidents: list[ExtendedIncident],
+    num_impacted_files: int,
+    count: int,
+):
     start = time.time()
     KAI_LOG.info(
-        f"File #{count} of {num_impacted_files} - Processing {file_path} which has {len(violations)} violations"
+        f"File #{count} of {num_impacted_files} - Processing {file_path} which has {len(incidents)} incidents."
     )
 
-    params = collect_parameters(file_path, violations)
+    with open(f"{SAMPLE_APP_DIR}/{str(file_path)}", "r") as f:
+        file_contents = f.read()
+
+    params = PostGetIncidentSolutionsForFileParams(
+        file_name=str(file_path),
+        file_contents=file_contents,
+        application_name=APP_NAME,
+        incidents=incidents,
+        include_llm_results=True,
+    )
+
     response = generate_fix(params)
     KAI_LOG.info(f"Response StatusCode: {response.status_code} for {file_path}\n")
-    updated_file_contents = parse_response(response)
+
+    updated_file_contents: dict = parse_response(response)
     if os.getenv("WRITE_TO_DISK", "").lower() not in ("false", "0", "no"):
         write_to_disk(file_path, updated_file_contents)
+
     end = time.time()
-    return f"{end-start}s to process {file_path} with {len(violations)} violations"
+    return f"{end-start}s to process {file_path} with {len(incidents)} violations"
 
 
-def run_demo(report):
+def run_demo(report: Report):
     impacted_files = report.get_impacted_files()
     num_impacted_files = len(impacted_files)
     remaining_files = num_impacted_files
-    total_violations = sum(len(violations) for violations in impacted_files.values())
-    print(f"{num_impacted_files} files with a total of {total_violations} violations.")
+
+    total_incidents = sum(len(incidents) for incidents in impacted_files.values())
+    print(f"{num_impacted_files} files with a total of {total_incidents} incidents.")
 
     max_workers = int(os.environ.get("KAI_MAX_WORKERS", 8))
     KAI_LOG.info(f"Running in parallel with {max_workers} workers")
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = []
-        for count, (file_path, violations) in enumerate(impacted_files.items(), 1):
+        futures: list[Future[str]] = []
+        for count, (file_path, incidents) in enumerate(impacted_files.items(), 1):
             future = executor.submit(
-                process_file, file_path, violations, num_impacted_files, count
+                process_file, file_path, incidents, num_impacted_files, count
             )
             futures.append(future)
 
@@ -245,6 +231,8 @@ def run_demo(report):
             except Exception as exc:
                 KAI_LOG.error(f"Generated an exception: {exc}")
                 KAI_LOG.error(traceback.format_exc())
+                exit(1)
+
             remaining_files -= 1
             KAI_LOG.info(
                 f"{remaining_files} files remaining from total of {num_impacted_files}"
@@ -258,8 +246,10 @@ if __name__ == "__main__":
     KAI_LOG.setLevel("DEBUG")
 
     start = time.time()
+
     coolstore_analysis_dir = "./analysis/coolstore/output.yaml"
-    r = Report.load_report_from_file(coolstore_analysis_dir)
-    run_demo(r)
+    report = Report.load_report_from_file(coolstore_analysis_dir)
+    run_demo(report)
+
     end = time.time()
     KAI_LOG.info(f"Total time to process '{coolstore_analysis_dir}' was {end-start}s")
