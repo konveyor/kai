@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1721851151138,
+  "lastUpdate": 1721860513855,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -3329,6 +3329,35 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/konveyor/kai/commit/52034523018082428985ca2058971c6e5a109c96"
         },
         "date": 1721851150406,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "42743659+JonahSussman@users.noreply.github.com",
+            "name": "Jonah Sussman",
+            "username": "JonahSussman"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "66032e7081aea464fbca87252caa0a9adedb028c",
+          "message": "Hotfix (#253)\n\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>",
+          "timestamp": "2024-07-24T18:32:12-04:00",
+          "tree_id": "3a7adaff20ec2d216d1687d5d704636f3054b1d1",
+          "url": "https://github.com/konveyor/kai/commit/66032e7081aea464fbca87252caa0a9adedb028c"
+        },
+        "date": 1721860513246,
         "tool": "customBiggerIsBetter",
         "benches": [
           {
