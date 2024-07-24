@@ -1,6 +1,7 @@
 import datetime
 from typing import Any, Optional
 
+import sqlalchemy
 from sqlalchemy import (
     VARCHAR,
     Column,
@@ -99,7 +100,9 @@ class SQLViolation(SQLBase):
         ForeignKey("rulesets.ruleset_name"), primary_key=True
     )
 
-    category: Mapped[report_types.Category]
+    category = Column(
+        "category", sqlalchemy.Enum(report_types.Category).values_callable
+    )
     labels: Mapped[list[str]]
 
     ruleset: Mapped[SQLRuleset] = relationship(back_populates="violations")
