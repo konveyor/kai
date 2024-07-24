@@ -72,7 +72,17 @@ def generate_fix(params: PostGetIncidentSolutionsForFileParams):
 
 def parse_response(response: requests.Response):
     try:
-        return response.json()
+        result = response.json()
+
+        if isinstance(result, str):
+            return json.loads(result)
+        elif isinstance(result, dict):
+            return result
+        else:
+            KAI_LOG.error(f"Unexpected response type: {type(result)}")
+            KAI_LOG.error(f"Response: {response}")
+            sys.exit(1)
+
     except Exception as e:
         KAI_LOG.error(f"Failed to parse response with error: {e}")
         KAI_LOG.error(f"Response: {response}")

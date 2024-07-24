@@ -122,7 +122,7 @@ class KaiApplication:
             used_prompts=[],
             model_id=self.model_provider.model_id,
             additional_information=[],
-            llm_results=[],
+            llm_results=[] if include_llm_results else None,
         )
 
         batched_incidents = batch_incidents(incidents, batch_mode)
