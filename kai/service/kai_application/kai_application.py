@@ -96,6 +96,7 @@ class KaiApplication:
         batch_mode: BatchMode = BatchMode.SINGLE_GROUP,
         include_solved_incidents: bool = True,
         include_llm_results: bool = False,
+        trace: Optional[KaiTrace] = None,
     ):
         """
         Get the updated file content for a given file and set of incidents.
@@ -104,14 +105,15 @@ class KaiApplication:
         file_name.
         """
 
-        trace = KaiTrace(
-            trace_enabled=self.config.trace_enabled,
-            log_dir=self.config.log_dir,
-            model_id=self.model_provider.model_id,
-            batch_mode=batch_mode,
-            application_name=application_name,
-            file_name=file_name,
-        )
+        if trace is None:
+            trace = KaiTrace(
+                trace_enabled=self.config.trace_enabled,
+                log_dir=self.config.log_dir,
+                model_id=self.model_provider.model_id,
+                batch_mode=batch_mode,
+                application_name=application_name,
+                file_name=file_name,
+            )
 
         src_file_language = guess_language(file_contents, filename=file_name)
         KAI_LOG.debug(f"{file_name} classified as language {src_file_language}")

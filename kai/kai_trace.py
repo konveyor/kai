@@ -5,6 +5,7 @@ from time import localtime, strftime
 from typing import Any
 
 from langchain.schema.messages import BaseMessage
+from pydantic import BaseModel
 
 from kai.kai_logging import process_log_dir_replacements
 
@@ -83,8 +84,12 @@ class KaiTrace:
         params_file_path = os.path.join(self.trace_dir, "params.json")
         os.makedirs(os.path.dirname(params_file_path), exist_ok=True)
         with open(params_file_path, "w") as f:
-            # f.write(json.dumps(params, indent=4))
-            f.write(params.json())
+            if isinstance(params, dict):
+                f.write(json.dumps(params))
+            elif isinstance(params, BaseModel):
+                f.write(params.model_dump_json())
+            else:  # Fallback to json() method, which may or may not exist
+                f.write(params.json())
 
     ##############
     # Assumptions:

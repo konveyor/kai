@@ -62,6 +62,7 @@ async def post_get_incident_solutions_for_file(request: Request):
             batch_mode=params.batch_mode,
             include_solved_incidents=params.include_solved_incidents,
             include_llm_results=params.include_llm_results,
+            trace=trace,
         )
     except Exception as e:
         trace.exception(-1, -1, e, traceback.format_exc())
