@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1721941818531,
+  "lastUpdate": 1721941827446,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -3710,6 +3710,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "42743659+JonahSussman@users.noreply.github.com",
+            "name": "Jonah Sussman",
+            "username": "JonahSussman"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c114f53d3e707bef060f8369c9d796b9716c9ce6",
+          "message": ":sparkles: Added testing GitHub action (#256)\n\n* Added testing GitHub action\n\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\n\n* Fixed error with category, added pip cache\n\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\n\n* Fixed run_tests.sh, added coverage requirement, added git config\n\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\n\n* Removed windows, fixed run_tests.sh\n\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\n\n* Spelling fix and test failing test\n\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\n\n* Removed always failing test\n\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\n\n* Spelling fixes\n\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\n\n---------\n\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>",
+          "timestamp": "2024-07-25T17:07:09-04:00",
+          "tree_id": "0c53fa63dfbd0bd58b7d231f15694ae9ac7b378e",
+          "url": "https://github.com/konveyor/kai/commit/c114f53d3e707bef060f8369c9d796b9716c9ce6"
+        },
+        "date": 1721941825597,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
             "value": "",
             "unit": "Match"
           }
