@@ -197,7 +197,7 @@ Due to the absence of support for Remote EJBs in Quarkus, you will notice that t
 Although the app is deployable to any [Kubernetes](https://kubernetes.io/) distribution. 
 For the sake of simplicity we choose [minikube](https://minikube.sigs.k8s.io/docs/). 
 
-> Prerequisite: It is assumed that minikube is installed. If not you can follow the instructions [here](https://minikube.sigs.k8s.io/docs/start/?arch=%2Fmacos%2Fx86-64%2Fstable%2Fbinary+download).
+> Prerequisite: It is assumed that minikube is installed. If not you can follow the instructions [here](https://minikube.sigs.k8s.io/docs/start/).
 
 The coolstore requires a PostgreSQL database. To install Postgres into minikube, we have added deploy scripts. run the scripts in the following order
 
