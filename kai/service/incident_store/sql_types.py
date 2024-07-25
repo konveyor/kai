@@ -1,7 +1,7 @@
 import datetime
-from typing import Any, Optional
+from enum import Enum
+from typing import Any, Optional, Type
 
-import sqlalchemy
 from sqlalchemy import (
     VARCHAR,
     Column,
@@ -38,6 +38,21 @@ class SQLSolutionType(TypeDecorator):
             return None
 
         return Solution.model_validate_json(value)
+
+
+def SQLEnum(enum_type: Type[Enum]):
+    """
+    The default behavior of the Enum type in SQLAlchemy is to store the enum's name,
+    but we want to store the enum's value. This class is a workaround for that.
+    """
+
+    return Enum(
+        value=enum_type.__name__,
+        names=[(e.value, e.value) for e in enum_type],
+    )
+
+
+SQLCategory: Type = SQLEnum(report_types.Category)
 
 
 class SQLBase(DeclarativeBase):
@@ -100,9 +115,7 @@ class SQLViolation(SQLBase):
         ForeignKey("rulesets.ruleset_name"), primary_key=True
     )
 
-    category = Column(
-        "category", sqlalchemy.Enum(report_types.Category).values_callable
-    )
+    category: Mapped[SQLCategory]  # type: ignore
     labels: Mapped[list[str]]
 
     ruleset: Mapped[SQLRuleset] = relationship(back_populates="violations")

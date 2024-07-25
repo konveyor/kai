@@ -1,11 +1,10 @@
-#!/usr/bin/sh
-#
+#!/bin/sh
 
-export PYTHONPATH="$(pwd)/kai:${PYTHONPATH}" # trunk-ignore(shellcheck)
-python -m unittest -v
+COVERAGE_REPORT_DIR="${COVERAGE_REPORT_DIR:-htmlcov}"
 
-##
-# Example to run tests in a single test class:
-# python -m unittest -v tests.test_incident_store_advanced.TestIncidentStoreAdvanced
-# Example to run a single test:
-# python -m unittest -v tests.test_incident_store.TestIncidentStore.test_find_solved_issues
+python -m coverage run --branch -m unittest discover
+test_result=$?
+
+python -m coverage html --skip-empty -d "${COVERAGE_REPORT_DIR}"
+
+exit "${test_result}"
