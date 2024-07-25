@@ -29,3 +29,20 @@ There are two ways to record new responses:
 
 1. Run the requests while the server is not in `DEMO_MODE`
 1. Delete the specific existing cached response (under `kai/data/vcr/<application_name>/<model>/<source-file-path-with-slashes-replaced-with-dashes.java.yaml>`), then rerun. When a cached response does not exist, a new one will be recorded and played back on subsequent runs.
+
+### Seeing a `401` while running with `DEMO_MODE=TRUE`?
+
+If you are running with DEMO_MODE=TRUE and you see a `401` being returned from the LLM Provider consider that this is likely 'correct' behavior, if you do not have a valid API key defined. Note that DEMO_MODE will attempt to play back a cached response, yet if there is no cached data for the request Kai will attempt to talk to the LLM and will make a 'real' request, which if you don't have a valid API key will result in a `401`. To 'fix' this you will want to look at the request you are sending to Kai and ensure it is cached for the model you have configured, if you don't have valid cached data then you will need to get a valid api key and re-run so the data may be cached.
+
+    WARNING - 2024-07-11 14:11:44,063 - [   llm_io_handler.py:243  - get_incident_solutions_for_file()] - Request to model failed for batch 1/1 for src/main/java/com/redhat/coolstore/model/InventoryEntity.java with exception, retrying in 10s
+    Failed to handle request to https://bam-api.res.ibm.com/v2/text/chat_stream?version=2024-01-10.
+    {
+      "error": "Unauthorized",
+      "extensions": {
+        "code": "AUTH_ERROR",
+        "state": null,
+        "reason": "TOKEN_INVALID"
+      },
+      "message": "Invalid or missing JWT token",
+      "status_code": 401
+    }
