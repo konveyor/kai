@@ -1,4 +1,4 @@
-#!/usr/bin/sh
+#!/bin/sh
 
 COVERAGE_REPORT_DIR="${COVERAGE_REPORT_DIR:-htmlcov}"
 
