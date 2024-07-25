@@ -1,13 +1,13 @@
 # Large Language Model (LLM) configuration
 
-### LLM API Keys
+## LLM API Keys
 
 - We expect that you have configured the environment variables required for the LLM you are attempting to use.
   - For example:
     - OpenAI service requires: `OPENAI_API_KEY=my-secret-api-key-value`
     - IBM BAM service requires: `GENAI_KEY=my-secret-api-key-value`
 
-#### IBM BAM Service
+## IBM BAM Service
 
 - The development team has been using the IBM BAM service to aid development and testing:
 
@@ -27,12 +27,12 @@
 
   - Ensure you have `GENAI_KEY=my-secret-api-key-value` defined in your shell
 
-#### OpenAI Service
+## OpenAI Service
 
 - If you have a valid API Key for OpenAI you may use this with Kai.
 - Ensure you have `OPENAI_API_KEY=my-secret-api-key-value` defined in your shell
 
-##### Selecting a Model
+## Selecting a Model
 
 We offer configuration choices of several models via [config.toml](/kai/config.toml) which line up to choices we know about from [kai/model_provider.py](https://github.com/konveyor-ecosystem/kai/blob/main/kai/model_provider.py).
 

@@ -1,9 +1,9 @@
-# Requires:
+# Requires
 
 - Kai backend to be running locally
   - You can see [docs/Getting_Started.md](docs/Getting_Started.md) for guidance
 
-# To run this demo client
+## To run this demo client
 
 1. `fetch.sh` - Ensures that needed source code for the demo app is fetched
 1. `source ../env/bin/activate`
