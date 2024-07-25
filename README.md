@@ -12,6 +12,8 @@ The approach begins with using static code analysis via the [Kantra](https://git
 
 - Read more about our technical approach here: [docs/Technical_Background.md](docs/design/Technical_Background.md)
 
+- Presentation slides introducing Konveyor AI: [2024_May GenAI Application Migration](https://docs.google.com/presentation/d/1awMdp5hHC6L4Xc_uY6Kj4XiskAArDGPhyQRBI6GJUAo/edit#slide=id.g28c0e0d2936_0_621)
+
 ## Demo Video
 
 ![DemoVideo](/docs/images/Kai_April_26c.gif)
