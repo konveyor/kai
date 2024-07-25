@@ -4,14 +4,14 @@ Konveyor AI (kai) is Konveyor's approach to easing modernization of application 
 
 In this demo, we will showcase the capabilities of Konveyor AI (Kai) in facilitating the modernization of application source code to a new target. We will illustrate how Kai can handle various levels of migration complexity, ranging from simple import swaps to more involved changes such as modifying scope from CDI bean requirements. Additionally, we will look into migration scenarios that involves EJB Remote and Message Driven Bean(MBD) changes
 
-We will focus on migrating a partially migrated [JavaEE Coolstore application](https://github.com/konveyor-ecosystem/coolstore.git) to Quarkus, a task that involves not only technical translation but also considerations for deployment in OpenShift. By the end of this demo, you will understand how Konveyor AI (Kai) can assist and expedite the modernization process.
+We will focus on migrating a partially migrated [JavaEE Coolstore application](https://github.com/konveyor-ecosystem/coolstore.git) to Quarkus, a task that involves not only technical translation but also considerations for deployment to Kubernetes. By the end of this demo, you will understand how Konveyor AI (Kai) can assist and expedite the modernization process.
 
 ## Pre-req
 
 - Podman
 - VSCode
 - Git
-- OpenShift cluster
+- Kubernetes cluster (minikube)
 - GenAI credentials
 - mvn
 - Quarkus 3.10
@@ -192,29 +192,31 @@ Due to the absence of support for Remote EJBs in Quarkus, you will notice that t
 
 ![MDB - Manual updates](mdbchanges.png)
 
-### 2.3 Deploy app to OpenShift
+### 2.3 Deploy app to Kubernetes
 
-Now, its time to deploy the coolstore quarkus app on OpenShift cluster.
+Although the app is deployable to any [Kubernetes](https://kubernetes.io/) distribution. 
+For the sake of simplicity we choose [minikube](https://minikube.sigs.k8s.io/docs/). 
 
-- Make sure you can access the cluster from your terminal
-- Navigate to the coolstore project folder
-- Deploy a postgres container
+> Prerequisite: It is assumed that minikube is installed. If not you can follow the instructions [here](https://minikube.sigs.k8s.io/docs/start/?arch=%2Fmacos%2Fx86-64%2Fstable%2Fbinary+download).
+
+The coolstore requires a PostgreSQL database. To install Postgres into minikube, we have added deploy scripts. run the scripts in the following order
 
 ```bash
-oc new-app -e POSTGRESQL_USER=quarkus \
-            -e POSTGRESQL_PASSWORD=quarkus \
-            -e POSTGRESQL_DATABASE=coolstore \
-            openshift/postgresql:latest \
-            --name=coolstore-database
-```
+kubectl apply -f deploy/kubernetes/persistent-volume.yaml
+kubectl apply -f deploy/kubernetes/persistent-volume-claim.yaml
+kubectl apply -f deploy/kubernetes/postgresql-deployment.yaml
+kubectl apply -f deploy/kubernetes/postgresql-service.yaml
+``` 
 
-- Once the postgres container is deployed, deploy the coolstore app using the following command
+This should setup the database ready for connections from the coolstore app.
+
+To deploy the app, simply run the following command, it will create a docker image on the local drive and load the manifests into kubernetes to pull the image.
 
 ```mvn
 mvn clean compile package -Dquarkus.kubernetes.deploy=true
 ```
 
-- Once deployed, access the website via `http://coolstore-<namespace>.apps.ai.migration.redhat.com`
+- Once deployed, access the app via browser hitting the localhost and port.
 
 ![deploy app](deploy.gif)
 
