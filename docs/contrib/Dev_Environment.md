@@ -9,10 +9,11 @@
 
 ## Local Development
 
-Running Kai's backend involves running 2 processes:
+Running Kai's backend involves running 2+ processes:
 
 - Postgres instance which we deliver via container
 - Backend REST API server
+- [Optional] Hub Importer process to sync data from Konveyor
 
 ### Python Virtual Environment
 
@@ -70,4 +71,9 @@ Note: We have checked in analysis runs for all sample applications so you do NOT
 
 Analysis data will be stored in: `samples/analysis_reports/{APP_NAME}/<initial|solved>/output.yaml`
 
-## Building a local image
+## Build and test a local image
+
+1. cd to the top level kai checkout
+1. Build: `podman build -f build/Containerfile . -t quay.io/konveyor/kai:local`
+1. Run: `TAG="local" podman compose up`
+1. Then proceed with testing as you want
