@@ -194,8 +194,8 @@ Due to the absence of support for Remote EJBs in Quarkus, you will notice that t
 
 ### 2.3 Deploy app to Kubernetes
 
-Although the app is deployable to any [Kubernetes](https://kubernetes.io/) distribution. 
-For the sake of simplicity we choose [minikube](https://minikube.sigs.k8s.io/docs/). 
+Although the app is deployable to any [Kubernetes](https://kubernetes.io/) distribution.
+For the sake of simplicity we choose [minikube](https://minikube.sigs.k8s.io/docs/).
 
 > Prerequisite: It is assumed that minikube is installed. If not you can follow the instructions [here](https://minikube.sigs.k8s.io/docs/start/).
 
@@ -206,7 +206,7 @@ kubectl apply -f deploy/kubernetes/persistent-volume.yaml
 kubectl apply -f deploy/kubernetes/persistent-volume-claim.yaml
 kubectl apply -f deploy/kubernetes/postgresql-deployment.yaml
 kubectl apply -f deploy/kubernetes/postgresql-service.yaml
-``` 
+```
 
 This should setup the database ready for connections from the coolstore app.
 
