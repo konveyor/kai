@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1722015404383,
+  "lastUpdate": 1722015405711,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -3797,6 +3797,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "474256+sshaaf@users.noreply.github.com",
+            "name": "Syed M Shaaf",
+            "username": "sshaaf"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8c8c12ec849bc2496f7236653a224e7f79f840d0",
+          "message": ":book: change the demo doc to minikube (#258)\n\n* change from OpenShift to minikube\r\n\r\nSigned-off-by: sshaaf <474256+sshaaf@users.noreply.github.com>\r\n\r\n* change minikube link to point to docs/start\r\n\r\nSigned-off-by: sshaaf <474256+sshaaf@users.noreply.github.com>\r\n\r\n* fix formatting on demo.md\r\n\r\nSigned-off-by: sshaaf <474256+sshaaf@users.noreply.github.com>\r\n\r\n---------\r\n\r\nSigned-off-by: sshaaf <474256+sshaaf@users.noreply.github.com>",
+          "timestamp": "2024-07-26T13:33:34-04:00",
+          "tree_id": "e0627feeedff6bf1dfe87668bbd1bff130942ef2",
+          "url": "https://github.com/konveyor/kai/commit/8c8c12ec849bc2496f7236653a224e7f79f840d0"
+        },
+        "date": 1722015404949,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
             "value": "",
             "unit": "Match"
           }
