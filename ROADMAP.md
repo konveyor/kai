@@ -2,7 +2,7 @@
 
 This document is a roadmap for Konveyor AI (Kai). The roadmap is organized by themes of functionality, each focusing on a specific aspect of the project's development.
 
-Roadmap Ouline:
+Roadmap Outline:
 
 - [Guiding Principles](#guiding-principles)
 - [Themes](#themes)
