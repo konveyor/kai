@@ -65,7 +65,7 @@ The below themes are areas of improvement the team has identified for future wor
 
 ### Repository Level Code Generation
 
-- Techniques to overcome limited context windows with LLM requests to faciliate a broader repository level understanding of code flows and modifications
+- Techniques to overcome limited context windows with LLM requests to facilitate a broader repository level understanding of code flows and modifications
 
 ### IDE Integrations
 
@@ -111,11 +111,11 @@ _Kai releases will be considered independent of Konveyor releases for the initia
 - [**December 2024**: Kai v0.2.0 Release](#december-2024-kai-v020-release)
 - [**February 2025**: Kai v0.3.0 Release](#february-2025-kai-v030-release)
 
-## 2024 - August: Prototype
+### 2024 - August: Prototype
 
-### Summary
+#### Summary
 
-_The prototype is able to sync data from Konveyor or use existing sample data to aid a scenario of Java EE to Quarkus migration. A minimal workflow is provided to aid early evalations by interested contributors_
+_The prototype is able to sync data from Konveyor or use existing sample data to aid a scenario of Java EE to Quarkus migration. A minimal workflow is provided to aid early evalations by interested contributors._
 
 - Workflow is focused at level of a single file, i.e. lacks awareness of full context of repository
 - Minimal IDE integration in VSCode, workflow is functional to show a happy path
@@ -125,7 +125,7 @@ _The prototype is able to sync data from Konveyor or use existing sample data to
   - Analysis Hints from Kantra
   - [Optional] information of how similar problems were solved in past.
 
-### Key Deliverables
+#### Key Deliverables
 
 - _Konveyor Integration_
   - Add the ability to ingest data from Konveyor Hub, able to pull data from Konveyor 0.5.0
@@ -139,13 +139,13 @@ _The prototype is able to sync data from Konveyor or use existing sample data to
     - **Limitation**: Analysis will NOT automatically update. Kantra analysis needs to be manually re-run to refresh analysis information.
     - Workflow is the minimal needed to show happy-path, more work is needed before this is ready for the end user
 
-## October 2024: Kai v0.1.0 Release
+### October 2024: Kai v0.1.0 Release
 
-### Summary
+#### Summary
 
 _The v0.1.0 release is focused on improving the user experience from the IDE by providing quicker analysis updates as each file is saved. Additionally, Kai will be integrated into Konveyor, with the ability to be deployed from the Konveyor Operator._
 
-### Key Deliverables
+#### Key Deliverables
 
 - _Konveyor Integration_
   - Kai is deployed within Konveyor from the Konveyor Operator, tentative Konveyor 0.6.0 target
@@ -156,24 +156,24 @@ _The v0.1.0 release is focused on improving the user experience from the IDE by 
 - _Evaluation Tools to Benchmark Results_
   - Establish a benchmark tool to aid scoring generated results against test data. This is first step to aid a metric driven approach to measure experiments to guide result improvements.
 
-## December 2024: Kai v0.2.0 Release
+### December 2024: Kai v0.2.0 Release
 
-### Summary
+#### Summary
 
 _The v0.2.0 release is focused on improving the quality of generated results by establishing an agent workflow that incorporates external tools to iterate on improving a code snippet with a LLM._
 
-### Key Deliverables
+#### Key Deliverables
 
 - _External Tool integrations_
   - Agent Workflow leveraging tools and iterate with LLM to address errors and improve results
 
-## February 2025: Kai v0.3.0 Release
+### February 2025: Kai v0.3.0 Release
 
-### Summary
+#### Summary
 
 _The v0.3.0 release is focused on teaching Kai how to understand repurcussions of changes that cascade throughout a repository._
 
-### Key Deliverables
+#### Key Deliverables
 
 - _Repository Level Code Generation_
   - Agent workflow to develop a plan for how to address edits that span throughout the repository, i.e. code changes that have an impact beyond the scope of a single file.
