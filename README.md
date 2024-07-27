@@ -73,8 +73,6 @@ The above information is a quick path to enable running Kai quickly to see how i
 Our project welcomes contributions from any member of our community. To get
 started contributing, please see our [Contributor Guide](CONTRIBUTING.md).
 
-- You can find developer/contributor related
-
 ## Code of Conduct
 
 Refer to Konveyor's Code of Conduct [here](https://github.com/konveyor/community/blob/main/CODE_OF_CONDUCT.md).
