@@ -167,4 +167,4 @@ To change which llm you are targeting, open `config.toml` and change the `[model
 
 <!-- trunk-ignore-end(markdownlint/MD046) -->
 
-Kai will also work with [OpenAI API Compatible alternatives](docs/OpenAI-API-Compatible-Alternatives.md).
+Kai will also work with [OpenAI API Compatible alternatives](/docs/OpenAI-API-Compatible-Alternatives.md).
