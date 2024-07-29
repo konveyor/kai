@@ -51,8 +51,8 @@ jobs:
           log_level = "info"
           demo_mode = false
           [incident_store]
-          provider = "postgresql"
           [incident_store.args]
+          provider = "postgresql"
           host = "127.0.0.1"
           database = "kai"
           user = "kai"
@@ -72,7 +72,7 @@ jobs:
           echo [{\"name\": \
               \"${{ matrix.evaluation.provider }}_${{ matrix.evaluation.model_prefix }}_${{ matrix.evaluation.model }}_${{ matrix.test.example }}\", \
               \"unit\": \"Match\", \
-              \"value\": \"$(python evaluation.py --configs ./config.toml | tail -n 1 | awk '{ print $3 }')\" \
+              \"value\": \"$(PYTHONPATH=".." python evaluation.py --configs ./config.toml | tail -n 1 | awk '{ print $3 }')\" \
               }] > ../output.txt
           git checkout config.toml
           cd ..
