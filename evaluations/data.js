@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1722272618246,
+  "lastUpdate": 1722272751336,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -4319,6 +4319,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "42743659+JonahSussman@users.noreply.github.com",
+            "name": "Jonah Sussman",
+            "username": "JonahSussman"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "de6743f7db70cf95bf529e94f6383fc5bd7223db",
+          "message": "Modified evaluation.py, added simple tests (#263)\n\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>",
+          "timestamp": "2024-07-29T13:00:20-04:00",
+          "tree_id": "c355221c1782961bb9fe8f50ddc9d8fa556535af",
+          "url": "https://github.com/konveyor/kai/commit/de6743f7db70cf95bf529e94f6383fc5bd7223db"
+        },
+        "date": 1722272749918,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
             "value": "",
             "unit": "Match"
           }
