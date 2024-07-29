@@ -1,7 +1,7 @@
 import os
 import tomllib
 from enum import StrEnum
-from typing import Literal, Optional, Self, Union
+from typing import Any, Literal, Optional, Self, Union
 
 import yaml
 from pydantic import BaseModel, Field, model_validator
@@ -54,6 +54,15 @@ class KaiConfigIncidentStorePostgreSQLArgs(BaseModel):
 
     connection_string: Optional[str] = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def validate_provider(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "provider" not in data:
+                data["provider"] = KaiConfigIncidentStoreProvider.POSTGRESQL
+
+        return data
+
     @model_validator(mode="after")
     def validate_connection_string(self) -> Self:
         connection_string_present = self.connection_string is not None
@@ -83,6 +92,15 @@ class KaiConfigIncidentStoreSQLiteArgs(BaseModel):
     password: Optional[str] = None
 
     connection_string: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_provider(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "provider" not in data:
+                data["provider"] = KaiConfigIncidentStoreProvider.SQLITE
+
+        return data
 
     @model_validator(mode="after")
     def validate_connection_string(self) -> Self:

@@ -1,6 +1,9 @@
 import argparse
 import os
 import shutil
+
+# Ensure that we have 'kai' in our import path
+import sys
 from dataclasses import asdict, dataclass
 from typing import Any
 
@@ -18,6 +21,8 @@ from kai.service.kai_application.util import get_prompt
 from kai.service.llm_interfacing.model_provider import ModelProvider
 from kai.service.solution_handling.detection import solution_detection_naive
 from kai.service.solution_handling.production import SolutionProducerTextOnly
+
+sys.path.append("..")
 
 """
 The point of this file is to automatically see if certain prompts make the
@@ -183,6 +188,7 @@ def evaluate(
                     solution_detector=solution_detection_naive,
                     solution_producer=SolutionProducerTextOnly(),
                 )
+                incident_store.create_tables()
                 incident_store.load_report(example.application, example.report)
 
                 pb_incidents = []
@@ -190,17 +196,17 @@ def evaluate(
                     pb_incident = {
                         "issue_number": i,
                         "uri": incident.uri,
-                        "analysis_message": incident.analysis_message,
-                        "code_snip": incident.incident_snip,
+                        "analysis_message": incident.message,
+                        "code_snip": incident.code_snip,
                         "line_number": incident.line_number,
-                        "variables": incident.incident_variables,
+                        "variables": incident.variables,
                     }
 
                     solutions = incident_store.find_solutions(
                         incident.ruleset_name,
                         incident.violation_name,
-                        incident.incident_variables,
-                        incident.incident_snip,
+                        incident.variables,
+                        incident.code_snip,
                     )
 
                     if len(solutions) != 0:
@@ -242,6 +248,8 @@ def evaluate(
                     prompt=prompt,
                     llm_result=llm_result.content,
                 )
+
+                incident_store.delete_store()
             finally:
                 if created_git_repo:
                     shutil.rmtree(os.path.join(full_example_path, ".git"))
