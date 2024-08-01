@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1722542864696,
+  "lastUpdate": 1722542897156,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -4523,6 +4523,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
             "value": "1.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "fabian@fabianism.us",
+            "name": "Fabian von Feilitzsch",
+            "username": "fabianvf"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "08459aa2684de3a0c9e0309322ea35b8a6a03170",
+          "message": ":bug: Allow database host to be configured and respected in the entrypoint (#269)\n\nSigned-off-by: Fabian von Feilitzsch <fabian@fabianism.us>",
+          "timestamp": "2024-08-01T16:04:39-04:00",
+          "tree_id": "6ec9151b46c95cb86ecb813220d67602dac54f8a",
+          "url": "https://github.com/konveyor/kai/commit/08459aa2684de3a0c9e0309322ea35b8a6a03170"
+        },
+        "date": 1722542895921,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
+            "value": "295.0",
             "unit": "Match"
           }
         ]
