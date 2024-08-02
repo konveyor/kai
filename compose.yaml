@@ -29,6 +29,7 @@ services:
     image: ${IMAGE:-quay.io/konveyor/kai}:${TAG:-stable}
     volumes:
       - ${PWD}:/podman_compose:rw,z
+      - ${PWD}/logs:/podman_compose/logs:rw,z,U
     ports:
       - "8080:8080"
     depends_on:
@@ -40,6 +41,7 @@ services:
     image: ${IMAGE:-quay.io/konveyor/kai}:${TAG:-stable}
     volumes:
       - ${PWD}:/podman_compose:rw,z
+      - ${PWD}/logs:/podman_compose/logs:rw,z,U
     depends_on:
       - kai_db
     profiles:
