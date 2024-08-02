@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1722613868255,
+  "lastUpdate": 1722613920045,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -4725,6 +4725,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
+            "value": "1.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jmontleo@redhat.com",
+            "name": "Jason Montleon",
+            "username": "jmontleon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1a24df65471bfcef7d2e12ef4924e7ada31f2a98",
+          "message": ":bug: Closes #266 podman compose permission denied writing logs (#267)\n\nSigned-off-by: Jason Montleon <jmontleo@redhat.com>",
+          "timestamp": "2024-08-02T11:47:47-04:00",
+          "tree_id": "407b2ccbf674e99cb59727131d44f773669265ec",
+          "url": "https://github.com/konveyor/kai/commit/1a24df65471bfcef7d2e12ef4924e7ada31f2a98"
+        },
+        "date": 1722613919225,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
             "value": "1.0",
             "unit": "Match"
           }
