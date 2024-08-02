@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1722614744300,
+  "lastUpdate": 1722614761209,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -4842,6 +4842,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
             "value": "295.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "42743659+JonahSussman@users.noreply.github.com",
+            "name": "Jonah Sussman",
+            "username": "JonahSussman"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "115939cb490758da321eb282eb8b51776b15d098",
+          "message": ":sparkles: Refactor requirements.txt and remove security vulnerabilities (#255)\n\n* Requirements.txt changes\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Updated workflow to compile requirements.txt\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>",
+          "timestamp": "2024-08-02T12:04:27-04:00",
+          "tree_id": "d0110bc6995338de4b3c6916132b362ed074f309",
+          "url": "https://github.com/konveyor/kai/commit/115939cb490758da321eb282eb8b51776b15d098"
+        },
+        "date": 1722614760318,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
+            "value": "21.0",
             "unit": "Match"
           }
         ]
