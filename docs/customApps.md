@@ -74,6 +74,12 @@ Before running analysis, make sure that you have `kantra` installed
 1. `./get_latest_kantra_cli.sh` # fetches 'kantra' our analyzer tool and stores it in ../bin
 1. `cd ..`
 
+
+To ensure the analysis uses the necessary custom rules, follow these steps:
+
+1. Custom Rules: Download or create your custom rules and place them in the samples/custom_rules directory.
+2. Ignore Default Rules: The analysis script is set to ignore default Kantra rules. You can review or adjust this in example/analyze.sh if needed.
+
 To run analysis reports for the applications listed in `./samples/config.py`, run
 
 ```shell=
