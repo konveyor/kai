@@ -132,6 +132,37 @@ See [docs/contrib/Dev_Environment.md](docs/contrib/Dev_Environment.md)
 
 - If you are a developer working on Kai and you are updating requirements.txt, you will need to do some manual changes beyond just a `pip freeze &> ./requirements.txt`, we have a few directives that address differences in 'darwin' systems that need to be preserved. These need to be added manually after a 'freeze' as the freeze command is not aware of what exists in requirements.txt. Please consult the diff of changes you are making now from prior version and note the extra directions for `python_version` and or `sys_platform`
 
+## Modifying a Python Dependency
+
+If you need to add or update a Python dependency in the project, follow these steps:
+
+1. **Add the dependency**:
+   Open `requirements.in` and add the new dependency or modify an existing one.
+
+2. **Compile the requirements**:
+   Run the following commands to compile the dependencies and update the `requirements.txt` file:
+
+   ```bash
+      python -m venv <venv-name>
+      source <venv-name>/bin/activate
+      pip install pip-tools
+      pip-compile --allow-unsafe
+      pip install -r requirements.txt
+   ```
+  
+3. **Running the project:**
+    The following commands are used to the run the project
+
+    ```bash
+    make load-data
+    make run-server
+    python run_demo.py
+    ```
+
+## Working with Notebooks
+When working with Jupyter notebooks, ensure you've installed the project in editable mode `pip install -e .` to access all project modules and dependencies.
+
+
 ## Sign Your Commits
 
 ### DCO

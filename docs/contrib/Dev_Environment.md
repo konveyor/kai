@@ -23,7 +23,9 @@ Running Kai's backend involves running 2+ processes:
    1. `python3 -m venv env`
       - We've tested this with Python 3.11 and 3.12
    1. `source env/bin/activate`
-   1. `pip install -r ./requirements.txt`
+   1. `pip install pip-tools`
+   1. `pip-compile --allow-unsafe`
+   1. `pip install -r requirements.txt`
    1. `pip install -e .`
 
 #### Steps
