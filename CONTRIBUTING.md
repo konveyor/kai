@@ -128,10 +128,6 @@ See [docs/contrib/Dev_Environment.md](docs/contrib/Dev_Environment.md)
 - Please include a unit test for new features
 - See [docs/contrib/Testing.md](docs/contrib/Testing.md) for more guidance on testing
 
-## Updating requirements.txt
-
-- If you are a developer working on Kai and you are updating requirements.txt, you will need to do some manual changes beyond just a `pip freeze &> ./requirements.txt`, we have a few directives that address differences in 'darwin' systems that need to be preserved. These need to be added manually after a 'freeze' as the freeze command is not aware of what exists in requirements.txt. Please consult the diff of changes you are making now from prior version and note the extra directions for `python_version` and or `sys_platform`
-
 ## Modifying a Python Dependency
 
 If you need to add or update a Python dependency in the project, follow these steps:
@@ -149,19 +145,36 @@ If you need to add or update a Python dependency in the project, follow these st
       pip-compile --allow-unsafe
       pip install -r requirements.txt
    ```
-  
-3. **Running the project:**
-    The following commands are used to the run the project
 
-    ```bash
-    make load-data
-    make run-server
-    python run_demo.py
-    ```
+## Running the Project
+
+To get started with the project, follow these steps:
+
+1. **Load Data**:
+
+   ```bash
+   make load-data
+   ```
+
+2. **Run the Server**:
+
+   ```bash
+   make run-server
+   ```
+
+3. **Demo Interaction** (Recommended for developers):
+   Navigate to the `example` directory and run the demo script:
+   ```bash
+   cd example
+   python run_demo.py
+   ```
+   Running `run_demo.py` from the `example` directory is a recommended way for developers to interact with the project, allowing you to explore and test the workflow. For end users, the standard interaction will be through the IDE plugin, which provides the main interface for usage. The `run_demo.py` script is an optional method to get a feel for the project.
+
+For end users, please refer to the IDE plugin documentation for the primary interaction path.
 
 ## Working with Notebooks
-When working with Jupyter notebooks, ensure you've installed the project in editable mode `pip install -e .` to access all project modules and dependencies.
 
+When working with Jupyter notebooks, ensure you've installed the project in editable mode `pip install -e .` to access all project modules and dependencies.
 
 ## Sign Your Commits
 
