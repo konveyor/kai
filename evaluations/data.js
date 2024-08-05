@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1722867908030,
+  "lastUpdate": 1722867956871,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -5016,6 +5016,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
             "value": "79.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jmontleo@redhat.com",
+            "name": "Jason Montleon",
+            "username": "jmontleon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8b8056a4b29608f1c6c5c6ee22ee2d908999342a",
+          "message": ":bug: Closes #274 cachecontrol error in GHA container builds (#280)\n\nSigned-off-by: Jason Montleon <jmontleo@redhat.com>",
+          "timestamp": "2024-08-05T10:23:34-04:00",
+          "tree_id": "79e22a1f89906f3dd60d9f64d22983a72abf81f9",
+          "url": "https://github.com/konveyor/kai/commit/8b8056a4b29608f1c6c5c6ee22ee2d908999342a"
+        },
+        "date": 1722867956236,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
+            "value": "1.0",
             "unit": "Match"
           }
         ]
