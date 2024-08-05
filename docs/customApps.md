@@ -79,7 +79,25 @@ To ensure the analysis uses the necessary custom rules, follow these steps:
 
 1. Custom Rules: Download or create your custom rules and place them in the samples/custom_rules directory.
 2. Ignore Default Rules: The analysis script is set to ignore default Kantra rules. You can review or adjust this in example/analyze.sh if needed.
+---
+<b>Note: </b> There are two different places where analysis is performed and currently only one of them is set to ignore the default Kantra rules:
 
+1. Analysis of Sample Data: This runs on several sample applications using both default and custom rules. It simulates integration with a Konveyor instance populated with data. The specific use-case is run with the following command:
+```
+cmd = time ./bin/kantra analyze -i {source_dir} -t "quarkus" -t "jakarta-ee" -t "jakarta-ee8+" -t "jakarta-ee9+" -t "cloud-readiness" --rules {os.path.dirname(__file__)}/custom_rules -o {full_output_dir} --overwrite
+```
+Configuration for this analysis is in [analyze_apps.py](https://github.com/konveyor/kai/blob/main/samples/analyze_apps.py#L83).
+
+2. Client-Side Analysis: This can be handled through example/run_demo.py or running in an IDE. Default rules are ignored, and only custom rules are used.
+```
+time "${KANTRA_BIN}" analyze -i "${PWD}"/"${SOURCE_DIR}" "${SOURCE_ONLY}" --enable-default-rulesets=false -t "quarkus" -t "jakarta-ee" -t "jakarta-ee8" -t "jakarta-ee9" -t "cloud-readiness" --rules "${DEFAULT_RULES_DIR}" --rules "${CUSTOM_RULES_DIR}" -o "${OUTDIR}" --overwrite
+```
+Configuration for this analysis is in [analyze.sh](https://github.com/konveyor/kai/blob/main/example/analyze.sh#L50)
+
+For client-side analysis, use the ``` --enable-default-rulesets=false``` option and then pass in the below directory to use:
+[Konveyor Default Rules](https://github.com/konveyor/kai/tree/main/example/default_rules)
+
+---
 To run analysis reports for the applications listed in `./samples/config.py`, run
 
 ```shell=
