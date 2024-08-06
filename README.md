@@ -33,7 +33,7 @@ The approach begins with using static code analysis via the [Kantra](https://git
 
 ### Launch the Kai backend with sample data
 
-The quickest way to get running is to leverage sample data commited into the Kai repo along with the `podman compose up` workflow
+The quickest way to get running is to leverage sample data committed into the Kai repo along with the `podman compose up` workflow
 
 1. `git clone https://github.com/konveyor/kai.git`
 1. `cd kai`
