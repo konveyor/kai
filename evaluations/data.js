@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1722910869281,
+  "lastUpdate": 1722910890673,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -5306,6 +5306,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
             "value": "1.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jwmatthews@gmail.com",
+            "name": "John Matthews",
+            "username": "jwmatthews"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "37d4688189322cf6d003f59e290c8b801e13c9bf",
+          "message": "Update README.md to fix broken links (#271)\n\nSmall typo missing \"/\"\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>",
+          "timestamp": "2024-08-05T22:18:37-04:00",
+          "tree_id": "7de2e2a7ed644c81d6374c58fe4cda17c4571f5c",
+          "url": "https://github.com/konveyor/kai/commit/37d4688189322cf6d003f59e290c8b801e13c9bf"
+        },
+        "date": 1722910889874,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
+            "value": "79.0",
             "unit": "Match"
           }
         ]
