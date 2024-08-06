@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1722910858738,
+  "lastUpdate": 1722910862925,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -5219,6 +5219,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
             "value": "1.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jwmatthews@gmail.com",
+            "name": "John Matthews",
+            "username": "jwmatthews"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e61be15c3364f346ab36c441a39112d07ca02d8f",
+          "message": "Update README.md for ROADMAP.md link (#282)\n\nFixes #281\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>",
+          "timestamp": "2024-08-05T22:19:44-04:00",
+          "tree_id": "58306f2711fcfe619b754314f6dab6561533f493",
+          "url": "https://github.com/konveyor/kai/commit/e61be15c3364f346ab36c441a39112d07ca02d8f"
+        },
+        "date": 1722910861781,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
+            "value": "295.0",
             "unit": "Match"
           }
         ]
