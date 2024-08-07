@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1723044019372,
+  "lastUpdate": 1723047883991,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -5509,6 +5509,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
             "value": "43.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "107868772+brf153@users.noreply.github.com",
+            "name": "Devaansh Bhandari",
+            "username": "brf153"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1c5e827000304c6a460f30b53ba7818020253d6a",
+          "message": "fix: Fix Path Resolution in `process_log_dir_replacements` Function (#279)\n\n* fix process_log_dir_replacements function in kai_logging.py\r\n\r\nSigned-off-by: brf153 <153hsb@gmail.com>\r\n\r\n* correct kai_project_directory\r\n\r\nSigned-off-by: brf153 <153hsb@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: brf153 <153hsb@gmail.com>",
+          "timestamp": "2024-08-07T12:23:38-04:00",
+          "tree_id": "1ce3a59370fb409276d36ebe280280c123e82f7a",
+          "url": "https://github.com/konveyor/kai/commit/1c5e827000304c6a460f30b53ba7818020253d6a"
+        },
+        "date": 1723047883419,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
+            "value": "295.0",
             "unit": "Match"
           }
         ]
