@@ -18,7 +18,7 @@ def process_log_dir_replacements(log_dir: str) -> str:
     ##
     if log_dir.startswith("$pwd"):
         current_directory = os.getcwd()
-        kai_project_directory = os.path.abspath(os.path.join(current_directory, ".."))
+        kai_project_directory = os.path.abspath(current_directory)
         log_dir = log_dir.replace("$pwd", kai_project_directory, 1)
         log_dir = os.path.normpath(log_dir)
     return log_dir
