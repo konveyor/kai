@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1723043917131,
+  "lastUpdate": 1723043990361,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -5451,6 +5451,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
             "value": "1.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "107868772+brf153@users.noreply.github.com",
+            "name": "Devaansh Bhandari",
+            "username": "brf153"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "267bf1bdd2c51777dd85e90863fe0939356b9328",
+          "message": "Update documentation for dependency management and setup instructions (#277)\n\n* Update documentation for dependency management and setup instructions\r\n\r\nSigned-off-by: brf153 <153hsb@gmail.com>\r\n\r\n* Update README.md with correct directory paths and clarify usage for .\r\n\r\nSigned-off-by: brf153 <153hsb@gmail.com>\r\n\r\n* fix trunk linting issues\r\n\r\nSigned-off-by: brf153 <153hsb@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: brf153 <153hsb@gmail.com>",
+          "timestamp": "2024-08-07T11:17:08-04:00",
+          "tree_id": "95ba7ffd76e5f23f57c7be2de64bcd247936e816",
+          "url": "https://github.com/konveyor/kai/commit/267bf1bdd2c51777dd85e90863fe0939356b9328"
+        },
+        "date": 1723043989134,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
+            "value": "79.0",
             "unit": "Match"
           }
         ]
