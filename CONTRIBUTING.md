@@ -128,9 +128,53 @@ See [docs/contrib/Dev_Environment.md](docs/contrib/Dev_Environment.md)
 - Please include a unit test for new features
 - See [docs/contrib/Testing.md](docs/contrib/Testing.md) for more guidance on testing
 
-## Updating requirements.txt
+## Modifying a Python Dependency
 
-- If you are a developer working on Kai and you are updating requirements.txt, you will need to do some manual changes beyond just a `pip freeze &> ./requirements.txt`, we have a few directives that address differences in 'darwin' systems that need to be preserved. These need to be added manually after a 'freeze' as the freeze command is not aware of what exists in requirements.txt. Please consult the diff of changes you are making now from prior version and note the extra directions for `python_version` and or `sys_platform`
+If you need to add or update a Python dependency in the project, follow these steps:
+
+1. **Add the dependency**:
+   Open `requirements.in` and add the new dependency or modify an existing one.
+
+2. **Compile the requirements**:
+   Run the following commands to compile the dependencies and update the `requirements.txt` file:
+
+   ```bash
+      python -m venv <venv-name>
+      source <venv-name>/bin/activate
+      pip install pip-tools
+      pip-compile --allow-unsafe
+      pip install -r requirements.txt
+   ```
+
+## Running the Project
+
+To get started with the project, follow these steps:
+
+1. **Load Data**:
+
+   ```bash
+   make load-data
+   ```
+
+2. **Run the Server**:
+
+   ```bash
+   make run-server
+   ```
+
+3. **Demo Interaction** (Recommended for developers):
+   Navigate to the `example` directory and run the demo script:
+   ```bash
+   cd example
+   python run_demo.py
+   ```
+   Running `run_demo.py` from the `example` directory is a recommended way for developers to interact with the project, allowing you to explore and test the workflow. For end users, the standard interaction will be through the IDE plugin, which provides the main interface for usage. The `run_demo.py` script is an optional method to get a feel for the project.
+
+For end users, please refer to the IDE plugin documentation for the primary interaction path.
+
+## Working with Notebooks
+
+When working with Jupyter notebooks, ensure you've installed the project in editable mode `pip install -e .` to access all project modules and dependencies.
 
 ## Sign Your Commits
 
@@ -146,18 +190,23 @@ have the right to contribute the code you are submitting to the project.
 You sign-off by adding the following to your commit messages. Your sign-off must
 match the git user and email associated with the commit.
 
+```bash
     This is my commit message
-
     Signed-off-by: Your Name <your.name@example.com>
+```
 
 Git has a `-s` command line option to do this automatically:
 
+```bash
     git commit -s -m 'This is my commit message'
+```
 
 If you forgot to do this and have not yet pushed your changes to the remote
 repository, you can amend your commit with the sign-off by running
 
+```bash
     git commit --amend -s
+```
 
 ## Pull Request Checklist
 
@@ -173,7 +222,7 @@ before you submit your code:
 - Ensure that unit tests pass
   - See [docs/contrib/Testing.md](docs/contrib/Testing.md)
 - If adding a new feature please add a new unit test
-- If you modified `requirements.txt` please see [updating requirements.txt](#updating-requirementstxt)
+- If you modified `requirements.txt` please see [Modifying a Python Dependency](#modifying-a-python-dependency)
 - Ensure that [`example/run_demo.py`](example/run_demo.py) works
 - Commits are signed as per [DCO](#dco)
 - PR Title begins with a gitemoji as described in [Pull Request Title](#pull-request-title)
