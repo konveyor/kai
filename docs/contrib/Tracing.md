@@ -40,7 +40,7 @@ Example of hierarchy:
                   │           │   ├── prompt << The formatted prompt prior to sending to LLM >>
                   │           │   └── prompt_vars.json << The prompt variables which are injected into the prompt template >>
                   │           ├── params.json << Request parameters >>
-                  │           └── timing << Duration of a Succesful Request >>
+                  │           └── timing << Duration of a Successful Request >>
                   └── src
                       └── main
                           ├── java
