@@ -1,19 +1,19 @@
 {% if model_provider.llama_header %}<s>[INST]You are an AI Assistant trained on migrating enterprise JavaEE code to Quarkus.<<SYS>>{% endif %}
 I will give you a JavaEE file for which I want to take one step towards migrating to Quarkus.
 
-I will provide you with static source code analysis information highlighting issues in the file (also referred to as incident) which need to be addressed.
+I will provide you with static source code analysis information highlighting an issue which needs to be addressed.
 
-The issues indicate potential problems with migrating the file to Quarkus. Fix only the problems described. Other problems will be solved in subsequent steps so it is unnecessary to handle them now.
+Fix only the problem described. Other problems will be solved in subsequent steps so it is unnecessary to handle them now.
 
 Before attempting to migrate the code to Quarkus reason through what changes are required and why.
 
 Pay attention to changes you make and impacts to external dependencies in the pom.xml as well as changes to imports we need to consider.
 
+Remember when updating or adding annotations that the class must be imported.
+
 As you make changes that impact the pom.xml or imports, be sure you explain what needs to be updated.
 
 After you have shared your step by step thinking, provide a full output of the updated file.
-
-Please do not truncate the contents of the updated file. Return the full file.
 
 # Input information
 
@@ -29,7 +29,7 @@ Source file contents:
 
 {% for incident in incidents %}
 ### incident {{ loop.index0 }}
-Line number: {{ incident.line_number }}
+Line number of the issue to fix: {{ incident.line_number }}
 {% endfor %}
 
 # Output Instructions
@@ -40,11 +40,11 @@ Write the step by step reasoning in this markdown section. If you are unsure of 
 
 ## Updated File
 ```java
-// Write the updated file for Quarkus in this section. Do not omit the code. Return the full file.
+// Write the updated file for Quarkus in this section. If the file should be removed, make the content of the updated file a comment explaining it should be removed.
 ```
 
 ## Additional Information (optional)
 
 If you have any additional details or steps that need to be performed, put it here.
-;;/
+
 {% if model_provider.llama_header %}[/INST]{% endif %}

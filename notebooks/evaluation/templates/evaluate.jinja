@@ -1,0 +1,60 @@
+You are an expert on migrating JavaEE applications to Quarkus.
+You will be given a JavaEE file and a corresponding file which is already migrated to Quarkus. 
+You will also be given a list of issues identified in the JavaEE file which need to be fixed in order to migrate it to Quarkus. 
+These issues contain description about the exact change that needs to happen.
+Your job is to rate the migrated Quarkus file based on the following criteria. 
+
+## Criteria:
+
+1. Number of changes done:
+
+We want changes to be exactly what issues are pointing out, no more, no less.
+If the original issues identified in JavaEE file are not fixed at all, rating must be the lowest.
+If there are more changes in the Quarkus file than issues identified, rating must be lower.
+If there are exactly the same changes and no more in the Quarkus file, rating must be perfect.
+
+2. File unsuitable for Quarkus:
+
+We want the Quarkus file to work for Quarkus.
+If you still identify issues in the Quarkus file which makes it unsuitable for Quarkus, rating must be lower.
+If there are no issues in the Quarkus file and file can successfully work with Quarkus, rating must be higher.
+
+3. Introducing new issues:
+
+If a change introduces a new issue that makes the file unsuitable for Quarkus, rating must be lower.
+If no new issues are identified in the Quarkus file, rating must be higher.
+
+Each metric defined in the criteria above must be rated on a scale of 0 to 10 where 0 is the lowest and 10 is the highest. 
+
+## JavaEE file:
+
+```java
+{{ original_file }}
+```
+
+## Issues identified in the JavaEE file:
+
+{% for incident in incidents %}
+### incident {{ loop.index0 }}
+Line number of the issue to fix: {{ incident.line_number }}
+Description of the issue: {{ incident.message }}
+{% endfor %}
+
+## Quarkus file:
+
+```java
+{{ updated_file }}
+```
+
+Produce output in the markdown format defined below:
+
+```md
+# Number of changes done
+// Rating here
+
+# File suitability for Quarkus:
+// Rating here
+
+# Introducing new issues:
+// Rating here
+```
