@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1723082461140,
+  "lastUpdate": 1723082464383,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -5683,6 +5683,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
             "value": "295.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jwmatthews@gmail.com",
+            "name": "John Matthews",
+            "username": "jwmatthews"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f645c2b2cb68e7c2cb90c700c3d20b6995fa5362",
+          "message": ":book: Update Getting_Started.md fix typo and broken link (#272)\n\n* Update Getting_Started.md fix typo and broken link\n\nSigned-off-by: John Matthews <jwmatthews@gmail.com>\n\n* Fixed more typos\n\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\n\n---------\n\nSigned-off-by: John Matthews <jwmatthews@gmail.com>\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\nCo-authored-by: JonahSussman <sussmanjonah@gmail.com>",
+          "timestamp": "2024-08-07T21:59:51-04:00",
+          "tree_id": "114b4cff49a2a7734315664255dbdd9d17a5f7ae",
+          "url": "https://github.com/konveyor/kai/commit/f645c2b2cb68e7c2cb90c700c3d20b6995fa5362"
+        },
+        "date": 1723082463213,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
+            "value": "1.0",
             "unit": "Match"
           }
         ]
