@@ -35,11 +35,11 @@ The approach begins with using static code analysis via the [Kantra](https://git
 
 The quickest way to get running is to leverage sample data committed into the Kai repo along with the `podman compose up` workflow
 
-1. `git clone https://github.com/konveyor/kai.git`
-1. `cd kai`
-1. `git checkout stable`
-    * ***NOTE:*** Until we fix [Issue #264](https://github.com/konveyor/kai/issues/264) there is a need to be on `stable` branch of code
-1. Edit `compose.yaml`
+1.  `git clone https://github.com/konveyor/kai.git`
+1.  `cd kai`
+1.  `git checkout stable`
+    - **_NOTE:_** Until we fix [Issue #264](https://github.com/konveyor/kai/issues/264) there is a need to be on `stable` branch of code
+1.  Edit `compose.yaml`
 
         diff --git a/compose.yaml b/compose.yaml
         index c0f2a9e..69a3be8 100644
@@ -47,7 +47,7 @@ The quickest way to get running is to leverage sample data committed into the Ka
         +++ b/compose.yaml
         @@ -1,7 +1,7 @@
         version: "3"
-        
+
         x-kai-variables: &kai-variables
         -  DEMO_MODE: "False"
         +  DEMO_MODE: "True"
@@ -55,12 +55,13 @@ The quickest way to get running is to leverage sample data committed into the Ka
           IMPORTER_ARGS:
           LOG_LEVEL: info
 
-    * ***NOTE:*** The above edit of `compose.yaml` will not be needed once [Issue #257](https://github.com/konveyor/kai/issues/257) is fixed
-1. Run `podman compose up`. The first time this is run it will take several minutes to download images and to populate sample data.
-   - You will need to install [podman](https://podman.io/docs/installation) and [podman-compose](https://github.com/containers/podman-compose?tab=readme-ov-file#installation) if you do not already have it installed.  This allows your system to run containers.
-   - After the first run the DB will be populated and subsequent starts will be much faster, as long as the kai_kai_db_data volume is not deleted.
-   - To clean up all resources run `podman compose down && podman volume rm kai_kai_db_data`.
-1. Kai backend is now running and ready to serve requests
+    - **_NOTE:_** The above edit of `compose.yaml` will not be needed once [Issue #257](https://github.com/konveyor/kai/issues/257) is fixed
+
+1.  Run `podman compose up`. The first time this is run it will take several minutes to download images and to populate sample data.
+    - You will need to install [podman](https://podman.io/docs/installation) and [podman-compose](https://github.com/containers/podman-compose?tab=readme-ov-file#installation) if you do not already have it installed. This allows your system to run containers.
+    - After the first run the DB will be populated and subsequent starts will be much faster, as long as the kai_kai_db_data volume is not deleted.
+    - To clean up all resources run `podman compose down && podman volume rm kai_kai_db_data`.
+1.  Kai backend is now running and ready to serve requests
 
 ### Guided walk-through
 
