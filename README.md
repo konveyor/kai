@@ -57,7 +57,8 @@ The quickest way to get running is to leverage sample data committed into the Ka
 
     - **_NOTE:_** The above edit of `compose.yaml` will not be needed once [Issue #257](https://github.com/konveyor/kai/issues/257) is fixed
 
-1.  Run `podman compose up`. The first time this is run it will take several minutes to download images and to populate sample data.
+1.  Run `GENAI_KEY="something" podman compose up`. The first time this is run it will take several minutes to download images and to populate sample data.
+    - **_NOTE:_** We need to provide some/any value to `GENAI_KEY` environment variable until we address [Issue #287](https://github.com/konveyor/kai/issues/287)
     - You will need to install [podman](https://podman.io/docs/installation) and [podman-compose](https://github.com/containers/podman-compose?tab=readme-ov-file#installation) if you do not already have it installed. This allows your system to run containers.
     - After the first run the DB will be populated and subsequent starts will be much faster, as long as the kai_kai_db_data volume is not deleted.
     - To clean up all resources run `podman compose down && podman volume rm kai_kai_db_data`.
