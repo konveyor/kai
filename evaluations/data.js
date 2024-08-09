@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1723211219722,
+  "lastUpdate": 1723211419166,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -5915,6 +5915,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
             "value": "295.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jwmatthews@gmail.com",
+            "name": "John Matthews",
+            "username": "jwmatthews"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ef56faca1aaa4499c0e7edf434b8f4982bf09bee",
+          "message": "📖 README updates so folks may run stable as of today (#285)\n\n* README updates so folks may run stable as of today\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>\r\n\r\n* trunk fmt updates\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>",
+          "timestamp": "2024-08-09T09:45:19-04:00",
+          "tree_id": "0fbffd6148cc419a5ba68507e3bb1c0ef2a748b1",
+          "url": "https://github.com/konveyor/kai/commit/ef56faca1aaa4499c0e7edf434b8f4982bf09bee"
+        },
+        "date": 1723211418553,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
+            "value": "79.0",
             "unit": "Match"
           }
         ]
