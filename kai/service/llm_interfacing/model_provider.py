@@ -1,3 +1,5 @@
+import os
+
 from genai import Client, Credentials
 from genai.extensions.langchain.chat_llm import LangChainChatInterface
 from genai.schema import DecodingMethod
@@ -18,7 +20,6 @@ class ModelProvider:
         defaults: dict
         model_args: dict
         model_id: str
-
         # Set the model class, model args, and model id based on the provider
         match config.provider:
             case "ChatOllama":
@@ -51,9 +52,14 @@ class ModelProvider:
 
             case "ChatIBMGenAI":
                 model_class = LangChainChatInterface
-
+                if os.getenv("DEMO_MODE") == "true":
+                    credentials = Credentials(
+                        api_key="GENAI_KEY", api_endpoint="dummy_endpoint"
+                    )
+                else:
+                    credentials = Credentials.from_env()
                 defaults = {
-                    "client": Client(credentials=Credentials.from_env()),
+                    "client": Client(credentials=credentials),
                     "model_id": "ibm-mistralai/mixtral-8x7b-instruct-v01-q",
                     "parameters": {
                         "decoding_method": DecodingMethod.SAMPLE,
