@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1723215008102,
+  "lastUpdate": 1723215233415,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -6060,6 +6060,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
             "value": "1.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jwmatthews@gmail.com",
+            "name": "John Matthews",
+            "username": "jwmatthews"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "63503d1f1b2fd6c738999d022359468752560313",
+          "message": "📖 Update README.md for link to IDE usage (#286)\n\n* Update README.md for link to IDE usage\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>\r\n\r\n* Update README.md\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>\r\n\r\n* Update README.md\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>",
+          "timestamp": "2024-08-09T10:48:51-04:00",
+          "tree_id": "c1628bafbe22148874fb3858d04cf5bf73c916db",
+          "url": "https://github.com/konveyor/kai/commit/63503d1f1b2fd6c738999d022359468752560313"
+        },
+        "date": 1723215232580,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
+            "value": "79.0",
             "unit": "Match"
           }
         ]
