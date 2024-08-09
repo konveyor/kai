@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1723216767201,
+  "lastUpdate": 1723216787142,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -6321,6 +6321,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
             "value": "295.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jwmatthews@gmail.com",
+            "name": "John Matthews",
+            "username": "jwmatthews"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6f829ebcfb4d9f78410cf0f12140bb451fab786a",
+          "message": "Add note on GENAI_KEY being required (#288)\n\nSigned-off-by: John Matthews <jwmatthews@gmail.com>",
+          "timestamp": "2024-08-09T11:17:22-04:00",
+          "tree_id": "de8bb182ade160fef7163754d71691757d4b827d",
+          "url": "https://github.com/konveyor/kai/commit/6f829ebcfb4d9f78410cf0f12140bb451fab786a"
+        },
+        "date": 1723216786484,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
+            "value": "79.0",
             "unit": "Match"
           }
         ]
