@@ -33,7 +33,7 @@ The approach begins with using static code analysis via the [Kantra](https://git
 
 ### Launch the Kai backend with sample data
 
-The quickest way to get running is to leverage sample data commited into the Kai repo along with the `podman compose up` workflow
+The quickest way to get running is to leverage sample data committed into the Kai repo along with the `podman compose up` workflow
 
 1. `git clone https://github.com/konveyor/kai.git`
 1. `cd kai`
@@ -65,7 +65,7 @@ The above information is a quick path to enable running Kai quickly to see how i
 ## Roadmap and Early Builds
 
 - Kai is in it's early development phase and is NOT ready for production usage.
-- See [Roadmap.md](Roadmap.md) to learn about the project's goals and milestones
+- See [ROADMAP.md](/ROADMAP.md) to learn about the project's goals and milestones
 - Please see [docs/Evaluation_Builds.md](docs/Evaluation_Builds.md) for information on early builds.
 
 ## Contributing

@@ -23,7 +23,7 @@ In this step, we will configure the Kai IDE plugin within VSCode to showcase the
 
 ### Setup Kai VSCode IDE plugin
 
-- Follow along the steps listed in [here](https://github.com/konveyor-ecosystem/kai/tree/main/ide) to intergrate Kai IDE plugin with VSCode.
+- Follow along the steps listed in [here](https://github.com/konveyor-ecosystem/kai/tree/main/ide) to integrate Kai IDE plugin with VSCode.
 
 - Before starting the Kai server, Select model `meta-llama/llama-3-70b-instruct` by uncommenting the following block in `kai/config.toml` file
 
@@ -101,7 +101,7 @@ Let's clone the Coolstore application, which we will be used demo the migration 
 
 We will analyze the Coolstore application using the following migration targets to identify potential areas for improvement:
 
-- containterization
+- containerization
 - jakarta-ee
 - jakarta-ee8+
 - jakarata-ee9+
@@ -222,4 +222,4 @@ mvn clean compile package -Dquarkus.kubernetes.deploy=true
 
 ### Conclusion
 
-In this demo, we showcased the capability of Kai in facilitating various types of code migrations within the Coolstore application. By leveraging Kai's capabilities, organizations can expedite the modernization process. If you are intereted to learn more about our ongoing efforts and future plans, please reach out to us in the [slack channel](https://kubernetes.slack.com/archives/CR85S82A2)
+In this demo, we showcased the capability of Kai in facilitating various types of code migrations within the Coolstore application. By leveraging Kai's capabilities, organizations can expedite the modernization process. If you are interested to learn more about our ongoing efforts and future plans, please reach out to us in the [slack channel](https://kubernetes.slack.com/archives/CR85S82A2)

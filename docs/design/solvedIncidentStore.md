@@ -38,7 +38,7 @@ In the longer term, additional layers of processing will be implemented to ensur
 
 ### Long-term Data Storage
 
-Analysis reports are stored permantently. Solutions are stored in a separate portion of the database for use with Retrieval-Augmented Generation (RAG) prompts. Solutions are considered recomputable from the original reports. Permanent storage of analysis reports allows for:
+Analysis reports are stored permanently. Solutions are stored in a separate portion of the database for use with Retrieval-Augmented Generation (RAG) prompts. Solutions are considered recomputable from the original reports. Permanent storage of analysis reports allows for:
 
 - Future data extraction, if additional data is identified for extraction.
 - Using the data for fine-tuning models, providing flexibility for ongoing improvements.
