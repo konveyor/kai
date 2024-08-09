@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1723216432088,
+  "lastUpdate": 1723216433611,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -6146,6 +6146,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
+            "value": "1.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "107868772+brf153@users.noreply.github.com",
+            "name": "Devaansh Bhandari",
+            "username": "brf153"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1256cc313c58e4b0830e06d8a37b2e1d22906f0e",
+          "message": "add test for kai_logging.ppy (#283)\n\nSigned-off-by: brf153 <153hsb@gmail.com>",
+          "timestamp": "2024-08-09T11:12:34-04:00",
+          "tree_id": "7723d347aac6666b9249d888bef9f2551fbe5cc6",
+          "url": "https://github.com/konveyor/kai/commit/1256cc313c58e4b0830e06d8a37b2e1d22906f0e"
+        },
+        "date": 1723216432764,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
             "value": "1.0",
             "unit": "Match"
           }
