@@ -1,0 +1,80 @@
+package com.redhat.coolstore.model;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Bean
+public class ShoppingCart implements Serializable {
+
+    private static final long serialVersionUID = -1108043957592113528L;
+
+    private double getCartItemTotal() {
+        return cartItemTotal;
+    }
+
+    private void setCartItemTotal(double cartItemTotal) {
+        this.cartItemTotal = cartItemTotal;
+    }
+
+    private double getShippingTotal() {
+        return shippingTotal;
+    }
+
+    private void setShippingTotal(double shippingTotal) {
+        this.shippingTotal = shippingTotal;
+    }
+
+    private double getCartTotal() {
+        return cartTotal;
+    }
+
+    private void setCartTotal(double cartTotal) {
+        this.cartTotal = cartTotal;
+    }
+
+    private double getCartItemPromoSavings() {
+        return cartItemPromoSavings;
+    }
+
+    private void setCartItemPromoSavings(double cartItemPromoSavings) {
+        this.cartItemPromoSavings = cartItemPromoSavings;
+    }
+
+    private double getShippingPromoSavings() {
+        return shippingPromoSavings;
+    }
+
+    private void setShippingPromoSavings(double shippingPromoSavings) {
+        this.shippingPromoSavings = shippingPromoSavings;
+    }
+
+    private List<ShoppingCartItem> getShoppingCartItemList() {
+        return shoppingCartItemList;
+    }
+
+    private void setShoppingCartItemList(List<ShoppingCartItem> shoppingCartItemList) {
+        this.shoppingCartItemList = shoppingCartItemList;
+    }
+
+    private void resetShoppingCartItemList() {
+        shoppingCartItemList = new ArrayList<>();
+    }
+
+    private void addShoppingCartItem(ShoppingCartItem sci) {
+        shoppingCartItemList.add(sci);
+    }
+
+    private boolean removeShoppingCartItem(ShoppingCartItem sci) {
+        return shoppingCartItemList.remove(sci);
+    }
+
+    @Override
+    public String toString() {
+        return "ShoppingCart [cartItemTotal=" + cartItemTotal
+                + ", cartItemPromoSavings=" + cartItemPromoSavings
+                + ", shippingTotal=" + shippingTotal
+                + ", shippingPromoSavings=" + shippingPromoSavings
+                + ", cartTotal=" + cartTotal + ", shoppingCartItemList="
+                + shoppingCartItemList + "]";
+    }
+}

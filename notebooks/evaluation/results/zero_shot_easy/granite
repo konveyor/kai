@@ -1,0 +1,113 @@
+// Add import statements for Quarkus and required dependencies here
+import org.hibernate.validator.constraints.NotBlank;
+import quarkus.hibernate.cfg.spi.ConfigurationSourceProvider;
+import quarkus.hibernate.orm.PersistenceUnit;
+import quarkus.runtime.annotations.RegisterGeneratedProperties;
+
+import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.context.Dependent;
+import javax.enterprise.inject.Any;
+import javax.enterprise.inject.Default;
+import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@ApplicationScoped
+@RegisterGeneratedProperties
+public class ShoppingCart {
+
+    private static final long serialVersionUID = 1L;
+
+    private double cartItemTotal;
+
+    private double cartItemPromoSavings;
+
+    private double shippingTotal;
+
+    private double shippingPromoSavings;
+
+    private double cartTotal;
+
+    private List<ShoppingCartItem> items = new ArrayList<>();
+
+    @Inject
+    private ConfigurationSourceProvider configurationSourceProvider;
+
+    public ShoppingCart() {
+    }
+
+    public List<ShoppingCartItem> getItems() {
+        return items;
+    }
+
+    public void setItems(List<ShoppingCartItem> items) {
+        this.items = items;
+    }
+
+    public void addItem(ShoppingCartItem sci) {
+        items.add(sci);
+    }
+
+    public boolean removeItem(ShoppingCartItem sci) {
+        boolean removed = items.remove(sci);
+        if (removed) {
+            cartItemTotal = items.stream().mapToDouble(sci::getPrice).sum();
+            cartItemPromoSavings = items.stream().mapToDouble(sci::getPromoSavings).sum();
+        }
+        return removed;
+    }
+
+    public double getTotal(String type) {
+        switch (type) {
+            case "item":
+                return items.stream().mapToDouble(sci -> sci.getPrice()).sum();
+            case "shipping":
+                return shippingTotal;
+            default:
+                throw new IllegalArgumentException("Invalid type: " + type);
+        }
+    }
+
+    public void setTotal(String type, double value) {
+        switch (type) {
+            case "item":
+                items.stream().map(sci -> sci.setPrice(value)).collect(Collectors.toList()).forEach(sci -> cartItemTotal += sci.getPrice());
+                break;
+            case "shipping":
+                shippingTotal = value;
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid type: " + type);
+        }
+    }
+
+    public double getPromoSavings(String type) {
+        switch (type) {
+            case "item":
+                return items.stream().mapToDouble(sci -> sci.getPromoSavings()).sum();
+            case "shipping":
+                return shippingPromoSavings;
+            default:
+                throw new IllegalArgumentException("Invalid type: " + type);
+        }
+    }
+
+    public void setPromoSavings(String type, double value) {
+        switch (type) {
+            case "item":
+                items.stream().map(sci -> sci.setPromoSavings(value)).collect(Collectors.toList()).forEach(sci -> cartItemPromoSavings += sci.getPromoSavings());
+                break;
+            case "shipping":
+                shippingPromoSavings = value;
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid type: " + type);
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "ShoppingCart [cartItemTotal=" + cartItemTotal + ", cartItemPromoSavings=" + cartItemPromoSavings + ", shippingTotal=" + shippingTotal + ", shippingPromoSavings=" + shippingPromoSavings + ", cartTotal=" + cartTotal + ", items=" + items + "]";
+    }
+}
