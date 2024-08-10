@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1723299427705,
+  "lastUpdate": 1723299518161,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -6611,6 +6611,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
             "value": "1.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "maira.usman5703@gmail.com",
+            "name": "Maira Usman",
+            "username": "Myrausman"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b4ecf36368f86783c71a53b0f407d99f951f0915",
+          "message": "Added explicit steps for configuring and using custom rules. (#276)\n\n* included custom rules usage\r\n\r\nSigned-off-by: Maira Usman <maira.usman5703@gmail.com>\r\n\r\n* updated doc\r\n\r\nSigned-off-by: Maira Usman <maira.usman5703@gmail.com>\r\n\r\n* updated doc\r\n\r\nSigned-off-by: Maira Usman <maira.usman5703@gmail.com>\r\n\r\n* fixed formatting\r\n\r\nSigned-off-by: Myrausman <maira.usman5703@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: Maira Usman <maira.usman5703@gmail.com>\r\nSigned-off-by: Myrausman <maira.usman5703@gmail.com>",
+          "timestamp": "2024-08-10T10:15:36-04:00",
+          "tree_id": "7583989646ace113912017357a9a350b6f075806",
+          "url": "https://github.com/konveyor/kai/commit/b4ecf36368f86783c71a53b0f407d99f951f0915"
+        },
+        "date": 1723299517500,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
+            "value": "79.0",
             "unit": "Match"
           }
         ]
