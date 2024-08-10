@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1723299518161,
+  "lastUpdate": 1723299545904,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -6635,6 +6635,35 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/konveyor/kai/commit/b4ecf36368f86783c71a53b0f407d99f951f0915"
         },
         "date": 1723299517500,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
+            "value": "79.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jwmatthews@gmail.com",
+            "name": "John Matthews",
+            "username": "jwmatthews"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "22a575ce42f9fd5e71a926b4b14bd370f5ac7f8a",
+          "message": "✨ Ability to use Amazon Bedrock models such as Claude 3.5 Sonnet (#289)\n\n* Ability to use Amazon Bedrock models such as Claude 3.5 Sonnet\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>\r\n\r\n* Fix so ran: pip-compile --allow-unsafe\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>",
+          "timestamp": "2024-08-10T10:15:53-04:00",
+          "tree_id": "9c7a8200353f5f54b4d3cddba1995117dedbb295",
+          "url": "https://github.com/konveyor/kai/commit/22a575ce42f9fd5e71a926b4b14bd370f5ac7f8a"
+        },
+        "date": 1723299545052,
         "tool": "customBiggerIsBetter",
         "benches": [
           {
