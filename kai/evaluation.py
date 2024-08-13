@@ -257,7 +257,7 @@ def evaluate(
     return overall_results
 
 
-def print_nicely_formatted_comparison(results: dict[tuple[str, str], BenchmarkExample]):
+def print_nicely_formatted_comparison(results: dict[tuple[str, str], BenchmarkResult]):
     print(f'{"Example Name"}\t{"Config Name"}\t{"Benchmark Result"}')
 
     for (example_name, config_name), benchmark_result in results.items():
