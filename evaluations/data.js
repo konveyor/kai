@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1723527578432,
+  "lastUpdate": 1723527587955,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -6698,6 +6698,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
             "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "107868772+brf153@users.noreply.github.com",
+            "name": "Devaansh Bhandari",
+            "username": "brf153"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8c4b5a8d02ad86c50b3d133120ea7aae147463dd",
+          "message": "Change the type annotation of the results parameter to use BenchmarkResult instead of BenchmarkExample (#291)\n\nSigned-off-by: brf153 <153hsb@gmail.com>",
+          "timestamp": "2024-08-13T01:38:34-04:00",
+          "tree_id": "b2e0a934474740c32827ebb077b4a93f73a410ac",
+          "url": "https://github.com/konveyor/kai/commit/8c4b5a8d02ad86c50b3d133120ea7aae147463dd"
+        },
+        "date": 1723527586630,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
+            "value": "1.0",
             "unit": "Match"
           }
         ]
