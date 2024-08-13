@@ -53,8 +53,10 @@ class ModelProvider:
             case "ChatIBMGenAI":
                 model_class = LangChainChatInterface
                 if os.getenv("DEMO_MODE") == "true":
+                    api_key = os.getenv("GENAI_KEY", "dummy_value")
+                    api_endpoint = os.getenv("GENAI_API", "dummy_endpoint")
                     credentials = Credentials(
-                        api_key="GENAI_KEY", api_endpoint="dummy_endpoint"
+                        api_key=api_key, api_endpoint=api_endpoint
                     )
                 else:
                     credentials = Credentials.from_env()
