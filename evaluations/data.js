@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1723764306304,
+  "lastUpdate": 1723764308144,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -7046,6 +7046,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
             "value": "1.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "107868772+brf153@users.noreply.github.com",
+            "name": "Devaansh Bhandari",
+            "username": "brf153"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "89e156141e9971562bc43fa25b777f61cede2e32",
+          "message": "test: Add Unit Tests for `consumption.py` (#293)\n\n* add tests for consumption\r\n\r\nSigned-off-by: brf153 <153hsb@gmail.com>\r\n\r\n* add edge cases to tests\r\n\r\nSigned-off-by: brf153 <153hsb@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: brf153 <153hsb@gmail.com>",
+          "timestamp": "2024-08-15T19:23:51-04:00",
+          "tree_id": "66adc0a7bdd476c0ad0ef55a083ccad6e72e3bb2",
+          "url": "https://github.com/konveyor/kai/commit/89e156141e9971562bc43fa25b777f61cede2e32"
+        },
+        "date": 1723764306946,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
+            "value": "116.0",
             "unit": "Match"
           }
         ]
