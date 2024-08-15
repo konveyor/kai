@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1723527595956,
+  "lastUpdate": 1723740893136,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -6814,6 +6814,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
             "value": "295.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pgaikwad@redhat.com",
+            "name": "Pranav Gaikwad",
+            "username": "pranavgaikwad"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d32e80a2b6c8087dee0e942933c21fc30c86f4e5",
+          "message": "update imports in run_demo (#268)\n\nSigned-off-by: Pranav Gaikwad <pgaikwad@redhat.com>",
+          "timestamp": "2024-08-15T12:53:48-04:00",
+          "tree_id": "b79d455679de0ea75153bef7e86b8a1951377ed4",
+          "url": "https://github.com/konveyor/kai/commit/d32e80a2b6c8087dee0e942933c21fc30c86f4e5"
+        },
+        "date": 1723740892507,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
+            "value": "",
             "unit": "Match"
           }
         ]
