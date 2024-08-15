@@ -1,15 +1,20 @@
 import json
+import os
+import pprint
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Callable, cast
+from urllib.parse import unquote, urlparse
 
 import tree_sitter as ts
 import tree_sitter_java
 from git import Repo
 from sequoia_diff import loaders
 from sequoia_diff.matching import generate_mappings
+from sequoia_diff.models import Node
 
 from kai.models.kai_config import SolutionDetectorKind
+from kai.models.util import remove_known_prefixes
 from kai.service.incident_store.sql_types import SQLIncident
 
 
@@ -82,10 +87,35 @@ def line_match_hash(x: SQLIncident) -> int:
     )
 
 
+def node_with_tightest_bounds(node: Node, start_byte: int, end_byte: int) -> Node:
+    best = node
+    while True:
+        best.orig_node = cast(ts.Node, best.orig_node)
+        another_iteration = False
+
+        for child in best.children:
+            ts_node = cast(ts.Node, child.orig_node)
+
+            if (
+                ts_node.start_byte > start_byte
+                or ts_node.end_byte < end_byte
+                or ts_node.start_byte < best.orig_node.start_byte
+                or ts_node.end_byte > best.orig_node.end_byte
+            ):
+                continue
+            best = child
+            another_iteration = True
+
+        if not another_iteration:
+            break
+
+    return best
+
+
 def solution_detection_line_match(
     ctx: SolutionDetectorContext,
 ) -> SolutionDetectorResult:
-    result = SolutionDetectorResult()
+    result = SolutionDetectorResult([], [], [])
 
     # TODO: Support multiple languages
     ts_language = ts.Language(tree_sitter_java.language())
@@ -131,45 +161,34 @@ def solution_detection_line_match(
 
         # Construct the trees for the old and new files
 
-        old_file: str = ctx.repo.git.show(f"{ctx.old_commit}:{incident.incident_uri}")
-        new_file: str = ctx.repo.git.show(f"{ctx.new_commit}:{incident.incident_uri}")
+        # Both file paths should be the same, but just in case
+        file_path = os.path.join(
+            ctx.repo.working_tree_dir,
+            remove_known_prefixes(unquote(urlparse(incident.incident_uri).path)),
+        )
+
+        old_file: str = ctx.repo.git.show(f"{ctx.old_commit}:{file_path}")
+        new_file: str = ctx.repo.git.show(f"{ctx.new_commit}:{file_path}")
 
         old_tree = parser.parse(bytes(old_file, "utf-8"))
         new_tree = parser.parse(bytes(new_file, "utf-8"))
 
-        old_node = loaders.from_tree_sitter_tree(old_tree)
-        new_node = loaders.from_tree_sitter_tree(new_tree)
+        old_node = loaders.from_tree_sitter_tree(old_tree, "java")
+        new_node = loaders.from_tree_sitter_tree(new_tree, "java")
 
         # Get the byte offsets for the incident line
 
         old_line_start_byte = 0
         old_line_end_byte = 0
-        for _ in range(1, incident.incident_line):
+        for _ in range(incident.incident_line + 1):
             old_line_start_byte = old_file.find("\n", old_line_start_byte) + 1
             old_line_end_byte = old_file.find("\n", old_line_start_byte)
 
         # Get the node with the tightest bounds
 
-        best = old_node
-        while True:
-            best.orig_node = cast(ts.Node, best.orig_node)
-            another_iteration = False
-
-            for child in best.children:
-                ts_node = cast(ts.Node, child.orig_node)
-
-                if (
-                    ts_node.start_byte > old_line_start_byte
-                    or ts_node.end_byte < old_line_end_byte
-                    or ts_node.start_byte < best.orig_node.start_byte
-                    or ts_node.end_byte > best.orig_node.end_byte
-                ):
-                    continue
-                best = child
-                another_iteration = True
-
-            if not another_iteration:
-                break
+        best = node_with_tightest_bounds(
+            old_node, old_line_start_byte, old_line_end_byte
+        )
 
         # Get the mappings from old_tree to new_tree
 
@@ -185,7 +204,6 @@ def solution_detection_line_match(
         # analysis may be required.
 
         old_incident = line_match_old_incidents[incident_line_match_hash].pop()
-        line_match_old_incidents[incident_line_match_hash].remove(old_incident)
         old_incident.incident_line = incident.incident_line
         result.unsolved.append(old_incident)
 
