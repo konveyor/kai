@@ -11,15 +11,14 @@ from pathlib import Path
 
 import requests
 
-from kai.models.report_types import ExtendedIncident
-from kai.routes.get_incident_solutions_for_file import (
-    PostGetIncidentSolutionsForFileParams,
-)
-
 # Ensure that we have 'kai' in our import path
 sys.path.append("../../kai")
 from kai.kai_logging import formatter
 from kai.models.report import Report
+from kai.models.report_types import ExtendedIncident
+from kai.routes.get_incident_solutions_for_file import (
+    PostGetIncidentSolutionsForFileParams,
+)
 
 KAI_LOG = logging.getLogger(__name__)
 
