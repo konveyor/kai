@@ -1,7 +1,5 @@
-import json
 import os
 import unittest
-from typing import NamedTuple
 from unittest.mock import MagicMock, create_autospec
 
 import tree_sitter as ts
@@ -79,7 +77,7 @@ class TestDetection(unittest.TestCase):
         ]
 
         result = solution_detection_naive(
-            SolutionDetectorContext(db_incidents, report_incidents, None, None, None)
+            SolutionDetectorContext(db_incidents, report_incidents, MagicMock(), "", "")
         )
 
         self.assertTrue(len(result.new) == 1)

@@ -1,6 +1,5 @@
 import json
 import os
-import pprint
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Callable, cast
@@ -163,7 +162,7 @@ def solution_detection_line_match(
 
         # Both file paths should be the same, but just in case
         file_path = os.path.join(
-            ctx.repo.working_tree_dir,
+            cast(str, ctx.repo.working_tree_dir),
             remove_known_prefixes(unquote(urlparse(incident.incident_uri).path)),
         )
 
