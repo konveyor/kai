@@ -148,7 +148,7 @@ class SQLIncident(SQLBase):
     incident_uri: Mapped[str]
     incident_message: Mapped[str]
     incident_snip: Mapped[str]
-    incident_line: Mapped[int]
+    incident_line: Mapped[int]  # 0-indexed!
     incident_variables: Mapped[dict[str, Any]]
     solution_id: Mapped[Optional[str]] = mapped_column(
         ForeignKey("accepted_solutions.solution_id")
