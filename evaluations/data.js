@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1723740904821,
+  "lastUpdate": 1723740909337,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -6872,6 +6872,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
             "value": "79.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pgaikwad@redhat.com",
+            "name": "Pranav Gaikwad",
+            "username": "pranavgaikwad"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d32e80a2b6c8087dee0e942933c21fc30c86f4e5",
+          "message": "update imports in run_demo (#268)\n\nSigned-off-by: Pranav Gaikwad <pgaikwad@redhat.com>",
+          "timestamp": "2024-08-15T12:53:48-04:00",
+          "tree_id": "b79d455679de0ea75153bef7e86b8a1951377ed4",
+          "url": "https://github.com/konveyor/kai/commit/d32e80a2b6c8087dee0e942933c21fc30c86f4e5"
+        },
+        "date": 1723740908694,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
+            "value": "43.0",
             "unit": "Match"
           }
         ]
