@@ -8,6 +8,7 @@ SOURCE_ONLY=""
 
 # We are experimenting with modifying some of the default Kantra rules from:
 # . https://github.com/konveyor/rulesets/tree/main/default/generated
+# trunk-ignore(shellcheck/SC2034)
 DEFAULT_RULES_DIR="${PWD}/default_rules"
 
 CUSTOM_RULES_DIR="${PWD}/../samples/custom_rules"
