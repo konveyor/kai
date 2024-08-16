@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1723821785687,
+  "lastUpdate": 1723821797726,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -7162,6 +7162,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
             "value": "79.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "42743659+JonahSussman@users.noreply.github.com",
+            "name": "Jonah Sussman",
+            "username": "JonahSussman"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5af1d3b60f8f8603ae3c79dbafeeb01bcb904e15",
+          "message": "Fixed llm summary caching (#301)\n\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>",
+          "timestamp": "2024-08-16T11:21:55-04:00",
+          "tree_id": "bec5f9b68c88fb0c844a6e6a7c79b5a457cebd02",
+          "url": "https://github.com/konveyor/kai/commit/5af1d3b60f8f8603ae3c79dbafeeb01bcb904e15"
+        },
+        "date": 1723821796890,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
+            "value": "1.0",
             "unit": "Match"
           }
         ]
