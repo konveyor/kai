@@ -83,6 +83,13 @@ class Report:
                         continue
 
                     file_path = remove_known_prefixes(urlparse(incident.uri).path)
+                    if file_path.startswith("root/.m2/"):
+                        ## Workaround for bug found in Kantra 0.5.0
+                        ## See:  https://github.com/konveyor/kantra/issues/321
+                        ## Extra files are being reported in the analysis
+                        ## from the dependencies.
+                        ## We will skip these files for now.
+                        continue
 
                     current_entry = ExtendedIncident.model_validate(
                         {
@@ -163,7 +170,7 @@ class Report:
             if items.links:
                 f.write("* Links\n")
                 for link in items.links:
-                    f.write(f"  * {link['title']}: {link['url']}\n")
+                    f.write(f"  * {link.title}: {link.url}\n")
             if items.incidents:
                 f.write("* Incidents\n")
                 for incident in items.incidents:

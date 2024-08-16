@@ -47,4 +47,14 @@ git checkout "${BRANCH}"
 popd || exit
 
 mkdir -p "${OUTDIR}"
-time "${KANTRA_BIN}" analyze -i "${PWD}"/"${SOURCE_DIR}" "${SOURCE_ONLY}" --enable-default-rulesets=false -t "quarkus" -t "jakarta-ee" -t "jakarta-ee8" -t "jakarta-ee9" -t "cloud-readiness" --rules "${DEFAULT_RULES_DIR}" --rules "${CUSTOM_RULES_DIR}" -o "${OUTDIR}" --overwrite
+# ###
+# # John M:
+# Commenting out the disable of builtin rules so we can use our modified versions.
+# Our modified rules are an experiment, as of 8/16/2024 I am unsure if they provide a benefit
+# I'm leaving this snippet of code here commented out instead of removing as this is all
+# still experimental and I wanted to leave an explicit trace of this experiment as we may go back to it
+# ###
+#
+#time "${KANTRA_BIN}" analyze -i "${PWD}"/"${SOURCE_DIR}" "${SOURCE_ONLY}" --enable-default-rulesets=false -t "quarkus" -t "jakarta-ee" -t "jakarta-ee8" -t "jakarta-ee9" -t "cloud-readiness" --rules "${DEFAULT_RULES_DIR}" --rules "${CUSTOM_RULES_DIR}" -o "${OUTDIR}" --overwrite
+
+time "${KANTRA_BIN}" analyze -i "${PWD}"/"${SOURCE_DIR}" "${SOURCE_ONLY}" -t "quarkus" -t "jakarta-ee" -t "jakarta-ee8" -t "jakarta-ee9" -t "cloud-readiness" --rules "${CUSTOM_RULES_DIR}" -o "${OUTDIR}" --overwrite

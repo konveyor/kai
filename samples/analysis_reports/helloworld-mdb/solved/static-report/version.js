@@ -1,1 +1,1 @@
-window.version = "latest";
+window.version = "v0.5.0";

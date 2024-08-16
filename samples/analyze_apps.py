@@ -80,7 +80,7 @@ def analyze(source_dir, name, target):
     # "-m source-only" will skip processing of dependencies, and will be
     # quicker but it may impact some rules so they don't execute as we imagine
     #
-    cmd = f'time ./bin/kantra analyze -i {source_dir} -t "quarkus" -t "jakarta-ee" -t "jakarta-ee8+" -t "jakarta-ee9+" -t "cloud-readiness" --rules {os.path.dirname(__file__)}/custom_rules -o {full_output_dir} --overwrite'
+    cmd = f'time ./bin/kantra analyze -i {source_dir} -t "quarkus" -t "jakarta-ee" -t "jakarta-ee8" -t "jakarta-ee9" -t "cloud-readiness" --rules {os.path.dirname(__file__)}/custom_rules -o {full_output_dir} --overwrite'
     subprocess.run(cmd, shell=True)  # trunk-ignore(bandit)
 
 
