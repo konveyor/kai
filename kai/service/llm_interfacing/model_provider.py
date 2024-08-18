@@ -54,7 +54,7 @@ class ModelProvider:
                 model_class = LangChainChatInterface
                 if os.getenv("DEMO_MODE", "false").lower() == "true":
                     api_key = os.getenv("GENAI_KEY", "dummy_value")
-                    api_endpoint = os.getenv("GENAI_API", "dummy_endpoint")
+                    api_endpoint = os.getenv("GENAI_API", "")
                     credentials = Credentials(
                         api_key=api_key, api_endpoint=api_endpoint
                     )
