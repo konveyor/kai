@@ -126,6 +126,11 @@ class SolutionProducerLLMLazy(SolutionProducer):
         return solution
 
     def post_process_one(self, incident: SQLIncident, solution: Solution) -> Solution:
+        if solution.llm_summary_generated:
+            return solution
+
+        # Generate the LLM summary to be stored in the solution
+
         jinja_env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(
                 os.path.join(PATH_TEMPLATES, "solution_handling")
