@@ -40,5 +40,5 @@ if [[ ${MODE} != "importer" ]]; then
 	PYTHONPATH="/kai/kai" exec gunicorn --timeout 3600 -w "${NUM_WORKERS}" --bind 0.0.0.0:8080 --worker-class aiohttp.GunicornWebWorker 'kai.server:app()'
 else
 	cd /kai || exit
-	python ./kai/hub_importer.py --loglevel "${LOGLEVEL}" --config_filepath ./kai/config.toml "${IMPORTER_ARGS}" "${HUB_URL}"
+	python ./kai/hub_importer.py --loglevel "${LOGLEVEL}" --config_filepath ./kai/config.toml "${HUB_URL}" "${IMPORTER_ARGS}"
 fi
