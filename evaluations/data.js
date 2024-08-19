@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1724104219347,
+  "lastUpdate": 1724104225181,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -7365,6 +7365,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
             "value": "1.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "maira.usman5703@gmail.com",
+            "name": "Maira Usman",
+            "username": "Myrausman"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "498669a61fc355b3bb72bc65c01b480b4e9a1ec3",
+          "message": "Fix GENAI_KEY issue to allow demo_mode without requiring API key (#292)\n\n* Fix GENAI_KEY for demo_mode\r\n\r\nSigned-off-by: Myrausman <maira.usman5703@gmail.com>\r\n\r\n* Use env vars if set in demo mode\r\n\r\nSigned-off-by: Myrausman <maira.usman5703@gmail.com>\r\n\r\n* Handle various 'true' cases\r\n\r\nSigned-off-by: Myrausman <maira.usman5703@gmail.com>\r\n\r\n* Fix api endpoint\r\n\r\nSigned-off-by: Myrausman <maira.usman5703@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: Myrausman <maira.usman5703@gmail.com>",
+          "timestamp": "2024-08-19T17:49:01-04:00",
+          "tree_id": "70e466f627d7ba7d67e71a3d82e7cfe405a48ef8",
+          "url": "https://github.com/konveyor/kai/commit/498669a61fc355b3bb72bc65c01b480b4e9a1ec3"
+        },
+        "date": 1724104223946,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
+            "value": "295.0",
             "unit": "Match"
           }
         ]
