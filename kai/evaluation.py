@@ -52,8 +52,6 @@ class BenchmarkResult:
     prompt: str
     llm_result: str
     similarity: Any
-    updated_file: str
-    reasoning: str
 
 
 def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
@@ -249,8 +247,6 @@ def evaluate(
                     similarity=similarity,
                     prompt=prompt,
                     llm_result=llm_result.content,
-                    updated_file=content.updated_file,
-                    reasoning=content.reasoning,
                 )
 
                 incident_store.delete_store()
