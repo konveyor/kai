@@ -44,6 +44,9 @@ SolutionDetectionAlgorithm = Callable[[SolutionDetectorContext], SolutionDetecto
 
 
 def naive_hash(x: SQLIncident) -> int:
+    """
+    Returns a hash of the incident that is used for naive equality checking.
+    """
     return hash(
         (
             x.violation_name,
@@ -57,6 +60,13 @@ def naive_hash(x: SQLIncident) -> int:
 
 
 def solution_detection_naive(ctx: SolutionDetectorContext) -> SolutionDetectorResult:
+    """
+    The naive solution detection algorithm is the simplest one. It just checks
+    if a new incident is exactly the same as an old incident. If it is, then the
+    incident is *unsolved*. Otherwise, it's new. Any old incidents that are not
+    matched are considered solved.
+    """
+
     result = SolutionDetectorResult([], [], [])
 
     updating_set: dict[int, SQLIncident] = {naive_hash(x): x for x in ctx.old_incidents}
@@ -75,6 +85,9 @@ def solution_detection_naive(ctx: SolutionDetectorContext) -> SolutionDetectorRe
 
 
 def line_match_hash(x: SQLIncident) -> int:
+    """
+    Returns a hash of the incident that is used for line matching.
+    """
     return hash(
         (
             x.violation_name,
@@ -87,6 +100,11 @@ def line_match_hash(x: SQLIncident) -> int:
 
 
 def node_with_tightest_bounds(node: Node, start_byte: int, end_byte: int) -> Node:
+    """
+    Find the node with the tightest bounds that still contains the given byte
+    range.
+    """
+
     best = node
     while True:
         best.orig_node = cast(ts.Node, best.orig_node)
@@ -114,11 +132,27 @@ def node_with_tightest_bounds(node: Node, start_byte: int, end_byte: int) -> Nod
 def solution_detection_line_match(
     ctx: SolutionDetectorContext,
 ) -> SolutionDetectorResult:
+    """
+    The line match algorithm is trying to find incidents that still exist after
+    a change by making the assumption that if the code exists in the changed
+    file somewhere, then the incident is not solved. Note that this should be
+    irrelevant of line number.
+
+    1.  Filter out the exact matches.
+    2.  Get a mapping between the two ASTs. (A each item in a mapping is a node
+        in the source tree and the corresponding node in the destination tree.
+        The algorithm for that is in the sequoia-diff library).
+    3.  Get the smallest node that still contains the line under question.
+    4.  Check if the mapping contains the node. If it does, the incident is
+        unsolved. If not, it's solved
+    """
     result = SolutionDetectorResult([], [], [])
 
     # TODO: Support multiple languages
     ts_language = ts.Language(tree_sitter_java.language())
     parser = ts.Parser(ts_language)
+
+    # Map the old incidents to their hashes for quick equality lookup.
 
     naive_old_incidents: dict[int, SQLIncident] = {
         naive_hash(x): x for x in ctx.old_incidents
@@ -137,18 +171,27 @@ def solution_detection_line_match(
         else:
             i += 1
 
-    # result.unsolved now contains all exact matches and updating_set contains
-    # all non-exact matches
+    # result.unsolved now contains all exact matches and naive_old_incidents
+    # contains all non-exact matches.
 
     # Filter incidents whose line numbers match and whose line contents may have
-    # just been moved
+    # just been moved.
+
+    # NOTE: We use a multi-map here because there may be more than one match. We
+    # may also need to switch the naive matching to use a multi-map in the
+    # future.
 
     line_match_old_incidents: dict[int, set[SQLIncident]] = defaultdict(set)
     for x in naive_old_incidents.values():
         line_match_old_incidents[line_match_hash(x)].add(x)
 
+    # Check each remaining incident in new_incidents
+
     for incident in ctx.new_incidents:
         incident_line_match_hash = line_match_hash(incident)
+
+        # Check if the incident is in the remaining old incidents. If not, then
+        # it's a new incident.
 
         if incident_line_match_hash not in line_match_old_incidents:
             result.new.append(incident)
@@ -160,11 +203,15 @@ def solution_detection_line_match(
 
         # Construct the trees for the old and new files
 
-        # Both file paths should be the same, but just in case
+        # NOTE: Both file paths should be the same, but just in case we might
+        # want to use the old file path.
+
         file_path = os.path.join(
             cast(str, ctx.repo.working_tree_dir),
             remove_known_prefixes(unquote(urlparse(incident.incident_uri).path)),
         )
+
+        # TODO: See if we should cache these files/trees for performance
 
         old_file: str = ctx.repo.git.show(f"{ctx.old_commit}:{file_path}")
         new_file: str = ctx.repo.git.show(f"{ctx.new_commit}:{file_path}")
@@ -205,6 +252,9 @@ def solution_detection_line_match(
         old_incident = line_match_old_incidents[incident_line_match_hash].pop()
         old_incident.incident_line = incident.incident_line
         result.unsolved.append(old_incident)
+
+    # These are the incidents that weren't matched to any incident in
+    # new_incidents, meaning they were solved.
 
     for incident_set in line_match_old_incidents.values():
         if len(incident_set) > 0:
