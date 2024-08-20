@@ -332,7 +332,11 @@ def process_analyses(
             }
         if report_data:
             reports.append(
-                (application, credentials, Report.load_report_from_object(report_data))
+                (
+                    application,
+                    credentials,
+                    Report.load_report_from_object(report_data, analysis.id),
+                )
             )
     return reports
 
