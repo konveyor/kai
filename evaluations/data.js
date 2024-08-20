@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1724104225181,
+  "lastUpdate": 1724164257221,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -7394,6 +7394,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
             "value": "295.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jmontleo@redhat.com",
+            "name": "Jason Montleon",
+            "username": "jmontleon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "655f0548c929deea6b3e304b03711fbabfee84ec",
+          "message": ":ghost: Update compose DB image (#308)\n\nSigned-off-by: Jason Montleon <jmontleo@redhat.com>",
+          "timestamp": "2024-08-20T10:29:50-04:00",
+          "tree_id": "524de22ea4d289c023f810b2c9b2b7214b75b331",
+          "url": "https://github.com/konveyor/kai/commit/655f0548c929deea6b3e304b03711fbabfee84ec"
+        },
+        "date": 1724164255915,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
+            "value": "",
             "unit": "Match"
           }
         ]
