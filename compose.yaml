@@ -10,10 +10,10 @@ x-kai-variables: &kai-variables
   USE_HUB_IMPORTER: ${USE_HUB_IMPORTER:-False}
 
 x-db-variables: &db-variables
-  POSTGRES_DB: kai
-  POSTGRES_PASSWORD: dog8code
-  POSTGRES_USER: kai
-  POSTGRES_HOST: kai_db
+  POSTGRESQL_DATABASE: kai
+  POSTGRESQL_PASSWORD: dog8code
+  POSTGRESQL_USER: kai
+  POSTGRESQL_HOST: kai_db
 
 services:
   kai:
@@ -47,7 +47,7 @@ services:
     profiles:
       - use_hub_importer
   kai_db:
-    image: docker.io/pgvector/pgvector:pg15
+    image: quay.io/sclorg/postgresql-15-c9s:latest
     environment:
       <<: *db-variables
     volumes:
