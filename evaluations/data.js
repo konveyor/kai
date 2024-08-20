@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1724165191146,
+  "lastUpdate": 1724165194012,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -7713,6 +7713,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
             "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jwmatthews@gmail.com",
+            "name": "John Matthews",
+            "username": "jwmatthews"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d30ed691f1c6f5fa0bafa04efadb7a1fd22c1928",
+          "message": ":bug: Analysis update after removing duplicated custom rules (#302)\n\n* Removed redundant custom rules and updated analysis with kantra 0.5.0\r\nrun\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>\r\n\r\n* Update for trunk check\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>",
+          "timestamp": "2024-08-20T10:44:47-04:00",
+          "tree_id": "b575792f295152d16bb512e5e9e445044613a8f8",
+          "url": "https://github.com/konveyor/kai/commit/d30ed691f1c6f5fa0bafa04efadb7a1fd22c1928"
+        },
+        "date": 1724165193441,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
+            "value": "295.0",
             "unit": "Match"
           }
         ]
