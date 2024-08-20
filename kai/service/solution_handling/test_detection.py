@@ -163,8 +163,7 @@ class TestDetection(unittest.TestCase):
             )
         )
 
-        # Detection algorithms statefully modify inputs
-        self.assertEqual(result.new, [new_incidents[0]], "Failed added incidents")
+        self.assertEqual(result.new, [new_incidents[1]], "Failed added incidents")
         self.assertEqual(result.unsolved, [old_incidents[0]], "Failed added incidents")
         self.assertEqual(result.solved, [], "Failed added incidents")
 

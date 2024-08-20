@@ -146,11 +146,13 @@ def solution_detection_line_match(
     4.  Check if the mapping contains the node. If it does, the incident is
         unsolved. If not, it's solved
     """
-    result = SolutionDetectorResult([], [], [])
-
     # TODO: Support multiple languages
     ts_language = ts.Language(tree_sitter_java.language())
     parser = ts.Parser(ts_language)
+
+    result = SolutionDetectorResult([], [], [])
+    # new_incidents = ctx.new_incidents.copy()
+    new_incidents = [x for x in ctx.new_incidents]
 
     # Map the old incidents to their hashes for quick equality lookup.
 
@@ -161,13 +163,13 @@ def solution_detection_line_match(
     # Filter the exact matches
 
     i = 0
-    while i < len(ctx.new_incidents):
-        incident = ctx.new_incidents[i]
+    while i < len(new_incidents):
+        incident = new_incidents[i]
         incident_hash = naive_hash(incident)
 
         if incident_hash in naive_old_incidents:
             result.unsolved.append(naive_old_incidents.pop(incident_hash))
-            ctx.new_incidents.pop(i)
+            new_incidents.pop(i)
         else:
             i += 1
 
@@ -187,7 +189,7 @@ def solution_detection_line_match(
 
     # Check each remaining incident in new_incidents
 
-    for incident in ctx.new_incidents:
+    for incident in new_incidents:
         incident_line_match_hash = line_match_hash(incident)
 
         # Check if the incident is in the remaining old incidents. If not, then
