@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1724164695610,
+  "lastUpdate": 1724164696781,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -7626,6 +7626,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
             "value": "295.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "fabian@fabianism.us",
+            "name": "Fabian von Feilitzsch",
+            "username": "fabianvf"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "55f51fe84aa229a80081d08bf2820794887449f2",
+          "message": ":bug: Fixes blocking Kai integration (#309)\n\n* :bug: When importer args aren't provided, don't use empty string as url\r\n* :bug: Pass analysis ID in when report is loaded\r\n\r\nSigned-off-by: Fabian von Feilitzsch <fabian@fabianism.us>",
+          "timestamp": "2024-08-20T10:36:55-04:00",
+          "tree_id": "777393363d25e80420f660a87ac10f0c246e3bf9",
+          "url": "https://github.com/konveyor/kai/commit/55f51fe84aa229a80081d08bf2820794887449f2"
+        },
+        "date": 1724164695291,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
+            "value": "79.0",
             "unit": "Match"
           }
         ]
