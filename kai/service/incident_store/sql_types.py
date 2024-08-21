@@ -23,7 +23,7 @@ from kai.service.solution_handling.solution_types import Solution
 
 class SQLSolutionType(TypeDecorator):
     impl = VARCHAR
-    cache_ok = True
+    cache_ok = False
 
     def process_bind_param(self, value: Optional[Solution], dialect: Dialect):
         # Into the db

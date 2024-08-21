@@ -181,6 +181,8 @@ class IncidentStore:
         self.solution_detector = solution_detector
         self.solution_producer = solution_producer
 
+        self.create_tables()  # This is a no-op if the tables already exist
+
     def load_report(self, app: Application, report: Report) -> tuple[int, int, int]:
         """
         Load incidents from a report and given application object. Returns a
@@ -273,6 +275,7 @@ class IncidentStore:
                         session.commit()
 
                     for incident in violation_obj.incidents:
+                        filtered_vars = filter_incident_vars(incident.variables)
                         report_incidents.append(
                             SQLIncident(
                                 violation_name=violation.violation_name,
@@ -281,7 +284,7 @@ class IncidentStore:
                                 incident_uri=incident.uri,
                                 incident_snip=incident.code_snip,
                                 incident_line=incident.line_number,
-                                incident_variables=deep_sort(incident.variables),
+                                incident_variables=deep_sort(filtered_vars),
                                 incident_message=incident.message,
                             )
                         )
@@ -401,9 +404,7 @@ class IncidentStore:
             )
 
             result: list[Solution] = []
-            for incident in session.execute(
-                select_incidents_with_solutions_stmt
-            ).scalars():
+            for incident in session.scalars(select_incidents_with_solutions_stmt).all():
                 select_accepted_solution_stmt = select(SQLAcceptedSolution).where(
                     SQLAcceptedSolution.solution_id == incident.solution_id
                 )
@@ -415,8 +416,17 @@ class IncidentStore:
                 processed_solution = self.solution_producer.post_process_one(
                     incident, accepted_solution.solution
                 )
+
+                # TODO: This first line doesn't work for some reason. The second
+                # line is a hack to get around it.
                 accepted_solution.solution = processed_solution
+                session.query(SQLAcceptedSolution).filter(
+                    SQLAcceptedSolution.solution_id == incident.solution_id
+                ).update({"solution": processed_solution})
+
                 result.append(processed_solution)
+
+                session.commit()
 
             session.commit()
 

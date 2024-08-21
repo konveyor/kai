@@ -21,8 +21,9 @@ class PostLoadAnalysisReportApplication(BaseModel):
 
 
 class PostLoadAnalysisReportParams(BaseModel):
-    path_to_report: str
     application: PostLoadAnalysisReportApplication
+    report_data: dict | list[dict]
+    report_id: str
 
 
 @to_route("post", "/load_analysis_report")
@@ -30,7 +31,7 @@ async def post_load_analysis_report(request: Request):
     params = PostLoadAnalysisReportParams.model_validate(await request.json())
 
     application = Application(**params.application.model_dump())
-    report = Report.load_report_from_file(params.path_to_report)
+    report = Report(params.report_data, params.report_id)
 
     count = request.app["kai_application"].incident_store.load_report(
         application, report

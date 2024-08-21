@@ -148,9 +148,10 @@ class KaiApplication:
                     )
 
                     if len(solutions) != 0:
-                        pb_incident["solution_str"] = self.solution_consumer(
-                            solutions[0]
-                        )
+                        solution_str = self.solution_consumer(solutions[0])
+
+                        if len(solution_str) != 0:
+                            pb_incident["solution_str"] = solution_str
 
             pb_vars = {
                 "src_file_name": file_name,

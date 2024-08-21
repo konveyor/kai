@@ -65,9 +65,12 @@ class SolutionProducerTextOnly(SolutionProducer):
     def produce_one(
         self, incident: SQLIncident, repo: Repo, old_commit: str, new_commit: str
     ) -> Solution:
+        local_file_path = remove_known_prefixes(
+            unquote(urlparse(incident.incident_uri).path)
+        )
         file_path = os.path.join(
             repo.working_tree_dir,
-            remove_known_prefixes(unquote(urlparse(incident.incident_uri).path)),
+            local_file_path,
         )
 
         # NOTE: `repo_diff` functionality is not implemented
@@ -77,7 +80,7 @@ class SolutionProducerTextOnly(SolutionProducer):
         # probably a better way to handle this.
         try:
             original_code = (
-                repo.git.show(f"{new_commit}:{file_path}")
+                repo.git.show(f"{old_commit}:{local_file_path}")
                 .encode("utf-8")
                 .decode("utf-8")
             )
@@ -86,7 +89,7 @@ class SolutionProducerTextOnly(SolutionProducer):
 
         try:
             updated_code = (
-                repo.git.show(f"{new_commit}:{file_path}")
+                repo.git.show(f"{new_commit}:{local_file_path}")
                 .encode("utf-8")
                 .decode("utf-8")
             )
@@ -113,13 +116,12 @@ class SolutionProducerTextOnly(SolutionProducer):
 class SolutionProducerLLMLazy(SolutionProducer):
     def __init__(self, model_provider: ModelProvider):
         self.model_provider = model_provider
+        self.text_only = SolutionProducerTextOnly()
 
     def produce_one(
         self, incident: SQLIncident, repo: Repo, old_commit: str, new_commit: str
     ) -> Solution:
-        solution = SolutionProducerTextOnly().produce_one(
-            incident, repo, old_commit, new_commit
-        )
+        solution = self.text_only.produce_one(incident, repo, old_commit, new_commit)
 
         solution.llm_summary_generated = False
 
