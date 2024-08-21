@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1724165205056,
+  "lastUpdate": 1724253203644,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -7829,6 +7829,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
             "value": "1.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pgaikwad@redhat.com",
+            "name": "Pranav Gaikwad",
+            "username": "pranavgaikwad"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9bc5781e82478cedd46705d9f9486a8b132e8cbe",
+          "message": ":ghost: Add notebooks for evaluating coolstore migration across models (#294)\n\nSigned-off-by: Pranav Gaikwad <pgaikwad@redhat.com>",
+          "timestamp": "2024-08-21T11:12:14-04:00",
+          "tree_id": "e002a412c0ba8a2486c52ac54d4d6f0a945547fd",
+          "url": "https://github.com/konveyor/kai/commit/9bc5781e82478cedd46705d9f9486a8b132e8cbe"
+        },
+        "date": 1724253203034,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
+            "value": "",
             "unit": "Match"
           }
         ]
