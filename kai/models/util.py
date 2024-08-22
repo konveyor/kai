@@ -12,7 +12,11 @@ KNOWN_PREFIXES = (
 # These are known unique variables that can be included by incidents
 # They would prevent matches that we actually want, so we filter them
 # before adding to the database or searching
-FILTERED_INCIDENT_VARS = ("file", "package")
+FILTERED_INCIDENT_VARS = [
+    "file",  # Java, URI of the offending file
+    "package",  # Java, shows the package
+    "name",  # Java, shows the name of the method that caused the incident
+]
 
 
 def remove_known_prefixes(path: str) -> str:
