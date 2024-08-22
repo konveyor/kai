@@ -148,26 +148,9 @@ If you need to add or update a Python dependency in the project, follow these st
 
 ## Running the Project
 
-To get started with the project, follow these steps:
+1. Setup your development environment as per [docs/contrib/Dev_Environment.md](/docs/contrib/Dev_Environment.md)
+2. **Demo Interaction**: Read and follow [example/README.md](/example/README.md) to learn how to leverage a python script `example/run_demo.py` which will script interaction with Kai.
 
-1. **Load Data**:
-
-   ```bash
-   make load-data
-   ```
-
-2. **Run the Server**:
-
-   ```bash
-   make run-server
-   ```
-
-3. **Demo Interaction** (Recommended for developers):
-   Navigate to the `example` directory and run the demo script:
-   ```bash
-   cd example
-   python run_demo.py
-   ```
    Running `run_demo.py` from the `example` directory is a recommended way for developers to interact with the project, allowing you to explore and test the workflow. For end users, the standard interaction will be through the IDE plugin, which provides the main interface for usage. The `run_demo.py` script is an optional method to get a feel for the project.
 
 For end users, please refer to the IDE plugin documentation for the primary interaction path.
