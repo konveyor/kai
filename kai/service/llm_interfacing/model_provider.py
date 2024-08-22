@@ -100,7 +100,22 @@ class ModelProvider:
                 model_class = FakeListChatModel
 
                 defaults = {
-                    "responses": ["Default LLM response."],
+                    "responses": [
+                        "## Reasoning\n"
+                        "\n"
+                        "Default reasoning.\n"
+                        "\n"
+                        "## Updated File\n"
+                        "\n"
+                        "```\n"
+                        "Default updated file.\n"
+                        "```\n"
+                        "\n"
+                        "## Additional Information\n"
+                        "\n"
+                        "Default additional information.\n"
+                        "\n"
+                    ],
                     "sleep": None,
                 }
 

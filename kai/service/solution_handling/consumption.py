@@ -42,6 +42,9 @@ def solution_consumer_before_and_after(solution: Solution) -> str:
 
 
 def solution_consumer_llm_summary(solution: Solution) -> str:
+    if solution.llm_summary is None:
+        return ""
+
     return (
         __create_jinja_env().get_template("llm_summary.jinja").render(solution=solution)
     )
