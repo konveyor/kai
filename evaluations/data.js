@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1724409845358,
+  "lastUpdate": 1724409846199,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -8206,6 +8206,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
             "value": "295.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jwmatthews@gmail.com",
+            "name": "John Matthews",
+            "username": "jwmatthews"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6254f88884e9ad97e8952b1fa41e121e3dc9e2fe",
+          "message": "Update CONTRIBUTING.md to point reader at dev env setup doc (#316)\n\nSigned-off-by: John Matthews <jwmatthews@gmail.com>",
+          "timestamp": "2024-08-23T06:42:50-04:00",
+          "tree_id": "1a3f4fcd3e188e55c9f5933c0838c1631ad2f6d2",
+          "url": "https://github.com/konveyor/kai/commit/6254f88884e9ad97e8952b1fa41e121e3dc9e2fe"
+        },
+        "date": 1724409844868,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
+            "value": "43.0",
             "unit": "Match"
           }
         ]
