@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1724849962346,
+  "lastUpdate": 1724849963472,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -8351,6 +8351,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
             "value": "43.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "42743659+JonahSussman@users.noreply.github.com",
+            "name": "Jonah Sussman",
+            "username": "JonahSussman"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "295b436d587a392efeebb0c0e358707e6e1a3490",
+          "message": ":ghost: Remove static reports (#319)\n\n* Removed samples/analysis_reports/bmt/initial/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed samples/analysis_reports/bmt/solved/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed samples/analysis_reports/cmt/initial/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed samples/analysis_reports/cmt/solved/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed samples/analysis_reports/ejb-remote/initial/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed samples/analysis_reports/ejb-remote/solved/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed samples/analysis_reports/ejb-security/initial/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed samples/analysis_reports/ejb-security/solved/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed samples/analysis_reports/greeter/initial/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed samples/analysis_reports/greeter/solved/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed samples/analysis_reports/helloworld-mdb/initial/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed samples/analysis_reports/helloworld-mdb/solved/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed samples/analysis_reports/kitchensink/initial/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed samples/analysis_reports/kitchensink/solved/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed samples/analysis_reports/tasks-qute/initial/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed samples/analysis_reports/tasks-qute/solved/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed samples/analysis_reports/ticket-monster/initial/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed samples/analysis_reports/ticket-monster/solved/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed notebooks/jms_to_smallrye_reactive/analysis_report/cmt/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed /tests/test_data/sample/helloworld-mdb/solved/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed /tests/test_data/sample/helloworld-mdb/initial/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed /example/analysis/coolstore/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed /notebooks/ejb_remote/analysis_report/ejb-remote/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed /notebooks/jpa/analysis_report/tasks-qute/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed /notebooks/jpa/analysis_report/greeter/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed /notebooks/jpa/analysis_report/cmt/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed /notebooks/jpa/analysis_report/bmt/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed /notebooks/jms_to_smallrye_reactive/analysis_report/helloworld-mdb-quarkus/static-report\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Removed static-report removal script\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>",
+          "timestamp": "2024-08-28T08:57:56-04:00",
+          "tree_id": "30c1ce597bf1ad1b77255a08f7255641662305da",
+          "url": "https://github.com/konveyor/kai/commit/295b436d587a392efeebb0c0e358707e6e1a3490"
+        },
+        "date": 1724849962704,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
+            "value": "295.0",
             "unit": "Match"
           }
         ]
