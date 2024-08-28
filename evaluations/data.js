@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1724869570201,
+  "lastUpdate": 1724869608171,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -8525,6 +8525,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
             "value": "295.0",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jwmatthews@gmail.com",
+            "name": "John Matthews",
+            "username": "jwmatthews"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "466e7c4b242413d74edbde8f56aca92494a75dec",
+          "message": "Add an example client to move code fix generation client side (#318)\n\nSigned-off-by: John Matthews <jwmatthews@gmail.com>",
+          "timestamp": "2024-08-28T14:20:09-04:00",
+          "tree_id": "3859dc3dd10feb30f30435a40715723a2c4082fd",
+          "url": "https://github.com/konveyor/kai/commit/466e7c4b242413d74edbde8f56aca92494a75dec"
+        },
+        "date": 1724869268899,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
+            "value": "",
             "unit": "Match"
           }
         ]
