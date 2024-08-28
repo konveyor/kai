@@ -1,2 +1,0 @@
-"use strict";(self.webpackChunkkonveyor_static_report=self.webpackChunkkonveyor_static_report||[]).push([[306],{1306:(t,e,s)=>{s.r(e),s.d(e,{default:()=>c});s(5043);var o=s(6971),r=s(8437),i=s(9394),n=s(579);const c=()=>{const t=(0,o.KC)();return(0,n.jsx)(r.d8,{children:(0,n.jsx)(i.lX,{applicationId:null===t||void 0===t?void 0:t.id,insightsMode:!0})})}}}]);
-//# sourceMappingURL=306.4be215f2.chunk.js.map

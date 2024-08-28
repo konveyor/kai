@@ -1,1 +1,0 @@
-window["THEME"] = "default";
