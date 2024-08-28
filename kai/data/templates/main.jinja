@@ -26,17 +26,17 @@ After you have shared your step by step thinking, provide a full output of the u
 File name: "{{ src_file_name }}"
 Source file contents:
 ```{{ src_file_language }}
-{{ src_file_contents }}
+{{ src_file_contents | safe }}
 ```
 
 ## Issues
 
 {% for incident in incidents %}
 ### incident {{ loop.index0 }}
-incident to fix: "{{ incident.message }}"
+incident to fix: "{{ incident.message | safe }}"
 Line number: {{ incident.line_number }}
 {% if incident.solution_str is defined %}
-{{ incident.solution_str }}
+{{ incident.solution_str | safe }}
 {% endif %}
 {% endfor %}
 
