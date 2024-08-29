@@ -2,14 +2,12 @@
 
 """This module is intended to facilitate using Konveyor with LLMs."""
 
-import argparse
 import json
 import logging
 import os
-import subprocess
 import time
 import traceback
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 from warnings import filterwarnings
 
 import jsonrpyc
