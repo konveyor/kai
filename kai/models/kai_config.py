@@ -206,6 +206,12 @@ class TomlConfigSettingsSource(PydanticBaseSettingsSource):
 
 
 class KaiConfig(BaseSettings):
+    """
+    Kai configuration settings. It loads settings from init arguments,
+    environment, dotenv, and config files. See
+    `KaiConfig.settings_customise_sources` for more details.
+    """
+
     model_config = SettingsConfigDict(env_prefix="KAI__", env_nested_delimiter="__")
 
     log_level: str = "INFO"

@@ -19,15 +19,15 @@ from kai.service.kai_application.kai_application import KaiApplication
 log = logging.getLogger(__name__)
 
 
-# TODO: Repo lives both on client and on server. Determine either A) Best way to
-# rectify differences or B) Only have the code on one and pass stuff between
-# each other
-# - can be solved by getting last common commits and then applying a git diff in
-#   the same manner as `git stash apply`
-
-
 @cache
 def get_config():
+    """
+    Get the configuration for the server and parse command line arguments.
+
+    Note that this function is cached, so it will only be called once. We do
+    this because each gunicorn worker will call this function, and global state
+    can get tricky.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--config_filepath",
@@ -61,6 +61,11 @@ def app() -> web.Application:
 
 
 class StandaloneApplication(WSGIApplication):
+    """
+    This class is used to run the aiohttp app with gunicorn. While we could use
+    the `gunicorn` command, this class allows us to call `server.py` directly.
+    """
+
     def __init__(self, app_uri, options=None):
         self.options = options or {}
         self.app_uri = app_uri

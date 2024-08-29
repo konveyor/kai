@@ -14,23 +14,6 @@ trace_enabled = true
 
 solution_consumers = ["diff_only", "llm_summary"]
 
-# **Postgresql incident store**
-# ```
-# [incident_store.args]
-# provider = "postgresql"
-# host = "127.0.0.1"
-# database = "kai"
-# user = "kai"
-# password = "dog8code"
-# ```
-
-# **In-memory sqlite incident store**
-# ```
-# [incident_store.args]
-# provider = "sqlite"
-# connection_string = "sqlite:///:memory:"
-# ```
-
 [incident_store]
 
 # **incident_store.solution_detectors** This controls the strategies the
@@ -55,13 +38,22 @@ solution_producers = "text_only"
 # If you are running it using podman compose, you should probably leave this
 # alone.
 
-[incident_store.args]
-provider = "postgresql"
+# **Postgresql incident store**
+# ```
+# [incident_store.args]
+# provider = "postgresql"
+# host = "127.0.0.1"
+# database = "kai"
+# user = "kai"
+# password = "dog8code"
+# ```
 
-host = "127.1.0.1"
-database = "kai"
-user = "kai"
-password = "dog8code"
+# **In-memory sqlite incident store**
+# ```
+# [incident_store.args]
+# provider = "sqlite"
+# connection_string = "sqlite:///:memory:"
+# ```
 
 # **IBM served granite**
 # ```
@@ -137,6 +129,13 @@ password = "dog8code"
 # [models.args]
 # model_id = "anthropic.claude-3-5-sonnet-20240620-v1:0"
 # ```
+
+# **Google Gemini Pro**
+# [models]
+# provider = "ChatGoogleGenerativeAI"
+
+# [models.args]
+# model = "gemini-pro"
 
 
 [models]
