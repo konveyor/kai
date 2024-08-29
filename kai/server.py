@@ -2,15 +2,15 @@
 
 """This module is intended to facilitate using Konveyor with LLMs."""
 
+import argparse
 import logging
-import os
 import pprint
-from functools import lru_cache
+from functools import cache
+from typing import Optional
 
 from aiohttp import web
 from gunicorn.app.wsgiapp import WSGIApplication
 
-from kai.constants import PATH_KAI
 from kai.kai_logging import initLoggingFromConfig
 from kai.models.kai_config import KaiConfig
 from kai.routes import kai_routes
@@ -26,12 +26,22 @@ log = logging.getLogger(__name__)
 #   the same manner as `git stash apply`
 
 
-@lru_cache
+@cache
 def get_config():
-    if not os.path.exists(os.path.join(PATH_KAI, "config.toml")):
-        raise FileNotFoundError("Config file not found.")
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--config-file",
+        help="Path to an optional config file.",
+        type=Optional[str],
+        default=None,
+        required=False,
+    )
+    args = parser.parse_args()
 
-    return KaiConfig.model_validate_filepath(os.path.join(PATH_KAI, "config.toml"))
+    if args.config_file:
+        return KaiConfig.model_validate_filepath(args.config_file)
+
+    return KaiConfig()
 
 
 def app() -> web.Application:
