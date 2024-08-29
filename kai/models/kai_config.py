@@ -5,6 +5,7 @@ from typing import Any, Literal, Optional, Self, Union
 
 import yaml
 from pydantic import BaseModel, Field, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 """
 https://docs.pydantic.dev/2.0/migration/#required-optional-and-nullable-fields
@@ -129,8 +130,8 @@ KaiConfigIncidentStoreArgs = Union[
 
 
 class KaiConfigIncidentStore(BaseModel):
-    solution_detectors: SolutionDetectorKind
-    solution_producers: SolutionProducerKind
+    solution_detectors: SolutionDetectorKind = SolutionDetectorKind.LINE_MATCH
+    solution_producers: SolutionProducerKind = SolutionProducerKind.TEXT_ONLY
 
     args: Union[
         KaiConfigIncidentStorePostgreSQLArgs,
@@ -143,7 +144,7 @@ class KaiConfigIncidentStore(BaseModel):
 
 class KaiConfigModels(BaseModel):
     provider: str
-    args: dict
+    args: dict = Field(default_factory=dict)
     template: Optional[str] = Field(default=None)
     llama_header: Optional[bool] = Field(default=None)
     llm_retries: int = 5
@@ -153,16 +154,23 @@ class KaiConfigModels(BaseModel):
 # Main config
 
 
-# TODO: Evaluate the usage of pydantic-settings to simplify environment variable
-# and command line argument management.
-class KaiConfig(BaseModel):
-    log_level: str = "info"
-    file_log_level: str = "info"
+# TODO: Evaluate the usage of pydantic-settings to simplify command line
+# argument management.
+class KaiConfig(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="KAI__", env_nested_delimiter="__")
+
+    log_level: str = "INFO"
+    file_log_level: str = "INFO"
     log_dir: str = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "../../logs"
     )
     demo_mode: bool = False
     trace_enabled: bool = False
+
+    # Gunicorn settings
+    gunicorn_workers: int = 8
+    gunicorn_timeout: int = 3600
+    gunicorn_bind: str = "0.0.0.0:8080"
 
     incident_store: KaiConfigIncidentStore
     models: KaiConfigModels

@@ -3,8 +3,8 @@
 ## Access to a Large Language Model (LLM)
 
 - If you want to run Kai against a LLM you will likely need to configure a LLM API Key to access your service (unless running against a local model)
-  - We do provide a means of running Kai against previously cached data from a few models to aid demo flows. This allows you to run through the steps of using previously cached data without requiring access to a LLM. Note, if you do not provide LLM API access then the DEMO_MODE flow will only be able to replay previous cached responses.
-    - We call this 'DEMO_MODE', i.e. `DEMO_MODE=true make run-server`
+  - We do provide a means of running Kai against previously cached data from a few models to aid demo flows. This allows you to run through the steps of using previously cached data without requiring access to a LLM. Note, if you do not provide LLM API access then the KAI\_\_DEMO_MODE flow will only be able to replay previous cached responses.
+    - We call this 'KAI**DEMO_MODE', i.e. `KAI**DEMO_MODE=true make run-server`
 - Note that results vary widely between models.
 
 ## Local Development
@@ -38,11 +38,11 @@ Running Kai's backend involves running 2+ processes:
    1. Open a new shell tab
    1. `source env/bin/activate`
    1. Let this run in background: `make run-server`
-      - If you want to run with cached LLM responses run with `DEMO_MODE=true`
-        - Replace the above command and instead run: `DEMO_MODE=true make run-server`
-        - The `DEMO_MODE` option will cache responses and play them back on subsequent runs.
-      - If you want to run with debug information set the environment variable `LOG_LEVEL=debug`
-        - Example: `LOG_LEVEL=debug make run-server`
+      - If you want to run with cached LLM responses run with `KAI__DEMO_MODE=true`
+        - Replace the above command and instead run: `KAI__DEMO_MODE=true make run-server`
+        - The `KAI__DEMO_MODE` option will cache responses and play them back on subsequent runs.
+      - If you want to run with debug information set the environment variable `KAI__LOG_LEVEL=debug`
+        - Example: `KAI__LOG_LEVEL=debug make run-server`
 1. Load data into the database
    1. `source env/bin/activate`
    1. Fetch sample apps: `pushd samples; ./fetch_apps.py; popd`

@@ -113,7 +113,7 @@ def main():
     arg_parser.add_argument(
         "-log",
         "--loglevel",
-        default=os.environ.get("KAI_LOG_LEVEL", "info"),
+        default=os.environ.get("KAI__LOG_LEVEL", "info"),
         choices=["debug", "info", "warning", "error", "critical"],
         help="""Provide logging level.
 Options:

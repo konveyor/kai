@@ -436,8 +436,8 @@ class IncidentStore:
 def cmd(provider: str = None):
     KAI_LOG.setLevel("debug".upper())
 
-    if os.getenv("LOG_DIR") is not None:
-        log_dir = os.getenv("LOG_DIR")
+    if os.getenv("KAI__LOG_DIR") is not None:
+        log_dir = os.getenv("KAI__LOG_DIR")
     else:
         log_dir = os.path.join(
             os.path.dirname(os.path.realpath(__file__)), "../../../logs"

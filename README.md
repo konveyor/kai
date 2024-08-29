@@ -49,8 +49,8 @@ The quickest way to get running is to leverage sample data committed into the Ka
         version: "3"
 
         x-kai-variables: &kai-variables
-        -  DEMO_MODE: "False"
-        +  DEMO_MODE: "True"
+        -  KAI__DEMO_MODE: "False"
+        +  KAI__DEMO_MODE: "True"
           HUB_URL: ${HUB_URL:-https://tackle-konveyor-tackle.apps.example.com/hub}
           IMPORTER_ARGS:
           LOG_LEVEL: info
