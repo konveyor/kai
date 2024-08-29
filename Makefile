@@ -17,7 +17,7 @@ run-server:
 	PYTHONPATH=$(KAI_PYTHON_PATH) python kai/server.py
 
 run-konveyor-importer:
-	PYTHONPATH=$(KAI_PYTHON_PATH) python ./kai/hub_importer.py --loglevel ${LOGLEVEL} --config_filepath ./kai/config.toml ${IMPORTER_ARGS} ${HUB_URL}
+	PYTHONPATH=$(KAI_PYTHON_PATH) python kai/hub_importer.py --loglevel ${LOGLEVEL} --config_filepath ./kai/config.toml ${IMPORTER_ARGS} ${HUB_URL}
 
 load-data:
-	PYTHONPATH=$(KAI_PYTHON_PATH) python ./kai/service/incident_store/psql.py  --config_filepath ./kai/config.toml --drop_tables $(DROP_TABLES)
+	PYTHONPATH=$(KAI_PYTHON_PATH) python kai/service/incident_store/incident_store.py  --config_filepath ./kai/config.toml --drop_tables $(DROP_TABLES)

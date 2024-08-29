@@ -6,7 +6,6 @@ import argparse
 import logging
 import pprint
 from functools import cache
-from typing import Optional
 
 from aiohttp import web
 from gunicorn.app.wsgiapp import WSGIApplication
@@ -32,14 +31,14 @@ def get_config():
     parser.add_argument(
         "--config_filepath",
         help="Path to an optional config file.",
-        type=Optional[str],
+        type=str,
         default=None,
         required=False,
     )
     args = parser.parse_args()
 
     if args.config_filepath:
-        return KaiConfig.model_validate_filepath(args.config_file)
+        return KaiConfig.model_validate_filepath(args.config_filepath)
 
     return KaiConfig()
 

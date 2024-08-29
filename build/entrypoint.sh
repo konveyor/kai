@@ -23,9 +23,10 @@ if [[ ${MODE} != "importer" ]]; then
 			cd /kai || exit
 
 			if [[ -f /podman_compose/build/config.toml ]]; then
-				python ./kai/service/incident_store/psql.py --config_filepath /podman_compose/build/config.toml --drop_tables False
+				printf "Using custom config file\n"
+				python ./kai/service/incident_store/incident_store.py --config_filepath /podman_compose/build/config.toml --drop_tables False
 			else
-				python ./kai/service/incident_store/psql.py --drop_tables False
+				python ./kai/service/incident_store/incident_store.py --drop_tables False
 			fi
 			echo "################################################"
 			echo "load-data has completed, starting server.      #"
@@ -34,7 +35,9 @@ if [[ ${MODE} != "importer" ]]; then
 		fi
 	fi
 
+	printf "Starting Kai server\n"
 	if [[ -f /podman_compose/build/config.toml ]]; then
+		printf "Using custom config file\n"
 		PYTHONPATH="/kai/kai" python /kai/kai/server.py --config_filepath /podman_compose/build/config.toml
 	else
 		PYTHONPATH="/kai/kai" python /kai/kai/server.py

@@ -11,7 +11,7 @@ from git import Repo
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from kai.constants import PATH_GIT_ROOT, PATH_KAI, PATH_LOCAL_REPO
+from kai.constants import PATH_GIT_ROOT, PATH_LOCAL_REPO
 from kai.kai_logging import initLogging
 from kai.models.kai_config import KaiConfig
 from kai.models.report import Report
@@ -437,7 +437,7 @@ def cmd(provider: str = None):
     parser = argparse.ArgumentParser(description="Process some parameters.")
     parser.add_argument(
         "--config_filepath",
-        type=Optional[str],
+        type=str,
         default=None,
         required=False,
         help="Path to the config file.",

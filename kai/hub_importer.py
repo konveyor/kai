@@ -127,7 +127,7 @@ Example: --loglevel debug (default: warning)""",
 
     arg_parser.add_argument(
         "--config_filepath",
-        type=Optional[str],
+        type=str,
         default=None,
         help="Path to the config file.",
     )
