@@ -6,6 +6,7 @@ from genai.schema import DecodingMethod
 from langchain_community.chat_models import BedrockChat, ChatOllama, ChatOpenAI
 from langchain_community.chat_models.fake import FakeListChatModel
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic.v1.utils import deep_update
 
 from kai.models.kai_config import KaiConfigModels
@@ -121,6 +122,18 @@ class ModelProvider:
 
                 model_args = deep_update(defaults, config.args)
                 model_id = "fake-list-chat-model"
+
+            case "ChatGoogleGenerativeAI":
+                model_class = ChatGoogleGenerativeAI
+                api_key = os.getenv("GOOGLE_API_KEY", "dummy_value")
+                defaults = {
+                    "model": "gemini-pro",
+                    "temperature": 0.7,
+                    "streaming": False,
+                    "google_api_key": api_key,
+                }
+                model_args = deep_update(defaults, config.args)
+                model_id = model_args["model"]
 
             case _:
                 raise Exception(f"Unrecognized provider '{config.provider}'")
