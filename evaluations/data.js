@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1724964679532,
+  "lastUpdate": 1724964692091,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -8641,6 +8641,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
             "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "maira.usman5703@gmail.com",
+            "name": "Maira Usman",
+            "username": "Myrausman"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4e230b336f6b3268c82b854daefa4e630e257f42",
+          "message": ":sparkles: Add support for google gemini model. (#307)\n\n* add support for gemini\r\n\r\nSigned-off-by: Myrausman <maira.usman5703@gmail.com>\r\n\r\n* add support for gemini\r\n\r\nSigned-off-by: Myrausman <maira.usman5703@gmail.com>\r\n\r\n* updated requiremets.txt\r\n\r\nSigned-off-by: Myrausman <maira.usman5703@gmail.com>\r\n\r\n* fixed conflicts\r\n\r\nSigned-off-by: Myrausman <maira.usman5703@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: Myrausman <maira.usman5703@gmail.com>",
+          "timestamp": "2024-08-29T16:50:10-04:00",
+          "tree_id": "1f7a9bd1b6bf598fb8b6746021a866db49b2faf2",
+          "url": "https://github.com/konveyor/kai/commit/4e230b336f6b3268c82b854daefa4e630e257f42"
+        },
+        "date": 1724964690978,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
+            "value": "1.0",
             "unit": "Match"
           }
         ]
