@@ -1,3 +1,6 @@
+# Default configuration file for Kai. For a better understanding of the
+# configuration options, please refer to `build/example_config.toml`
+
 log_level = "info"
 file_log_level = "debug"
 log_dir = "$pwd/logs"
@@ -9,6 +12,13 @@ solution_consumers = ["diff_only", "llm_summary"]
 [incident_store]
 solution_detectors = "naive"
 solution_producers = "text_only"
+
+[incident_store.args]
+provider = "postgresql"
+host = "127.0.0.1"
+database = "kai"
+user = "kai"
+password = "dog8code"
 
 [models]
 provider = "ChatIBMGenAI"

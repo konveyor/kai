@@ -38,8 +38,8 @@ services:
       GOOGLE_API_KEY:
     image: ${IMAGE:-quay.io/konveyor/kai}:${TAG:-stable}
     volumes:
-      - ${PWD}:/podman_compose:rw,Z
-      - ${PWD}/logs:/podman_compose/logs:rw,Z,U
+      - ${PWD}:/podman_compose:rw,z
+      - ${PWD}/logs:/podman_compose/logs:rw,z,U
     ports:
       - "8080:8080"
     depends_on:
@@ -50,8 +50,8 @@ services:
       MODE: importer
     image: ${IMAGE:-quay.io/konveyor/kai}:${TAG:-stable}
     volumes:
-      - ${PWD}:/podman_compose:rw,Z
-      - ${PWD}/logs:/podman_compose/logs:rw,Z,U
+      - ${PWD}:/podman_compose:rw,z
+      - ${PWD}/logs:/podman_compose/logs:rw,z,U
     depends_on:
       - kai_db
     profiles:
@@ -61,6 +61,6 @@ services:
     environment:
       <<: *db-variables
     volumes:
-      - kai_db_data:/var/lib/postgresql/data:Z
+      - kai_db_data:/var/lib/postgresql/data:z
 volumes:
   kai_db_data:

@@ -127,8 +127,8 @@ Example: --loglevel debug (default: warning)""",
 
     arg_parser.add_argument(
         "--config_filepath",
-        type=str,
-        default="kai/config.toml",
+        type=Optional[str],
+        default=None,
         help="Path to the config file.",
     )
 
@@ -161,9 +161,8 @@ Example: --loglevel debug (default: warning)""",
     if os.path.exists(args.config_filepath):
         config = KaiConfig.model_validate_filepath(args.config_filepath)
     else:
-        raise ValueError(
-            f"A valid config file is required, {args.config_filepath} does not exist"
-        )
+        config = KaiConfig()
+
     config.log_level = args.loglevel
     KAI_LOG.info(f"Config loaded: {pprint.pformat(config)}")
 

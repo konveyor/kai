@@ -249,8 +249,7 @@ class KaiConfig(BaseSettings):
         - Command line args (not implemented)
         - Config file that is declared on the command line / via init arguments.
         - Environment vars
-        - Local config file (config_local.toml)
-        - Global config file (config_default.toml)
+        - Global config file (kai.config.toml)
         - Default field values
         """
         return (
@@ -259,10 +258,7 @@ class KaiConfig(BaseSettings):
             dotenv_settings,
             file_secret_settings,
             TomlConfigSettingsSource(
-                settings_cls, os.path.join(PATH_KAI, "config_local.toml")
-            ),
-            TomlConfigSettingsSource(
-                settings_cls, os.path.join(PATH_KAI, "config_default.toml")
+                settings_cls, os.path.join(PATH_KAI, "config.toml")
             ),
         )
 
@@ -286,4 +282,4 @@ class KaiConfig(BaseSettings):
         else:
             raise ValueError(f"'{filepath}' has unsupported file type: {file_ext}")
 
-        return KaiConfig.model_validate(model_dict)
+        return KaiConfig(**model_dict)

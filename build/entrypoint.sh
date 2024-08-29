@@ -21,7 +21,12 @@ if [[ ${MODE} != "importer" ]]; then
 			echo "################################################"
 			sleep 5
 			cd /kai || exit
-			python ./kai/service/incident_store/psql.py --config_filepath ./kai/config.toml --drop_tables False
+
+			if [[ -f /podman_compose/build/config.toml ]]; then
+				python ./kai/service/incident_store/psql.py --config_filepath /podman_compose/build/config.toml --drop_tables False
+			else
+				python ./kai/service/incident_store/psql.py --drop_tables False
+			fi
 			echo "################################################"
 			echo "load-data has completed, starting server.      #"
 			echo "################################################"
@@ -29,9 +34,7 @@ if [[ ${MODE} != "importer" ]]; then
 		fi
 	fi
 
-	# If a custom config is specified, use it
 	if [[ -f /podman_compose/build/config.toml ]]; then
-		printf "Using custom config.toml\n"
 		PYTHONPATH="/kai/kai" python /kai/kai/server.py --config_filepath /podman_compose/build/config.toml
 	else
 		PYTHONPATH="/kai/kai" python /kai/kai/server.py
@@ -39,5 +42,5 @@ if [[ ${MODE} != "importer" ]]; then
 
 else
 	cd /kai || exit
-	python ./kai/hub_importer.py --loglevel "${KAI__LOG_LEVEL}" --config_filepath ./kai/config.toml "${KAI__HUB_URL}" "${KAI__IMPORTER_ARGS}"
+	python ./kai/hub_importer.py --loglevel "${KAI__LOG_LEVEL}" "${CUSTOM_CONFIG_FLAG}" "${KAI__HUB_URL}" "${KAI__IMPORTER_ARGS}"
 fi
