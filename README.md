@@ -87,7 +87,7 @@ The above information is a quick path to enable running Kai quickly to see how i
 ## Roadmap and Early Builds
 
 - Kai is in it's early development phase and is NOT ready for production usage.
-- See [docs/ROADMAP.md](docs/ROADMAP.md) to learn about the project's goals and milestones
+- See [ROADMAP.md](ROADMAP.md) to learn about the project's goals and milestones
 - Please see [docs/Evaluation_Builds.md](docs/Evaluation_Builds.md) for information on early builds.
 
 ## Contributing
