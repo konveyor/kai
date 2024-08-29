@@ -9,17 +9,7 @@ RUN echo -e "[almalinux9-appstream]" \
 RUN dnf -y install postgresql && dnf clean all
 USER 1001
 
-# Directories required for the build
-#   Contains entrypoint.sh
-COPY --chown=1001:1001 ./build /kai/build
-#   Contains the kai source code
-COPY --chown=1001:1001 ./kai /kai/kai
-#   Contains initial data for the database
-COPY --chown=1001:1001 ./samples /kai/samples
-
-# Files required for the build
-COPY --chown=1001:1001 ./pyproject.toml /kai/pyproject.toml
-COPY --chown=1001:1001 ./requirements.txt /kai/requirements.txt
+COPY --chown=1001:1001 . /kai
 
 RUN pip install --no-cache -r /kai/requirements.txt
 RUN pip install --no-cache -e /kai
