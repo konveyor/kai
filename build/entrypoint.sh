@@ -32,7 +32,7 @@ if [[ ${MODE} != "importer" ]]; then
 	# If a custom config is specified, use it
 	if [[ -f /podman_compose/build/config.toml ]]; then
 		printf "Using custom config.toml\n"
-		PYTHONPATH="/kai/kai" python /kai/kai/server.py --config-file /podman_compose/build/config.toml
+		PYTHONPATH="/kai/kai" python /kai/kai/server.py --config_filepath /podman_compose/build/config.toml
 	else
 		PYTHONPATH="/kai/kai" python /kai/kai/server.py
 	fi

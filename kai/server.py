@@ -30,7 +30,7 @@ log = logging.getLogger(__name__)
 def get_config():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--config-file",
+        "--config_filepath",
         help="Path to an optional config file.",
         type=Optional[str],
         default=None,
@@ -38,7 +38,7 @@ def get_config():
     )
     args = parser.parse_args()
 
-    if args.config_file:
+    if args.config_filepath:
         return KaiConfig.model_validate_filepath(args.config_file)
 
     return KaiConfig()
