@@ -33,7 +33,11 @@ def setup_console_handler(logger, log_level: str = "INFO"):
 
 
 def setup_file_handler(
-    logger, log_file_name: str, log_dir: str, log_level: str = "DEBUG"
+    logger,
+    log_file_name: str,
+    log_dir: str,
+    log_level: str = "DEBUG",
+    silent: bool = False,
 ):
     # Ensure any needed log directories exist
     log_dir = process_log_dir_replacements(log_dir)
@@ -46,9 +50,10 @@ def setup_file_handler(
     file_handler.setLevel(log_level)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
-    print(
-        f"File logging for '{logger.name}' is set to level '{log_level}' writing to file: '{log_file_path}'"
-    )
+    if not silent:
+        print(
+            f"File logging for '{logger.name}' is set to level '{log_level}' writing to file: '{log_file_path}'"
+        )
 
 
 def initLogging(console_log_level, file_log_level, log_dir, log_file="kai_server.log"):

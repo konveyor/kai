@@ -1,5 +1,6 @@
 import os
 import pathlib
+import sys
 
 """
 This file exists because we need to define some constants - specifically file
@@ -8,6 +9,10 @@ robust solution, but for now, this should suffice
 """
 
 PATH_KAI = os.path.dirname(os.path.abspath(__file__))
+
+# pyinstaller sets sys attributes to help determine when program runs in bin
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    PATH_KAI = sys._MEIPASS
 
 PATH_GIT_ROOT = os.path.join(PATH_KAI, "..")
 

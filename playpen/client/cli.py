@@ -121,15 +121,9 @@ def generate_fix(
     file_path,
     prompt,
     model_provider,
+    use_vcr=True,
 ):
-    count = 0  # later will likely add back in retry logic
-    retry_attempt_count = 0
-    with playback_if_demo_mode(
-        config.demo_mode,
-        model_provider.model_id,
-        application_name,
-        f'{file_path.replace("/", "-")}',
-    ):
+    def llm_call(count: int = 0, retry_attempt_count: int = 0):
         llm_result = model_provider.llm.invoke(prompt)
         trace.llm_result(count, retry_attempt_count, llm_result)
 
@@ -150,6 +144,16 @@ def generate_fix(
         )
 
         return result
+
+    if use_vcr:
+        with playback_if_demo_mode(
+            config.demo_mode,
+            model_provider.model_id,
+            application_name,
+            f'{file_path.replace("/", "-")}',
+        ):
+            return llm_call()
+    return llm_call()
 
 
 def render_prompt(
