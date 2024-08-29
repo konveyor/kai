@@ -133,7 +133,7 @@ See [docs/contrib/Dev_Environment.md](docs/contrib/Dev_Environment.md)
 If you need to add or update a Python dependency in the project, follow these steps:
 
 1. **Add the dependency**:
-   Open `requirements.in` and add the new dependency or modify an existing one.
+   Open `pyproject.toml` and add the new dependency to the `dependencies` list or modify an existing one.
 
 2. **Compile the requirements**:
    Run the following commands to compile the dependencies and update the `requirements.txt` file:
