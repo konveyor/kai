@@ -49,8 +49,8 @@ The quickest way to get running is to leverage sample data committed into the Ka
         version: "3"
 
         x-kai-variables: &kai-variables
-        -  DEMO_MODE: "False"
-        +  DEMO_MODE: "True"
+        -  KAI__DEMO_MODE: "False"
+        +  KAI__DEMO_MODE: "True"
           HUB_URL: ${HUB_URL:-https://tackle-konveyor-tackle.apps.example.com/hub}
           IMPORTER_ARGS:
           LOG_LEVEL: info
@@ -87,7 +87,7 @@ The above information is a quick path to enable running Kai quickly to see how i
 ## Roadmap and Early Builds
 
 - Kai is in it's early development phase and is NOT ready for production usage.
-- See [ROADMAP.md](/ROADMAP.md) to learn about the project's goals and milestones
+- See [ROADMAP.md](ROADMAP.md) to learn about the project's goals and milestones
 - Please see [docs/Evaluation_Builds.md](docs/Evaluation_Builds.md) for information on early builds.
 
 ## Contributing

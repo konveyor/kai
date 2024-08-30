@@ -9,7 +9,7 @@ Tracing will gather information and write to various files under the 'logs/trace
 Tracing can be enabled or disabled.
 It is enabled via:
 
-- Environment variable: `TRACE=true`
+- Environment variable: `KAI__TRACE_ENABLED=true`
 - kai/config.toml
 
       trace_enabled = true

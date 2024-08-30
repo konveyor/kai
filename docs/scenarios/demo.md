@@ -75,7 +75,7 @@ If you are interested in using `gpt-3.5-turbo` refer to the section below,
 If you don't have access to GEN_AI key, you can run the server in demo mode which will use cached responses
 
 To run the Kai server in demo mode,
-`GENAI_KEY="dummyvalue" DEMO_MODE=true make run-server`
+`GENAI_KEY="dummyvalue" KAI__DEMO_MODE=true make run-server`
 
 ## Step 2: Demo
 

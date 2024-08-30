@@ -1,48 +1,57 @@
 version: "3"
 
+# TODO: Unify hub importer variables with kai variables. They are currently not
+# stored on KaiConfig.
+
 x-kai-variables: &kai-variables
-  DEMO_MODE: "True"
-  HUB_URL: ${HUB_URL:-https://tackle-konveyor-tackle.apps.example.com/hub}
-  IMPORTER_ARGS:
-  LOG_LEVEL: info
-  LOG_DIR: "/podman_compose/logs"
-  NUM_WORKERS: 8
+  KAI__LOG_LEVEL: info
+  KAI__LOG_DIR: "/podman_compose/logs"
+  KAI__GUNICORN_WORKERS: 8
+  KAI__GUNICORN_BIND: "0.0.0.0:8080"
+  KAI__HUB_URL: ${HUB_URL:-https://tackle-konveyor-tackle.apps.example.com/hub}
+  KAI__IMPORTER_ARGS:
+  KAI__DEMO_MODE: "True"
   USE_HUB_IMPORTER: ${USE_HUB_IMPORTER:-False}
 
+  KAI__INCIDENT_STORE__ARGS__PROVIDER: postgresql
+  KAI__INCIDENT_STORE__ARGS__DATABASE: kai
+  KAI__INCIDENT_STORE__ARGS__PASSWORD: dog8code
+  KAI__INCIDENT_STORE__ARGS__USER: kai
+  KAI__INCIDENT_STORE__ARGS__HOST: kai_db
+
 x-db-variables: &db-variables
-  POSTGRESQL_DATABASE: kai
-  POSTGRESQL_PASSWORD: dog8code
-  POSTGRESQL_USER: kai
-  POSTGRESQL_HOST: kai_db
+  POSTGRESQL_DATABASE: "${KAI__INCIDENT_STORE__ARGS__DATABASE:-kai}"
+  POSTGRESQL_PASSWORD: "${KAI__INCIDENT_STORE__ARGS__PASSWORD:-dog8code}"
+  POSTGRESQL_USER: "${KAI__INCIDENT_STORE__ARGS__USER:-kai}"
+  POSTGRESQL_HOST: "${KAI__INCIDENT_STORE__ARGS__HOST:-kai_db}"
 
 services:
   kai:
     environment:
-      <<: [*db-variables, *kai-variables]
-      # Do not edit the variables below otherwise
-      # you risk committing keys to a public repo
-      # These lines will pass in the environment
-      # variables from your host system.
+      <<: [*kai-variables, *db-variables]
+      # Do not edit the variables below otherwise you risk committing keys to a
+      # public repo These lines will pass in the environment variables from your
+      # host system.
       GENAI_KEY:
       OPENAI_API_BASE:
       OPENAI_API_KEY:
       GOOGLE_API_KEY:
     image: ${IMAGE:-quay.io/konveyor/kai}:${TAG:-stable}
     volumes:
-      - ${PWD}:/podman_compose:rw,z
-      - ${PWD}/logs:/podman_compose/logs:rw,z,U
+      - ${PWD}:/podman_compose:rw,Z
+      - ${PWD}/logs:/podman_compose/logs:rw,Z,U
     ports:
       - "8080:8080"
     depends_on:
       - kai_db
   kai_hub_importer:
     environment:
-      <<: [*db-variables, *kai-variables]
+      <<: [*kai-variables, *db-variables]
       MODE: importer
     image: ${IMAGE:-quay.io/konveyor/kai}:${TAG:-stable}
     volumes:
-      - ${PWD}:/podman_compose:rw,z
-      - ${PWD}/logs:/podman_compose/logs:rw,z,U
+      - ${PWD}:/podman_compose:rw,Z
+      - ${PWD}/logs:/podman_compose/logs:rw,Z,U
     depends_on:
       - kai_db
     profiles:
@@ -52,6 +61,6 @@ services:
     environment:
       <<: *db-variables
     volumes:
-      - kai_db_data:/var/lib/postgresql/data:z
+      - kai_db_data:/var/lib/postgresql/data:Z
 volumes:
   kai_db_data:

@@ -54,7 +54,7 @@ class KaiApplication:
             KAI_LOG.info("Tracing enabled.")
 
         if config.demo_mode:
-            KAI_LOG.info("DEMO_MODE enabled. LLM responses will be cached.")
+            KAI_LOG.info("KAI__DEMO_MODE enabled. LLM responses will be cached.")
 
         # Create model provider
 

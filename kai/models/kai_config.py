@@ -5,6 +5,14 @@ from typing import Any, Literal, Optional, Self, Union
 
 import yaml
 from pydantic import BaseModel, Field, model_validator
+from pydantic.fields import FieldInfo
+from pydantic_settings import (
+    BaseSettings,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
+
+from kai.constants import PATH_KAI
 
 """
 https://docs.pydantic.dev/2.0/migration/#required-optional-and-nullable-fields
@@ -129,8 +137,8 @@ KaiConfigIncidentStoreArgs = Union[
 
 
 class KaiConfigIncidentStore(BaseModel):
-    solution_detectors: SolutionDetectorKind
-    solution_producers: SolutionProducerKind
+    solution_detectors: SolutionDetectorKind = SolutionDetectorKind.LINE_MATCH
+    solution_producers: SolutionProducerKind = SolutionProducerKind.TEXT_ONLY
 
     args: Union[
         KaiConfigIncidentStorePostgreSQLArgs,
@@ -143,7 +151,7 @@ class KaiConfigIncidentStore(BaseModel):
 
 class KaiConfigModels(BaseModel):
     provider: str
-    args: dict
+    args: dict = Field(default_factory=dict)
     template: Optional[str] = Field(default=None)
     llama_header: Optional[bool] = Field(default=None)
     llm_retries: int = 5
@@ -153,16 +161,71 @@ class KaiConfigModels(BaseModel):
 # Main config
 
 
-# TODO: Evaluate the usage of pydantic-settings to simplify environment variable
-# and command line argument management.
-class KaiConfig(BaseModel):
-    log_level: str = "info"
-    file_log_level: str = "info"
+class TomlConfigSettingsSource(PydanticBaseSettingsSource):
+    """
+    Helper class to load a TOML file and convert it to a dictionary for
+    pydantic-settings.
+    """
+
+    def __init__(self, settings_cls: type[BaseSettings], str_path: str):
+        self.settings_cls = settings_cls
+        self.config = settings_cls.model_config
+
+        self.str_path = str_path
+
+        if not os.path.exists(str_path):
+            self.file_content_toml = {}
+        else:
+            with open(str_path, "r") as f:
+                self.file_content_toml = tomllib.loads(f.read())
+
+    def get_field_value(
+        self, field: FieldInfo, field_name: str
+    ) -> tuple[Any, str, bool]:
+        return self.file_content_toml.get(field_name), field_name, False
+
+    def prepare_field_value(
+        self, field_name: str, field: FieldInfo, value: Any, value_is_complex: bool
+    ) -> Any:
+        return value
+
+    def __call__(self) -> dict[str, Any]:
+        d: dict[str, Any] = {}
+
+        for field_name, field in self.settings_cls.model_fields.items():
+            field_value, field_key, value_is_complex = self.get_field_value(
+                field, field_name
+            )
+            field_value = self.prepare_field_value(
+                field_name, field, field_value, value_is_complex
+            )
+            if field_value is not None:
+                d[field_key] = field_value
+
+        return d
+
+
+class KaiConfig(BaseSettings):
+    """
+    Kai configuration settings. It loads settings from init arguments,
+    environment, dotenv, and config files. See
+    `KaiConfig.settings_customise_sources` for more details.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="KAI__", env_nested_delimiter="__")
+
+    log_level: str = "INFO"
+    file_log_level: str = "INFO"
     log_dir: str = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "../../logs"
     )
     demo_mode: bool = False
     trace_enabled: bool = False
+
+    # Gunicorn settings
+    gunicorn_workers: int = 8
+    gunicorn_timeout: int = 3600
+    gunicorn_bind: str = "0.0.0.0:8080"
 
     incident_store: KaiConfigIncidentStore
     models: KaiConfigModels
@@ -170,6 +233,34 @@ class KaiConfig(BaseModel):
     solution_consumers: list[SolutionConsumerKind] = Field(
         default_factory=lambda: [SolutionConsumerKind.DIFF_ONLY]
     )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """
+        Config is loaded with the following priority (higher overrides lower):
+
+        - Command line args (not implemented)
+        - Config file that is declared on the command line / via init arguments.
+        - Environment vars
+        - Global config file (kai.config.toml)
+        - Default field values
+        """
+        return (
+            init_settings,
+            env_settings,
+            dotenv_settings,
+            file_secret_settings,
+            TomlConfigSettingsSource(
+                settings_cls, os.path.join(PATH_KAI, "config.toml")
+            ),
+        )
 
     @staticmethod
     def model_validate_filepath(filepath: str):
@@ -191,4 +282,4 @@ class KaiConfig(BaseModel):
         else:
             raise ValueError(f"'{filepath}' has unsupported file type: {file_ext}")
 
-        return KaiConfig.model_validate(model_dict)
+        return KaiConfig(**model_dict)

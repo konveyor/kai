@@ -11,7 +11,7 @@ from git import Repo
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from kai.constants import PATH_GIT_ROOT, PATH_KAI, PATH_LOCAL_REPO
+from kai.constants import PATH_GIT_ROOT, PATH_LOCAL_REPO
 from kai.kai_logging import initLogging
 from kai.models.kai_config import KaiConfig
 from kai.models.report import Report
@@ -434,27 +434,12 @@ class IncidentStore:
 
 
 def cmd(provider: str = None):
-    KAI_LOG.setLevel("debug".upper())
-
-    if os.getenv("LOG_DIR") is not None:
-        log_dir = os.getenv("LOG_DIR")
-    else:
-        log_dir = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), "../../../logs"
-        )
-
-    if os.getenv("LOG_LEVEL") is not None:
-        log_level = os.getenv("LOG_LEVEL").upper()
-    else:
-        log_level = "INFO"
-
-    initLogging(log_level, "DEBUG", log_dir, "kai_psql.log")
-
     parser = argparse.ArgumentParser(description="Process some parameters.")
     parser.add_argument(
         "--config_filepath",
         type=str,
-        default=os.path.join(PATH_KAI, "config.toml"),
+        default=None,
+        required=False,
         help="Path to the config file.",
     )
     parser.add_argument(
@@ -469,7 +454,21 @@ def cmd(provider: str = None):
 
     args = parser.parse_args()
 
-    config = KaiConfig.model_validate_filepath(args.config_filepath)
+    if args.config_filepath:
+        config = KaiConfig.model_validate_filepath(args.config_filepath)
+    else:
+        config = KaiConfig()
+
+    initLogging(
+        config.log_level.upper(),
+        config.file_log_level.upper(),
+        config.log_dir,
+        "kai_psql.log",
+    )
+    KAI_LOG.setLevel(config.log_level.upper())
+
+    KAI_LOG.info(f"config: {config}")
+    print(f"config: {config}")
 
     if provider is not None and config.incident_store.args.provider != provider:
         raise Exception(f"This script only works with {provider} incident store.")

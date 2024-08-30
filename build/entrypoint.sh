@@ -1,15 +1,6 @@
 #!/bin/bash
 
-# If we are using podman or docker compose use the repo config.toml
-if [[ -f /podman_compose/kai/config.toml ]]; then
-	cp /podman_compose/kai/config.toml /kai/kai/config.toml
-	sed -i "s/^host =.*/host = \"${POSTGRESQL_HOST}\"/g" /kai/kai/config.toml
-	sed -i "s/^database =.*/database = \"${POSTGRESQL_DATABASE}\"/g" /kai/kai/config.toml
-	sed -i "s/^user =.*/user = \"${POSTGRESQL_USER}\"/g" /kai/kai/config.toml
-	sed -i "s/^password =.*/password =\"${POSTGRESQL_PASSWORD}\"/g" /kai/kai/config.toml
-fi
-
-until PGPASSWORD="${POSTGRESQL_PASSWORD}" pg_isready -q -h "${POSTGRESQL_HOST}" -U "${POSTGRESQL_USER}" -d "${POSTGRESQL_DATABASE}"; do
+until PGPASSWORD="${KAI__INCIDENT_STORE__ARGS__PASSWORD}" pg_isready -q -h "${KAI__INCIDENT_STORE__ARGS__HOST}" -U "${KAI__INCIDENT_STORE__ARGS__USER}" -d "${KAI__INCIDENT_STORE__ARGS__DATABASE}"; do
 	sleep 1
 done
 
@@ -19,7 +10,7 @@ if [[ ${MODE} != "importer" ]]; then
 		SQL_EXISTS=$(printf "\dt %s" "${TABLE}")
 		STDERR="Did not find any relation"
 		# trunk-ignore(shellcheck/SC2312)
-		if PGPASSWORD="${POSTGRESQL_PASSWORD}" psql -h "${POSTGRESQL_HOST}" -U "${POSTGRESQL_USER}" -d "${POSTGRESQL_DATABASE}" -c "${SQL_EXISTS}" 2>&1 | grep -q -v "${STDERR}"; then
+		if PGPASSWORD="${KAI__INCIDENT_STORE__ARGS__PASSWORD}" psql -h "${KAI__INCIDENT_STORE__ARGS__HOST}" -U "${KAI__INCIDENT_STORE__ARGS__USER}" -d "${KAI__INCIDENT_STORE__ARGS__DATABASE}" -c "${SQL_EXISTS}" 2>&1 | grep -q -v "${STDERR}"; then
 			echo "################################################"
 			echo "load-data has run already run, starting server.#"
 			echo "################################################"
@@ -30,15 +21,29 @@ if [[ ${MODE} != "importer" ]]; then
 			echo "################################################"
 			sleep 5
 			cd /kai || exit
-			python ./kai/service/incident_store/psql.py --config_filepath ./kai/config.toml --drop_tables False
+
+			if [[ -f /podman_compose/build/config.toml ]]; then
+				printf "Using custom config file\n"
+				python ./kai/service/incident_store/incident_store.py --config_filepath /podman_compose/build/config.toml --drop_tables False
+			else
+				python ./kai/service/incident_store/incident_store.py --drop_tables False
+			fi
 			echo "################################################"
 			echo "load-data has completed, starting server.      #"
 			echo "################################################"
 			sleep 5
 		fi
 	fi
-	PYTHONPATH="/kai/kai" exec gunicorn --timeout 3600 -w "${NUM_WORKERS}" --bind 0.0.0.0:8080 --worker-class aiohttp.GunicornWebWorker 'kai.server:app()'
+
+	printf "Starting Kai server\n"
+	if [[ -f /podman_compose/build/config.toml ]]; then
+		printf "Using custom config file\n"
+		PYTHONPATH="/kai/kai" python /kai/kai/server.py --config_filepath /podman_compose/build/config.toml
+	else
+		PYTHONPATH="/kai/kai" python /kai/kai/server.py
+	fi
+
 else
 	cd /kai || exit
-	python ./kai/hub_importer.py --loglevel "${LOGLEVEL}" --config_filepath ./kai/config.toml "${HUB_URL}" "${IMPORTER_ARGS}"
+	python ./kai/hub_importer.py --loglevel "${KAI__LOG_LEVEL}" "${CUSTOM_CONFIG_FLAG}" "${KAI__HUB_URL}" "${KAI__IMPORTER_ARGS}"
 fi
