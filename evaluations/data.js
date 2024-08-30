@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1725044459790,
+  "lastUpdate": 1725044462675,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -8785,6 +8785,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "42743659+JonahSussman@users.noreply.github.com",
+            "name": "Jonah Sussman",
+            "username": "JonahSussman"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1e0252cc2dd0949bb7b84edd98a26ce2ceb92603",
+          "message": ":sparkles: Clean up and simplify config management (#320)\n\n* Removed ide (IDE installation instructions already in docs/Getting_Started.md)\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Moved Notes.md and ROADMAP.md to docs\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Changed project to use pyproject.toml\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Updated how config is handled\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Reverted ROADMAP.md changes\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Fixed CONTRIBUTING.md with pyproject.toml and compose.yaml\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Fixed documentation\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Updated how config priority is done\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Fixed nits\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Fixed more nits\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Fixed more nits\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Swapped back kai copying\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Fixed trunk check errors\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Fixed bugs with load-data\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Fixed more bugs\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>",
+          "timestamp": "2024-08-30T14:58:34-04:00",
+          "tree_id": "d8f5d7b613d6ba0f38238c6174270d5d2ebc65a8",
+          "url": "https://github.com/konveyor/kai/commit/1e0252cc2dd0949bb7b84edd98a26ce2ceb92603"
+        },
+        "date": 1725044461451,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
             "value": "",
             "unit": "Match"
           }
