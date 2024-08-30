@@ -16,7 +16,7 @@ As of writing this, here's the status on both two explorations above:
 
 ### Building JSON-RPC interface into a binary
 
-_Note that you need to activate Kai's virtual machine before building the client_
+> Note that you need to activate Kai's virtual machine before building the client
 
 Now we will install pyinstaller in current venv:
 
