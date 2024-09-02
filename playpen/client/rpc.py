@@ -81,7 +81,7 @@ class CustomRpcEndpoint(JsonRpcEndpoint):
     def send_request(self, message):
         json_string = json.dumps(message, cls=MyEncoder)
         jsonrpc_req = self.__add_header(json_string)
-        log.debug(f"sending res {jsonrpc_req}")
+        log.debug(f"Sending data over stdin {jsonrpc_req}")
         with self.write_lock:
             self.stdin.write(jsonrpc_req)
             self.stdin.flush()
@@ -90,12 +90,8 @@ class CustomRpcEndpoint(JsonRpcEndpoint):
         with self.read_lock:
             message_size = None
             while True:
-                log.debug("waiting")
                 line = self.stdout.readline()
-                log.debug("read line")
-                log.debug(line)
                 if not line:
-                    log.debug("empty line")
                     return None
                 if not line.endswith("\r\n") and not line.endswith("\n"):
                     raise ResponseError(
@@ -120,9 +116,8 @@ class CustomRpcEndpoint(JsonRpcEndpoint):
             if not message_size:
                 raise ResponseError(ErrorCodes.ParseError, "Bad header: missing size")
 
-            log.debug(f"waiting to read message of size {message_size}")
             jsonrpc_res = self.stdout.read(message_size)
-            log.debug(f"read message {jsonrpc_res}")
+            log.debug(f"Read data from stdout {jsonrpc_res}")
             return json.loads(jsonrpc_res)
 
 
@@ -263,7 +258,6 @@ class KaiClientRPCServer:
                 incidents,
                 model_provider,
             )
-            log.debug("making llm request to generate a fix")
             result = generate_fix(
                 trace,
                 config,
@@ -272,7 +266,6 @@ class KaiClientRPCServer:
                 rpc_params.input_file_path,
                 prompt,
                 model_provider,
-                use_vcr=False,
             )
             return result.updated_file
         except Exception as e:

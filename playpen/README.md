@@ -7,18 +7,22 @@ Playpen is intended to be a location for exploring and sharing concepts. The mat
 The goals of this effort are:
 
 - Figure out how we can enable communication between the Kai Client and different IDE extensions (possibly running in restricted environments) in a uniform way.
-- Figure out a way to package the client into an independenct binary that can be run on different platforms.
+- Figure out a way to package the client into an independent binary that can be run on different platforms.
 
-As of writing this, here's the status on both two explorations above:
+As of writing this, here's the progress we made on the goals above:
 
 - We have a JSON-RPC interface in front of the Client CLI. The JSON-RPC interface can be found in [./client/rpc.py](./client/rpc.py). It exposes `get_incident_solutions_for_file` function that generates a fix for one file. There are two example clients (Python and Javascript) we have written that talk with the interface over I/O streams.
 - We have a `build.spec` file that builds the JSON-RPC client into a binary using PyInstaller.
 
 ### Building JSON-RPC interface into a binary
 
-> Note that you need to activate Kai's virtual machine before building the client
+Before you can build the binary, you need to activate Kai virtual environment. Once venv is activated, you need to install Kai module in the env. To install Kai module, navigate to the Kai project root and run:
 
-Now we will install pyinstaller in current venv:
+```sh
+pip install -e .
+```
+
+Now we install pyinstaller in current venv:
 
 ```sh
 pip install pyinstaller
@@ -30,17 +34,11 @@ Next, we run pyinstaller to generate a binary:
 pyinstaller build.spec
 ```
 
-The above will generate a binary at `./dist/cli`.
+Once successful, a binary will be generated at `./dist/cli`.
 
 ### Testing JSON-RPC binary
 
 Now that we have built our JSON-RPC interface into a binary, we will test it using a Python and a JS client that communicates. Both of these clients use a hardcoded path `./dist/cli` to run the JSON-RPC server. Make sure you have built the binary before moving forward.
-
-When successful, both clients will print the updated file followed by the following message:
-
-```sh
-Received response successfully!
-```
 
 #### Testing with Python client
 
@@ -50,7 +48,7 @@ To run the Python JSON-RPC client, install a dependency:
 pip install pylspclient
 ```
 
-Now run the client:
+To run the client:
 
 ```sh
 python rpc-client.py <KAI_TOML_CONFIG> <APP_NAME> <ANALYSIS_OUTPUT_PATH> <INPUT_FILE_PATH>
@@ -66,7 +64,7 @@ To run the Javascript client, install a dependency:
 npm install vscode-jsonrpc
 ```
 
-Now run the client:
+To run the client:
 
 ```sh
 node rpc-client.js <KAI_TOML_CONFIG> <APP_NAME> <ANALYSIS_OUTPUT_PATH> <INPUT_FILE_PATH>
@@ -80,3 +78,9 @@ Both the Python and JS clients take exactly the same arguments in order:
 - <APP_NAME>: The name of the application you're analyzing
 - <ANALYSIS_OUTPUT_PATH>: Absolute path to an analysis report containing incidents
 - <INPUT_FILE_PATH>: Absolute path to the input file for which you want to generate incidents
+
+When successful, both clients will print the updated file followed by the following message:
+
+```sh
+Received response successfully!
+```
