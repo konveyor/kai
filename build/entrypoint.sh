@@ -1,8 +1,7 @@
 #!/bin/bash
 
 printf "Waiting until postgres is ready\n"
-# trunk-ignore(shellcheck/SC2312)
-until [[ $(PGPASSWORD="${KAI__INCIDENT_STORE__ARGS__PASSWORD}" pg_isready -q -h "${KAI__INCIDENT_STORE__ARGS__HOST}" -U "${KAI__INCIDENT_STORE__ARGS__USER}" -d "${KAI__INCIDENT_STORE__ARGS__DATABASE}") -eq 0 ]]; do
+until PGPASSWORD="${KAI__INCIDENT_STORE__ARGS__PASSWORD}" pg_isready -q -h "${KAI__INCIDENT_STORE__ARGS__HOST}" -U "${KAI__INCIDENT_STORE__ARGS__USER}" -d "${KAI__INCIDENT_STORE__ARGS__DATABASE}"; do
 	printf "."
 	sleep 1
 done
