@@ -43,7 +43,8 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - kai_db
+      kai_db:
+        condition: service_healthy
   kai_hub_importer:
     environment:
       <<: [*kai-variables, *db-variables]
@@ -53,13 +54,19 @@ services:
       - ${PWD}:/podman_compose:rw,Z
       - ${PWD}/logs:/podman_compose/logs:rw,Z,U
     depends_on:
-      - kai_db
+      kai_db:
+        condition: service_healthy
     profiles:
       - use_hub_importer
   kai_db:
     image: quay.io/sclorg/postgresql-15-c9s:latest
     environment:
       <<: *db-variables
+    healthcheck:
+      test: /usr/bin/pg_isready
+      interval: 5s
+      timeout: 10s 
+      retries: 50
     volumes:
       - kai_db_data:/var/lib/postgresql/data:Z
 volumes:

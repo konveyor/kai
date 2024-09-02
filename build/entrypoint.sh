@@ -1,11 +1,16 @@
 #!/bin/bash
 
-until PGPASSWORD="${KAI__INCIDENT_STORE__ARGS__PASSWORD}" pg_isready -q -h "${KAI__INCIDENT_STORE__ARGS__HOST}" -U "${KAI__INCIDENT_STORE__ARGS__USER}" -d "${KAI__INCIDENT_STORE__ARGS__DATABASE}"; do
+printf "Waiting until postgres is ready\n"
+# trunk-ignore(shellcheck/SC2312)
+until [[ $(PGPASSWORD="${KAI__INCIDENT_STORE__ARGS__PASSWORD}" pg_isready -q -h "${KAI__INCIDENT_STORE__ARGS__HOST}" -U "${KAI__INCIDENT_STORE__ARGS__USER}" -d "${KAI__INCIDENT_STORE__ARGS__DATABASE}") -eq 0 ]]; do
+	printf "."
 	sleep 1
 done
 
+printf "\nPostgres is ready\n"
+
 if [[ ${MODE} != "importer" ]]; then
-	if [[ ${USE_HUB_IMPORTER} == "False" ]]; then
+	if [[ ${USE_HUB_IMPORTER:-False} == "False" ]]; then
 		TABLE=applications
 		SQL_EXISTS=$(printf "\dt %s" "${TABLE}")
 		STDERR="Did not find any relation"
