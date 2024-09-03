@@ -32,12 +32,18 @@ class SQLSolutionType(TypeDecorator):
 
         return value.model_dump_json()
 
-    def process_result_value(self, value: str, dialect: Dialect):
+    def process_result_value(self, value: Any | None, dialect: Dialect):
         # Out of the db
         if value is None:
             return None
+        if (
+            isinstance(value, str)
+            or isinstance(value, bytes)
+            or isinstance(value, bytearray)
+        ):
+            return Solution.model_validate_json(value)
 
-        return Solution.model_validate_json(value)
+        raise ValueError(f"Unexpected type {type(value)} for solution")
 
 
 def SQLEnum(enum_type: Type[Enum]):
@@ -115,7 +121,7 @@ class SQLViolation(SQLBase):
         ForeignKey("rulesets.ruleset_name"), primary_key=True
     )
 
-    category: Mapped[SQLCategory]  # type: ignore
+    category: Mapped[SQLCategory]  # type: ignore[valid-type]
     labels: Mapped[list[str]]
 
     ruleset: Mapped[SQLRuleset] = relationship(back_populates="violations")
@@ -154,7 +160,7 @@ class SQLIncident(SQLBase):
         ForeignKey("accepted_solutions.solution_id")
     )
 
-    __table_args__ = (
+    __table_args__: tuple = (
         ForeignKeyConstraint(
             [violation_name, ruleset_name],
             [SQLViolation.violation_name, SQLViolation.ruleset_name],

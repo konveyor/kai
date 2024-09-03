@@ -17,7 +17,7 @@ class ModelProvider:
         self.llm_retries: int = config.llm_retries
         self.llm_retry_delay: float = config.llm_retry_delay
 
-        model_class: BaseChatModel
+        model_class: type[BaseChatModel]
         defaults: dict
         model_args: dict
         model_id: str

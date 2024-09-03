@@ -51,8 +51,8 @@ class KaiTrace:
         self.batch_mode = batch_mode
         self.application_name = application_name
         self.file_name = file_name
-        self.time_start = -1
-        self.time_end = -1
+        self.time_start = -1.0
+        self.time_end = -1.0
 
         # We use the same parent directory of logging for trace data
         log_dir = process_log_dir_replacements(self.log_dir)

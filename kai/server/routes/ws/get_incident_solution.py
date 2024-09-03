@@ -1,5 +1,5 @@
 import json
-from typing import Iterator
+from typing import Iterator, cast
 
 from aiohttp import web
 from aiohttp.web_request import Request
@@ -26,19 +26,22 @@ async def get_ws_get_incident_solution(request: Request):
         try:
             request_json: dict = json.loads(msg.data)
 
-            chunks: Iterator[BaseMessageChunk] = request.app[
-                web.AppKey("kai_application", KaiApplication)
-            ].get_incident_solution(
-                application_name=request_json["application_name"],
-                ruleset_name=request_json["ruleset_name"],
-                violation_name=request_json["violation_name"],
-                incident_snip=request_json.get("incident_snip", ""),
-                incident_vars=request_json["incident_variables"],
-                file_name=request_json["file_name"],
-                file_contents=request_json["file_contents"],
-                line_number=request_json["line_number"],
-                analysis_message=request_json.get("analysis_message", ""),
-                stream=True,
+            chunks: Iterator[BaseMessageChunk] = cast(
+                Iterator[BaseMessageChunk],
+                request.app[
+                    web.AppKey("kai_application", KaiApplication)
+                ].get_incident_solution(
+                    application_name=request_json["application_name"],
+                    ruleset_name=request_json["ruleset_name"],
+                    violation_name=request_json["violation_name"],
+                    incident_snip=request_json.get("incident_snip", ""),
+                    incident_variables=request_json["incident_variables"],
+                    file_name=request_json["file_name"],
+                    file_contents=request_json["file_contents"],
+                    line_number=request_json["line_number"],
+                    analysis_message=request_json.get("analysis_message", ""),
+                    stream=True,
+                ),
             )
 
             for chunk in chunks:
