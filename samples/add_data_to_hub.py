@@ -10,7 +10,7 @@ import urllib3
 import yaml
 from git import Repo
 
-from kai.hub_importer import Incident, Issue
+from kai.server.hub_importer import Incident, Issue
 
 # Little hack so we can import from test directory
 try:
@@ -151,13 +151,11 @@ def add_analysis_report(
         analysis_report, app_id, analysis_id, commit
     )
 
-    with tempfile.NamedTemporaryFile(
-        mode="w", delete=False
-    ) as temp_analysis_file, tempfile.NamedTemporaryFile(
-        mode="w", delete=False
-    ) as temp_issues_file, tempfile.NamedTemporaryFile(
-        mode="w", delete=False
-    ) as temp_dependencies_file:
+    with (
+        tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_analysis_file,
+        tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_issues_file,
+        tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_dependencies_file,
+    ):
 
         yaml.safe_dump_all([reformatted_report], temp_analysis_file)
         temp_analysis_path = temp_analysis_file.name

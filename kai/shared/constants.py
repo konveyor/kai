@@ -8,7 +8,7 @@ paths - that are used in multiple places in the codebase. There might be a more
 robust solution, but for now, this should suffice
 """
 
-PATH_KAI = os.path.dirname(os.path.abspath(__file__))
+PATH_KAI = os.path.dirname(os.path.join(os.path.abspath(__file__), ".."))
 
 # pyinstaller sets sys attributes to help determine when program runs in bin
 if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):

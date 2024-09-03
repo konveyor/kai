@@ -1,7 +1,7 @@
 import unittest
 
-from kai.models.kai_config import KaiConfigModels
-from kai.service.llm_interfacing.model_provider import ModelProvider
+from kai.server.service.llm_interfacing.model_provider import ModelProvider
+from kai.shared.models.kai_config import KaiConfigModels
 
 
 class TestModelProvider(unittest.TestCase):

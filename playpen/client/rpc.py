@@ -23,8 +23,8 @@ from pylspclient.json_rpc_endpoint import JsonRpcEndpoint, MyEncoder
 from pylspclient.lsp_client import LspEndpoint as RpcServer
 from pylspclient.lsp_errors import ErrorCodes, ResponseError
 
-from kai.kai_logging import parent_log, setup_file_handler
-from kai.models.report_types import ExtendedIncident
+from kai.shared.kai_logging import parent_log, setup_file_handler
+from kai.shared.models.report_types import ExtendedIncident
 
 log = logging.getLogger("kai-rpc")
 

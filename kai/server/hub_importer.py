@@ -6,7 +6,7 @@ import os
 import pprint
 import tempfile
 import time
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Iterator, Optional
 
 import dateutil.parser
 import requests
@@ -14,10 +14,10 @@ import urllib3
 from git import GitCommandError, Repo
 from pydantic import BaseModel, Field
 
-from kai.models.kai_config import KaiConfig
-from kai.models.report import Report
-from kai.service.incident_store import Application, IncidentStore
-from kai.service.kai_application.kai_application import KaiApplication
+from kai.server.service.incident_store import Application, IncidentStore
+from kai.server.service.kai_application.kai_application import KaiApplication
+from kai.shared.models.kai_config import KaiConfig
+from kai.shared.models.report import Report
 
 KAI_LOG = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class Incident(KaiBaseModel):
     lineNumber: int = Field(..., alias="line")
     message: str
     codeSnip: str
-    variables: Dict[str, Any] = Field(..., alias="facts")
+    variables: dict[str, Any] = Field(..., alias="facts")
 
 
 class Link(KaiBaseModel):
@@ -74,9 +74,9 @@ class Issue(KaiBaseModel):
     description: str
     category: str
     effort: int
-    incidents: List[Incident]
-    links: Optional[List[Link]] = []
-    labels: List[str]
+    incidents: list[Incident]
+    links: Optional[list[Link]] = []
+    labels: list[str]
 
 
 class Identity(KaiBaseModel):
@@ -93,7 +93,7 @@ class HubApplication(KaiBaseModel):
     createUser: Optional[str] = None
     updateUser: Optional[str] = None
     createTime: Optional[str] = None
-    identities: List[Identity] = None
+    identities: list[Identity] = None
 
 
 class Analysis(KaiBaseModel):
@@ -263,14 +263,14 @@ def get_data_from_api(url: str, params=None, timeout: int = 60, verify: bool = T
 
 
 def process_analyses(
-    analyses: List[Analysis],
+    analyses: list[Analysis],
     konveyor_hub_url: str,
     application_dir: str,
     request_timeout: int = 60,
     request_verify: bool = True,
-) -> List[Tuple[Application, Report]]:
+) -> list[tuple[Application, Report]]:
 
-    reports: List[Tuple[Application, Report]] = []
+    reports: list[tuple[Application, Report]] = []
     for analysis in analyses:
         KAI_LOG.info(
             f"Processing analysis {analysis.id} for application {analysis.application.id}"

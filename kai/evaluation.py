@@ -10,17 +10,17 @@ from typing import Any
 import git
 import yaml
 
-from kai.constants import PATH_BENCHMARKS
-from kai.models.file_solution import guess_language, parse_file_solution_content
-from kai.models.kai_config import KaiConfig, KaiConfigIncidentStoreSQLiteArgs
-from kai.models.report import Report
-from kai.models.report_types import ExtendedIncident
-from kai.service.incident_store.backend import SQLiteBackend
-from kai.service.incident_store.incident_store import Application, IncidentStore
-from kai.service.kai_application.util import get_prompt
-from kai.service.llm_interfacing.model_provider import ModelProvider
-from kai.service.solution_handling.detection import solution_detection_naive
-from kai.service.solution_handling.production import SolutionProducerTextOnly
+from kai.server.service.incident_store.backend import SQLiteBackend
+from kai.server.service.incident_store.incident_store import Application, IncidentStore
+from kai.server.service.kai_application.util import get_prompt
+from kai.server.service.llm_interfacing.model_provider import ModelProvider
+from kai.server.service.solution_handling.detection import solution_detection_naive
+from kai.server.service.solution_handling.production import SolutionProducerTextOnly
+from kai.shared.constants import PATH_BENCHMARKS
+from kai.shared.models.file_solution import guess_language, parse_file_solution_content
+from kai.shared.models.kai_config import KaiConfig, KaiConfigIncidentStoreSQLiteArgs
+from kai.shared.models.report import Report
+from kai.shared.models.report_types import ExtendedIncident
 
 sys.path.append("..")
 

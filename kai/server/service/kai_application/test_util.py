@@ -3,18 +3,18 @@ from unittest.mock import MagicMock, patch
 
 from jinja2 import TemplateNotFound
 
-from kai.models.report_types import ExtendedIncident, Incident
-from kai.service.kai_application.util import (
+from kai.server.service.kai_application.util import (
     BatchMode,
     batch_incidents,
     get_prompt,
     playback_if_demo_mode,
 )
+from kai.shared.models.report_types import ExtendedIncident, Incident
 
 
 class TestGetPrompt(unittest.TestCase):
 
-    @patch("kai.service.kai_application.util.Environment.get_template")
+    @patch("kai.server.service.kai_application.util.Environment.get_template")
     def test_get_prompt_with_valid_template(self, mock_get_template):
         mock_template = MagicMock()
         mock_template.render.return_value = "rendered template"
@@ -26,10 +26,10 @@ class TestGetPrompt(unittest.TestCase):
         self.assertEqual(result, "rendered template")
 
     @patch(
-        "kai.service.kai_application.util.Environment.get_template",
+        "kai.server.service.kai_application.util.Environment.get_template",
         side_effect=TemplateNotFound("test_template.jinja"),
     )
-    @patch("kai.service.kai_application.util.KAI_LOG.warning")
+    @patch("kai.server.service.kai_application.util.KAI_LOG.warning")
     def test_get_prompt_fallback(self, mock_warning, mock_get_template):
         mock_fallback_template = MagicMock()
         mock_fallback_template.render.return_value = "fallback template"
@@ -40,7 +40,7 @@ class TestGetPrompt(unittest.TestCase):
         ]
 
         with patch(
-            "kai.service.kai_application.util.Environment", return_value=mock_env
+            "kai.server.service.kai_application.util.Environment", return_value=mock_env
         ):
             result = get_prompt(
                 template_name="test_template", pb_vars={"key": "value"}, fallback=True
@@ -60,8 +60,8 @@ class TestGetPrompt(unittest.TestCase):
 
 class TestPlaybackIfDemoMode(unittest.TestCase):
 
-    @patch("kai.service.kai_application.util.vcr.VCR.use_cassette")
-    @patch("kai.service.kai_application.util.KAI_LOG.debug")
+    @patch("kai.server.service.kai_application.util.vcr.VCR.use_cassette")
+    @patch("kai.server.service.kai_application.util.KAI_LOG.debug")
     def test_playback_if_demo_mode(self, mock_debug, mock_use_cassette):
         mock_use_cassette.return_value.__enter__.return_value = None
 
@@ -73,7 +73,7 @@ class TestPlaybackIfDemoMode(unittest.TestCase):
         mock_debug.assert_called_once()
         mock_use_cassette.assert_called_once_with("file1.yaml")
 
-    @patch("kai.service.kai_application.util.vcr.VCR.use_cassette")
+    @patch("kai.server.service.kai_application.util.vcr.VCR.use_cassette")
     def test_playback_if_not_demo_mode(self, mock_use_cassette):
         mock_use_cassette.return_value.__enter__.return_value = None
 
@@ -100,57 +100,57 @@ class TestBatchIncidents(unittest.TestCase):
             ExtendedIncident(
                 **self.incident_dict,
                 ruleset_name="ruleset1",
-                violation_name="violation1"
+                violation_name="violation1",
             ),
             ExtendedIncident(
                 **self.incident_dict,
                 ruleset_name="ruleset1",
-                violation_name="violation1"
+                violation_name="violation1",
             ),
             ExtendedIncident(
                 **self.incident_dict,
                 ruleset_name="ruleset1",
-                violation_name="violation2"
+                violation_name="violation2",
             ),
             ExtendedIncident(
                 **self.incident_dict,
                 ruleset_name="ruleset1",
-                violation_name="violation2"
+                violation_name="violation2",
             ),
             ExtendedIncident(
                 **self.incident_dict,
                 ruleset_name="ruleset1",
-                violation_name="violation2"
+                violation_name="violation2",
             ),
             ExtendedIncident(
                 **self.incident_dict,
                 ruleset_name="ruleset2",
-                violation_name="violation1"
+                violation_name="violation1",
             ),
             ExtendedIncident(
                 **self.incident_dict,
                 ruleset_name="ruleset2",
-                violation_name="violation1"
+                violation_name="violation1",
             ),
             ExtendedIncident(
                 **self.incident_dict,
                 ruleset_name="ruleset2",
-                violation_name="violation1"
+                violation_name="violation1",
             ),
             ExtendedIncident(
                 **self.incident_dict,
                 ruleset_name="ruleset2",
-                violation_name="violation1"
+                violation_name="violation1",
             ),
             ExtendedIncident(
                 **self.incident_dict,
                 ruleset_name="ruleset2",
-                violation_name="violation1"
+                violation_name="violation1",
             ),
             ExtendedIncident(
                 **self.incident_dict,
                 ruleset_name="ruleset2",
-                violation_name="violation1"
+                violation_name="violation1",
             ),
         ]
 

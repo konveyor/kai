@@ -17,8 +17,8 @@ from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON
 
-from kai.models import report_types
-from kai.service.solution_handling.solution_types import Solution
+from kai.server.service.solution_handling.solution_types import Solution
+from kai.shared.models import report_types
 
 
 class SQLSolutionType(TypeDecorator):

@@ -6,14 +6,14 @@ import tree_sitter as ts
 import yaml
 from sequoia_diff.models import Node
 
-from kai.constants import PATH_TEST_DATA
-from kai.service.incident_store.sql_types import SQLIncident
-from kai.service.solution_handling.detection import (
+from kai.server.service.incident_store.sql_types import SQLIncident
+from kai.server.service.solution_handling.detection import (
     SolutionDetectorContext,
     node_with_tightest_bounds,
     solution_detection_line_match,
     solution_detection_naive,
 )
+from kai.shared.constants import PATH_TEST_DATA
 
 
 class TestDetection(unittest.TestCase):

@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
+import logging
 import sys
 
 # Ensure that we have 'kai' in our import path
 sys.path.append("../../kai")
-from kai import Report
-from kai.kai_logging import KAI_LOG
+from kai.shared.models.report import Report
+
+KAI_LOG = logging.getLogger(__name__)
 
 APP_NAME = "coolstore"
 SAMPLE_APP_DIR = "./coolstore"

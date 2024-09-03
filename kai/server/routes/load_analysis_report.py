@@ -4,9 +4,9 @@ from aiohttp import web
 from aiohttp.web_request import Request
 from pydantic import BaseModel
 
-from kai.models.report import Report
-from kai.routes.util import to_route
-from kai.service.incident_store.incident_store import Application
+from kai.server.routes.util import to_route
+from kai.server.service.incident_store.incident_store import Application
+from kai.shared.models.report import Report
 
 
 # NOTE(@JonahSussman): This class can be removed if the other Application Class

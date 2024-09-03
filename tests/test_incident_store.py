@@ -9,16 +9,9 @@ import yaml
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from kai.constants import PATH_TEST_DATA
-from kai.models.kai_config import (
-    KaiConfigIncidentStore,
-    KaiConfigIncidentStoreSQLiteArgs,
-    KaiConfigModels,
-)
-from kai.models.report import Report
-from kai.service.incident_store.backend import incident_store_backend_factory
-from kai.service.incident_store.incident_store import Application, IncidentStore
-from kai.service.incident_store.sql_types import (
+from kai.server.service.incident_store.backend import incident_store_backend_factory
+from kai.server.service.incident_store.incident_store import Application, IncidentStore
+from kai.server.service.incident_store.sql_types import (
     SQLAcceptedSolution,
     SQLApplication,
     SQLBase,
@@ -26,15 +19,22 @@ from kai.service.incident_store.sql_types import (
     SQLRuleset,
     SQLViolation,
 )
-from kai.service.llm_interfacing.model_provider import ModelProvider
-from kai.service.solution_handling.detection import (
+from kai.server.service.llm_interfacing.model_provider import ModelProvider
+from kai.server.service.solution_handling.detection import (
     solution_detection_factory,
     solution_detection_naive,
 )
-from kai.service.solution_handling.production import (
+from kai.server.service.solution_handling.production import (
     SolutionProducerLLMLazy,
     SolutionProducerTextOnly,
 )
+from kai.shared.constants import PATH_TEST_DATA
+from kai.shared.models.kai_config import (
+    KaiConfigIncidentStore,
+    KaiConfigIncidentStoreSQLiteArgs,
+    KaiConfigModels,
+)
+from kai.shared.models.report import Report
 
 
 class Fixture:

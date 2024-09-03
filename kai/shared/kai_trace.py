@@ -7,7 +7,7 @@ from typing import Any
 from langchain.schema.messages import BaseMessage
 from pydantic import BaseModel
 
-from kai.kai_logging import process_log_dir_replacements
+from kai.shared.kai_logging import process_log_dir_replacements
 
 log = logging.getLogger(__name__)
 

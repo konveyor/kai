@@ -9,7 +9,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic.v1.utils import deep_update
 
-from kai.models.kai_config import KaiConfigModels
+from kai.shared.models.kai_config import KaiConfigModels
 
 
 class ModelProvider:
