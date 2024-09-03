@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from kai.constants import PATH_GIT_ROOT, PATH_LOCAL_REPO
-from kai.kai_logging import initLogging
+from kai.kai_logging import init_logging
 from kai.models.kai_config import KaiConfig
 from kai.models.report import Report
 from kai.models.util import filter_incident_vars
@@ -459,7 +459,7 @@ def cmd(provider: str = None):
     else:
         config = KaiConfig()
 
-    initLogging(
+    init_logging(
         config.log_level.upper(),
         config.file_log_level.upper(),
         config.log_dir,

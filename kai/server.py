@@ -10,7 +10,7 @@ from functools import cache
 from aiohttp import web
 from gunicorn.app.wsgiapp import WSGIApplication
 
-from kai.kai_logging import initLoggingFromConfig
+from kai.kai_logging import init_logging_from_config
 from kai.models.kai_config import KaiConfig
 from kai.routes import kai_routes
 from kai.service.kai_application.kai_application import KaiApplication
@@ -48,7 +48,7 @@ def app() -> web.Application:
 
     print(f"Config loaded: {pprint.pformat(config)}")
 
-    initLoggingFromConfig(config)
+    init_logging_from_config(config)
 
     webapp = web.Application()
     webapp["kai_application"] = KaiApplication(config)

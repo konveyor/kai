@@ -56,7 +56,7 @@ def setup_file_handler(
         )
 
 
-def initLogging(console_log_level, file_log_level, log_dir, log_file="kai_server.log"):
+def init_logging(console_log_level, file_log_level, log_dir, log_file="kai_server.log"):
     setup_console_handler(parent_log, console_log_level)
     setup_file_handler(parent_log, log_file, log_dir, file_log_level)
     # Attempt to set the parent log level to
@@ -64,5 +64,7 @@ def initLogging(console_log_level, file_log_level, log_dir, log_file="kai_server
     parent_log.setLevel("DEBUG")
 
 
-def initLoggingFromConfig(config: KaiConfig):
-    initLogging(config.log_level.upper(), config.file_log_level.upper(), config.log_dir)
+def init_logging_from_config(config: KaiConfig):
+    init_logging(
+        config.log_level.upper(), config.file_log_level.upper(), config.log_dir
+    )
