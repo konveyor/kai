@@ -1,6 +1,6 @@
 import os
-import pathlib
 import sys
+from pathlib import Path
 
 """
 This file exists because we need to define some constants - specifically file
@@ -8,22 +8,27 @@ paths - that are used in multiple places in the codebase. There might be a more
 robust solution, but for now, this should suffice
 """
 
-PATH_KAI = os.path.dirname(os.path.join(os.path.abspath(__file__), ".."))
+
+PATH_GIT_ROOT = Path(os.path.dirname(os.path.abspath(__file__)), "..", "..").resolve()
+
+PATH_KAI = PATH_GIT_ROOT / "kai"
 
 # pyinstaller sets sys attributes to help determine when program runs in bin
 if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-    PATH_KAI = sys._MEIPASS
+    PATH_KAI = Path(sys._MEIPASS)
 
-PATH_GIT_ROOT = os.path.join(PATH_KAI, "..")
+PATH_SERVER = PATH_KAI / "server"
 
-PATH_DATA = os.path.join(PATH_KAI, "data")
+PATH_DATA = PATH_SERVER / "data"
 
-PATH_BENCHMARKS = os.path.join(PATH_DATA, "benchmarks")
-PATH_MISC = os.path.join(PATH_DATA, "misc")
-PATH_SQL = os.path.join(PATH_DATA, "sql")
-PATH_TEMPLATES = os.path.join(PATH_DATA, "templates")
+# TODO: Change benchmarks to tests directory
+PATH_BENCHMARKS = PATH_DATA / "benchmarks"
+PATH_MISC = PATH_DATA / "misc"
+PATH_SQL = PATH_DATA / "sql"
+PATH_TEMPLATES = PATH_DATA / "templates"
 
-PATH_LOCAL_REPO = os.path.join(PATH_GIT_ROOT, "samples/sample_repos")
+PATH_SAMPLE_REPOS = PATH_GIT_ROOT / "samples" / "sample_repos"
 
-PATH_TESTS = os.path.join(PATH_GIT_ROOT, "tests")
-PATH_TEST_DATA = pathlib.Path(os.path.join(PATH_GIT_ROOT, "tests/test_data"))
+PATH_TESTS = PATH_GIT_ROOT / "tests"
+
+PATH_TEST_DATA = PATH_TESTS / "test_data"
