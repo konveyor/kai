@@ -125,7 +125,9 @@ class TestEvaluation(unittest.TestCase):
         self.assertEqual(results[("example_path", "config_path")].similarity, 0.9)
         self.assertEqual(results[("example_path", "config_path")].prompt, "prompt")
         self.assertTrue(
-            isinstance(results[("example_path", "config_path")].llm_result, MagicMock)
+            results[("example_path", "config_path")].llm_result.startswith(
+                "<MagicMock name='ModelProvider().llm.invoke().content' id="
+            )
         )
 
     def test_levenshtein_distance(self):

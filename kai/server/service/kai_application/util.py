@@ -3,6 +3,7 @@ import logging
 import os
 from contextlib import contextmanager
 from enum import StrEnum
+from pathlib import Path
 from typing import Callable, Optional
 
 import vcr  # type: ignore[import-untyped]
@@ -23,7 +24,7 @@ KAI_LOG = logging.getLogger(__name__)
 def get_prompt(
     template_name: str,
     pb_vars: dict,
-    path_templates: str = PATH_TEMPLATES,
+    path_templates: str | Path = PATH_TEMPLATES,
     jinja_kwargs: Optional[dict] = None,
     fallback: bool = True,
     add_ext_if_not_present: bool = True,
@@ -40,6 +41,9 @@ def get_prompt(
 
     if jinja_kwargs is None:
         jinja_kwargs = {}
+
+    if isinstance(path_templates, str):
+        path_templates = Path(path_templates)
 
     jinja_kwargs = {
         "loader": FileSystemLoader(path_templates),

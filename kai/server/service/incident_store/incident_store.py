@@ -28,7 +28,7 @@ from kai.server.service.solution_handling.detection import (
 )
 from kai.server.service.solution_handling.production import SolutionProducer
 from kai.server.service.solution_handling.solution_types import Solution
-from kai.shared.constants import PATH_GIT_ROOT, PATH_LOCAL_REPO
+from kai.shared.constants import PATH_GIT_ROOT, PATH_SAMPLE_REPOS
 from kai.shared.kai_logging import init_logging
 from kai.shared.models.kai_config import KaiConfig
 from kai.shared.models.report import Report
@@ -56,7 +56,7 @@ def __get_repo_path(app_name):
     """
     Get the repo path
     """
-    return os.path.join(PATH_LOCAL_REPO, app_name)
+    return os.path.join(PATH_SAMPLE_REPOS, app_name)
 
 
 def __get_app_variables(path: str, app_name: str):
