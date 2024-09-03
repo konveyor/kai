@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1725366763038,
+  "lastUpdate": 1725366767164,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -8872,6 +8872,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pgaikwad@redhat.com",
+            "name": "Pranav Gaikwad",
+            "username": "pranavgaikwad"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8863dd9f3ee913a8e3ee29703f4f0147ea78759e",
+          "message": "PyInstaller build spec + JSON RPC interface for client (#321)\n\n* checkpoint\r\n\r\nSigned-off-by: Pranav Gaikwad <pgaikwad@redhat.com>\r\n\r\n* checkpoint\r\n\r\nSigned-off-by: Pranav Gaikwad <pgaikwad@redhat.com>\r\n\r\n* add JSON-RPC interface and PyInstaller build spec\r\n\r\nSigned-off-by: Pranav Gaikwad <pgaikwad@redhat.com>\r\n\r\ncheckpoint\r\n\r\nSigned-off-by: Pranav Gaikwad <pgaikwad@redhat.com>\r\n\r\n* update README\r\n\r\nSigned-off-by: Pranav Gaikwad <pgaikwad@redhat.com>\r\n\r\n* checkpoint:\r\n\r\nSigned-off-by: Pranav Gaikwad <pgaikwad@redhat.com>\r\n\r\n* cleanup\r\n\r\nSigned-off-by: Pranav Gaikwad <pgaikwad@redhat.com>\r\n\r\n---------\r\n\r\nSigned-off-by: Pranav Gaikwad <pgaikwad@redhat.com>",
+          "timestamp": "2024-09-03T08:31:28-04:00",
+          "tree_id": "f888250d97cd3962915482c13e37055e9f810852",
+          "url": "https://github.com/konveyor/kai/commit/8863dd9f3ee913a8e3ee29703f4f0147ea78759e"
+        },
+        "date": 1725366766420,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
             "value": "",
             "unit": "Match"
           }
