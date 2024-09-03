@@ -81,3 +81,22 @@ where = ["."]
 include = ["kai*"]
 exclude = ["tests*"]
 namespaces = true
+
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+
+warn_redundant_casts = true
+warn_unused_ignores = true
+check_untyped_defs = true
+# follow_imports = "silent"
+# disallow_any_generics = true
+# no_implicit_reexport = true
+
+# for strict mypy: (this is the tricky one :-))
+# disallow_untyped_defs = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true

@@ -43,7 +43,7 @@ class KaiBaseModel(BaseModel):
         return default
 
 
-class Incident(KaiBaseModel):
+class Incident(KaiBaseModel):  # type: ignore[no-redef]
     id: int
     createUser: Optional[str] = None
     updateUser: Optional[str] = None
@@ -93,7 +93,7 @@ class HubApplication(KaiBaseModel):
     createUser: Optional[str] = None
     updateUser: Optional[str] = None
     createTime: Optional[str] = None
-    identities: list[Identity] = None
+    identities: Optional[list[Identity]] = None
 
 
 class Analysis(KaiBaseModel):
@@ -268,9 +268,9 @@ def process_analyses(
     application_dir: str,
     request_timeout: int = 60,
     request_verify: bool = True,
-) -> list[tuple[Application, Report]]:
+):
 
-    reports: list[tuple[Application, Report]] = []
+    reports: list[tuple[Application, Identity | None, Report]] = []
     for analysis in analyses:
         KAI_LOG.info(
             f"Processing analysis {analysis.id} for application {analysis.application.id}"
@@ -303,7 +303,7 @@ def process_analyses(
             application_dir,
         )
         application.current_commit = analysis.commit
-        report_data = {}
+        report_data: dict[str, dict[str, Any]] = {}
         issues_url = f"{konveyor_hub_url}/analyses/{analysis.id}/issues"
         for raw_issue in paginate_api(
             issues_url, timeout=request_timeout, verify=request_verify
@@ -334,7 +334,7 @@ def process_analyses(
                 (
                     application,
                     credentials,
-                    Report.load_report_from_object(report_data, analysis.id),
+                    Report.load_report_from_object(report_data, str(analysis.id)),
                 )
             )
     return reports

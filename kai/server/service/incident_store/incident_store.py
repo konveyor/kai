@@ -3,7 +3,8 @@ import datetime
 import logging
 import os
 from dataclasses import dataclass
-from typing import Optional, TypeVar
+from functools import singledispatch
+from typing import Any, Optional
 from urllib.parse import unquote, urlparse
 
 import yaml
@@ -35,15 +36,20 @@ from kai.shared.models.util import filter_incident_vars
 
 KAI_LOG = logging.getLogger(__name__)
 
-T = TypeVar("T")
 
-
-def deep_sort(obj: T) -> T:
-    if isinstance(obj, dict):
-        return {k: deep_sort(v) for k, v in sorted(obj.items())}
-    if isinstance(obj, list):
-        return sorted(deep_sort(x) for x in obj)
+@singledispatch
+def deep_sort(obj: Any) -> Any:
     return obj
+
+
+@deep_sort.register(dict)
+def _(obj: dict) -> dict:
+    return {k: deep_sort(v) for k, v in sorted(obj.items())}
+
+
+@deep_sort.register(list)
+def _(obj: list) -> list:
+    return sorted(deep_sort(x) for x in obj)
 
 
 def __get_repo_path(app_name):
@@ -413,6 +419,12 @@ class IncidentStore:
                     select_accepted_solution_stmt
                 ).first()
 
+                if accepted_solution is None:
+                    KAI_LOG.error(
+                        f"Error: Incident {incident.incident_id} has invalid solution_id {incident.solution_id}."
+                    )
+                    continue
+
                 processed_solution = self.solution_producer.post_process_one(
                     incident, accepted_solution.solution
                 )
@@ -433,7 +445,7 @@ class IncidentStore:
             return result
 
 
-def cmd(provider: str = None):
+def cmd():
     parser = argparse.ArgumentParser(description="Process some parameters.")
     parser.add_argument(
         "--config_filepath",
@@ -469,9 +481,6 @@ def cmd(provider: str = None):
 
     KAI_LOG.info(f"config: {config}")
     print(f"config: {config}")
-
-    if provider is not None and config.incident_store.args.provider != provider:
-        raise Exception(f"This script only works with {provider} incident store.")
 
     from kai.server.service.kai_application.kai_application import KaiApplication
 

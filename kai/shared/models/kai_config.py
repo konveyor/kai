@@ -53,7 +53,9 @@ class SolutionConsumerKind(StrEnum):
 
 
 class KaiConfigIncidentStorePostgreSQLArgs(BaseModel):
-    provider: Literal[KaiConfigIncidentStoreProvider.POSTGRESQL]
+    provider: Literal[KaiConfigIncidentStoreProvider.POSTGRESQL] = (
+        KaiConfigIncidentStoreProvider.POSTGRESQL
+    )
 
     host: Optional[str] = None
     database: Optional[str] = None
@@ -92,7 +94,9 @@ class KaiConfigIncidentStorePostgreSQLArgs(BaseModel):
 
 
 class KaiConfigIncidentStoreSQLiteArgs(BaseModel):
-    provider: Literal[KaiConfigIncidentStoreProvider.SQLITE]
+    provider: Literal[KaiConfigIncidentStoreProvider.SQLITE] = (
+        KaiConfigIncidentStoreProvider.SQLITE
+    )
 
     host: Optional[str] = None
     database: Optional[str] = None
@@ -140,10 +144,7 @@ class KaiConfigIncidentStore(BaseModel):
     solution_detectors: SolutionDetectorKind = SolutionDetectorKind.LINE_MATCH
     solution_producers: SolutionProducerKind = SolutionProducerKind.TEXT_ONLY
 
-    args: Union[
-        KaiConfigIncidentStorePostgreSQLArgs,
-        KaiConfigIncidentStoreSQLiteArgs,
-    ] = Field(discriminator="provider")
+    args: KaiConfigIncidentStoreArgs = Field(discriminator="provider")
 
 
 # Model providers

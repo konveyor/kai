@@ -5,7 +5,7 @@ import shutil
 # Ensure that we have 'kai' in our import path
 import sys
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import Any, Optional
 
 import git
 import yaml
@@ -63,11 +63,11 @@ def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
         raise ValueError(f"Expected directory, got {full_example_path}")
 
     example_name = os.path.basename(full_example_path)
-    original_file: str = None
-    expected_file: str = None
-    incidents: list[ExtendedIncident] = None
-    report: Report = None
-    application: Application = None
+    original_file: Optional[str] = None
+    expected_file: Optional[str] = None
+    incidents: Optional[list[ExtendedIncident]] = None
+    report: Optional[Report] = None
+    application: Optional[Application] = None
 
     for file_path in os.listdir(full_example_path):
         full_file_path = os.path.join(full_example_path, file_path)
@@ -86,7 +86,7 @@ def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
                 expected_file = f.read()
 
         elif file_name == "incidents":
-            incidents: list[ExtendedIncident] = []
+            incidents = []
 
             with open(full_file_path, "r") as f:
                 yaml_incidents = yaml.safe_load(f)
@@ -105,11 +105,13 @@ def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
             application = Application(**application_dict)
 
     if original_file is None or expected_file is None:
-        print(f"Missing original or expected file in {full_example_path}")
+        raise ValueError(f"Missing original or expected file in {full_example_path}")
+    if incidents is None:
+        raise ValueError(f"Missing incidents file in {full_example_path}")
     if report is None:
-        print(f"Missing report file in {full_example_path}")
+        raise ValueError(f"Missing report file in {full_example_path}")
     if application is None:
-        print(f"Missing application file in {full_example_path}")
+        raise ValueError(f"Missing application file in {full_example_path}")
 
     return BenchmarkExample(
         name=example_name,
@@ -150,11 +152,14 @@ def load_benchmark_examples(
     examples: dict[str, BenchmarkExample] = {}
 
     for example_path in os.listdir(examples_path):
-        example = load_single_benchmark_example(
-            os.path.join(examples_path, example_path)
-        )
+        try:
+            example = load_single_benchmark_example(
+                os.path.join(examples_path, example_path)
+            )
 
-        examples[example.name] = example
+            examples[example.name] = example
+        except Exception as e:
+            print(f"Error loading {example_path}: {e}")
 
     return examples
 
@@ -235,7 +240,7 @@ def evaluate(
 
                 llm_result = model_provider.llm.invoke(prompt)
                 content = parse_file_solution_content(
-                    src_file_language, llm_result.content
+                    src_file_language, str(llm_result.content)
                 )
 
                 similarity = judge_result(
@@ -246,7 +251,7 @@ def evaluate(
                 overall_results[(example_path, config_path)] = BenchmarkResult(
                     similarity=similarity,
                     prompt=prompt,
-                    llm_result=llm_result.content,
+                    llm_result=str(llm_result.content),
                 )
 
                 incident_store.delete_store()
@@ -272,7 +277,7 @@ def levenshtein_distance(s1, s2) -> float:
     if len(s1) > len(s2):
         s1, s2 = s2, s1
 
-    distances = range(len(s1) + 1)
+    distances = list(range(len(s1) + 1))
     for i2, c2 in enumerate(s2):
         distances_ = [i2 + 1]
         for i1, c1 in enumerate(s1):

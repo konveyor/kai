@@ -68,8 +68,11 @@ class SolutionProducerTextOnly(SolutionProducer):
         local_file_path = remove_known_prefixes(
             unquote(urlparse(incident.incident_uri).path)
         )
+        if repo.working_tree_dir is None:
+            raise ValueError("Repo has no working tree directory")
+
         file_path = os.path.join(
-            repo.working_tree_dir,
+            str(repo.working_tree_dir),
             local_file_path,
         )
 
@@ -169,7 +172,7 @@ class SolutionProducerLLMLazy(SolutionProducer):
         # TODO: Parse LLM result. For now, just returning the content fully
 
         solution.llm_summary_generated = True
-        solution.llm_summary = llm_result.content
+        solution.llm_summary = str(llm_result.content)
 
         return solution
 

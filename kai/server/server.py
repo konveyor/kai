@@ -8,7 +8,7 @@ import pprint
 from functools import cache
 
 from aiohttp import web
-from gunicorn.app.wsgiapp import WSGIApplication
+from gunicorn.app.wsgiapp import WSGIApplication  # type: ignore[import-untyped]
 
 from kai.server.routes import kai_routes
 from kai.server.service.kai_application.kai_application import KaiApplication
