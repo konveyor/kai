@@ -3,22 +3,30 @@ from unittest.mock import MagicMock, patch
 
 import aiohttp.web as web
 
-from kai.models.kai_config import KaiConfig
-from kai.models.report_types import ExtendedIncident
-from kai.service.incident_store.sql_types import SQLIncident
-from kai.service.kai_application.kai_application import (
+from kai.server.service.incident_store.sql_types import SQLIncident
+from kai.server.service.kai_application.kai_application import (
     KaiApplication,
     UpdatedFileContent,
 )
+from kai.shared.models.kai_config import KaiConfig
+from kai.shared.models.report_types import ExtendedIncident
 
 
 class TestKaiApplication(unittest.TestCase):
 
-    @patch("kai.service.kai_application.kai_application.incident_store_backend_factory")
-    @patch("kai.service.kai_application.kai_application.solution_detection_factory")
-    @patch("kai.service.kai_application.kai_application.solution_producer_factory")
-    @patch("kai.service.kai_application.kai_application.solution_consumer_factory")
-    @patch("kai.service.kai_application.kai_application.ModelProvider")
+    @patch(
+        "kai.server.service.kai_application.kai_application.incident_store_backend_factory"
+    )
+    @patch(
+        "kai.server.service.kai_application.kai_application.solution_detection_factory"
+    )
+    @patch(
+        "kai.server.service.kai_application.kai_application.solution_producer_factory"
+    )
+    @patch(
+        "kai.server.service.kai_application.kai_application.solution_consumer_factory"
+    )
+    @patch("kai.server.service.kai_application.kai_application.ModelProvider")
     def setUp(
         self,
         MockModelProvider,
@@ -49,14 +57,16 @@ class TestKaiApplication(unittest.TestCase):
         )
 
     @patch(
-        "kai.service.kai_application.kai_application.UpdatedFileContent",
+        "kai.server.service.kai_application.kai_application.UpdatedFileContent",
         wraps=UpdatedFileContent.model_construct,
     )
-    @patch("kai.service.kai_application.kai_application.guess_language")
-    @patch("kai.service.kai_application.kai_application.batch_incidents")
-    @patch("kai.service.kai_application.kai_application.get_prompt")
-    @patch("kai.service.kai_application.kai_application.playback_if_demo_mode")
-    @patch("kai.service.kai_application.kai_application.parse_file_solution_content")
+    @patch("kai.server.service.kai_application.kai_application.guess_language")
+    @patch("kai.server.service.kai_application.kai_application.batch_incidents")
+    @patch("kai.server.service.kai_application.kai_application.get_prompt")
+    @patch("kai.server.service.kai_application.kai_application.playback_if_demo_mode")
+    @patch(
+        "kai.server.service.kai_application.kai_application.parse_file_solution_content"
+    )
     def test_get_incident_solutions_for_file(
         self,
         mock_parse_file_solution_content,
@@ -97,14 +107,16 @@ class TestKaiApplication(unittest.TestCase):
         self.assertEqual(result.used_prompts, ["mock_prompt"])
 
     @patch(
-        "kai.service.kai_application.kai_application.UpdatedFileContent",
+        "kai.server.service.kai_application.kai_application.UpdatedFileContent",
         wraps=UpdatedFileContent.model_construct,
     )
-    @patch("kai.service.kai_application.kai_application.guess_language")
-    @patch("kai.service.kai_application.kai_application.batch_incidents")
-    @patch("kai.service.kai_application.kai_application.get_prompt")
-    @patch("kai.service.kai_application.kai_application.playback_if_demo_mode")
-    @patch("kai.service.kai_application.kai_application.parse_file_solution_content")
+    @patch("kai.server.service.kai_application.kai_application.guess_language")
+    @patch("kai.server.service.kai_application.kai_application.batch_incidents")
+    @patch("kai.server.service.kai_application.kai_application.get_prompt")
+    @patch("kai.server.service.kai_application.kai_application.playback_if_demo_mode")
+    @patch(
+        "kai.server.service.kai_application.kai_application.parse_file_solution_content"
+    )
     def test_get_incident_solutions_for_file_with_llm_failure(
         self,
         mock_parse_file_solution_content,
@@ -144,7 +156,7 @@ if __name__ == "__main__":
 import unittest
 from unittest.mock import patch
 
-PKG = "kai.service.kai_application.kai_application"
+PKG = "kai.server.service.kai_application.kai_application"
 
 class TestKaiApplicationMocked(unittest.TestCase):
     
@@ -174,13 +186,13 @@ class TestKaiApplicationMocked(unittest.TestCase):
 
         print(self.app.incident_store.backend)
 
-    @patch('kai.service.kai_application.kai_application.UpdatedFileContent')
-    @patch('kai.service.kai_application.kai_application.ModelProvider')
-    @patch('kai.service.kai_application.kai_application.guess_language', return_value='python')
-    @patch('kai.service.kai_application.kai_application.parse_file_solution_content')
-    @patch('kai.service.kai_application.kai_application.get_prompt', return_value='mock_prompt')
-    @patch('kai.service.kai_application.kai_application.batch_incidents', return_value=[({}, [ExtendedIncident(uri="uri", message="message", ruleset_name="ruleset_name", violation_name="violation_name")])])
-    @patch('kai.service.kai_application.kai_application.playback_if_demo_mode')
+    @patch('kai.server.service.kai_application.kai_application.UpdatedFileContent')
+    @patch('kai.server.service.kai_application.kai_application.ModelProvider')
+    @patch('kai.server.service.kai_application.kai_application.guess_language', return_value='python')
+    @patch('kai.server.service.kai_application.kai_application.parse_file_solution_content')
+    @patch('kai.server.service.kai_application.kai_application.get_prompt', return_value='mock_prompt')
+    @patch('kai.server.service.kai_application.kai_application.batch_incidents', return_value=[({}, [ExtendedIncident(uri="uri", message="message", ruleset_name="ruleset_name", violation_name="violation_name")])])
+    @patch('kai.server.service.kai_application.kai_application.playback_if_demo_mode')
     def test_get_incident_solutions_for_file(
         self,
         mock_playback_if_demo_mode,
@@ -241,12 +253,12 @@ class TestKaiApplication(unittest.TestCase):
     
 
 
-    @patch('kai.service.kai_application.kai_application.ModelProvider')
-    @patch('kai.service.kai_application.kai_application.guess_language', return_value='python')
-    @patch('kai.service.kai_application.kai_application.parse_file_solution_content')
-    @patch('kai.service.kai_application.kai_application.get_prompt', return_value='mock_prompt')
-    @patch('kai.service.kai_application.kai_application.batch_incidents', return_value=[({}, [ExtendedIncident(uri="uri", message="message", ruleset_name="ruleset_name", violation_name="violation_name")])])
-    @patch('kai.service.kai_application.kai_application.playback_if_demo_mode')
+    @patch('kai.server.service.kai_application.kai_application.ModelProvider')
+    @patch('kai.server.service.kai_application.kai_application.guess_language', return_value='python')
+    @patch('kai.server.service.kai_application.kai_application.parse_file_solution_content')
+    @patch('kai.server.service.kai_application.kai_application.get_prompt', return_value='mock_prompt')
+    @patch('kai.server.service.kai_application.kai_application.batch_incidents', return_value=[({}, [ExtendedIncident(uri="uri", message="message", ruleset_name="ruleset_name", violation_name="violation_name")])])
+    @patch('kai.server.service.kai_application.kai_application.playback_if_demo_mode')
     def test_get_incident_solutions_for_file(
         self,
         mock_playback_if_demo_mode,
@@ -281,8 +293,8 @@ class TestKaiApplication(unittest.TestCase):
         mock_playback_if_demo_mode.assert_called_once()
         self.app.model_provider.llm.invoke.assert_called_once_with('mock_prompt')
 
-    @patch('kai.service.kai_application.kai_application.solution_detection_factory')
-    @patch('kai.service.kai_application.kai_application.solution_consumer_factory')
+    @patch('kai.server.service.kai_application.kai_application.solution_detection_factory')
+    @patch('kai.server.service.kai_application.kai_application.solution_consumer_factory')
     def test_kai_application_initialization(self, mock_solution_consumer_factory, mock_solution_detection_factory):
         config = KaiConfig(
             log_level='DEBUG',
@@ -298,8 +310,8 @@ class TestKaiApplication(unittest.TestCase):
         self.assertIsInstance(app.incident_store, MagicMock)
         self.assertIsInstance(app.solution_consumer, MagicMock)
 
-    @patch('kai.service.kai_application.kai_application.time.sleep', return_value=None)
-    @patch('kai.service.kai_application.kai_application.KAI_LOG.error')
+    @patch('kai.server.service.kai_application.kai_application.time.sleep', return_value=None)
+    @patch('kai.server.service.kai_application.kai_application.KAI_LOG.error')
     def test_get_incident_solutions_for_file_retry_failure(self, mock_log_error, mock_time_sleep):
         self.app.model_provider.llm.invoke.side_effect = Exception("LLM Error")
 
@@ -314,8 +326,8 @@ class TestKaiApplication(unittest.TestCase):
         mock_log_error.assert_called_once()
         self.assertEqual(self.app.model_provider.llm.invoke.call_count, self.app.model_provider.llm_retries)
 
-    @patch('kai.service.kai_application.kai_application.KAI_LOG.debug')
-    @patch('kai.service.kai_application.kai_application.KAI_LOG.warn')
+    @patch('kai.server.service.kai_application.kai_application.KAI_LOG.debug')
+    @patch('kai.server.service.kai_application.kai_application.KAI_LOG.warn')
     def test_get_incident_solutions_for_file_retry_success(self, mock_log_warn, mock_log_debug):
         mock_llm_result = MagicMock()
         mock_llm_result.content = 'mock_llm_result_content'

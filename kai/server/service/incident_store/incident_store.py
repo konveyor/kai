@@ -11,13 +11,8 @@ from git import Repo
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from kai.constants import PATH_GIT_ROOT, PATH_LOCAL_REPO
-from kai.kai_logging import init_logging
-from kai.models.kai_config import KaiConfig
-from kai.models.report import Report
-from kai.models.util import filter_incident_vars
-from kai.service.incident_store.backend import IncidentStoreBackend
-from kai.service.incident_store.sql_types import (
+from kai.server.service.incident_store.backend import IncidentStoreBackend
+from kai.server.service.incident_store.sql_types import (
     SQLAcceptedSolution,
     SQLApplication,
     SQLBase,
@@ -26,12 +21,17 @@ from kai.service.incident_store.sql_types import (
     SQLUnmodifiedReport,
     SQLViolation,
 )
-from kai.service.solution_handling.detection import (
+from kai.server.service.solution_handling.detection import (
     SolutionDetectionAlgorithm,
     SolutionDetectorContext,
 )
-from kai.service.solution_handling.production import SolutionProducer
-from kai.service.solution_handling.solution_types import Solution
+from kai.server.service.solution_handling.production import SolutionProducer
+from kai.server.service.solution_handling.solution_types import Solution
+from kai.shared.constants import PATH_GIT_ROOT, PATH_LOCAL_REPO
+from kai.shared.kai_logging import init_logging
+from kai.shared.models.kai_config import KaiConfig
+from kai.shared.models.report import Report
+from kai.shared.models.util import filter_incident_vars
 
 KAI_LOG = logging.getLogger(__name__)
 
@@ -473,7 +473,7 @@ def cmd(provider: str = None):
     if provider is not None and config.incident_store.args.provider != provider:
         raise Exception(f"This script only works with {provider} incident store.")
 
-    from kai.service.kai_application.kai_application import KaiApplication
+    from kai.server.service.kai_application.kai_application import KaiApplication
 
     kai_application = KaiApplication(config)
     incident_store = kai_application.incident_store

@@ -3,7 +3,7 @@ import logging
 from aiohttp import web
 from aiohttp.web_request import Request
 
-from kai.routes.util import to_route
+from kai.server.routes.util import to_route
 
 KAI_LOG = logging.getLogger(__name__)
 

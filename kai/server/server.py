@@ -10,10 +10,10 @@ from functools import cache
 from aiohttp import web
 from gunicorn.app.wsgiapp import WSGIApplication
 
-from kai.kai_logging import init_logging_from_config
-from kai.models.kai_config import KaiConfig
-from kai.routes import kai_routes
-from kai.service.kai_application.kai_application import KaiApplication
+from kai.server.routes import kai_routes
+from kai.server.service.kai_application.kai_application import KaiApplication
+from kai.shared.kai_logging import init_logging_from_config
+from kai.shared.models.kai_config import KaiConfig
 
 log = logging.getLogger(__name__)
 

@@ -5,8 +5,8 @@ from aiohttp import web
 from aiohttp.web_request import Request
 from langchain_core.messages import BaseMessageChunk
 
-from kai.routes.util import to_route
-from kai.service.kai_application.kai_application import KaiApplication
+from kai.server.routes.util import to_route
+from kai.server.service.kai_application.kai_application import KaiApplication
 
 # TODO(@JonahSussman): Figure out proper pydantic model validation for this
 # function

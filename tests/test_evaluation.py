@@ -10,10 +10,10 @@ from kai.evaluation import (
     load_benchmark_examples,
     load_single_benchmark_example,
 )
-from kai.models.kai_config import KaiConfig, KaiConfigModels
-from kai.models.report import Report
-from kai.models.report_types import ExtendedIncident
-from kai.service.incident_store.incident_store import Application
+from kai.server.service.incident_store.incident_store import Application
+from kai.shared.models.kai_config import KaiConfig, KaiConfigModels
+from kai.shared.models.report import Report
+from kai.shared.models.report_types import ExtendedIncident
 
 
 class TestEvaluation(unittest.TestCase):
@@ -22,7 +22,7 @@ class TestEvaluation(unittest.TestCase):
     @patch("os.listdir")
     @patch("builtins.open", new_callable=unittest.mock.mock_open, read_data="data")
     @patch("yaml.safe_load")
-    @patch("kai.models.report.Report.load_report_from_file")
+    @patch("kai.shared.models.report.Report.load_report_from_file")
     @patch(
         "kai.evaluation.ExtendedIncident.model_validate",
         wraps=ExtendedIncident.model_construct,

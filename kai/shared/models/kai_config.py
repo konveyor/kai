@@ -12,7 +12,7 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
-from kai.constants import PATH_KAI
+from kai.shared.constants import PATH_KAI
 
 """
 https://docs.pydantic.dev/2.0/migration/#required-optional-and-nullable-fields

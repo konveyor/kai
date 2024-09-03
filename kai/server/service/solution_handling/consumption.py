@@ -3,9 +3,9 @@ from typing import Callable
 
 import jinja2
 
-from kai.constants import PATH_TEMPLATES
-from kai.models.kai_config import SolutionConsumerKind
-from kai.service.solution_handling.solution_types import Solution
+from kai.server.service.solution_handling.solution_types import Solution
+from kai.shared.constants import PATH_TEMPLATES
+from kai.shared.models.kai_config import SolutionConsumerKind
 
 # TODO: Potentially add fallback functionality. For example, before_and_after
 # might be too large, so we should fall back to diff_only.

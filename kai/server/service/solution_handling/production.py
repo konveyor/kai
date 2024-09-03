@@ -5,13 +5,13 @@ from urllib.parse import unquote, urlparse
 import jinja2
 from git import Repo
 
-from kai.constants import PATH_TEMPLATES
-from kai.models.file_solution import guess_language
-from kai.models.kai_config import SolutionProducerKind
-from kai.models.util import remove_known_prefixes
-from kai.service.incident_store.incident_store import SQLIncident
-from kai.service.llm_interfacing.model_provider import ModelProvider
-from kai.service.solution_handling.solution_types import Solution
+from kai.server.service.incident_store.sql_types import SQLIncident
+from kai.server.service.llm_interfacing.model_provider import ModelProvider
+from kai.server.service.solution_handling.solution_types import Solution
+from kai.shared.constants import PATH_TEMPLATES
+from kai.shared.models.file_solution import guess_language
+from kai.shared.models.kai_config import SolutionProducerKind
+from kai.shared.models.util import remove_known_prefixes
 
 
 class SolutionProducer(ABC):

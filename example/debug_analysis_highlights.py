@@ -5,7 +5,7 @@ import sys
 
 sys.path.append("../../kai")
 
-from kai.models.report import Report
+from kai.shared.models.report import Report
 
 # TODOs
 # 1) Add Types via Typing

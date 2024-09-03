@@ -14,8 +14,8 @@ from jinja2 import (
     TemplateNotFound,
 )
 
-from kai.constants import PATH_DATA, PATH_TEMPLATES
-from kai.models.report_types import ExtendedIncident
+from kai.shared.constants import PATH_DATA, PATH_TEMPLATES
+from kai.shared.models.report_types import ExtendedIncident
 
 KAI_LOG = logging.getLogger(__name__)
 

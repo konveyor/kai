@@ -31,16 +31,16 @@ import time
 import traceback
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 
-from kai.constants import PATH_KAI
-from kai.kai_logging import init_logging
-from kai.kai_trace import KaiTrace
-from kai.models.file_solution import parse_file_solution_content
-from kai.models.kai_config import KaiConfig
-from kai.models.report import Report
-from kai.models.report_types import ExtendedIncident
-from kai.service.kai_application.kai_application import UpdatedFileContent
-from kai.service.kai_application.util import get_prompt, playback_if_demo_mode
-from kai.service.llm_interfacing.model_provider import ModelProvider
+from kai.server.service.kai_application.kai_application import UpdatedFileContent
+from kai.server.service.kai_application.util import get_prompt, playback_if_demo_mode
+from kai.server.service.llm_interfacing.model_provider import ModelProvider
+from kai.shared.constants import PATH_KAI
+from kai.shared.kai_logging import init_logging
+from kai.shared.kai_trace import KaiTrace
+from kai.shared.models.file_solution import parse_file_solution_content
+from kai.shared.models.kai_config import KaiConfig
+from kai.shared.models.report import Report
+from kai.shared.models.report_types import ExtendedIncident
 
 log = logging.getLogger(__name__)
 

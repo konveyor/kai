@@ -7,16 +7,16 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from kai.constants import PATH_GIT_ROOT
-from kai.models.file_solution import FileSolutionContent
-from kai.models.kai_config import (
+from kai.server.service.kai_application.kai_application import KaiApplication
+from kai.shared.constants import PATH_GIT_ROOT
+from kai.shared.models.file_solution import FileSolutionContent
+from kai.shared.models.kai_config import (
     KaiConfig,
     KaiConfigIncidentStore,
     KaiConfigIncidentStoreSQLiteArgs,
     KaiConfigModels,
 )
-from kai.models.report import Report
-from kai.service.kai_application.kai_application import KaiApplication
+from kai.shared.models.report import Report
 
 
 class TestRunDemo(unittest.TestCase):
@@ -26,7 +26,7 @@ class TestRunDemo(unittest.TestCase):
         return patcher.start()
 
     def setUp(self):
-        PKG = "kai.service.kai_application.kai_application"
+        PKG = "kai.server.service.kai_application.kai_application"
 
         self.mock_guess_language = self.add_mock(f"{PKG}.guess_language")
         self.mock_guess_language.return_value = "java"

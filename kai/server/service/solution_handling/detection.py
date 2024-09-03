@@ -12,9 +12,9 @@ from sequoia_diff import loaders
 from sequoia_diff.matching import generate_mappings
 from sequoia_diff.models import Node
 
-from kai.models.kai_config import SolutionDetectorKind
-from kai.models.util import remove_known_prefixes
-from kai.service.incident_store.sql_types import SQLIncident
+from kai.server.service.incident_store.sql_types import SQLIncident
+from kai.shared.models.kai_config import SolutionDetectorKind
+from kai.shared.models.util import remove_known_prefixes
 
 
 @dataclass

@@ -3,13 +3,13 @@ from abc import ABC, abstractmethod
 
 from sqlalchemy import and_, bindparam, create_engine, text
 
-from kai.models.kai_config import (
+from kai.server.service.incident_store.sql_types import SQLIncident
+from kai.shared.models.kai_config import (
     KaiConfigIncidentStoreArgs,
     KaiConfigIncidentStorePostgreSQLArgs,
     KaiConfigIncidentStoreProvider,
     KaiConfigIncidentStoreSQLiteArgs,
 )
-from kai.service.incident_store.sql_types import SQLIncident
 
 
 class IncidentStoreBackend(ABC):

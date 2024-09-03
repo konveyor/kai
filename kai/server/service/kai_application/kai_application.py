@@ -7,22 +7,22 @@ from aiohttp import web
 from langchain_core.messages import BaseMessage, BaseMessageChunk
 from pydantic import BaseModel, ConfigDict
 
-from kai.kai_trace import KaiTrace
-from kai.models.file_solution import guess_language, parse_file_solution_content
-from kai.models.kai_config import KaiConfig
-from kai.models.report_types import ExtendedIncident
-from kai.service.incident_store.backend import incident_store_backend_factory
-from kai.service.incident_store.incident_store import IncidentStore
-from kai.service.kai_application.util import (
+from kai.server.service.incident_store.backend import incident_store_backend_factory
+from kai.server.service.incident_store.incident_store import IncidentStore
+from kai.server.service.kai_application.util import (
     BatchMode,
     batch_incidents,
     get_prompt,
     playback_if_demo_mode,
 )
-from kai.service.llm_interfacing.model_provider import ModelProvider
-from kai.service.solution_handling.consumption import solution_consumer_factory
-from kai.service.solution_handling.detection import solution_detection_factory
-from kai.service.solution_handling.production import solution_producer_factory
+from kai.server.service.llm_interfacing.model_provider import ModelProvider
+from kai.server.service.solution_handling.consumption import solution_consumer_factory
+from kai.server.service.solution_handling.detection import solution_detection_factory
+from kai.server.service.solution_handling.production import solution_producer_factory
+from kai.shared.kai_trace import KaiTrace
+from kai.shared.models.file_solution import guess_language, parse_file_solution_content
+from kai.shared.models.kai_config import KaiConfig
+from kai.shared.models.report_types import ExtendedIncident
 
 KAI_LOG = logging.getLogger(__name__)
 
