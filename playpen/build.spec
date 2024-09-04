@@ -18,7 +18,7 @@ script_path = 'client/rpc.py'
 
 a = Analysis(
     [script_path],
-    pathex=[os.path.dirname(script_path)],
+    pathex=[os.path.dirname(script_path), '../'],
     binaries=[],
     datas=data_dirs,
     hiddenimports=["_ssl"],

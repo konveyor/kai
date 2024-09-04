@@ -53,6 +53,9 @@ def main():
         )
         print(response)
         print("\nReceived response successfully!")
+    except Exception as e:
+        print(str(e))
+        print("\nFailed to generate fix")
     finally:
         rpc_server.stdin.close()
         rpc_server.stdout.close()

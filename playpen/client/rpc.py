@@ -2,6 +2,7 @@
 
 """This module is intended to facilitate using Konveyor with LLMs."""
 
+
 import json
 import logging
 import os
@@ -49,7 +50,6 @@ class CustomRpcServer(RpcServer):
 
                 if method:
                     if rpc_id is not None:
-                        # a call for method
                         if method not in self.method_callbacks:
                             raise ResponseError(
                                 ErrorCodes.MethodNotFound,
@@ -70,6 +70,10 @@ class CustomRpcServer(RpcServer):
                     self.handle_result(rpc_id, result, error)
             except ResponseError as e:
                 self.send_response(rpc_id, None, e)
+            except Exception as e:
+                self.send_response(
+                    rpc_id, None, ResponseError(ErrorCodes.InternalError, str(e))
+                )
 
 
 class CustomRpcEndpoint(JsonRpcEndpoint):
@@ -81,16 +85,16 @@ class CustomRpcEndpoint(JsonRpcEndpoint):
     def send_request(self, message):
         json_string = json.dumps(message, cls=MyEncoder)
         jsonrpc_req = self.__add_header(json_string)
-        log.debug(f"Sending data over stdin {jsonrpc_req}")
+        log.debug(f"sending data over stdin {repr(jsonrpc_req)}")
         with self.write_lock:
-            self.stdin.write(jsonrpc_req)
+            self.stdin.buffer.write(jsonrpc_req.encode())
             self.stdin.flush()
 
     def recv_response(self):
         with self.read_lock:
             message_size = None
             while True:
-                line = self.stdout.readline()
+                line = self.stdout.buffer.readline().decode("utf-8")
                 if not line:
                     return None
                 if not line.endswith("\r\n") and not line.endswith("\n"):
@@ -116,8 +120,8 @@ class CustomRpcEndpoint(JsonRpcEndpoint):
             if not message_size:
                 raise ResponseError(ErrorCodes.ParseError, "Bad header: missing size")
 
-            jsonrpc_res = self.stdout.read(message_size)
-            log.debug(f"Read data from stdout {jsonrpc_res}")
+            jsonrpc_res = self.stdout.buffer.read(message_size).decode("utf-8")
+            log.debug(f"read data from stdout {repr(jsonrpc_res)}")
             return json.loads(jsonrpc_res)
 
 
@@ -206,7 +210,7 @@ class RPCParams:
 class KaiClientRPCServer:
     def get_incident_solutions_for_file(self, **kwargs) -> str:
         rpc_params = RPCParams(**kwargs)
-        log.debug(f"got rpc params {rpc_params}")
+        log.debug(f"got rpc params {rpc_params._data}")
         config = get_config(rpc_params.config_path)
 
         setup_file_handler(
@@ -270,15 +274,16 @@ class KaiClientRPCServer:
             return result.updated_file
         except Exception as e:
             trace.exception(-1, -1, e, traceback.format_exc())
-            log.debug(f"error processing file: {e}")
+            log.debug(f"failed to generate fix: {e}")
+            raise ResponseError(
+                ErrorCodes.InternalError, f"failed to generate fix - {str(e)}"
+            ) from e
         finally:
             end = time.time()
             trace.end(end)
             log.info(
                 f"END - completed in '{end-start}s:  - App: '{rpc_params.app_name}', File: '{rpc_params.input_file_path}' with {len(incidents)} incidents'"
             )
-
-        raise ResponseError("failed to generate fix")
 
 
 def run_rpc_server():
