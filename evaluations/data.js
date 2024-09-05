@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1725540758071,
+  "lastUpdate": 1725540763022,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -9104,6 +9104,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pgaikwad@redhat.com",
+            "name": "Pranav Gaikwad",
+            "username": "pranavgaikwad"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0006e284533c72074284c9e39ce113a1da1a5f81",
+          "message": ":bug: fix things for Windows (#351)\n\nSigned-off-by: Pranav Gaikwad <pgaikwad@redhat.com>",
+          "timestamp": "2024-09-05T08:51:22-04:00",
+          "tree_id": "e2fbef27816fa01cf473e11727cc0bc3af0aa605",
+          "url": "https://github.com/konveyor/kai/commit/0006e284533c72074284c9e39ce113a1da1a5f81"
+        },
+        "date": 1725540762463,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
             "value": "",
             "unit": "Match"
           }
