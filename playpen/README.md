@@ -12,6 +12,7 @@ The goals of this effort are:
 As of writing this, here's the progress we made on the goals above:
 
 - We have a JSON-RPC interface in front of the Client CLI. The JSON-RPC interface can be found in [./client/rpc.py](./client/rpc.py). It exposes `get_incident_solutions_for_file` function that generates a fix for one file. There are two example clients (Python and Javascript) we have written that talk with the interface over I/O streams.
+
 - We have a `build.spec` file that builds the JSON-RPC client into a binary using PyInstaller.
 
 ### Building JSON-RPC interface into a binary
@@ -35,6 +36,12 @@ pyinstaller build.spec
 ```
 
 Once successful, a binary will be generated at `./dist/cli`.
+
+#### Building for different platforms
+
+We are using PyInstaller to create binaries. To create a binary for a certain platform / arch, we are building on the same platform + arch. As per our understanding, it is possible to potentially cross-compile for different architectures but not the platform itself.
+
+So far, we have successfully built and tested binaries for MacOS and Windows (built on respective machines).
 
 ### Testing JSON-RPC binary
 
