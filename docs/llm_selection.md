@@ -44,7 +44,8 @@ testing:
 2. To access via an API you can look at ‘Documentation’ after logging into
    https://bam.res.ibm.com/. You will see a field embedded in the
    'Documentation' section where you can generate/obtain an API Key.
-3. Ensure you have `GENAI_KEY=my-secret-api-key-value` defined in your shell
+3. Ensure you have exported the key via `export
+GENAI_KEY=my-secret-api-key-value`.
 
 Related client tooling:
 
@@ -58,7 +59,8 @@ If you have a valid API Key for OpenAI you may use this with Kai.
 
 1. Follow the directions from OpenAI
    [here](https://help.openai.com/en/articles/4936850-where-do-i-find-my-openai-api-key).
-2. Ensure you have `OPENAI_API_KEY=my-secret-api-key-value` defined in your shell
+2. Ensure you have exported the key via `export
+OPENAI_API_KEY=my-secret-api-key-value`
 
 ## Selecting a Model
 
