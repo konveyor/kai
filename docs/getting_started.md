@@ -16,7 +16,7 @@ Running Kai consists of:
 
 - _The easiest way to run is to leverage prebuilt container images we publish to [quay.io/konveyor/kai](https://quay.io/repository/konveyor/kai?tab=tags), you can learn more about early builds at [docs/Evaluation_Builds.md](/docs/Evaluation_Builds.md)_
 - _This is the simplest configuration which will limit configuration choices and will use cached LLM results so that you may evaluate Kai without having your own API Keys_
-  - The cached data uses a `KAI__DEMO_MODE=TRUE` mode for running the backend. See [docs/contrib/Demo_Mode.md](/docs/contrib/Demo_Mode.md) for more information.
+  - The cached data uses a `KAI__DEMO_MODE=TRUE` mode for running the backend. See [docs/contrib/demo_mode.md](/docs/contrib/demo_mode.md) for more information.
     - Configured via:
       - [kai/config.toml](/kai/config.toml): `demo_mode = true`
       - [compose.yaml](/compose.yaml): `KAI__DEMO_MODE: "TRUE"`
@@ -24,7 +24,7 @@ Running Kai consists of:
 
 ### Launch Kai with sample data and cached LLM responses
 
-_This will run Kai using [sample analysis reports](/samples/analysis_reports) that simulates the analysis data which will be obtained from Konveyor. Additionally it will default to using cached LLM responses as explained in [docs/contrib/Demo_Mode.md](/docs/contrib/Demo_Mode.md)_
+_This will run Kai using [sample analysis reports](/samples/analysis_reports) that simulates the analysis data which will be obtained from Konveyor. Additionally it will default to using cached LLM responses as explained in [docs/contrib/demo_mode.md](/docs/contrib/demo_mode.md)_
 
 Steps:
 
