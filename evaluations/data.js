@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1725584130683,
+  "lastUpdate": 1725584134439,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -9191,6 +9191,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "42743659+JonahSussman@users.noreply.github.com",
+            "name": "Jonah Sussman",
+            "username": "JonahSussman"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "215971519f623c90ca9f58b02e129f8696fce84c",
+          "message": ":sparkles: Add health checks to `compose.yaml` (#348)\n\n* Added checks for healthy postgres\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Reverted -eq 0\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>",
+          "timestamp": "2024-09-05T20:54:16-04:00",
+          "tree_id": "669f4132df3360ae59db0b5301183a4f18be6e19",
+          "url": "https://github.com/konveyor/kai/commit/215971519f623c90ca9f58b02e129f8696fce84c"
+        },
+        "date": 1725584133855,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
             "value": "",
             "unit": "Match"
           }
