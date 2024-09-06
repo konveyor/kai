@@ -1,7 +1,7 @@
 # Requires
 
 - Kai backend to be running locally
-  - You can see [docs/Getting_Started.md](/docs/Getting_Started.md) for guidance
+  - You can see [docs/getting_started.md](/docs/getting_started.md) for guidance
 
 ## To run this demo client
 

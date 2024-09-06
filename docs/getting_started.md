@@ -32,7 +32,7 @@ Steps:
 1. `cd kai`
 1. Optional Configuration changes _ok to skip and use the defaults if using cached responses_
    1. Make changes to `kai/config.toml` to select your desired provider and model
-   1. Export `GENAI_KEY` or `OPENAI_API_KEY` as appropriate as per [docs/LLM_Selection.md](/docs/LLM_Selection.md)
+   1. Export `GENAI_KEY` or `OPENAI_API_KEY` as appropriate as per [docs/llm_selection.md](/docs/llm_selection.md)
    1. Note: By default the `stable` image tag will be used by podman compose.yaml. If you want to run with an alternate tag you can export the environment variable: `TAG="stable"` with any tag you would like to use.
 1. Run `podman compose up`. The first time this is run it will take several minutes to download images and to populate sample data.
    - After the first run the DB will be populated and subsequent starts will be much faster, as long as the kai_kai_db_data volume is not deleted.

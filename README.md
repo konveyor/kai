@@ -145,7 +145,7 @@ through a guided scenario we have to show Kai in action at:
 The above information is a quick path to enable running Kai quickly to see how
 it works. If you'd like to take a deeper dive into running Kai against data in
 Konveyor or your own custom data, please see
-[docs/Getting_Started.md](docs/Getting_Started.md)
+[docs/getting_started.md](docs/getting_started.md)
 
 ### Debugging / Troubleshooting
 
