@@ -1,100 +1,171 @@
-# Konveyor AI (Kai)
+# Kai (Konveyor AI)
 
-Konveyor AI (Kai) simplifies the process of modernizing application source code to a new platform. It uses Large Language Models (LLMs) guided by static code analysis, along with data from Konveyor. This data provides insights into how similar problems were solved by the organization in the past, helping streamline and automate the code modernization process.
+<!-- trunk-ignore-begin -->
+<div align="center">
+  <a href="https://github.com/konveyor/kai">
+    <img src="docs/images/kai_logo.png" alt="KAI Logo" width="200" height="200">
+  </a>
+</div>
+<!-- trunk-ignore-emd -->
 
-Pronunciation of 'kai': https://www.howtopronounce.com/ka%C3%AC-4
+Kai [/paɪ/ (rhymes with pie)](https://www.howtopronounce.com/ka%C3%AC-4) - An
+awesome tool to accelerate application modernization, supercharged with
+Konveyor's static analyses and Generative AI.
 
-## Approach
+Kai simplifies the process of modernizing application source code to a new
+platform. It uses Large Language Models (LLMs) guided by static code analysis,
+along with data from Konveyor. This data provides insights into how similar
+problems were solved by the organization in the past, helping streamline and
+automate the code modernization process.
 
-Kai implements a [Retrieval Augmented Generation (RAG)](https://arxiv.org/abs/2005.11401) approach that leverages data from Konveyor to help generate code suggestions to aid migrating legacy code bases to a different technology. The intent of this RAG approach is to shape the code suggestions to be similar to how an organization has solved problems in the past, without additional fine-tuning of the model.
+- [📖 Explore the docs!](/docs)
+- [💻 Run through a demo!](/docs/scenarios/demo.md)
+- [📈 View the Roadmap!](ROADMAP.md)
 
-The approach begins with using static code analysis via the [Kantra](https://github.com/konveyor/kantra) tool to find areas in the source code that need attention. 'kai' will iterate through analysis information and work with LLMs to generate code changes to resolve incidents identified from analysis.
+## 🔍 About The Project
 
-- Read more about our technical approach here: [docs/Technical_Background.md](docs/design/Technical_Background.md)
+Kai is an AI-enabled tool that assists with modernizing applications. Kai is
+designed to help developers write code more efficiently by providing suggestions
+and solutions to common problems. It does this by performing [Retrieval
+Augmented Generation (RAG)](https://arxiv.org/abs/2005.11401), working with LLMs
+by using [Konveyor](https://github.com/konveyor) analysis reports about the
+codebase and generating solutions based on previously solved examples.
 
-- Presentation slides introducing Konveyor AI: [2024_May GenAI Application Migration](https://docs.google.com/presentation/d/1awMdp5hHC6L4Xc_uY6Kj4XiskAArDGPhyQRBI6GJUAo/edit#slide=id.g28c0e0d2936_0_621)
+Now, you may be thinking: _How is Kai different than other generative AI tools?_
 
-## Demo Video
+### 1. Kai uses Konveyor’s analysis reports
+
+Konveyor generates analysis reports via
+[Kantra](https://github.com/konveyor/kantra) throughout a migration. This
+history of reports tells you what’s wrong with your codebase, where the issues
+are, and when they happened. This functionality exists today, and developers are
+already using this data to make decisions. And because of our RAG approach, this
+is all possible _without additional fine-tuning_.
+
+### 2. Kai learns throughout a migration
+
+As you migrate more pieces of your
+codebase with Kai, it can learn from the data available, and get better
+recommendations for the next application, and the next, and so on. This shapes
+the code suggestions to be similar to how your organization has solved problems
+in the past.
+
+### 3. Kai is focused on migration
+
+LLMs are very powerful tools, but without explicit guidance, they can generate a
+lot of garbage. Using Konveyor’s analysis reports allows us to focus Kai’s
+generative power on the specific problems that need to be solved. This pointed,
+specific data is the key to unlocking the full potential of large language
+models.
+
+## 🏫 Learn More
+
+(Note that Kai is in early development!)
+
+### 🗺️ Roadmap and Early Builds
+
+- See [ROADMAP.md](ROADMAP.md) to learn about the project's goals and milestones
+- See [docs/Evaluation_Builds.md](docs/Evaluation_Builds.md) for information on
+  early builds.
+
+### 🛠️ Design and Architecture
+
+- [Technical background for our approach](docs/design/Technical_Background.md)
+- [Initial presentation slides introducing
+  Kai](https://docs.google.com/presentation/d/1awMdp5hHC6L4Xc_uY6Kj4XiskAArDGPhyQRBI6GJUAo/)
+- See other technical design related information at [docs/design](docs/design)
+
+### 🗣️ Blog Posts
+
+- 2024 August 29: [Incident Storage in Kai - A Deep Dive](https://www.konveyor.io/blog/kai-incident-storage-2024/)
+- 2024 July 23: [Embracing the Future of Application Modernization with KAI](https://shaaf.dev/post/2024-07-23-embracing-the-future-of-app-mod-with-konveyor-ai/)
+- 2024 May 07: [Apply generative AI to app modernization with Konveyor AI](https://developers.redhat.com/articles/2024/05/07/modernize-apps-konveyor-ai)
+- 2024 May 07: [Kai - Generative AI Applied to Application Modernization](https://www.konveyor.io/blog/kai-deep-dive-2024/)
+
+### 📽️ Demo Video
 
 ![DemoVideo](/docs/images/Kai_April_26c.gif)
 
-- See [Generative AI Applied to Application Modernization with Konveyor AI](https://www.youtube.com/watch?v=aE8qNY2m4v4) (~15 minute demo with voice)
+[Check out our 15 minute guided demo video to see Kai in
+action!](https://www.youtube.com/watch?v=aE8qNY2m4v4)
 
-## Blog Posts
+## 🚀 Getting Started
 
-- 2024 May 07: [Apply generative AI to app modernization with Konveyor AI](https://developers.redhat.com/articles/2024/05/07/modernize-apps-konveyor-ai)
-- 2024 May 07: [Kai - Generative AI Applied to Application Modernization](https://www.konveyor.io/blog/kai-deep-dive-2024/)
-- 2024 July 23: [Embracing the Future of Application Modernization with KAI](https://shaaf.dev/post/2024-07-23-embracing-the-future-of-app-mod-with-konveyor-ai/)
+There are two elements to Kai that is necessary for it to function: the
+**backend** and the **IDE extension**. The backend is responsible for connecting
+to your LLM service, ingesting static analysis reports, and generating
+solutions. The IDE extension is where you can interact with Kai, see
+suggestions, and apply them to your codebase.
 
-## Getting Started
+### Prerequisites
 
-1. Run the kai backend image locally with sample data
-2. Walk through a guided scenario to evaluate how Kai works
+1. [Git](https://git-scm.com/downloads)
+1. A container engine such as [podman](https://podman.io/docs/installation) or
+   [docker](https://docs.docker.com/get-docker/). We will provide instructions
+   for podman.
+1. Docker-compose or Podman-compose, either one will work. For podman-compose,
+   you can install it [here](https://github.com/containers/podman-compose).
 
 ### Launch the Kai backend with sample data
 
-The quickest way to get running is to leverage sample data committed into the Kai repo along with the `podman compose up` workflow
+The quickest way to get running is to leverage sample data committed into the
+Kai repo along with the `podman compose up` workflow
 
-1.  `git clone https://github.com/konveyor/kai.git`
-1.  `cd kai`
-1.  `git checkout stable`
-    - **_NOTE:_** Until we fix [Issue #264](https://github.com/konveyor/kai/issues/264) there is a need to be on `stable` branch of code
-1.  Edit `compose.yaml`
+1. `git clone https://github.com/konveyor/kai.git`
+1. `cd kai`
+1. `git checkout stable`
+1. Make sure the podman runtime is running with `systemctl --user start podman`
+1. Make sure the `logs` directory accessible to the podman container with
+   `podman unshare chown -R 1001:0 logs`
+   - This is necessary to allow podman to write to the `logs` directory outside
+     the container.
+   - Use `sudo chown -R <your_user>:<your_user> logs` to change the ownership
+     of the `logs` directory back to your user when done.
+1. Run `KAI__DEMO_MODE="true" podman compose up`.
+   - The first time this is run it will take several minutes to download images
+     and to populate sample data.
+   - After the first run the DB will be populated and subsequent starts will be
+     much faster, as long as the kai_kai_db_data volume is not deleted.
+   - To clean up all resources run `podman compose down && podman volume rm
+kai_kai_db_data`.
 
-        diff --git a/compose.yaml b/compose.yaml
-        index c0f2a9e..69a3be8 100644
-        --- a/compose.yaml
-        +++ b/compose.yaml
-        @@ -1,7 +1,7 @@
-        version: "3"
+The Kai backend is now running and ready to serve requests!
 
-        x-kai-variables: &kai-variables
-        -  KAI__DEMO_MODE: "False"
-        +  KAI__DEMO_MODE: "True"
-          HUB_URL: ${HUB_URL:-https://tackle-konveyor-tackle.apps.example.com/hub}
-          IMPORTER_ARGS:
-          LOG_LEVEL: info
+### Guided Walk-through
 
-    - **_NOTE:_** The above edit of `compose.yaml` will not be needed once [Issue #257](https://github.com/konveyor/kai/issues/257) is fixed
+After you have the kai backend running via `podman compose up` you can run
+through a guided scenario we have to show Kai in action at:
+[docs/scenarios/demo.md](docs/scenarios/demo.md)
 
-1.  Run `GENAI_KEY="something" podman compose up`. The first time this is run it will take several minutes to download images and to populate sample data.
-    - **_NOTE:_** We need to provide some/any value to `GENAI_KEY` environment variable until we address [Issue #287](https://github.com/konveyor/kai/issues/287)
-    - You will need to install [podman](https://podman.io/docs/installation) and [podman-compose](https://github.com/containers/podman-compose?tab=readme-ov-file#installation) if you do not already have it installed. This allows your system to run containers.
-    - After the first run the DB will be populated and subsequent starts will be much faster, as long as the kai_kai_db_data volume is not deleted.
-    - To clean up all resources run `podman compose down && podman volume rm kai_kai_db_data`.
-1.  Kai backend is now running and ready to serve requests
-
-### Guided walk-through
-
-After you have the kai backend running via `podman compose up` you can run through a guided scenario we have to show Kai in action at: [docs/scenarios/demo.md](docs/scenarios/demo.md)
-
-- [docs/scenarios/demo.md](docs/scenarios/demo.md) walks through a guided scenario of using Kai to complete a migration of a Java EE app to Quarkus.
+- [docs/scenarios/demo.md](docs/scenarios/demo.md) walks through a guided
+  scenario of using Kai to complete a migration of a Java EE app to Quarkus.
 
 ### Others ways to run Kai
 
-The above information is a quick path to enable running Kai quickly to see how it works. If you'd like to take a deeper dive into running Kai against data in Konveyor or your own custom data, please see [docs/Getting_Started.md](docs/Getting_Started.md)
+The above information is a quick path to enable running Kai quickly to see how
+it works. If you'd like to take a deeper dive into running Kai against data in
+Konveyor or your own custom data, please see
+[docs/Getting_Started.md](docs/Getting_Started.md)
 
 ### Debugging / Troubleshooting
 
-- Kai backend will write logging information to the `logs` directory.
-  - You can adjust the level via `kai/config.toml` and change the `file_log_level = "debug"` value
-- Tracing information is written to disk to aid deeper explorations of Prompts and LLM Results. See [docs/contrib/Tracing.md](docs/contrib/Tracing.md)
+- Kai backend will write logging information to the `logs` directory. You can
+  adjust the level via the environment variables. For example:
+  `KAI__FILE_LOG_LEVEL="debug"`.
+- Tracing information is written to disk to aid deeper explorations of Prompts
+  and LLM Results. See [docs/contrib/Tracing.md](docs/contrib/Tracing.md)
 
-## Technical design documents
-
-- See our technical design related information at [docs/design](docs/design)
-
-## Roadmap and Early Builds
-
-- Kai is in it's early development phase and is NOT ready for production usage.
-- See [ROADMAP.md](ROADMAP.md) to learn about the project's goals and milestones
-- Please see [docs/Evaluation_Builds.md](docs/Evaluation_Builds.md) for information on early builds.
-
-## Contributing
+## 🌐 Contributing
 
 Our project welcomes contributions from any member of our community. To get
 started contributing, please see our [Contributor Guide](CONTRIBUTING.md).
 
-## Code of Conduct
+## ⚖️ Code of Conduct
 
-Refer to Konveyor's Code of Conduct [here](https://github.com/konveyor/community/blob/main/CODE_OF_CONDUCT.md).
+Refer to Konveyor's Code of Conduct
+[here](https://github.com/konveyor/community/blob/main/CODE_OF_CONDUCT.md).
+
+## 📜 License
+
+This project is licensed under the Apache License 2.0 - see the
+[LICENSE](LICENSE) file for details.
