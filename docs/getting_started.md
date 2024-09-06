@@ -14,7 +14,7 @@ Running Kai consists of:
 
 ## Recommended path - use `podman compose up` with cached LLM responses
 
-- _The easiest way to run is to leverage prebuilt container images we publish to [quay.io/konveyor/kai](https://quay.io/repository/konveyor/kai?tab=tags), you can learn more about early builds at [docs/Evaluation_Builds.md](/docs/Evaluation_Builds.md)_
+- _The easiest way to run is to leverage prebuilt container images we publish to [quay.io/konveyor/kai](https://quay.io/repository/konveyor/kai?tab=tags), you can learn more about early builds at [docs/evaluation_builds.md](/docs/evaluation_builds.md)_
 - _This is the simplest configuration which will limit configuration choices and will use cached LLM results so that you may evaluate Kai without having your own API Keys_
   - The cached data uses a `KAI__DEMO_MODE=TRUE` mode for running the backend. See [docs/contrib/demo_mode.md](/docs/contrib/demo_mode.md) for more information.
     - Configured via:
@@ -77,13 +77,13 @@ You may also run the Kai server from a python virtual environment to aid testing
 
 ### Example CLI Script in Python
 
-- See [docs/Example_CLI_Script.md](/docs/Example_CLI_Script.md) to see an alternative method of running the development team uses to exercise the Kai REST API from a python script
+- See [docs/example_cli_script.md](/docs/example_cli_script.md) to see an alternative method of running the development team uses to exercise the Kai REST API from a python script
 
 ## Misc notes
 
 ### Extending the data Kai consumes
 
-- You may modify the analysis information Kai consumes via [docs/customApps.md](/docs/customApps.md)
+- You may modify the analysis information Kai consumes via [docs/custom_apps.md](/docs/custom_apps.md)
 
 ### Misc notes with `podman compose`
 

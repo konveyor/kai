@@ -156,7 +156,7 @@ See [docs/contrib/dev_environment.md](docs/contrib/dev_environment.md)
 ## Testing
 
 - Please include a unit test for new features
-- See [docs/contrib/Testing.md](docs/contrib/Testing.md) for more guidance on
+- See [docs/contrib/testing.md](docs/contrib/testing.md) for more guidance on
   testing
 
 ## Modifying a Python Dependency
@@ -240,7 +240,7 @@ before you submit your code:
   - `trunk check`
   - `trunk fmt`
 - Ensure that unit tests pass. See
-  [docs/contrib/Testing.md](docs/contrib/Testing.md)
+  [docs/contrib/testing.md](docs/contrib/testing.md)
 - If adding a new feature please add a new unit test
 - If you modified `requirements.txt` please see [Modifying a Python
   Dependency](#modifying-a-python-dependency)

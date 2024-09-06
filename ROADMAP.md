@@ -15,7 +15,7 @@ Kai intends to improve the economics of re-platforming and refactoring applicati
 **Maturity - Early Development**
 _Kai is in early stages of development and is NOT suitable for production usage at this time._
 
-- Please see [docs/Evaluation_Builds.md](docs/Evaluation_Builds.md) to learn more about early access preview builds.
+- Please see [docs/evaluation_builds.md](docs/evaluation_builds.md) to learn more about early access preview builds.
 - Contributions are encouraged and most welcome, for more information see [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Guiding Principles

@@ -65,12 +65,12 @@ models.
 ### 🗺️ Roadmap and Early Builds
 
 - See [ROADMAP.md](ROADMAP.md) to learn about the project's goals and milestones
-- See [docs/Evaluation_Builds.md](docs/Evaluation_Builds.md) for information on
+- See [docs/evaluation_builds.md](docs/evaluation_builds.md) for information on
   early builds.
 
 ### 🛠️ Design and Architecture
 
-- [Technical background for our approach](docs/design/Technical_Background.md)
+- [Technical background for our approach](docs/design/technical_background.md)
 - [Initial presentation slides introducing
   Kai](https://docs.google.com/presentation/d/1awMdp5hHC6L4Xc_uY6Kj4XiskAArDGPhyQRBI6GJUAo/)
 - See other technical design related information at [docs/design](docs/design)
@@ -153,7 +153,7 @@ Konveyor or your own custom data, please see
   adjust the level via the environment variables. For example:
   `KAI__FILE_LOG_LEVEL="debug"`.
 - Tracing information is written to disk to aid deeper explorations of Prompts
-  and LLM Results. See [docs/contrib/Tracing.md](docs/contrib/Tracing.md)
+  and LLM Results. See [docs/contrib/tracing.md](docs/contrib/tracing.md)
 
 ## 🌐 Contributing
 
