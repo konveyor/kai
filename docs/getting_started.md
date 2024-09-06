@@ -73,7 +73,7 @@ _Konveyor integration is still being developed and is not yet fully integrated._
 
 You may also run the Kai server from a python virtual environment to aid testing local changes without needing to build a container image.
 
-- See [docs/contrib/Dev_Environment.md](/docs/contrib/Dev_Environment.md)
+- See [docs/contrib/dev_environment.md](/docs/contrib/dev_environment.md)
 
 ### Example CLI Script in Python
 

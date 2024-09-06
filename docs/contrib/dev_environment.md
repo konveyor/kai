@@ -1,32 +1,58 @@
-# Pre-Requisites
+# Local Backend Development Environment
 
-## Access to a Large Language Model (LLM)
+This document describes how to setup a local development environment for Kai's
+backend.
 
-- If you want to run Kai against a LLM you will likely need to configure a LLM API Key to access your service (unless running against a local model)
-  - We do provide a means of running Kai against previously cached data from a few models to aid demo flows. This allows you to run through the steps of using previously cached data without requiring access to a LLM. Note, if you do not provide LLM API access then the KAI\_\_DEMO_MODE flow will only be able to replay previous cached responses.
-    - We call this 'KAI**DEMO_MODE', i.e. `KAI**DEMO_MODE=true make run-server`
-- Note that results vary widely between models.
+- [Local Backend Development Environment](#local-backend-development-environment)
+  - [Overview](#overview)
+  - [Prerequisites](#prerequisites)
+  - [Setup](#setup)
+    - [Steps](#steps)
+  - [How to use Kai?](#how-to-use-kai)
+    - [Ensure you have the source code for the sample applications checked out locally](#ensure-you-have-the-source-code-for-the-sample-applications-checked-out-locally)
+      - [(OPTIONAL) Run an analysis of a sample app (example for MacOS)](#optional-run-an-analysis-of-a-sample-app-example-for-macos)
+  - [Build and test a local image](#build-and-test-a-local-image)
 
-## Local Development
+## Overview
 
-Running Kai's backend involves running 2+ processes:
+Running Kai's backend involves running a few processes:
 
 - Postgres instance which we deliver via container
 - Backend REST API server
 - [Optional] Hub Importer process to sync data from Konveyor
 
-### Python Virtual Environment
+## Prerequisites
 
-1. Clone Repo and Ensure you have the virtual environment setup
-   1. `git clone https://github.com/konveyor-ecosystem/kai.git`
-   1. `cd kai`
-   1. `python3 -m venv env`
-      - We've tested this with Python 3.11 and 3.12
-   1. `source env/bin/activate`
-   1. `pip install pip-tools`
-   1. `pip-compile --allow-unsafe`
-   1. `pip install -r requirements.txt`
-   1. `pip install -e .`
+1. [Python 3.11 or 3.12](https://www.python.org/downloads/)
+2. [Podman](https://podman.io/getting-started/installation)
+3. Access to a Large Language Model (Note that results vary widely between
+   models.)
+
+> [!NOTE]
+>
+> If you want to run Kai against an LLM you will likely need to configure a LLM
+> API key to access your service (unless running against a local model).
+>
+> We do provide a means of running Kai against previously cached data from a few
+> models to aid demo flows. This allows you to run through the steps of using
+> Kai without requiring access to a LLM. We call this `KAI__DEMO_MODE`, i.e.
+> `KAI__DEMO_MODE=true make run-server`
+>
+> If you do not provide LLM API access then `KAI__DEMO_MODE` will **only** be
+> able to replay previous cached responses.
+
+## Setup
+
+First, clone the repo and ensure you have the virtual environment setup
+
+1. `git clone https://github.com/konveyor-ecosystem/kai.git`
+2. `cd kai`
+3. `python3 -m venv env`
+4. `source env/bin/activate`
+5. `pip install pip-tools`
+6. `pip-compile --allow-unsafe`
+7. `pip install -r requirements.txt`
+8. `pip install -e .`
 
 #### Steps
 
