@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1725808518559,
+  "lastUpdate": 1725808522830,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -9307,6 +9307,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "266546+cmendible@users.noreply.github.com",
+            "name": "Carlos Mendible",
+            "username": "cmendible"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ba4bd96add44c9b96b426d06bce77422d5751693",
+          "message": "Update demo.md with the correct link to the vscode plugin (#349)\n\n* Update demo.md with the correct link to the vscode plugin\r\n\r\nSigned-off-by: Carlos Mendible <266546+cmendible@users.noreply.github.com>\r\n\r\n* Update demo.md\r\n\r\nSigned-off-by: Carlos Mendible <266546+cmendible@users.noreply.github.com>\r\n\r\n---------\r\n\r\nSigned-off-by: Carlos Mendible <266546+cmendible@users.noreply.github.com>",
+          "timestamp": "2024-09-08T11:14:09-04:00",
+          "tree_id": "2be0d9d1eb6d072d7c9f9fdcbf336a1268deaeaa",
+          "url": "https://github.com/konveyor/kai/commit/ba4bd96add44c9b96b426d06bce77422d5751693"
+        },
+        "date": 1725808522334,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
             "value": "",
             "unit": "Match"
           }
