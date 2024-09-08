@@ -23,7 +23,7 @@ In this step, we will configure the Kai IDE plugin within VSCode to showcase the
 
 ### Setup Kai VSCode IDE plugin
 
-- Follow along the steps listed in [here](https://github.com/konveyor-ecosystem/kai/tree/main/ide) to integrate Kai IDE plugin with VSCode.
+- Follow along the steps listed in [here](https://github.com/konveyor-ecosystem/kai-vscode-plugin/blob/main/docs/user-guide.md) to integrate Kai IDE plugin with VSCode.
 
 - Before starting the Kai server, Select model `meta-llama/llama-3-70b-instruct` by uncommenting the following block in `kai/config.toml` file
 
