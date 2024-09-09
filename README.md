@@ -8,15 +8,14 @@
 </div>
 <!-- trunk-ignore-emd -->
 
-Kai [/paɪ/ (rhymes with pie)](https://www.howtopronounce.com/ka%C3%AC-4) - An
-awesome tool to accelerate application modernization, supercharged with
-Konveyor's static analyses and Generative AI.
+<br>
 
-Kai simplifies the process of modernizing application source code to a new
-platform. It uses Large Language Models (LLMs) guided by static code analysis,
-along with data from Konveyor. This data provides insights into how similar
-problems were solved by the organization in the past, helping streamline and
-automate the code modernization process.
+Kai [(/kaɪ/, rhymes with pie)](https://www.howtopronounce.com/ka%C3%AC-4) - An
+AI-enabled tool that simplifies the process of modernizing application source
+code to a new platform. It uses **Large Language Models** (LLMs) guided by
+**static code analysis**, along with **data from Konveyor**. This data provides
+insights into how the organization solved similar problems in the past, helping
+**streamline** and **automate** the code modernization process.
 
 - [📖 Explore the docs!](/docs)
 - [💻 Run through a demo!](/docs/scenarios/demo.md)
@@ -60,7 +59,11 @@ models.
 
 ## 🏫 Learn More
 
-(Note that Kai is in early development!)
+> [!NOTE]
+>
+> Kai is in early development. We are actively working on improving the tool and
+> adding new features. If you are interested in contributing to the project,
+> please see our [Contributor Guide](CONTRIBUTING.md).
 
 ### 🗺️ Roadmap and Early Builds
 
