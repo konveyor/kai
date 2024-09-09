@@ -124,24 +124,26 @@ Kai repo along with the `podman compose up` workflow
      the container.
    - Use `sudo chown -R <your_user>:<your_user> logs` to change the ownership
      of the `logs` directory back to your user when done.
-1. Run `KAI__DEMO_MODE="true" podman compose up`.
+1. Run `podman compose up`.
    - The first time this is run it will take several minutes to download images
      and to populate sample data.
    - After the first run the DB will be populated and subsequent starts will be
      much faster, as long as the kai_kai_db_data volume is not deleted.
    - To clean up all resources run `podman compose down && podman volume rm
 kai_kai_db_data`.
+   - This will run Kai in demo mode, setting the environment variable
+     `KAI__DEMO_MODE=true`, with cached LLM responses. To run without demo mode
+     execute `KAI__DEMO_MODE=false podman compose up`. See [docs/contrib/configuration.md](docs/contrib/configuration.md) for more information on demo mode.
 
 The Kai backend is now running and ready to serve requests!
 
 ### Guided Walk-through
 
 After you have the kai backend running via `podman compose up` you can run
-through a guided scenario we have to show Kai in action at:
-[docs/scenarios/demo.md](docs/scenarios/demo.md)
-
-- [docs/scenarios/demo.md](docs/scenarios/demo.md) walks through a guided
-  scenario of using Kai to complete a migration of a Java EE app to Quarkus.
+through a guided scenario we have to show Kai in action at
+[docs/scenarios/demo.md](docs/scenarios/demo.md). This document walks through a
+guided scenario of using Kai to complete a migration of a Java EE app to
+Quarkus.
 
 ### Others ways to run Kai
 

@@ -1,30 +1,53 @@
 # Getting Started
 
+- [Getting Started](#getting-started)
+  - [Overview](#overview)
+  - [Recommended path - use `podman compose up` with cached LLM responses](#recommended-path---use-podman-compose-up-with-cached-llm-responses)
+    - [Launch Kai with sample data and cached LLM responses](#launch-kai-with-sample-data-and-cached-llm-responses)
+    - [Next interact with Kai via a Guided Walkthrough Scenario](#next-interact-with-kai-via-a-guided-walkthrough-scenario)
+      - [What are the general steps of Kai's current evaluation demo?](#what-are-the-general-steps-of-kais-current-evaluation-demo)
+  - [Alternative methods of running](#alternative-methods-of-running)
+    - [With data from Konveyor Hub](#with-data-from-konveyor-hub)
+    - [Development Environment](#development-environment)
+    - [Example CLI Script in Python](#example-cli-script-in-python)
+  - [Misc notes](#misc-notes)
+    - [Extending the data Kai consumes](#extending-the-data-kai-consumes)
+    - [Misc notes with `podman compose`](#misc-notes-with-podman-compose)
+
 ## Overview
 
 Running Kai consists of:
 
 1. Launching a postgres database and seed with application analysis data
 1. Launching the backend Kai REST API Service
-   - This is the component that will work with the database, construct prompts, talk to Large Language Models (LLMs), and generate code fixes
-1. A client that parses analysis information from [analyzer-lsp](https://github.com/konveyor/analyzer-lsp) and then issues requests to the Kai backend.
+   - This is the component that will work with the database, construct prompts,
+     talk to Large Language Models (LLMs), and generate code fixes
+1. A client that parses analysis information from
+   [analyzer-lsp](https://github.com/konveyor/analyzer-lsp) and then issues
+   requests to the Kai backend.
    - The primary client will be an IDE plugin
-     - For IDE setup see: [Install the Kai VSCode Plugin](https://github.com/konveyor-ecosystem/kai-vscode-plugin/blob/main/docs/user-guide.md)
-   - It's also possible to issue API requests directly, and we have a python script that does this to aid demonstrations. See [example/README.md](/example/README.md)
+     - For IDE setup see: [Install the Kai VSCode
+       Plugin](https://github.com/konveyor-ecosystem/kai-vscode-plugin/blob/main/docs/user-guide.md)
+   - It's also possible to issue API requests directly, and we have a python
+     script that does this to aid demonstrations. See
+     [example/README.md](/example/README.md)
 
 ## Recommended path - use `podman compose up` with cached LLM responses
 
-- _The easiest way to run is to leverage prebuilt container images we publish to [quay.io/konveyor/kai](https://quay.io/repository/konveyor/kai?tab=tags), you can learn more about early builds at [docs/evaluation_builds.md](/docs/evaluation_builds.md)_
-- _This is the simplest configuration which will limit configuration choices and will use cached LLM results so that you may evaluate Kai without having your own API Keys_
-  - The cached data uses a `KAI__DEMO_MODE=TRUE` mode for running the backend. See [docs/contrib/demo_mode.md](/docs/contrib/demo_mode.md) for more information.
-    - Configured via:
-      - [kai/config.toml](/kai/config.toml): `demo_mode = true`
-      - [compose.yaml](/compose.yaml): `KAI__DEMO_MODE: "TRUE"`
-  - Follow the guided scenario at [docs/scenarios/demo.md](/docs/scenarios/demo.md) to evaluate Kai
+The easiest way to run Kai is to leverage the prebuilt container images
+wepublish to
+[quay.io/konveyor/kai](https://quay.io/repository/konveyor/kai?tab=tags), you
+can learn more about early builds at
+[docs/evaluation_builds.md](/docs/evaluation_builds.md).
+
+This is the simplest configuration which will limit configuration choices and will use cached LLM results so that you may evaluate Kai without having your own API Keys.
+
+- The cached data uses a `KAI__DEMO_MODE=TRUE` mode for running the backend. See [docs/contrib/configuration.md](/docs/contrib/configuration.md) for more information.
+- Follow the guided scenario at [docs/scenarios/demo.md](/docs/scenarios/demo.md) to evaluate Kai
 
 ### Launch Kai with sample data and cached LLM responses
 
-_This will run Kai using [sample analysis reports](/samples/analysis_reports) that simulates the analysis data which will be obtained from Konveyor. Additionally it will default to using cached LLM responses as explained in [docs/contrib/demo_mode.md](/docs/contrib/demo_mode.md)_
+_This will run Kai using [sample analysis reports](/samples/analysis_reports) that simulates the analysis data which will be obtained from Konveyor. Additionally it will default to using cached LLM responses as explained in [docs/contrib/configuration.md](/docs/contrib/configuration.md)_
 
 Steps:
 

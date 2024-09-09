@@ -2,6 +2,11 @@
 
 This document contains background information to help understand the technical approach Konveyor AI (Kai) is following.
 
+- [Overview](#overview)
+  - [Approach](#approach)
+    - [What happens technically to make this work?](#what-happens-technically-to-make-this-work)
+  - [Further Reading](#further-reading)
+
 ## Approach
 
 Kai implements a [Retrieval Augmented Generation (RAG)](https://arxiv.org/abs/2005.11401) approach that leverages data from Konveyor to help generate code suggestions to aid migrating legacy code bases to a different technology. The intent of this RAG approach is to shape the code suggestions to be similar to how an organization has solved problems in the past, without additional fine-tuning of the model.

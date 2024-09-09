@@ -128,7 +128,8 @@ Finally, run the backend with `podman compose up`.
 If you don't have access to GEN_AI key, you can run the server in demo mode
 which will use cached responses
 
-To run the Kai server in demo mode, `KAI__DEMO_MODE=true podman compose up`.
+To run the Kai server in demo mode, `podman compose up`. `KAI__DEMO_MODE` is set
+to `true` inside the `compose.yaml` file.
 
 ## Step 2: Demo
 
@@ -157,10 +158,11 @@ git checkout partial-migration
 We will analyze the Coolstore application using the following migration targets
 to identify potential areas for improvement:
 
-- containerization
+<!-- - containerization -->
+
 - jakarta-ee
-- jakarta-ee8+
-- jakarata-ee9+
+- jakarta-ee8
+- jakarta-ee9
 - quarkus
 
 Let's perform our initial analysis:
