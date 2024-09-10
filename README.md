@@ -131,9 +131,11 @@ Kai repo along with the `podman compose up` workflow
      much faster, as long as the kai_kai_db_data volume is not deleted.
    - To clean up all resources run `podman compose down && podman volume rm
 kai_kai_db_data`.
-   - This will run Kai in demo mode, setting the environment variable
-     `KAI__DEMO_MODE=true`, with cached LLM responses. To run without demo mode
-     execute `KAI__DEMO_MODE=false podman compose up`. See [docs/contrib/configuration.md](docs/contrib/configuration.md) for more information on demo mode.
+   - This will run Kai in demo mode, which will use cached LLM responses, via
+     setting the environment variable `KAI__DEMO_MODE=true`. To run without demo
+     mode execute `KAI__DEMO_MODE=false podman compose up`. See
+     [docs/contrib/configuration.md](docs/contrib/configuration.md) for more
+     information on demo mode.
 
 The Kai backend is now running and ready to serve requests!
 

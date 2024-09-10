@@ -92,7 +92,7 @@ class ModelProvider:
                 model_class = BedrockChat
 
                 defaults = {
-                    "model_id": "anthropic.claude-3-5-sonnet-20240620-v1:0",
+                    "model_id": "meta.llama3-70b-instruct-v1:0",
                 }
 
                 model_args = deep_update(defaults, config.args)

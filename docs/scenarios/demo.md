@@ -9,9 +9,10 @@ solved a similar problem in the past.
   - [Overview](#overview)
   - [Prerequisites](#prerequisites)
   - [Step 1: Setup](#step-1-setup)
-    - [Running Kai with Llama 3](#running-kai-with-llama-3)
+    - [Running Kai with IBM-served Llama 3](#running-kai-with-ibm-served-llama-3)
+    - [Running Kai with Amazon Bedrock-served Llama 3](#running-kai-with-amazon-bedrock-served-llama-3)
     - [Running Kai with GPT-3.5-Turbo](#running-kai-with-gpt-35-turbo)
-    - [Running Kai with Cached Responses (demo mode)](#running-kai-with-cached-responses-demo-mode)
+    - [Running Kai with Cached Responses Only (demo mode)](#running-kai-with-cached-responses-only-demo-mode)
   - [Step 2: Clone the coolstore app](#step-2-clone-the-coolstore-app)
   - [Step 3: Run Analysis](#step-3-run-analysis)
     - [3.1 Change import namespaces](#31-change-import-namespaces)
@@ -39,12 +40,12 @@ Konveyor AI (Kai) can assist and expedite the modernization process.
 
 ## Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/)
+- [Docker](https://docs.docker.com/get-docker/) to deploy the coolstore app
 - [VSCode](https://code.visualstudio.com/download)
 - [Git](https://git-scm.com/downloads)
 - [Kubernetes cluster (minikube)](https://minikube.sigs.k8s.io/docs/start/)
 - [GenAI credentials](../llm_selection.md#ibm-bam-service)
-- Maven
+- [Maven](https://maven.apache.org/install.html)
 - Quarkus 3.10
 - Java 17
 
@@ -54,11 +55,10 @@ can follow the steps listed
 
 ## Step 1: Setup
 
-If you followed the steps in [getting_started.md](../getting_started.md), you
-will know that you can configure Kai via environment variables. You can also
-configure Kai with a `config.toml` file. When running Kai using `podman compose
-up`, if the file `build/config.toml` exists, Kai will use it. An example config
-is present at `build/example_config.toml`.
+[You can configure Kai in multiple ways](../contrib/configuration.md). The best
+way to configure Kai is with `config.toml` file. When running Kai using `podman
+compose up`, if the file `build/config.toml` exists, Kai will use it. An example
+config is present at `build/example_config.toml`.
 
 Create a new file at `build/config.toml` to begin.
 
@@ -69,11 +69,16 @@ how to configure Kai to use different models. For more options, see
 If you don't have access to an LLM, you also have the option to run Kai in demo
 mode, which uses cached responses.
 
-### Running Kai with Llama 3
+> [!IMPORTANT]
+>
+> The demo assumes you are using IBM-served Llama 3. If you are using a different
+> model, the responses you get back may be different.
+
+### Running Kai with IBM-served Llama 3
 
 <!-- Begin copy from llm_selection.md#ibm-bam-service -->
 
-> [!WARNING]
+> [!WARNING]  
 > In order to use this service an individual needs to obtain a w3id
 > from IBM. The kai development team is unable to help obtaining this access.
 
@@ -90,11 +95,29 @@ Next, paste the following into your `build/config.toml` file:
 
 ```toml
 [models]
-  provider = "ChatIBMGenAI"
+provider = "ChatIBMGenAI"
 
   [models.args]
-    model_id = "meta-llama/llama-3-70b-instruct"
-    parameters.max_new_tokens = 2048
+  model_id = "meta-llama/llama-3-70b-instruct"
+  parameters.max_new_tokens = 2048
+```
+
+Finally, run the backend with `podman compose up`.
+
+### Running Kai with Amazon Bedrock-served Llama 3
+
+1. Obtain your AWS API key from Amazon Bedrock.
+2. Export your `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and
+   `AWS_DEFAULT_REGION` environment variables.
+
+Next, paste the following into your `build/config.toml` file:
+
+```toml
+[models]
+provider = "ChatBedrock"
+
+  [models.args]
+  model_id = "meta.llama3-70b-instruct-v1:0"
 ```
 
 Finally, run the backend with `podman compose up`.
@@ -113,16 +136,16 @@ OPENAI_API_KEY=my-secret-api-key-value`
 Next, paste the following into your `build/config.toml` file:
 
 ```toml
- [models]
-   provider = "ChatOpenAI"
+[models]
+provider = "ChatOpenAI"
 
-   [models.args]
-   model = "gpt-3.5-turbo"
+  [models.args]
+  model = "gpt-3.5-turbo"
 ```
 
 Finally, run the backend with `podman compose up`.
 
-### Running Kai with Cached Responses (demo mode)
+### Running Kai with Cached Responses Only (demo mode)
 
 If you don't have access to a `GEN_AI` key, you can run the server in demo mode
 which will use cached responses

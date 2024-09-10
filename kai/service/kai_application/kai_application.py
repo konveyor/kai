@@ -200,7 +200,7 @@ class KaiApplication:
                         break
                 except Exception as e:
                     KAI_LOG.warn(
-                        f"Request to model failed for batch {count}/{len(batched_incidents)} for {file_name} with exception, retrying in {self.model_provider.llm_retry_delay}s\n{e}"
+                        f"Request to model failed for batch {count}/{len(batched_incidents)} for {file_name} with exception {e}, retrying in {self.model_provider.llm_retry_delay}s\n{e}"
                     )
                     KAI_LOG.debug(traceback.format_exc())
                     trace.exception(
