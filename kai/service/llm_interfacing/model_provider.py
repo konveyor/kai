@@ -10,6 +10,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic.v1.utils import deep_update
 
 from kai.models.kai_config import KaiConfigModels
+from kai.util import get_env_bool
 
 
 class ModelProvider:
@@ -53,7 +54,7 @@ class ModelProvider:
 
             case "ChatIBMGenAI":
                 model_class = LangChainChatInterface
-                if os.getenv("KAI__DEMO_MODE", "false").lower() == "true":
+                if get_env_bool("KAI__DEMO_MODE", False):
                     api_key = os.getenv("GENAI_KEY", "dummy_value")
                     api_endpoint = os.getenv("GENAI_API", "")
                     credentials = Credentials(
@@ -91,7 +92,7 @@ class ModelProvider:
                 model_class = BedrockChat
 
                 defaults = {
-                    "model_id": "anthropic.claude-3-5-sonnet-20240620-v1:0",
+                    "model_id": "meta.llama3-70b-instruct-v1:0",
                 }
 
                 model_args = deep_update(defaults, config.args)
