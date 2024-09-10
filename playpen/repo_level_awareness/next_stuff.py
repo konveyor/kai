@@ -5,7 +5,7 @@ from typing import Any, Generator, Iterator, Optional
 
 from pydantic import BaseModel
 
-from kai.server.service.kai_application.kai_application import UpdatedFileContent
+from kai.service.kai_application.kai_application import UpdatedFileContent
 
 
 class RpcClientConfig(BaseModel):
