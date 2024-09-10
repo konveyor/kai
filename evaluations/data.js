@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1725990291232,
+  "lastUpdate": 1725990292473,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -9539,6 +9539,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "42743659+JonahSussman@users.noreply.github.com",
+            "name": "Jonah Sussman",
+            "username": "JonahSussman"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "094469b6f6042f820e3d874719a804cad551ec4a",
+          "message": ":book: Fixed documentation (#353)\n\n* Edited README.md\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Renamed files and merged llm_selection.md and openai_api_compatible_alternatives.md\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* More documentation updates\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Fixed broken links, edited dev_environment.md and demo.md\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Fixed formatting errors in demo_mode.md\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Standarized docs filename naming convention\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Toned down blurb\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Added terminology document\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Worked more on demo and docs\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Fixed directions in demo.md\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Changed stuff wrt demo\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Fixed nits\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Fixed nits\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>",
+          "timestamp": "2024-09-10T13:43:37-04:00",
+          "tree_id": "420116124a4fc07e7abb667524d729adaf4c0a68",
+          "url": "https://github.com/konveyor/kai/commit/094469b6f6042f820e3d874719a804cad551ec4a"
+        },
+        "date": 1725990286699,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
             "value": "",
             "unit": "Match"
           }
