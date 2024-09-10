@@ -111,6 +111,12 @@ suggestions, and apply them to your codebase.
 
 ### Launch the Kai backend with sample data
 
+> [!IMPORTANT]
+>
+> Kai is in early development and is not yet ready for production use. We
+> currently recommend checking out the git tag `stable` for the most stable user
+> experience.
+
 The quickest way to get running is to leverage sample data committed into the
 Kai repo along with the `podman compose up` workflow
 
