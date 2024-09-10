@@ -114,7 +114,19 @@ def playback_if_demo_mode(
             "headers",
         ],
         record_on_exception=False,
-        filter_headers=["authorization", "cookie", "content-length"],
+        filter_headers=[
+            "authorization",
+            "cookie",
+            "content-length",
+            "x-stainless-lang",
+            "x-stainless-async",
+            "x-stainless-runtime",
+            "x-stainless-arch",
+            "x-stainless-os",
+            "x-stainless-package-version",
+            "x-stainless-runtime-version",
+            "user-agent",
+        ],
     )
     KAI_LOG.debug(
         f"record_mode='{record_mode}' - Using cassette {application_name}/{model_id}/{filename}.yaml",
