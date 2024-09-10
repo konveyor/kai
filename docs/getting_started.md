@@ -35,7 +35,7 @@ Running Kai consists of:
 ## Recommended path - use `podman compose up` with cached LLM responses
 
 The easiest way to run Kai is to leverage the prebuilt container images
-wepublish to
+we publish to
 [quay.io/konveyor/kai](https://quay.io/repository/konveyor/kai?tab=tags), you
 can learn more about early builds at
 [docs/evaluation_builds.md](/docs/evaluation_builds.md).

@@ -147,7 +147,7 @@ through a guided scenario we have to show Kai in action at
 guided scenario of using Kai to complete a migration of a Java EE app to
 Quarkus.
 
-### Others ways to run Kai
+### Other ways to run Kai
 
 The above information is a quick path to enable running Kai quickly to see how
 it works. If you'd like to take a deeper dive into running Kai against data in
