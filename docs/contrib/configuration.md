@@ -81,7 +81,7 @@ to look at the request you are sending to Kai and ensure it is cached for the
 model you have configured, if you don't have valid cached data then you will
 need to get a valid api key and re-run so the data may be cached.
 
-```
+```sh
 WARNING - 2024-07-11 14:11:44,063 - [   llm_io_handler.py:243  - get_incident_solutions_for_file()] - Request to model failed for batch 1/1 for src/main/java/com/redhat/coolstore/model/InventoryEntity.java with exception, retrying in 10s
 Failed to handle request to https://bam-api.res.ibm.com/v2/text/chat_stream?version=2024-01-10.
 {

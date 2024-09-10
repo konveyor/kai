@@ -12,15 +12,14 @@ solved a similar problem in the past.
     - [Running Kai with Llama 3](#running-kai-with-llama-3)
     - [Running Kai with GPT-3.5-Turbo](#running-kai-with-gpt-35-turbo)
     - [Running Kai with Cached Responses (demo mode)](#running-kai-with-cached-responses-demo-mode)
-  - [Step 2: Demo](#step-2-demo)
-    - [2.1 Clone the coolstore app](#21-clone-the-coolstore-app)
-    - [2.2 Run Analysis](#22-run-analysis)
-      - [2.2.1 Change import namespaces](#221-change-import-namespaces)
-      - [2.2.2 Modify Scope from CDI bean requirements](#222-modify-scope-from-cdi-bean-requirements)
-      - [2.2.3 EJB Remote and Message Driven Bean(MDB) changes](#223-ejb-remote-and-message-driven-beanmdb-changes)
-        - [EJB Remote](#ejb-remote)
-        - [Message Driven Bean(MDB)](#message-driven-beanmdb)
-    - [2.3 Deploy app to Kubernetes](#23-deploy-app-to-kubernetes)
+  - [Step 2: Clone the coolstore app](#step-2-clone-the-coolstore-app)
+  - [Step 3: Run Analysis](#step-3-run-analysis)
+    - [3.1 Change import namespaces](#31-change-import-namespaces)
+    - [3.2 Modify Scope from CDI bean requirements](#32-modify-scope-from-cdi-bean-requirements)
+    - [3.3 EJB Remote and Message Driven Bean(MDB) changes](#33-ejb-remote-and-message-driven-beanmdb-changes)
+      - [EJB Remote](#ejb-remote)
+      - [Message Driven Bean (MDB)](#message-driven-bean-mdb)
+    - [Step 4: Deploy app to Kubernetes](#step-4-deploy-app-to-kubernetes)
   - [Conclusion](#conclusion)
 
 ## Overview
@@ -40,7 +39,7 @@ Konveyor AI (Kai) can assist and expedite the modernization process.
 
 ## Prerequisites
 
-- [Podman](https://podman.io/getting-started/installation)
+- [Docker](https://docs.docker.com/get-docker/)
 - [VSCode](https://code.visualstudio.com/download)
 - [Git](https://git-scm.com/downloads)
 - [Kubernetes cluster (minikube)](https://minikube.sigs.k8s.io/docs/start/)
@@ -125,18 +124,13 @@ Finally, run the backend with `podman compose up`.
 
 ### Running Kai with Cached Responses (demo mode)
 
-If you don't have access to GEN_AI key, you can run the server in demo mode
+If you don't have access to a `GEN_AI` key, you can run the server in demo mode
 which will use cached responses
 
 To run the Kai server in demo mode, `podman compose up`. `KAI__DEMO_MODE` is set
 to `true` inside the `compose.yaml` file.
 
-## Step 2: Demo
-
-In this demo, we will explore Kai's capabilities through practical examples
-within the Coolstore application.
-
-### 2.1 Clone the coolstore app
+## Step 2: Clone the coolstore app
 
 Let's clone the Coolstore application, which we will be used demo the migration
 process to Quarkus.
@@ -153,7 +147,7 @@ Next, switch to the branch of the Coolstore app that's been partially migrated:
 git checkout partial-migration
 ```
 
-### 2.2 Run Analysis
+## Step 3: Run Analysis
 
 We will analyze the Coolstore application using the following migration targets
 to identify potential areas for improvement:
@@ -180,14 +174,14 @@ Let's perform our initial analysis:
 
 > [!NOTE]
 >
-> While the file `src/main/java/com/redhat/coolstore/rest/RestApplication.java `
+> While the file `src/main/java/com/redhat/coolstore/rest/RestApplication.java`
 > is flagged, for the purpose of this demo it is okay to skip that file and
 > proceed.
 
 The incidents in the above files will provide insights into potential issues or
 areas that require attention during the migration process.
 
-#### 2.2.1 Change import namespaces
+### 3.1 Change import namespaces
 
 - Right-click on the file
   `src/main/java/com/redhat/coolstore/model/ShoppingCart.java`.
@@ -202,7 +196,7 @@ The above steps show how Kai simplifies the translation of import namespaces,
 ensuring seamless automated migration of javax libraries to jakarta persistence
 libraries.
 
-#### 2.2.2 Modify Scope from CDI bean requirements
+### 3.2 Modify Scope from CDI bean requirements
 
 In this step, we will use Kai to modify the scope in `CatalogService.java` to
 adhere to Quarkus CDI bean requirements. Kai will handle this automatically,
@@ -215,14 +209,14 @@ ensuring seamless migration.
 
 ![Modify Scope from CDI bean requirements](kai_type2.png)
 
-#### 2.2.3 EJB Remote and Message Driven Bean(MDB) changes
+### 3.3 EJB Remote and Message Driven Bean(MDB) changes
 
 We will address EJB Remote and MDB functionalities in `ShippingService.java` and
 `ShoppingCartOrderProcessor.java` respectively. Kai will guide us through
 replacing EJBs with REST functionality and updating related imports and
 annotations.
 
-##### EJB Remote
+#### EJB Remote
 
 - Right-click on the file
   `src/main/java/com/redhat/coolstore/service/ShippingService.java`.
@@ -234,7 +228,7 @@ annotations.
 Due to the absence of support for Remote EJBs in Quarkus, you will notice that
 these functionalities are removed and replaced with REST functionality.
 
-##### Message Driven Bean(MDB)
+#### Message Driven Bean (MDB)
 
 - Right-click on the file `src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java`.
 
@@ -277,14 +271,23 @@ these functionalities are removed and replaced with REST functionality.
 
 ![MDB - Manual updates](mdbchanges.png)
 
-### 2.3 Deploy app to Kubernetes
+### Step 4: Deploy app to Kubernetes
 
 Although the app is deployable to any [Kubernetes](https://kubernetes.io/)
 distribution. For the sake of simplicity we choose
 [minikube](https://minikube.sigs.k8s.io/docs/).
 
-> Prerequisite: It is assumed that minikube is installed. If not you can follow
+> [!NOTE]
+>
+> It is assumed that minikube is installed. If not you can follow
 > the instructions [here](https://minikube.sigs.k8s.io/docs/start/).
+
+Point your shell to minikube's docker daemon. Kubernetes may not be able to find
+the built images if they are not in the same docker daemon as minikube.
+
+```bash
+eval $(minikube docker-env)
+```
 
 The coolstore requires a PostgreSQL database. To install Postgres into minikube,
 we have added deploy scripts. run the scripts in the following order
@@ -302,11 +305,16 @@ To deploy the app, simply run the following command, it will create a docker
 image on the local drive and load the manifests into kubernetes to pull the
 image.
 
-```mvn
+```bash
 mvn clean compile package -Dquarkus.kubernetes.deploy=true
 ```
 
-- Once deployed, access the app via browser hitting the localhost and port.
+Once deployed, access the app via browser hitting the localhost and port. To get
+this URL, run the following command:
+
+```bash
+minikube service list
+```
 
 ![deploy app](deploy.gif)
 
