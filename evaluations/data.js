@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1726004708058,
+  "lastUpdate": 1726004710209,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -9597,6 +9597,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "42743659+JonahSussman@users.noreply.github.com",
+            "name": "Jonah Sussman",
+            "username": "JonahSussman"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "37a7e76c09c5eca842591c2c79f3a409269594b6",
+          "message": ":ghost: Update dependencies, update default model, update documentation (#357)\n\n* Updated default model to IBM-served Llama 3\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Tweaked more demo stuff\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Updated dependencies\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n* Filtered more headers from VCR cassettes\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\r\n\r\n---------\r\n\r\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>",
+          "timestamp": "2024-09-10T17:43:59-04:00",
+          "tree_id": "4f75cc01b0271dc55a0b46bc6e0e0940c4f21b23",
+          "url": "https://github.com/konveyor/kai/commit/37a7e76c09c5eca842591c2c79f3a409269594b6"
+        },
+        "date": 1726004709680,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
             "value": "",
             "unit": "Match"
           }
