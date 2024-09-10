@@ -62,7 +62,7 @@ config is present at `build/example_config.toml`.
 
 Create a new file at `build/config.toml` to begin.
 
-You will need to select an LLM model to use with Kai. Here are two examples of
+You will need to select an LLM model to use with Kai. Here are some examples of
 how to configure Kai to use different models. For more options, see
 [llm_selection.md](../llm_selection.md).
 
