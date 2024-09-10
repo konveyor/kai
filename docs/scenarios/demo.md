@@ -49,8 +49,9 @@ Konveyor AI (Kai) can assist and expedite the modernization process.
 - Quarkus 3.10
 - Java 17
 
-Additionally, you will need to have the Kai IDE plugin installed in VSCode. You
-can follow the steps listed
+Additionally, you will need to have the Kai IDE plugin installed in VSCode. As
+of 2024-09-10, you should install **version 0.0.3**. You can follow the steps
+listed
 [here](https://github.com/konveyor-ecosystem/kai-vscode-plugin)
 
 ## Step 1: Setup
@@ -305,8 +306,14 @@ distribution. For the sake of simplicity we choose
 > It is assumed that minikube is installed. If not you can follow
 > the instructions [here](https://minikube.sigs.k8s.io/docs/start/).
 
-Point your shell to minikube's docker daemon. Kubernetes may not be able to find
-the built images if they are not in the same docker daemon as minikube.
+First, start minikube with the docker driver:
+
+```bash
+minikube start --driver=docker
+```
+
+Next, point your shell to minikube's docker daemon. Kubernetes may not be able
+to find the built images if they are not in the same docker daemon as minikube.
 
 ```bash
 eval $(minikube docker-env)
@@ -320,6 +327,9 @@ kubectl apply -f deploy/kubernetes/persistent-volume.yaml
 kubectl apply -f deploy/kubernetes/persistent-volume-claim.yaml
 kubectl apply -f deploy/kubernetes/postgresql-deployment.yaml
 kubectl apply -f deploy/kubernetes/postgresql-service.yaml
+
+# Wait until the postgres pod is running
+watch kubectl get all
 ```
 
 This should setup the database ready for connections from the coolstore app.
@@ -332,7 +342,8 @@ image.
 mvn clean compile package -Dquarkus.kubernetes.deploy=true
 ```
 
-Once deployed, access the app via browser hitting the localhost and port. To get
+Once deployed, access the app via browser hitting the localhost and port. Note
+that it might take a minute when you open the website for the first time. To get
 this URL, run the following command:
 
 ```bash
