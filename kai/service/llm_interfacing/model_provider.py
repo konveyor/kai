@@ -3,7 +3,7 @@ import os
 from genai import Client, Credentials
 from genai.extensions.langchain.chat_llm import LangChainChatInterface
 from genai.schema import DecodingMethod
-from langchain_aws import BedrockChat
+from langchain_aws import ChatBedrock
 from langchain_community.chat_models import ChatOllama, ChatOpenAI
 from langchain_community.chat_models.fake import FakeListChatModel
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -90,7 +90,7 @@ class ModelProvider:
                 model_id = model_args["model_id"]
 
             case "ChatBedrock":
-                model_class = BedrockChat
+                model_class = ChatBedrock
 
                 defaults = {
                     "model_id": "meta.llama3-70b-instruct-v1:0",
