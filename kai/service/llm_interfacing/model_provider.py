@@ -3,7 +3,8 @@ import os
 from genai import Client, Credentials
 from genai.extensions.langchain.chat_llm import LangChainChatInterface
 from genai.schema import DecodingMethod
-from langchain_community.chat_models import BedrockChat, ChatOllama, ChatOpenAI
+from langchain_aws import BedrockChat
+from langchain_community.chat_models import ChatOllama, ChatOpenAI
 from langchain_community.chat_models.fake import FakeListChatModel
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
