@@ -3,9 +3,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Generator, Iterator, Optional
 
-from pydantic import BaseModel
-
 from kai.service.kai_application.kai_application import UpdatedFileContent
+from pydantic import BaseModel
 
 
 class RpcClientConfig(BaseModel):
