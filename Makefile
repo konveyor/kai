@@ -14,6 +14,7 @@ run-postgres:
 	$(CONTAINER_RUNTIME) run -it $(POSTGRES_RUN_ARGS) -v data:/var/lib/postgresql/data -e POSTGRES_USER=kai -e POSTGRES_PASSWORD=dog8code -e POSTGRES_DB=kai -p 5432:5432 docker.io/library/postgres:16.3
 
 run-server:
+	if [[ "$$(uname)" -eq "Darwin" ]] ; then export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES ; fi ;\
 	PYTHONPATH=$(KAI_PYTHON_PATH) python kai/server.py
 
 run-konveyor-importer:
