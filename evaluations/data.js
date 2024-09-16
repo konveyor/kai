@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1726516462504,
+  "lastUpdate": 1726516467331,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -9974,6 +9974,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "shawn@hurley.page",
+            "name": "Shawn Hurley",
+            "username": "shawn-hurley"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bfa1288ab97f28ec6af87780c109171a0ecb1cc2",
+          "message": ":sparkles: Adding testing notebook for compilation error agent (#364)\n\n* Adding testing notebook for compilation error agent\r\n\r\nSigned-off-by: Shawn Hurley <shawn@hurley.page>\r\n\r\n* adding check on output\r\n\r\nSigned-off-by: Shawn Hurley <shawn@hurley.page>\r\n\r\n---------\r\n\r\nSigned-off-by: Shawn Hurley <shawn@hurley.page>",
+          "timestamp": "2024-09-16T15:52:28-04:00",
+          "tree_id": "b8bd52f2eb0c0bec5dc6e834b4778a991e5abc5f",
+          "url": "https://github.com/konveyor/kai/commit/bfa1288ab97f28ec6af87780c109171a0ecb1cc2"
+        },
+        "date": 1726516466119,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
             "value": "",
             "unit": "Match"
           }
