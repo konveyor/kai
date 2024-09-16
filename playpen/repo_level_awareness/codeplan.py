@@ -1,62 +1,53 @@
-from abc import ABC
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Generator, Iterator, Optional
+#!/usr/bin/env python
+
+from typing import Any, Generator, List, Optional, Type
 
 from kai.service.kai_application.kai_application import UpdatedFileContent
-from pydantic import BaseModel
+
+from api import Agent, RpcClientConfig, Task, TaskResult, ValidationStep
+from maven_validator import MavenCompileStep
 
 
-class RpcClientConfig(BaseModel):
-    repo_directory: Path
+def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Run the CodePlan loop against a project"
+    )
+    parser.add_argument(
+        "source_directory", help="The root directory of the project to be fixed"
+    )
+
+    args = parser.parse_args()
+
+    config = RpcClientConfig(args.source_directory)
+    codeplan(config, None)
 
 
-# FIXME: Oh god oh no oh jeez oh man
-class Task:
-    pass
+def codeplan(
+    config: RpcClientConfig,
+    updated_file_content: UpdatedFileContent,
+):
+    whatever_agent = Agent()
+
+    task_manager = TaskManager(
+        config,
+        updated_file_content,
+        validators=[MavenCompileStep(config)],
+        agents=[whatever_agent],
+    )
+    # has a list of files affected and unprocessed
+    # has a list of registered validators
+    # has a list of current validation errors
+
+    for task in task_manager.get_next_task():
+        task_manager.supply_result(task_manager.execute_task(task))
+        # all current failing validations and all currently affected AND UNDEALT
+        # WITH files
+
+        # Can do revalidation, or use cached results or whatever
 
 
-# FIXME: Might not need
-class TaskResult:
-    encountered_errors: list[str]
-    modified_files: list[Path]
-
-
-@dataclass
-class ValidationResult:
-    passed: bool
-    errors: list[str]
-
-
-class ValidationStep(ABC):
-    def __init__(self, RpcClientConfig: RpcClientConfig) -> None:
-        self.config = RpcClientConfig
-
-    def run(self) -> ValidationResult:
-        pass
-
-
-class Agent(ABC):
-    def can_handle_task(self, task: Task) -> bool:
-        pass
-
-    def execute_task(self, task: Task) -> TaskResult:
-        pass
-
-    def refine_task(self, errors: list[str]) -> None:
-        # Knows that it's the refine step so that it might not spawn as much
-        # stuff.
-        pass
-
-    def can_handle_error(self, errors: list[str]) -> bool:
-        pass
-
-
-class MavenCompileAgent(Agent):
-    pass
-
-
-# High level plan
 class TaskManager:
     def __init__(
         self,
@@ -151,7 +142,7 @@ class TaskManager:
             # pop an error of the stack of errors
             if len(validation_errors) > 0:
                 err = validation_errors.pop(0)
-                yield Task(err)  # TODO: This is a placeholder
+                yield err  # TODO: This is a placeholder
                 continue
 
             if len(self.unprocessed_files) > 0:
@@ -161,34 +152,6 @@ class TaskManager:
             break
 
 
-def codeplan(
-    config: RpcClientConfig,
-    updated_file_content: UpdatedFileContent,
-):
-    whatever_agent = Agent()
-    whatever_validator = ValidationStep(config)
-
-    task_manager = TaskManager(
-        config,
-        updated_file_content,
-        validators=[whatever_validator, whatever_validator],
-        agents=[whatever_agent],
-    )
-    # has a list of files affected and unprocessed
-    # has a list of registered validators
-    # has a list of current validation errors
-
-    for task in task_manager.get_next_task():
-        task_manager.supply_result(task_manager.execute_task(task))
-        # all current failing validations and all currently affected AND UNDEALT
-        # WITH files
-
-        # Can do revalidation, or use cached results or whatever
-
-
-def main():
-    pass
-
-
 if __name__ == "__main__":
-    main()
+    with __import__("ipdb").launch_ipdb_on_exception():
+        main()

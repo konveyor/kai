@@ -5,9 +5,19 @@ import subprocess
 from dataclasses import dataclass, field
 from typing import List, Optional, Type
 
+from api import ValidationError, ValidationResult, ValidationStep
+
+
+class MavenCompileStep(ValidationStep):
+
+    def run(self) -> ValidationResult:
+        maven_output = run_maven(self.config.repo_directory)
+        errors = parse_maven_output(maven_output)
+        return ValidationResult(passed=not errors, errors=errors)
+
 
 @dataclass
-class MavenCompilerError:
+class MavenCompilerError(ValidationError):
     file: str
     line: int
     column: int
