@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1726601278771,
+  "lastUpdate": 1726601280231,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -10090,6 +10090,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "42743659+JonahSussman@users.noreply.github.com",
+            "name": "Jonah Sussman",
+            "username": "JonahSussman"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "78b92f8f610a63d4c0811b81217c7a075b89c349",
+          "message": ":ghost: Fixed mypy types (#372)\n\n* Removed unused result.py file\n\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\n\n* Added mypy types, added mypy type check on PR, fixed tests\n\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>\n\n---------\n\nSigned-off-by: JonahSussman <sussmanjonah@gmail.com>",
+          "timestamp": "2024-09-17T15:26:42-04:00",
+          "tree_id": "b56478024ebbd744e3c20accac0732601f3baf6e",
+          "url": "https://github.com/konveyor/kai/commit/78b92f8f610a63d4c0811b81217c7a075b89c349"
+        },
+        "date": 1726601277616,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
             "value": "",
             "unit": "Match"
           }
