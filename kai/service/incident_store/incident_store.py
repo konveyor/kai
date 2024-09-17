@@ -3,7 +3,8 @@ import datetime
 import logging
 import os
 from dataclasses import dataclass
-from typing import Optional, TypeVar
+from functools import singledispatch
+from typing import Any, Optional
 from urllib.parse import unquote, urlparse
 
 import yaml
@@ -35,15 +36,23 @@ from kai.service.solution_handling.solution_types import Solution
 
 KAI_LOG = logging.getLogger(__name__)
 
-T = TypeVar("T")
 
-
-def deep_sort(obj: T) -> T:
-    if isinstance(obj, dict):
-        return {k: deep_sort(v) for k, v in sorted(obj.items())}
-    if isinstance(obj, list):
-        return sorted(deep_sort(x) for x in obj)
+# NOTE: I'd like to use TypeVars to show that the return type is the same as the
+# input type, but I'm not intelligent enough to figure out how to properly
+# without mypy complaining.
+@singledispatch
+def deep_sort(obj: Any) -> Any:
     return obj
+
+
+@deep_sort.register(dict)
+def _(obj: dict) -> dict:
+    return {k: deep_sort(v) for k, v in sorted(obj.items())}
+
+
+@deep_sort.register(list)
+def _(obj: list) -> list:
+    return sorted(deep_sort(x) for x in obj)
 
 
 def __get_repo_path(app_name):
@@ -413,6 +422,11 @@ class IncidentStore:
                     select_accepted_solution_stmt
                 ).first()
 
+                if accepted_solution is None:
+                    raise Exception(
+                        f"Accepted solution with id {incident.solution_id} not found. This should not occur."
+                    )
+
                 processed_solution = self.solution_producer.post_process_one(
                     incident, accepted_solution.solution
                 )
@@ -433,7 +447,7 @@ class IncidentStore:
             return result
 
 
-def cmd(provider: str = None):
+def cmd(provider: Optional[str] = None):
     parser = argparse.ArgumentParser(description="Process some parameters.")
     parser.add_argument(
         "--config_filepath",

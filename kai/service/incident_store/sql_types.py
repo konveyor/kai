@@ -32,10 +32,13 @@ class SQLSolutionType(TypeDecorator):
 
         return value.model_dump_json()
 
-    def process_result_value(self, value: str, dialect: Dialect):
+    def process_result_value(self, value: Optional[Any], dialect: Dialect):
         # Out of the db
         if value is None:
             return None
+
+        if not isinstance(value, str):
+            raise ValueError(f"Expected str, got {type(value)}")
 
         return Solution.model_validate_json(value)
 
@@ -154,7 +157,7 @@ class SQLIncident(SQLBase):
         ForeignKey("accepted_solutions.solution_id")
     )
 
-    __table_args__ = (
+    __table_args__: tuple = (
         ForeignKeyConstraint(
             [violation_name, ruleset_name],
             [SQLViolation.violation_name, SQLViolation.ruleset_name],

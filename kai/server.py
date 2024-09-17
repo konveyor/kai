@@ -8,7 +8,7 @@ import pprint
 from functools import cache
 
 from aiohttp import web
-from gunicorn.app.wsgiapp import WSGIApplication
+from gunicorn.app.wsgiapp import WSGIApplication  # type: ignore
 
 from kai.kai_logging import initLoggingFromConfig
 from kai.models.kai_config import KaiConfig

@@ -9,10 +9,15 @@ from typing import Any
 
 import git
 import yaml
+from git import Optional
 
 from kai.constants import PATH_BENCHMARKS
 from kai.models.file_solution import guess_language, parse_file_solution_content
-from kai.models.kai_config import KaiConfig, KaiConfigIncidentStoreSQLiteArgs
+from kai.models.kai_config import (
+    KaiConfig,
+    KaiConfigIncidentStoreProvider,
+    KaiConfigIncidentStoreSQLiteArgs,
+)
 from kai.models.report import Report
 from kai.models.report_types import ExtendedIncident
 from kai.service.incident_store.backend import SQLiteBackend
@@ -63,11 +68,11 @@ def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
         raise ValueError(f"Expected directory, got {full_example_path}")
 
     example_name = os.path.basename(full_example_path)
-    original_file: str = None
-    expected_file: str = None
-    incidents: list[ExtendedIncident] = None
-    report: Report = None
-    application: Application = None
+    original_file: Optional[str] = None
+    expected_file: Optional[str] = None
+    incidents: Optional[list[ExtendedIncident]] = None
+    report: Optional[Report] = None
+    application: Optional[Application] = None
 
     for file_path in os.listdir(full_example_path):
         full_file_path = os.path.join(full_example_path, file_path)
@@ -86,7 +91,7 @@ def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
                 expected_file = f.read()
 
         elif file_name == "incidents":
-            incidents: list[ExtendedIncident] = []
+            incidents = []
 
             with open(full_file_path, "r") as f:
                 yaml_incidents = yaml.safe_load(f)
@@ -105,11 +110,13 @@ def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
             application = Application(**application_dict)
 
     if original_file is None or expected_file is None:
-        print(f"Missing original or expected file in {full_example_path}")
+        raise ValueError(f"Missing original or expected file in {full_example_path}")
     if report is None:
-        print(f"Missing report file in {full_example_path}")
+        raise ValueError(f"Missing report file in {full_example_path}")
     if application is None:
-        print(f"Missing application file in {full_example_path}")
+        raise ValueError(f"Missing application file in {full_example_path}")
+    if incidents is None:
+        raise ValueError(f"Missing incidents file in {full_example_path}")
 
     return BenchmarkExample(
         name=example_name,
@@ -182,7 +189,10 @@ def evaluate(
                 incident_store = IncidentStore(
                     backend=SQLiteBackend(
                         KaiConfigIncidentStoreSQLiteArgs(
-                            connection_string="sqlite:///:memory:"
+                            # mypy will complain about this if you don't provide
+                            # the provider field
+                            provider=KaiConfigIncidentStoreProvider.SQLITE,
+                            connection_string="sqlite:///:memory:",
                         ),
                     ),
                     solution_detector=solution_detection_naive,
@@ -235,7 +245,7 @@ def evaluate(
 
                 llm_result = model_provider.llm.invoke(prompt)
                 content = parse_file_solution_content(
-                    src_file_language, llm_result.content
+                    src_file_language, str(llm_result.content)
                 )
 
                 similarity = judge_result(
@@ -246,7 +256,7 @@ def evaluate(
                 overall_results[(example_path, config_path)] = BenchmarkResult(
                     similarity=similarity,
                     prompt=prompt,
-                    llm_result=llm_result.content,
+                    llm_result=str(llm_result.content),
                 )
 
                 incident_store.delete_store()
@@ -272,7 +282,7 @@ def levenshtein_distance(s1, s2) -> float:
     if len(s1) > len(s2):
         s1, s2 = s2, s1
 
-    distances = range(len(s1) + 1)
+    distances = list(range(len(s1) + 1))
     for i2, c2 in enumerate(s2):
         distances_ = [i2 + 1]
         for i1, c1 in enumerate(s1):
