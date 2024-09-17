@@ -9,7 +9,7 @@ from kai.constants import PATH_TEMPLATES
 from kai.models.file_solution import guess_language
 from kai.models.kai_config import SolutionProducerKind
 from kai.models.util import remove_known_prefixes
-from kai.service.incident_store.incident_store import SQLIncident
+from kai.service.incident_store.sql_types import SQLIncident
 from kai.service.llm_interfacing.model_provider import ModelProvider
 from kai.service.solution_handling.solution_types import Solution
 
@@ -69,7 +69,7 @@ class SolutionProducerTextOnly(SolutionProducer):
             unquote(urlparse(incident.incident_uri).path)
         )
         file_path = os.path.join(
-            repo.working_tree_dir,
+            str(repo.working_tree_dir),
             local_file_path,
         )
 
@@ -169,7 +169,7 @@ class SolutionProducerLLMLazy(SolutionProducer):
         # TODO: Parse LLM result. For now, just returning the content fully
 
         solution.llm_summary_generated = True
-        solution.llm_summary = llm_result.content
+        solution.llm_summary = str(llm_result.content)
 
         return solution
 

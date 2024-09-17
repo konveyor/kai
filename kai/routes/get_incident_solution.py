@@ -1,8 +1,9 @@
 import logging
-from typing import Optional
+from typing import Optional, cast
 
 from aiohttp import web
 from aiohttp.web_request import Request
+from langchain_core.messages import BaseMessage
 from pydantic import BaseModel
 
 from kai.routes.util import to_route
@@ -33,14 +34,15 @@ async def post_get_incident_solution(request: Request):
 
     params = PostGetIncidentSolutionParams.model_validate(await request.json())
 
-    llm_output = (
-        request.app[web.AppKey("kai_application", KaiApplication)]
-        .get_incident_solution(
+    llm_output = cast(
+        BaseMessage,
+        request.app[
+            web.AppKey("kai_application", KaiApplication)
+        ].get_incident_solution(
             stream=False,
             **params.model_dump(),
-        )
-        .content
-    )
+        ),
+    ).content
 
     return web.json_response(
         {

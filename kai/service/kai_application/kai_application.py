@@ -1,7 +1,7 @@
 import logging
 import time
 import traceback
-from typing import Iterator, Optional
+from typing import Iterator, Optional, cast
 
 from aiohttp import web
 from langchain_core.messages import BaseMessage, BaseMessageChunk
@@ -182,7 +182,7 @@ class KaiApplication:
                         trace.llm_result(count, retry_attempt_count, llm_result)
 
                         content = parse_file_solution_content(
-                            src_file_language, llm_result.content
+                            src_file_language, str(llm_result.content)
                         )
 
                         if not content.updated_file:
@@ -195,7 +195,10 @@ class KaiApplication:
                         result.total_reasoning.append(content.reasoning)
                         result.additional_information.append(content.additional_info)
                         if include_llm_results:
-                            result.llm_results.append(llm_result.content)
+                            result.llm_results = cast(
+                                list[str | list[str | dict]], result.llm_results
+                            )
+                            result.llm_results.append(str(llm_result.content))
 
                         break
                 except Exception as e:

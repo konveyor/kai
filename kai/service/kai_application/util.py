@@ -5,7 +5,10 @@ from contextlib import contextmanager
 from enum import StrEnum
 from typing import Callable
 
-import vcr
+import vcr  # type: ignore
+
+# vcr has no type hints :(
+from git import Optional
 from jinja2 import (
     Environment,
     FileSystemLoader,
@@ -24,7 +27,7 @@ def get_prompt(
     template_name: str,
     pb_vars: dict,
     path_templates: str = PATH_TEMPLATES,
-    jinja_kwargs: dict = None,
+    jinja_kwargs: Optional[dict] = None,
     fallback: bool = True,
     add_ext_if_not_present: bool = True,
 ):

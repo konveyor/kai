@@ -1,5 +1,6 @@
 import json
 from abc import ABC, abstractmethod
+from typing import cast
 
 from sqlalchemy import and_, bindparam, create_engine, text
 
@@ -18,7 +19,7 @@ class IncidentStoreBackend(ABC):
         pass
 
     @abstractmethod
-    def json_exactly_equal(self):
+    def json_exactly_equal(self, json_dict: dict):
         pass
 
 
@@ -76,8 +77,10 @@ class SQLiteBackend(IncidentStoreBackend):
 def incident_store_backend_factory(args: KaiConfigIncidentStoreArgs):
     match args.provider:
         case KaiConfigIncidentStoreProvider.POSTGRESQL:
+            args = cast(KaiConfigIncidentStorePostgreSQLArgs, args)
             return PSQLBackend(args)
         case KaiConfigIncidentStoreProvider.SQLITE:
+            args = cast(KaiConfigIncidentStoreSQLiteArgs, args)
             return SQLiteBackend(args)
         case _:
             raise ValueError(f"Unknown incident store provider: {args.provider}")

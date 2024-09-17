@@ -1,6 +1,7 @@
 import os
 import pprint
 import unittest
+from pathlib import Path
 
 from kai.models.report import Report
 from kai.models.report_types import ExtendedIncident
@@ -31,7 +32,7 @@ class TestReports(unittest.TestCase):
         # print(f"Found {len(impacted_files)} impacted files")
         # print(f"Found {impacted_files.keys()}")
         self.assertTrue(len(impacted_files) == 25)
-        test_file_entry = (
+        test_file_entry = Path(
             "src/main/java/com/redhat/coolstore/model/InventoryEntity.java"
         )
         self.assertTrue(test_file_entry in impacted_files)

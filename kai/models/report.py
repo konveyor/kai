@@ -64,13 +64,14 @@ class Report:
         )
 
     def add_ruleset(self, ruleset_dict: dict):
-        if "name" not in ruleset_dict:
-            ruleset_dict["name"] = (
+        ruleset = RuleSet.model_validate(ruleset_dict)
+
+        if ruleset.name is None:
+            ruleset.name = (
                 f"Unnamed ruleset {self.workaround_counter_for_missing_ruleset_name}"
             )
             self.workaround_counter_for_missing_ruleset_name += 1
 
-        ruleset = RuleSet.model_validate(ruleset_dict)
         self.rulesets[ruleset.name] = ruleset
 
     def get_impacted_files(self) -> dict[pathlib.Path, list[ExtendedIncident]]:
@@ -82,8 +83,10 @@ class Report:
                     if self.should_we_skip_incident(incident):
                         continue
 
-                    file_path = remove_known_prefixes(urlparse(incident.uri).path)
-                    if file_path.startswith("root/.m2/"):
+                    file_path = pathlib.Path(
+                        remove_known_prefixes(urlparse(incident.uri).path)
+                    )
+                    if str(file_path).startswith("root/.m2/"):
                         ## Workaround for bug found in Kantra 0.5.0
                         ## See:  https://github.com/konveyor/kantra/issues/321
                         ## Extra files are being reported in the analysis

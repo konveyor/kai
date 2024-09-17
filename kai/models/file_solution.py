@@ -1,8 +1,10 @@
 import logging
 import re
+from typing import Optional, cast
 
 from pydantic import BaseModel
 from pygments import lexers
+from pygments.lexer import LexerMeta
 from pygments.util import ClassNotFound
 
 KAI_LOG = logging.getLogger(__name__)
@@ -14,13 +16,13 @@ class FileSolutionContent(BaseModel):
     additional_info: str
 
 
-def guess_language(code: str, filename: str = None) -> str:
+def guess_language(code: str, filename: Optional[str] = None) -> str:
     try:
-        if filename:
+        if filename is not None:
             lexer = lexers.guess_lexer_for_filename(filename, code)
             KAI_LOG.debug(f"{filename} classified as {lexer.aliases[0]}")
         else:
-            lexer = lexers.guess_lexer(code)
+            lexer = cast(LexerMeta, lexers.guess_lexer(code))
             KAI_LOG.debug(f"Code content classified as {lexer.aliases[0]}\n{code}")
         return lexer.aliases[0]
     except ClassNotFound:

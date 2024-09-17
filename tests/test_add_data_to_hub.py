@@ -1,3 +1,4 @@
+import json
 import unittest
 from unittest.mock import MagicMock, mock_open, patch
 
@@ -132,6 +133,7 @@ class TestAddDataToHub(unittest.TestCase):
                             "id": 0,
                             "issue": 0,
                             "file": "file1.java",
+                            "uri": "file1.java",
                             "line": 10,
                             "message": "violation message",
                             "codeSnip": "code snippet",
@@ -152,6 +154,12 @@ class TestAddDataToHub(unittest.TestCase):
         }
 
         result = reformat_analysis_report(mock_analysis_report, 0, 1, "deadbeef")
+
+        # print result and expected_result to json file
+        with open("result.json", "w") as f:
+            json.dump(result, f, indent=4)
+        with open("expected_result.json", "w") as f:
+            json.dump(expected_result, f, indent=4)
 
         self.assertEqual(result, expected_result)
 
