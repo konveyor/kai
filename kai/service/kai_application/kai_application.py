@@ -180,6 +180,15 @@ class KaiApplication:
                     ):
                         llm_result = self.model_provider.llm.invoke(prompt)
                         trace.llm_result(count, retry_attempt_count, llm_result)
+                        try:
+                            token_usage = llm_result.response_metadata["token_usage"]
+                            trace.llm_token_usage(
+                                count, retry_attempt_count, token_usage
+                            )
+                        except KeyError as e:
+                            KAI_LOG.warning(
+                                f"Key does not exist in the dictionary: {e}"
+                            )
 
                         content = parse_file_solution_content(
                             src_file_language, str(llm_result.content)
