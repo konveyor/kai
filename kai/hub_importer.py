@@ -257,7 +257,9 @@ def get_data_from_api(url: str, params=None, timeout: int = 60, verify: bool = T
     if not params:
         params = {}
     KAI_LOG.debug(f"Making request to {url} with {params=}")
-    response = requests.get(url, params=params, timeout=timeout, verify=verify)
+    token = os.getenv("JWT", default="")
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.get(url, params=params, timeout=timeout, verify=verify, headers=headers)
     response.raise_for_status()
     return response.json()
 
