@@ -15,7 +15,6 @@ from git import GitCommandError, Repo
 from httplib2.auth import token
 from pydantic import BaseModel, Field
 
-from kai.kai_logging import initLoggingFromConfig
 from kai.models.kai_config import KaiConfig
 from kai.models.report import Report
 from kai.service.incident_store import Application, IncidentStore
