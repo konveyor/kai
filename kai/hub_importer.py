@@ -12,7 +12,6 @@ import dateutil.parser
 import requests
 import urllib3
 from git import GitCommandError, Repo
-from httplib2.auth import token
 from pydantic import BaseModel, Field
 
 from kai.models.kai_config import KaiConfig
