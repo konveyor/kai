@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1726601281505,
+  "lastUpdate": 1726859549797,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -10148,6 +10148,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "111421987+devjpt23@users.noreply.github.com",
+            "name": "Dev Jayesh Patel",
+            "username": "devjpt23"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ed14dbe341204d42de5cdde8afd07a286e3abc6d",
+          "message": "Added response metadata capture to trace directory (#375)\n\nSigned-off-by: devjpt23 <devpatel232408@gmail.com>",
+          "timestamp": "2024-09-20T15:11:20-04:00",
+          "tree_id": "4dec0595d35eb4ed4a8b4b4f4246ea9e16697d92",
+          "url": "https://github.com/konveyor/kai/commit/ed14dbe341204d42de5cdde8afd07a286e3abc6d"
+        },
+        "date": 1726859549291,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
             "value": "",
             "unit": "Match"
           }
