@@ -20,13 +20,15 @@ log.addHandler(handler)
 # NOTE: I'd like to use GitPython, but using custom a work-tree and git-dir with
 # it is too hard.
 @dataclass(frozen=True)
-class GitVFSSnapshot:
+class RepoContextSnapshot:
     work_tree: Path  # project root
     git_dir: Path
     git_sha: str
 
-    parent: Optional["GitVFSSnapshot"] = None
-    children: list["GitVFSSnapshot"] = field(default_factory=list)
+    parent: Optional["RepoContextSnapshot"] = None
+    children: list["RepoContextSnapshot"] = field(default_factory=list)
+
+    spawning_result: Optional[Any] = None  # Narrow down this type
 
     @functools.cached_property
     def msg(self) -> str:
@@ -77,7 +79,7 @@ class GitVFSSnapshot:
         return proc.returncode, stdout, stderr
 
     @staticmethod
-    def initialize(work_tree: Path) -> "GitVFSSnapshot":
+    def initialize(work_tree: Path) -> "RepoContextSnapshot":
         """
         Creates a new git repo in the given work_tree, and returns a
         GitVFSSnapshot.
@@ -89,7 +91,7 @@ class GitVFSSnapshot:
 
         # Snapshot is immutable, so we create a temporary snapshot to get the
         # git sha of the initial commit
-        tmp_snapshot = GitVFSSnapshot(
+        tmp_snapshot = RepoContextSnapshot(
             work_tree=work_tree,
             git_dir=git_dir,
             git_sha="",
@@ -104,7 +106,7 @@ class GitVFSSnapshot:
 
         tmp_snapshot = tmp_snapshot.commit("Initial commit")
 
-        return GitVFSSnapshot(
+        return RepoContextSnapshot(
             work_tree=work_tree,
             git_dir=git_dir,
             git_sha=tmp_snapshot.git_sha,
@@ -112,7 +114,9 @@ class GitVFSSnapshot:
             children=[],
         )
 
-    def commit(self, msg: str | None = None) -> "GitVFSSnapshot":
+    def commit(
+        self, msg: str | None = None, spawning_result: Any | None = None
+    ) -> "RepoContextSnapshot":
         """
         Commits the current state of the repository and returns a new snapshot.
         Automatically sets the commit message to the current time if none is
@@ -135,11 +139,12 @@ class GitVFSSnapshot:
         if returncode != 0:
             raise Exception(f"Failed to get HEAD: {stderr}")
 
-        result = GitVFSSnapshot(
+        result = RepoContextSnapshot(
             work_tree=self.work_tree,
             git_dir=self.git_dir,
             git_sha=stdout.strip(),
             parent=self,
+            spawning_result=spawning_result,
         )
 
         self.children.append(result)
@@ -153,12 +158,33 @@ class GitVFSSnapshot:
         return self.git(["reset", "--hard", self.git_sha])
 
 
+class RepoContextManager:
+    def __init__(self, project_root: Path):
+        self.project_root = project_root
+        self.snapshot = RepoContextSnapshot.initialize(project_root)
+
+    def commit(self, msg: str | None = None, spawning_result: Any | None = None):
+        self.snapshot = self.snapshot.commit(msg, spawning_result)
+
+    def reset(self):
+        self.snapshot.reset()
+
+    def up(self):
+        if self.snapshot.parent is None:
+            raise Exception("Cannot revert to parent of initial commit")
+
+        self.snapshot = self.snapshot.parent
+        self.snapshot.reset()
+
+
 if __name__ == "__main__":
     """
     little demo to show how the class could be used
     """
 
-    def dfs(snapshot: GitVFSSnapshot, current: GitVFSSnapshot, depth: int = 0):
+    def dfs(
+        snapshot: RepoContextSnapshot, current: RepoContextSnapshot, depth: int = 0
+    ):
         if current is snapshot:
             print("  " * depth + "> " + f"{snapshot.git_sha[:6]}: {snapshot.msg}")
         else:
@@ -172,7 +198,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    first_snapshot = GitVFSSnapshot.initialize(args.project_root)
+    first_snapshot = RepoContextSnapshot.initialize(args.project_root)
     snapshot = first_snapshot
 
     class Command(StrEnum):
