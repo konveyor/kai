@@ -4,8 +4,8 @@ from typing import Any, Generator, List, Optional, Type
 
 from kai.service.kai_application.kai_application import UpdatedFileContent
 
-from api import Agent, RpcClientConfig, Task, TaskResult, ValidationStep
-from maven_validator import MavenCompileStep
+from playpen.repo_level_awareness.api import Agent, RpcClientConfig, Task, TaskResult, ValidationStep
+from playpen.repo_level_awareness.maven_validator import MavenCompileStep
 
 
 def main():
@@ -52,7 +52,7 @@ class TaskManager:
     def __init__(
         self,
         config: RpcClientConfig,
-        updated_file_content: UpdatedFileContent,
+        updated_file_sssontent: UpdatedFileContent,
         validators: Optional[list[ValidationStep]] = None,
         agents: Optional[list[Agent]] = None,
     ) -> None:
@@ -110,7 +110,7 @@ class TaskManager:
         if len(result.encountered_errors) > 0:
             raise NotImplementedError("What should we do with errors?")
 
-    def run_validators(self) -> list[tuple[type, str]]:
+    def run_validators(self) -> list[tuple[type, Task]]:
         # NOTE: Do it this way so that in the future we could do something
         # like get all the errors in an affected file and then send THAT as
         # a task, versus locking us into, one validation error per task at a
@@ -120,7 +120,7 @@ class TaskManager:
         #
         # Basically, we're surfacing this functionality cause this whole.
         # process is going to get more complicated in the future.
-        validation_errors: list[tuple[type, str]] = []
+        validation_errors: list[tuple[type, Task]] = []
 
         for validator in self.validators:
             result = validator.run()
@@ -132,7 +132,7 @@ class TaskManager:
         return validation_errors
 
     def get_next_task(self) -> Generator[Task, Any, None]:
-        validation_errors: list[tuple[type, str]] = []
+        validation_errors: list[tuple[type, Task]] = []
 
         # Check to see if validators are stale. If so, run them
         while True:
@@ -142,12 +142,12 @@ class TaskManager:
             # pop an error of the stack of errors
             if len(validation_errors) > 0:
                 err = validation_errors.pop(0)
-                yield err  # TODO: This is a placeholder
+                yield err[1]  # TODO: This is a placeholder
                 continue
 
-            if len(self.unprocessed_files) > 0:
-                yield Task(self.unprocessed_files.pop(0))
-                continue
+            # if len(self.unprocessed_files) > 0:
+            #     yield Task(self.unprocessed_files.pop(0))
+            #     continue
 
             break
 

@@ -17,6 +17,7 @@ class Task:
 
 
 # FIXME: Might not need
+@dataclass
 class TaskResult:
     encountered_errors: list[str]
     modified_files: list[Path]
