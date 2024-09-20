@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, Optional
+from unittest.mock import MagicMock
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -28,7 +29,8 @@ class RepoContextSnapshot:
     parent: Optional["RepoContextSnapshot"] = None
     children: list["RepoContextSnapshot"] = field(default_factory=list)
 
-    spawning_result: Optional[Any] = None  # Narrow down this type
+    # Narrow down this type, could be task, or errors or what have you
+    spawning_result: Optional[Any] = None
 
     @functools.cached_property
     def msg(self) -> str:
@@ -159,22 +161,41 @@ class RepoContextSnapshot:
 
 
 class RepoContextManager:
-    def __init__(self, project_root: Path):
+    def __init__(self, project_root: Path, reflection_agent: Any):
         self.project_root = project_root
         self.snapshot = RepoContextSnapshot.initialize(project_root)
 
-    def commit(self, msg: str | None = None, spawning_result: Any | None = None):
-        self.snapshot = self.snapshot.commit(msg, spawning_result)
+        self.reflection_agent = reflection_agent
 
-    def reset(self):
+    def commit(self, msg: str | None = None, spawning_result: Any | None = None):
+        potential_errors = self.reflection_agent.do_whatever_you_need_to_do(
+            "argument_that_you_need",
+            "another_argument_that_you_need",
+        )
+
+        new_spawning_result = union_the_result_and_the_errors(
+            potential_errors, spawning_result
+        )
+
+        self.snapshot = self.snapshot.commit(msg, new_spawning_result)
+
+    def reset(self, snapshot: Optional[RepoContextSnapshot] = None):
+        if snapshot is not None:
+            self.snapshot = snapshot
+
         self.snapshot.reset()
 
-    def up(self):
+    def reset_to_parent(self):
         if self.snapshot.parent is None:
             raise Exception("Cannot revert to parent of initial commit")
 
-        self.snapshot = self.snapshot.parent
-        self.snapshot.reset()
+        self.reset(self.snapshot.parent)
+
+
+# FIXME: remove this function, only there for the little demo below so the
+# pseudo code works
+def union_the_result_and_the_errors(*args, **kwargs):
+    pass
 
 
 if __name__ == "__main__":
@@ -198,8 +219,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    first_snapshot = RepoContextSnapshot.initialize(args.project_root)
-    snapshot = first_snapshot
+    manager = RepoContextManager(args.project_root, reflection_agent=MagicMock())
+    first_snapshot = manager.snapshot
 
     class Command(StrEnum):
         COMMIT = "commit"
@@ -209,25 +230,24 @@ if __name__ == "__main__":
 
     while True:
         print("Current commit tree:")
-        dfs(first_snapshot, snapshot)
+        dfs(first_snapshot, manager.snapshot)
         print("\n\n")
 
         cmd = input(f"Enter one of {[e.value for e in Command]}> ")
-        match cmd:
-            case Command.COMMIT:
-                snapshot = snapshot.commit()
-            case Command.RESET:
-                snapshot.reset()
-            case Command.UP:
-                if snapshot.parent is None:
-                    print("Cannot revert to parent of initial commit")
-                    continue
 
-                snapshot = snapshot.parent
-                snapshot.reset()
-            case Command.EXIT:
-                break
-            case _:
-                print("Invalid command")
+        try:
+            match cmd:
+                case Command.COMMIT:
+                    manager.commit()
+                case Command.RESET:
+                    manager.reset()
+                case Command.UP:
+                    manager.reset_to_parent()
+                case Command.EXIT:
+                    break
+                case _:
+                    print("Invalid command")
+        except Exception as e:
+            print(e)
 
     print("Goodbye!")
