@@ -168,6 +168,11 @@ class RepoContextManager:
         self.reflection_agent = reflection_agent
 
     def commit(self, msg: str | None = None, spawning_result: Any | None = None):
+        """
+        Commits the current state of the repository and updates the snapshot.
+        Also runs the reflection agent validate the repository state.
+        """
+
         potential_errors = self.reflection_agent.do_whatever_you_need_to_do(
             "argument_that_you_need",
             "another_argument_that_you_need",
@@ -180,12 +185,20 @@ class RepoContextManager:
         self.snapshot = self.snapshot.commit(msg, new_spawning_result)
 
     def reset(self, snapshot: Optional[RepoContextSnapshot] = None):
+        """
+        Resets the repository to the given snapshot. If no snapshot is provided,
+        reset the repo to the current snapshot.
+        """
         if snapshot is not None:
             self.snapshot = snapshot
 
         self.snapshot.reset()
 
     def reset_to_parent(self):
+        """
+        Resets the repository to the parent of the current snapshot. Throws an
+        exception if the current snapshot is the initial commit.
+        """
         if self.snapshot.parent is None:
             raise Exception("Cannot revert to parent of initial commit")
 
