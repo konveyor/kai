@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1726920720855,
+  "lastUpdate": 1726920721719,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -10322,6 +10322,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jmontleo@redhat.com",
+            "name": "Jason Montleon",
+            "username": "jmontleon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5fb7153b2936c37d053ccfa5e3b18fb0d82ceab1",
+          "message": ":bug: Resolve SIGKILL and SIGINT errors on macOS (#367)\n\nSigned-off-by: Jason Montleon <jmontleo@redhat.com>",
+          "timestamp": "2024-09-21T08:10:52-04:00",
+          "tree_id": "08cbb0321d87a698691471e64fb10921850c7527",
+          "url": "https://github.com/konveyor/kai/commit/5fb7153b2936c37d053ccfa5e3b18fb0d82ceab1"
+        },
+        "date": 1726920721224,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
             "value": "",
             "unit": "Match"
           }
