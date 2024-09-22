@@ -128,6 +128,18 @@ def write_to_disk(file_path: Path, updated_file_contents: dict):
         KAI_LOG.error(f"Contents: {updated_file_contents}")
         sys.exit(1)
 
+    llm_response_metadata_path = f"{intended_file_path}.llm_response_metadata.json"
+    KAI_LOG.info(f"Writing llm_response_metadata to {llm_response_metadata_path}")
+    try:
+        with open(llm_response_metadata_path, "w") as f:
+            json.dump(updated_file_contents["response_metadatas"], f)
+    except Exception as e:
+        KAI_LOG.error(
+            f"Failed to write llm_response_metadata @ {llm_response_metadata_path} with error: {e}"
+        )
+        KAI_LOG.error(f"Contents: {updated_file_contents}")
+        sys.exit(1)
+
     # since the other files are all contained within the llm_result, avoid duplication
     # when they're available
     if updated_file_contents.get("llm_results"):
