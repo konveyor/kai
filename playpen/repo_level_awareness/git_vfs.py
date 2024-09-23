@@ -9,6 +9,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Optional
 from unittest.mock import MagicMock
+from playpen.repo_level_awareness.agents.reflection_agent import ReflectionAgent, reflection_task_from_agent_output
+from langchain_core.language_models.chat_models import BaseChatModel
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -173,11 +175,11 @@ class RepoContextSnapshot:
 
 
 class RepoContextManager:
-    def __init__(self, project_root: Path, reflection_agent: Any):
+    def __init__(self, project_root: Path, llm: BaseChatModel):
         self.project_root = project_root
         self.snapshot = RepoContextSnapshot.initialize(project_root)
 
-        self.reflection_agent = reflection_agent
+        self.reflection_agent = ReflectionAgent(llm=llm, iterations=1, retries=3)
 
     def commit(self, msg: str | None = None, spawning_result: Any | None = None):
         """
@@ -185,13 +187,10 @@ class RepoContextManager:
         Also runs the reflection agent validate the repository state.
         """
 
-        potential_errors = self.reflection_agent.do_whatever_you_need_to_do(
-            "argument_that_you_need",
-            "another_argument_that_you_need",
-        )
+        reflection_result = self.reflection_agent.execute_task(None, self.reflection_task_generator(spawning_result))
 
         new_spawning_result = union_the_result_and_the_errors(
-            potential_errors, spawning_result
+            reflection_result.encountered_errors, spawning_result
         )
 
         self.snapshot = self.snapshot.commit(msg, new_spawning_result)
@@ -244,7 +243,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    manager = RepoContextManager(args.project_root, reflection_agent=MagicMock())
+    manager = RepoContextManager(args.project_root, llm=MagicMock())
     first_snapshot = manager.snapshot
 
     class Command(StrEnum):

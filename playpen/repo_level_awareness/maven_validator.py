@@ -5,7 +5,11 @@ import subprocess
 from dataclasses import dataclass, field
 from typing import List, Optional, Type
 
-from playpen.repo_level_awareness.api import ValidationError, ValidationResult, ValidationStep
+from playpen.repo_level_awareness.api import (
+    ValidationError,
+    ValidationResult,
+    ValidationStep,
+)
 
 
 class MavenCompileStep(ValidationStep):
