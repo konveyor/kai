@@ -9,8 +9,10 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Optional
 from unittest.mock import MagicMock
-from playpen.repo_level_awareness.agents.reflection_agent import ReflectionAgent, reflection_task_from_agent_output
+
 from langchain_core.language_models.chat_models import BaseChatModel
+
+from playpen.repo_level_awareness.agents.reflection_agent import ReflectionAgent
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -187,7 +189,9 @@ class RepoContextManager:
         Also runs the reflection agent validate the repository state.
         """
 
-        reflection_result = self.reflection_agent.execute_task(None, self.reflection_task_generator(spawning_result))
+        reflection_result = self.reflection_agent.execute_task(
+            None, self.reflection_task_generator(spawning_result)
+        )
 
         new_spawning_result = union_the_result_and_the_errors(
             reflection_result.encountered_errors, spawning_result

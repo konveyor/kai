@@ -57,7 +57,7 @@ Use your best judgement to analyze the input data and review the changes.
 You have extensive experience in migrating enterprise Java applications to newer Java technologies.
 You are overseeing a migration of an enterprise Java application to {target_technology}.
 You will be given an input file, and a list of migration issues identified in the file.
-Fix the issues described and generate an updated file.
+Fix all the issues described and generate an updated file.
 """
     )
 
@@ -91,7 +91,7 @@ Pay attention to changes you make and impacts to external dependencies in the po
 Remember when updating or adding annotations that the class must be imported.
 As you make changes that impact the pom.xml or imports, be sure you explain what needs to be updated.
 After you have shared your step by step thinking, provide a full output of the updated file.
-If you are given a feedback, address the concerns raised in feedback and respond with an updated file.
+If you are given a feedback, address all the concerns raised in feedback and respond with an updated file.
 Structure your output in Markdown format such as:
 
 ## Reasoning
@@ -161,7 +161,7 @@ Here's the input information:
     def execute_task(self, task: Task) -> TaskResult:
         if not isinstance(task, ReflectionTask):
             return TaskResult(encountered_errors=[], modified_files=[])
-        
+
         t: ReflectionTask = task
 
         _, file_ext = os.path.splitext(t.file_path)
@@ -197,10 +197,10 @@ Here's the input information:
 
         modified_files = []
         # run agent loop
-        iter = 0
+        curr_iter = 0
         last_updated_file_contents = t.updated_file
-        while iter < self._iterations:
-            iter += 1
+        while curr_iter < self._iterations:
+            curr_iter += 1
             try:
                 self._out(to="reflection", frm="user", msg=chat_reflect[-1].content)
                 reflection_response = self.__llm.invoke(chat_reflect)
@@ -236,7 +236,7 @@ Here's the input information:
                     )
                 )
             except Exception as e:
-                self._out(to="user", frm="agent", msg=str(e))
+                self._out(to="user", frm="agent", msg=f"error occurred: {str(e)}")
                 return TaskResult(encountered_errors=[], modified_files=[])
 
         # commit the result here
@@ -292,5 +292,5 @@ def reflection_task_from_agent_output(output: Any) -> ReflectionTask:
                 issues=set(output.input_errors),
                 original_file=output.input_file,
                 reasoning=output.reasoning,
-                updated_file=output.java_file
+                updated_file=output.java_file,
             )

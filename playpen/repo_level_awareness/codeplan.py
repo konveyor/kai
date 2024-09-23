@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
-from typing import Any, Generator, List, Optional, Type
+from pathlib import Path
+from typing import Any, Generator, Optional
+
+from langchain_core.language_models.chat_models import BaseChatModel
 
 from kai.service.kai_application.kai_application import UpdatedFileContent
 from playpen.repo_level_awareness.api import (
@@ -10,11 +13,9 @@ from playpen.repo_level_awareness.api import (
     TaskResult,
     ValidationStep,
 )
-from playpen.repo_level_awareness.maven_validator import MavenCompileStep
 from playpen.repo_level_awareness.git_vfs import RepoContextManager
-from playpen.repo_level_awareness.agents.reflection_agent import ReflectionAgent
+from playpen.repo_level_awareness.maven_validator import MavenCompileStep
 
-from langchain_core.language_models.chat_models import BaseChatModel
 
 def main():
     import argparse

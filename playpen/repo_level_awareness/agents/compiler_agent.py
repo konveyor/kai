@@ -1,14 +1,14 @@
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import List
 
 from jinja2 import Template
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
 from playpen.repo_level_awareness.api import Agent, Task, TaskResult
-from playpen.repo_level_awareness.maven_validator import MavenCompilerError
 from playpen.repo_level_awareness.git_vfs import RepoContextManager
-from typing import List
+from playpen.repo_level_awareness.maven_validator import MavenCompilerError
 
 
 @dataclass
@@ -19,7 +19,6 @@ class MavenCompilerLLMResponse:
     file_path: str = ""
     input_file: str = ""
     input_errors: List[str] = field(factory_method=list)
-
 
 
 class MavenCompilerAgent(Agent):

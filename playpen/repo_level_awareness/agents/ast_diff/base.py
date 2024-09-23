@@ -1,9 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
-from enum import Enum
 from typing import Any, Dict, Self
-
-import tree_sitter as ts
 
 
 class DiffableSummary(ABC):
