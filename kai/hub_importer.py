@@ -306,6 +306,7 @@ def process_analyses(
                 creds = Identity(
                     **get_data_from_api(
                         f"{konveyor_hub_url}/identities/{identity.id}",
+                        token,
                         timeout=request_timeout,
                         verify=request_verify,
                     )
