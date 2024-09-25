@@ -12,7 +12,7 @@ from unittest.mock import MagicMock
 
 from langchain_core.language_models.chat_models import BaseChatModel
 
-from playpen.repo_level_awareness.agents.reflection_agent import ReflectionAgent
+from playpen.repo_level_awareness.agent.reflection_agent import ReflectionAgent
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)

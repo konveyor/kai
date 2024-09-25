@@ -12,7 +12,7 @@ import traceback
 from typing import Any, Dict, List
 from warnings import filterwarnings
 
-from cli import (
+from playpen.client.cli import (
     generate_fix,
     get_config,
     get_impacted_files_from_report,
@@ -35,6 +35,7 @@ TYPE_HEADER = "Content-Type: "
 
 
 class CustomRpcServer(RpcServer):
+
     def run(self):
         while not self.shutdown_flag:
             try:
@@ -85,7 +86,7 @@ class CustomRpcEndpoint(JsonRpcEndpoint):
     def send_request(self, message):
         json_string = json.dumps(message, cls=MyEncoder)
         jsonrpc_req = self.__add_header(json_string)
-        log.debug(f"sending data over stdin {repr(jsonrpc_req)}")
+        print(f"sending data over stdin {repr(jsonrpc_req)}")
         with self.write_lock:
             self.stdin.buffer.write(jsonrpc_req.encode())
             self.stdin.flush()
@@ -121,8 +122,9 @@ class CustomRpcEndpoint(JsonRpcEndpoint):
                 raise ResponseError(ErrorCodes.ParseError, "Bad header: missing size")
 
             jsonrpc_res = self.stdout.buffer.read(message_size).decode("utf-8")
-            log.debug(f"read data from stdout {repr(jsonrpc_res)}")
+            print(f"read data from stdout {repr(jsonrpc_res)}")
             return json.loads(jsonrpc_res)
+
 
 
 class RPCParams:

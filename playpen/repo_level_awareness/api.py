@@ -1,13 +1,18 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-
+from typing import Any, List, Generator, Iterator, Optional
 from .git_vfs import RepoContextManager
 
 
 @dataclass
 class RpcClientConfig:
     repo_directory: Path
+    analyzer_lsp_server_binary: Path
+    rules_directory: Path
+    label_selector: Optional[str]
+    incident_selector: Optional[str]
+    included_paths: Optional[List[str]]
 
 
 @dataclass
@@ -45,7 +50,7 @@ class ValidationStep(ABC):
         pass
 
 
-class Agent(ABC):
+class TaskRunner(ABC):
     @abstractmethod
     def can_handle_task(self, task: Task) -> bool:
         pass
