@@ -46,6 +46,18 @@ class RepoContextSnapshot:
 
         return stdout.strip()
 
+    @functools.cached_property
+    def parent_spawning_results(self) -> list[Any]:
+        """
+        Returns a list of spawning results from the parent snapshots, including
+        itself, in order from oldest to newest.
+        """
+
+        if self.parent is None:
+            return [self.spawning_result]
+
+        return self.parent.parent_spawning_results + [self.spawning_result]
+
     def git(self, args: list[str], popen_kwargs: dict[str, Any] | None = None):
         """
         Execute a git command with the given arguments. Returns a tuple of the
