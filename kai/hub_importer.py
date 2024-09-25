@@ -187,7 +187,9 @@ Example: --loglevel debug (default: warning)""",
     )
 
 
-def paginate_api(url: str, token: str, timeout: int = 60, verify: bool = True) -> Iterator:
+def paginate_api(
+    url: str, token: str, timeout: int = 60, verify: bool = True
+) -> Iterator:
     previous_offset = None
     current_offset = 0
     while previous_offset != current_offset:
@@ -262,12 +264,16 @@ def import_from_api(
     return last_analysis
 
 
-def get_data_from_api(url: str, token: str, params=None, timeout: int = 60, verify: bool = True):
+def get_data_from_api(
+    url: str, token: str, params=None, timeout: int = 60, verify: bool = True
+):
     if not params:
         params = {}
     KAI_LOG.debug(f"Making request to {url} with {params=}")
     headers = {"Authorization": f"Bearer {token}"}
-    response = requests.get(url, params=params, timeout=timeout, verify=verify, headers=headers)
+    response = requests.get(
+        url, params=params, timeout=timeout, verify=verify, headers=headers
+    )
     response.raise_for_status()
     return response.json()
 
