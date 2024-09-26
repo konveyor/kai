@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1727362821550,
+  "lastUpdate": 1727362823113,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -10496,6 +10496,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jortel@redhat.com",
+            "name": "Jeff Ortel",
+            "username": "jortel"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1e4df78b86ef983716c749a72716e0dc28b56e5a",
+          "message": ":sparkles: importer: Pass auth token. (#376)\n\n* :sparkles: importer: Pass auth token.\r\n\r\nSigned-off-by: Jeff Ortel <jortel@redhat.com>\r\n\r\n* checkpoint\r\n\r\nSigned-off-by: Jeff Ortel <jortel@redhat.com>\r\n\r\n* checkpoint\r\n\r\nSigned-off-by: Jeff Ortel <jortel@redhat.com>\r\n\r\n* checkpoint\r\n\r\nSigned-off-by: Jeff Ortel <jortel@redhat.com>\r\n\r\n* trunk fmt.\r\n\r\nSigned-off-by: Jeff Ortel <jortel@redhat.com>\r\n\r\n* checkpoint\r\n\r\nSigned-off-by: Jeff Ortel <jortel@redhat.com>\r\n\r\n---------\r\n\r\nSigned-off-by: Jeff Ortel <jortel@redhat.com>",
+          "timestamp": "2024-09-26T09:59:06-05:00",
+          "tree_id": "8614951155762614d83587b7b6e560ce30001d55",
+          "url": "https://github.com/konveyor/kai/commit/1e4df78b86ef983716c749a72716e0dc28b56e5a"
+        },
+        "date": 1727362821951,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mixtral-8x7b-instruct-v01_example_a",
             "value": "",
             "unit": "Match"
           }
