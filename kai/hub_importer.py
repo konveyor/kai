@@ -132,6 +132,12 @@ Options:
 - critical: A serious error, indicating that the program itself may be unable to continue running.
 Example: --loglevel debug (default: warning)""",
     )
+    arg_parser.add_argument(
+        "--hub_token",
+        type=str,
+        default=os.getenv("JWT", default=""),
+        help="Hub auth token.",
+    )
 
     arg_parser.add_argument(
         "--config_filepath",
@@ -181,6 +187,7 @@ Example: --loglevel debug (default: warning)""",
 
     poll_api(
         args.konveyor_hub_url,
+        args.hub_token,
         app.incident_store,
         interval=args.interval,
         timeout=args.timeout,
@@ -188,14 +195,16 @@ Example: --loglevel debug (default: warning)""",
     )
 
 
-def paginate_api(url: str, timeout: int = 60, verify: bool = True) -> Iterator:
+def paginate_api(
+    url: str, token: str, timeout: int = 60, verify: bool = True
+) -> Iterator:
     previous_offset = None
     current_offset = 0
     while previous_offset != current_offset:
         previous_offset = current_offset
         request_params = {"offset": f"{current_offset}"}
         for item in get_data_from_api(
-            url, params=request_params, timeout=timeout, verify=verify
+            url, token, params=request_params, timeout=timeout, verify=verify
         ):
             current_offset += 1
             yield item
@@ -203,6 +212,7 @@ def paginate_api(url: str, timeout: int = 60, verify: bool = True) -> Iterator:
 
 def poll_api(
     konveyor_hub_url: str,
+    token: str,
     incident_store: IncidentStore,
     interval: int = 60,
     timeout: int = 60,
@@ -213,7 +223,7 @@ def poll_api(
 
     while True:
         new_last_analysis = import_from_api(
-            incident_store, konveyor_hub_url, last_analysis, timeout, verify
+            incident_store, konveyor_hub_url, token, last_analysis, timeout, verify
         )
         if new_last_analysis == last_analysis:
             KAI_LOG.info(f"No new analyses. Sleeping for {interval} seconds.")
@@ -228,6 +238,7 @@ def poll_api(
 def import_from_api(
     incident_store: IncidentStore,
     konveyor_hub_url: str,
+    token: str,
     last_analysis: int = 0,
     timeout: int = 60,
     verify: bool = True,
@@ -235,7 +246,7 @@ def import_from_api(
     analyses_url = f"{konveyor_hub_url}/analyses"
     request_params = {"filter": f"id>{last_analysis}"}
     analyses = get_data_from_api(
-        analyses_url, params=request_params, timeout=timeout, verify=verify
+        analyses_url, token, params=request_params, timeout=timeout, verify=verify
     )
 
     validated_analyses = [Analysis(**item) for item in analyses]
@@ -243,7 +254,7 @@ def import_from_api(
     # TODO(fabianvf) add mechanism to skip import if a report has already been imported
     with tempfile.TemporaryDirectory() as tmpdir:
         reports = process_analyses(
-            validated_analyses, konveyor_hub_url, tmpdir, timeout, verify
+            validated_analyses, konveyor_hub_url, token, tmpdir, timeout, verify
         )
 
         for app, creds, report in reports:
@@ -261,11 +272,16 @@ def import_from_api(
     return last_analysis
 
 
-def get_data_from_api(url: str, params=None, timeout: int = 60, verify: bool = True):
+def get_data_from_api(
+    url: str, token: str, params=None, timeout: int = 60, verify: bool = True
+):
     if not params:
         params = {}
     KAI_LOG.debug(f"Making request to {url} with {params=}")
-    response = requests.get(url, params=params, timeout=timeout, verify=verify)
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.get(
+        url, params=params, timeout=timeout, verify=verify, headers=headers
+    )
     response.raise_for_status()
     return response.json()
 
@@ -273,6 +289,7 @@ def get_data_from_api(url: str, params=None, timeout: int = 60, verify: bool = T
 def process_analyses(
     analyses: list[Analysis],
     konveyor_hub_url: str,
+    token: str,
     application_dir: str,
     request_timeout: int = 60,
     request_verify: bool = True,
@@ -285,6 +302,7 @@ def process_analyses(
         )
         resp = get_data_from_api(
             f"{konveyor_hub_url}/applications/{analysis.application.id}",
+            token,
             timeout=request_timeout,
             verify=request_verify,
         )
@@ -296,6 +314,7 @@ def process_analyses(
                 creds = Identity(
                     **get_data_from_api(
                         f"{konveyor_hub_url}/identities/{identity.id}",
+                        token,
                         timeout=request_timeout,
                         verify=request_verify,
                     )
@@ -314,7 +333,7 @@ def process_analyses(
         report_data = {}
         issues_url = f"{konveyor_hub_url}/analyses/{analysis.id}/issues"
         for raw_issue in paginate_api(
-            issues_url, timeout=request_timeout, verify=request_verify
+            issues_url, token, timeout=request_timeout, verify=request_verify
         ):
             issue = Issue(**raw_issue)
             KAI_LOG.info(
