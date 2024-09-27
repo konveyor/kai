@@ -1,10 +1,19 @@
 #!/usr/bin/env python
 
-from typing import Any, Generator, List, Optional, Type
+from pathlib import Path
+from typing import Any, Generator, Optional
+
+from langchain_core.language_models.chat_models import BaseChatModel
 
 from kai.service.kai_application.kai_application import UpdatedFileContent
-
-from playpen.repo_level_awareness.api import Agent, RpcClientConfig, Task, TaskResult, ValidationStep
+from playpen.repo_level_awareness.api import (
+    Agent,
+    RpcClientConfig,
+    Task,
+    TaskResult,
+    ValidationStep,
+)
+from playpen.repo_level_awareness.git_vfs import RepoContextManager
 from playpen.repo_level_awareness.maven_validator import MavenCompileStep
 
 
@@ -30,11 +39,15 @@ def codeplan(
 ):
     whatever_agent = Agent()
 
+    # TODO: (pgaikwad) needed for reflection agent
+    llm: BaseChatModel = None
+
     task_manager = TaskManager(
         config,
         updated_file_content,
         validators=[MavenCompileStep(config)],
         agents=[whatever_agent],
+        rcm=RepoContextManager(config.repo_directory, llm=llm),
     )
     # has a list of files affected and unprocessed
     # has a list of registered validators
@@ -52,7 +65,8 @@ class TaskManager:
     def __init__(
         self,
         config: RpcClientConfig,
-        updated_file_sssontent: UpdatedFileContent,
+        rcm: RepoContextManager,
+        updated_file_content: UpdatedFileContent,
         validators: Optional[list[ValidationStep]] = None,
         agents: Optional[list[Agent]] = None,
     ) -> None:

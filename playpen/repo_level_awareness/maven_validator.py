@@ -5,7 +5,11 @@ import subprocess
 from dataclasses import dataclass, field
 from typing import List, Optional, Type
 
-from playpen.repo_level_awareness.api import ValidationError, ValidationResult, ValidationStep
+from playpen.repo_level_awareness.api import (
+    ValidationError,
+    ValidationResult,
+    ValidationStep,
+)
 
 
 class MavenCompileStep(ValidationStep):
@@ -164,7 +168,7 @@ def parse_maven_output(output: str) -> List[MavenCompilerError]:
                 j = i + 1
                 while j < len(lines) and lines[j].startswith("  "):
                     acc.append(lines[j])
-                    detail_line = lines[j].strip("[ERROR] ").strip()
+                    detail_line = lines[j].replace("[ERROR] ", "", -1).strip()
                     details.append(detail_line)
                     j += 1
                 current_error.details.extend(details)
