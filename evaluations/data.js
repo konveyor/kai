@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1727362829477,
+  "lastUpdate": 1727456082796,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -10583,6 +10583,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jmontleo@redhat.com",
+            "name": "Jason Montleon",
+            "username": "jmontleon"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5301192f027ea5b9d0366d8b53bf3b52e77d6386",
+          "message": "Trap interrupt signaal and start graceful shutdown (#384)\n\nSigned-off-by: Jason Montleon <jmontleo@redhat.com>",
+          "timestamp": "2024-09-27T12:53:32-04:00",
+          "tree_id": "96492c8dee350f3c2109af2c45ba65e3a3b4874c",
+          "url": "https://github.com/konveyor/kai/commit/5301192f027ea5b9d0366d8b53bf3b52e77d6386"
+        },
+        "date": 1727456082177,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
             "value": "",
             "unit": "Match"
           }
