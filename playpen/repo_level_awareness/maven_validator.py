@@ -22,10 +22,6 @@ class MavenCompileStep(ValidationStep):
 
 @dataclass
 class MavenCompilerError(ValidationError):
-    file: str
-    line: int
-    column: int
-    message: str
     details: List[str] = field(default_factory=list)
     parse_lines: Optional[str] = None
 
