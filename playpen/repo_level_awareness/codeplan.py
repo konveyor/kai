@@ -12,6 +12,7 @@ from playpen.repo_level_awareness.api import (
     Task,
     TaskResult,
     ValidationStep,
+    fuzzy_equals,
 )
 from playpen.repo_level_awareness.git_vfs import RepoContextManager
 from playpen.repo_level_awareness.maven_validator import MavenCompileStep
@@ -147,7 +148,9 @@ class TaskManager:
 
     def get_next_task(self) -> Generator[Task, Any, None]:
         validation_errors: list[tuple[type, Task]] = []
+        ignored_tasks = []
 
+        prior_error = None
         # Check to see if validators are stale. If so, run them
         while True:
             if self._validators_are_stale:
@@ -156,7 +159,19 @@ class TaskManager:
             # pop an error of the stack of errors
             if len(validation_errors) > 0:
                 err = validation_errors.pop(0)
+                if prior_error and fuzzy_equals(prior_error, err[1], offset=2):
+                    ignored_tasks.append(err[1])
+                    continue
+                if any([fuzzy_equals(err[1], v, offset=2) for v in ignored_tasks]):
+                    print(f"failed to solve error, skipping for now\n{err[1]}")
+                    continue
                 yield err[1]  # TODO: This is a placeholder
+                prior_error = err[1]
+                continue
+
+            if len(ignored_tasks) > 0:
+                # Time to give these errors another try since we've fixed everything else
+                ignored_tasks = []
                 continue
 
             # if len(self.unprocessed_files) > 0:
