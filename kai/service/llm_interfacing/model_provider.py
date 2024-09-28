@@ -4,10 +4,11 @@ from genai import Client, Credentials
 from genai.extensions.langchain.chat_llm import LangChainChatInterface
 from genai.schema import DecodingMethod
 from langchain_aws import ChatBedrock
-from langchain_community.chat_models import ChatOllama, ChatOpenAI
+from langchain_community.chat_models import ChatOllama
 from langchain_community.chat_models.fake import FakeListChatModel
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from pydantic.v1.utils import deep_update
 
 from kai.models.kai_config import KaiConfigModels
