@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1727542332924,
+  "lastUpdate": 1727542335054,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -10757,6 +10757,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_codellama_codellama-34b-instruct_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jwmatthews@gmail.com",
+            "name": "John Matthews",
+            "username": "jwmatthews"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8b12f35160862d20c5eda292c9608f38ff0ee3cd",
+          "message": "Change from token_usage to all response metadata (#385)\n\nThis is more generic and increases chances of capturing info from\r\nvarious providers.\r\nFor example, Bedrock uses a different key name 'usage' and not\r\n'token_usage' as IBM BAM\r\n\r\nSigned-off-by: John Matthews <jwmatthews@gmail.com>",
+          "timestamp": "2024-09-28T11:51:01-05:00",
+          "tree_id": "299ac7e763ecb3bd0e5dcf57c1407e7b07a33b75",
+          "url": "https://github.com/konveyor/kai/commit/8b12f35160862d20c5eda292c9608f38ff0ee3cd"
+        },
+        "date": 1727542334458,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
             "value": "",
             "unit": "Match"
           }
