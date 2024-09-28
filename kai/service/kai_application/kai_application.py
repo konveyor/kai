@@ -34,6 +34,7 @@ class UpdatedFileContent(BaseModel):
     used_prompts: list[str]
     model_id: str
     additional_information: list[str]
+    response_metadatas: list[dict]
 
     llm_results: Optional[list[str | list[str | dict]]]
 
@@ -124,6 +125,7 @@ class KaiApplication:
             used_prompts=[],
             model_id=self.model_provider.model_id,
             additional_information=[],
+            response_metadatas=[],
             llm_results=[] if include_llm_results else None,
         )
 
@@ -180,15 +182,9 @@ class KaiApplication:
                     ):
                         llm_result = self.model_provider.llm.invoke(prompt)
                         trace.llm_result(count, retry_attempt_count, llm_result)
-                        try:
-                            token_usage = llm_result.response_metadata["token_usage"]
-                            trace.llm_token_usage(
-                                count, retry_attempt_count, token_usage
-                            )
-                        except KeyError as e:
-                            KAI_LOG.warning(
-                                f"Key does not exist in the dictionary: {e}"
-                            )
+                        trace.response_metadata(
+                            count, retry_attempt_count, llm_result.response_metadata
+                        )
 
                         content = parse_file_solution_content(
                             src_file_language, str(llm_result.content)
@@ -202,6 +198,7 @@ class KaiApplication:
                         result.updated_file = content.updated_file
                         result.used_prompts.append(prompt)
                         result.total_reasoning.append(content.reasoning)
+                        result.response_metadatas.append(llm_result.response_metadata)
                         result.additional_information.append(content.additional_info)
                         if include_llm_results:
                             result.llm_results = cast(

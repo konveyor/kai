@@ -139,18 +139,18 @@ class KaiTrace:
             f.write(result.pretty_repr())
 
     @enabled_check
-    def llm_token_usage(
-        self, current_batch_count: int, retry_count: int, token_usage: dict
+    def response_metadata(
+        self, current_batch_count: int, retry_count: int, response_metadata: dict
     ):
-        token_usage_file_path = os.path.join(
+        response_metadata_file_path = os.path.join(
             self.trace_dir,
             f"{current_batch_count}",
             f"{retry_count}",
-            "token_usage.json",
+            "response_metadata.json",
         )
-        os.makedirs(os.path.dirname(token_usage_file_path), exist_ok=True)
-        with open(token_usage_file_path, "w") as f:
-            f.write(json.dumps(token_usage, indent=4, default=str))
+        os.makedirs(os.path.dirname(response_metadata_file_path), exist_ok=True)
+        with open(response_metadata_file_path, "w") as f:
+            f.write(json.dumps(response_metadata, indent=4, default=str))
 
     @enabled_check
     def exception(
