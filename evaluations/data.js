@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1727542345552,
+  "lastUpdate": 1727542370505,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -10869,6 +10869,35 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/konveyor/kai/commit/8b12f35160862d20c5eda292c9608f38ff0ee3cd"
         },
         "date": 1727542343954,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_meta-llama_llama-3-70b-instruct_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jwmatthews@gmail.com",
+            "name": "John Matthews",
+            "username": "jwmatthews"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3743e0ad94de0be98e9fccdb004288c6883eb386",
+          "message": "Update cached responses for gpt-4o and gpt-4-turbo (#402)\n\nSigned-off-by: John Matthews <jwmatthews@gmail.com>",
+          "timestamp": "2024-09-28T11:51:37-05:00",
+          "tree_id": "e441d370b8aa67abfea34f95b71e89392298ea53",
+          "url": "https://github.com/konveyor/kai/commit/3743e0ad94de0be98e9fccdb004288c6883eb386"
+        },
+        "date": 1727542369936,
         "tool": "customBiggerIsBetter",
         "benches": [
           {
