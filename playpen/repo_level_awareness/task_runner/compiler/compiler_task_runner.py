@@ -6,7 +6,7 @@ from jinja2 import Template
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
-from playpen.repo_level_awareness.api import Agent, Task, TaskResult
+from playpen.repo_level_awareness.api import Task, TaskResult, TaskRunner
 from playpen.repo_level_awareness.git_vfs import RepoContextManager
 from playpen.repo_level_awareness.maven_validator import MavenCompilerError
 
@@ -21,7 +21,7 @@ class MavenCompilerLLMResponse:
     input_errors: List[str] = field(factory_method=list)
 
 
-class MavenCompilerAgent(Agent):
+class MavenCompilerTaskRunner(TaskRunner):
     """This agent is reponsible for taking a set of maven compiler issues and solving.
 
     For a given file it will asking LLM's for the changes that are needed for the at whole file
