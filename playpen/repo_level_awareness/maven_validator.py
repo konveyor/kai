@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import re
-import subprocess
+import subprocess  # trunk-ignore(bandit/B404)
 from dataclasses import dataclass, field
 from typing import List, Optional, Type
 
@@ -86,6 +86,7 @@ def run_maven(source_directory=".") -> str:
     Runs 'mvn compile' and returns the combined stdout and stderr output.
     """
     cmd = ["mvn", "compile"]
+    #  trunk-ignore-begin(bandit/B603)
     try:
         process = subprocess.run(
             cmd,
@@ -96,6 +97,7 @@ def run_maven(source_directory=".") -> str:
             cwd=source_directory,
         )
         return process.stdout
+    #  trunk-ignore-end(bandit/B603)
     except FileNotFoundError:
         print("Maven is not installed or not found in the system PATH.")
         return ""
