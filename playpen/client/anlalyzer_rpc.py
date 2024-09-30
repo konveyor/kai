@@ -1,28 +1,12 @@
 import json
 import logging
-import os
-import sys
-import time
-import traceback
-from typing import Any, Dict, List
-from warnings import filterwarnings
 
-from playpen.client.cli import (
-    generate_fix,
-    get_config,
-    get_impacted_files_from_report,
-    get_model_provider,
-    get_trace,
-    render_prompt,
-)
 from pylspclient.json_rpc_endpoint import JsonRpcEndpoint, MyEncoder
 from pylspclient.lsp_client import LspEndpoint as RpcServer
 from pylspclient.lsp_errors import ErrorCodes, ResponseError
 
-from kai.kai_logging import parent_log, setup_file_handler
-from kai.models.report_types import ExtendedIncident
-
 log = logging.getLogger("analyzer-rpc")
+
 
 class AnalyzerRpcServer(RpcServer):
 
@@ -39,7 +23,7 @@ class AnalyzerRpcServer(RpcServer):
                 rpc_id = jsonrpc_message.get("id")
                 params = jsonrpc_message.get("params")
 
-                #Because this is only a client, we will never not have a result. If we don't have a result, we are 
+                # Because this is only a client, we will never not have a result. If we don't have a result, we are
                 if not result:
                     continue
 
@@ -76,7 +60,7 @@ class AnalyzerRpcServer(RpcServer):
         if id is not None:
             message_dict["id"] = id
         message_dict["Method"] = method_name
-        if 'kwargs' in params:
+        if "kwargs" in params:
             message_dict["params"] = [params["kwargs"]]
         self.json_rpc_endpoint.send_request(message_dict)
 
@@ -95,7 +79,7 @@ class AnlayzerRPCEndpoint(JsonRpcEndpoint):
             if jsonrpc_res:
                 log.debug(f"read data from stdout {repr(jsonrpc_res)}")
                 try:
-                    return json.loads(jsonrpc_res) 
-                except:
-                    print(f"unable to load read data to json: {jsonrpc_res}")
+                    return json.loads(jsonrpc_res)
+                except Exception as e:
+                    print(f"unable to load read data to json: {jsonrpc_res} -- {e}")
             return json.loads("{}")

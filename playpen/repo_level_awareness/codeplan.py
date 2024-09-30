@@ -7,19 +7,23 @@ from langchain_core.language_models.chat_models import BaseChatModel
 
 from kai.models.kai_config import KaiConfig
 from kai.service.kai_application.kai_application import UpdatedFileContent
+from kai.service.llm_interfacing.model_provider import ModelProvider
 from playpen.repo_level_awareness.api import (
     RpcClientConfig,
     Task,
-    TaskRunner,
     TaskResult,
+    TaskRunner,
     ValidationStep,
     fuzzy_equals,
 )
 from playpen.repo_level_awareness.git_vfs import RepoContextManager
-from kai.service.llm_interfacing.model_provider import ModelProvider
 from playpen.repo_level_awareness.maven_validator import MavenCompileStep
-from playpen.repo_level_awareness.task_runner.analyzer_lsp.validator import AnlayzerLSPStep
-from playpen.repo_level_awareness.task_runner.analyzer_lsp.task_runner import AnalyzerTaskRunner
+from playpen.repo_level_awareness.task_runner.analyzer_lsp.task_runner import (
+    AnalyzerTaskRunner,
+)
+from playpen.repo_level_awareness.task_runner.analyzer_lsp.validator import (
+    AnlayzerLSPStep,
+)
 
 
 def main():
@@ -35,14 +39,22 @@ def main():
     parser.add_argument(
         "rules_directory", help="The root directory of the rules to use during analysis"
     )
-    
+
     parser.add_argument(
-        "analyzer_lsp_server_binary", help="The binary for running analyzer-lsp RPC server"
+        "analyzer_lsp_server_binary",
+        help="The binary for running analyzer-lsp RPC server",
     )
 
     args = parser.parse_args()
 
-    config = RpcClientConfig(args.source_directory, args.analyzer_lsp_server_binary, args.rules_directory, None, None, None)
+    config = RpcClientConfig(
+        args.source_directory,
+        args.analyzer_lsp_server_binary,
+        args.rules_directory,
+        None,
+        None,
+        None,
+    )
     codeplan(config, None)
 
 
@@ -197,13 +209,13 @@ class TaskManager:
             #     continue
 
             break
-    
+
     def stop(self):
         """For all agents or validators, if they have a running thread stop them."""
         for a in self.agents:
             if hasattr(a, "stop"):
                 a.stop()
-        
+
         for v in self.validators:
             if hasattr(v, "stop"):
                 v.stop()

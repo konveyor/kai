@@ -2,7 +2,7 @@ import argparse
 import functools
 import logging
 import os
-import subprocess
+import subprocess  # trunk-ignore(bandit/B404)
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import StrEnum
@@ -87,7 +87,7 @@ class RepoContextSnapshot:
         }
 
         log.debug("\033[94mexecuting: \033[0m" + " ".join(GIT + args))
-        proc = subprocess.Popen(GIT + args, **popen_kwargs)
+        proc = subprocess.Popen(GIT + args, **popen_kwargs)  # trunk-ignore(bandit/B603)
         stdout, stderr = proc.communicate()
 
         log.debug(f"\033[94mreturncode:\033[0m {proc.returncode}")

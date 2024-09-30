@@ -1,23 +1,35 @@
-from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Type
-import subprocess
+import subprocess  # trunk-ignore(bandit/B404)
+from typing import Dict, List
 from urllib.parse import urlparse
 
-from playpen.repo_level_awareness.api import RpcClientConfig, ValidationError, ValidationResult, ValidationStep
-from playpen.repo_level_awareness.task_runner.analyzer_lsp.api import AnalyzerRuleViolation
-from playpen.client import anlalyzer_rpc as analyzer_rpc
-
 from kai.models.report import Report
+from playpen.client import anlalyzer_rpc as analyzer_rpc
+from playpen.repo_level_awareness.api import (
+    RpcClientConfig,
+    ValidationResult,
+    ValidationStep,
+)
+from playpen.repo_level_awareness.task_runner.analyzer_lsp.api import (
+    AnalyzerRuleViolation,
+)
+
 
 class AnlayzerLSPStep(ValidationStep):
 
     rpc: analyzer_rpc.AnalyzerRpcServer
-    
+
     def __init__(self, RpcClientConfig: RpcClientConfig) -> None:
         """This will start and analyzer-lsp jsonrpc server"""
 
+        # trunk-ignore-begin(bandit/B603)
         rpc_server = subprocess.Popen(
-            [RpcClientConfig.analyzer_lsp_server_binary, "-source-directory", RpcClientConfig.repo_directory, "-rules-directory", RpcClientConfig.rules_directory],
+            [
+                RpcClientConfig.analyzer_lsp_server_binary,
+                "-source-directory",
+                RpcClientConfig.repo_directory,
+                "-rules-directory",
+                RpcClientConfig.rules_directory,
+            ],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             text=True,
@@ -43,13 +55,13 @@ class AnlayzerLSPStep(ValidationStep):
     def __run_analyzer_lsp(self) -> List[AnalyzerRuleViolation]:
 
         request_params = {
-            	"label_selector": "konveyor.io/target=quarkus",
-	            "included_paths": [],
-                "incident_selector": ""
+            "label_selector": "konveyor.io/target=quarkus",
+            "included_paths": [],
+            "incident_selector": "",
         }
         if self.config.label_selector is not None:
             request_params.LabelSelector = self.config.label_selector
-        
+
         if self.config.included_paths is not None:
             request_params.IncludedPaths = self.config.included_paths
 
@@ -61,13 +73,15 @@ class AnlayzerLSPStep(ValidationStep):
             kwargs=request_params,
         )
 
-    def __parse_analyzer_lsp_output(self, analyzer_output: Dict[str, any]) -> List[AnalyzerRuleViolation]:
+    def __parse_analyzer_lsp_output(
+        self, analyzer_output: Dict[str, any]
+    ) -> List[AnalyzerRuleViolation]:
         rulesets = analyzer_output.get("Rulesets")
 
         if not rulesets or not isinstance(rulesets, list):
             print(f"here rulesets: {rulesets}")
             return []
-        
+
         r = Report.load_report_from_object(rulesets, "analysis_run_task_runner")
 
         validation_errors: List[AnalyzerRuleViolation] = []
@@ -77,17 +91,19 @@ class AnlayzerLSPStep(ValidationStep):
             for vk, vio in v.violations.items():
                 print(f"violation {vk} -- {vio.incidents.__len__()}")
                 for i in vio.incidents:
-                    validation_errors.append(AnalyzerRuleViolation(
-                        file=urlparse(i.uri).path,
-                        line=i.line_number,
-                        column=None,
-                        message=i.message,
-                        incident=i, 
-                        violation=vio, 
-                        ruleset=v)
+                    validation_errors.append(
+                        AnalyzerRuleViolation(
+                            file=urlparse(i.uri).path,
+                            line=i.line_number,
+                            column=None,
+                            message=i.message,
+                            incident=i,
+                            violation=vio,
+                            ruleset=v,
+                        )
                     )
-        
+
         return validation_errors
-            
+
     def stop(self):
         self.rpc.stop()
