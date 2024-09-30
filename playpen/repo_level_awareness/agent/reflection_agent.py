@@ -14,13 +14,14 @@ from langchain.prompts.chat import (
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-from playpen.repo_level_awareness.agents.ast_diff.parser import (
+from playpen.repo_level_awareness.agent.ast_diff.parser import (
     Language,
     extract_ast_info,
 )
 from playpen.repo_level_awareness.api import Agent, Task, TaskResult
-
-from .compiler_agent import MavenCompilerLLMResponse
+from playpen.repo_level_awareness.task_runner.compiler.compiler_task_runner import (
+    MavenCompilerLLMResponse,
+)
 
 
 @dataclass
