@@ -12,18 +12,23 @@ from playpen.repo_level_awareness.api import (
     RpcClientConfig,
     Task,
     TaskResult,
-    TaskRunner,
     ValidationStep,
     fuzzy_equals,
 )
-from playpen.repo_level_awareness.git_vfs import RepoContextManager
-from playpen.repo_level_awareness.maven_validator import MavenCompileStep
 from playpen.repo_level_awareness.task_runner.analyzer_lsp.task_runner import (
     AnalyzerTaskRunner,
 )
 from playpen.repo_level_awareness.task_runner.analyzer_lsp.validator import (
     AnlayzerLSPStep,
 )
+from playpen.repo_level_awareness.task_runner.api import TaskRunner
+from playpen.repo_level_awareness.task_runner.compiler.compiler_task_runner import (
+    MavenCompilerTaskRunner,
+)
+from playpen.repo_level_awareness.task_runner.compiler.maven_validator import (
+    MavenCompileStep,
+)
+from playpen.repo_level_awareness.vfs.git_vfs import RepoContextManager
 
 
 def main():
@@ -33,16 +38,21 @@ def main():
         description="Run the CodePlan loop against a project"
     )
     parser.add_argument(
-        "source_directory", help="The root directory of the project to be fixed"
+        "source_directory",
+        help="The root directory of the project to be fixed",
+        type=Path,
     )
 
     parser.add_argument(
-        "rules_directory", help="The root directory of the rules to use during analysis"
+        "rules_directory",
+        help="The root directory of the rules to use during analysis",
+        type=Path,
     )
 
     parser.add_argument(
         "analyzer_lsp_server_binary",
         help="The binary for running analyzer-lsp RPC server",
+        type=Path,
     )
 
     args = parser.parse_args()
@@ -62,7 +72,6 @@ def codeplan(
     config: RpcClientConfig,
     updated_file_content: UpdatedFileContent,
 ):
-    whatever_agent = TaskRunner()
 
     kai_config = KaiConfig.model_validate_filepath("../../kai/config.toml")
     modelProvider = ModelProvider(kai_config.models)
@@ -72,10 +81,13 @@ def codeplan(
 
     task_manager = TaskManager(
         config,
+        RepoContextManager(config.repo_directory, llm=llm),
         updated_file_content,
         validators=[MavenCompileStep(config), AnlayzerLSPStep(config)],
-        agents=[whatever_agent, AnalyzerTaskRunner(modelProvider.llm)],
-        rcm=RepoContextManager(config.repo_directory, llm=llm),
+        agents=[
+            AnalyzerTaskRunner(modelProvider.llm),
+            MavenCompilerTaskRunner(modelProvider.llm),
+        ],
     )
     # has a list of files affected and unprocessed
     # has a list of registered validators
@@ -119,6 +131,8 @@ class TaskManager:
 
         self._validators_are_stale = True
 
+        self.rcm = rcm
+
         # TODO: Modify the inputs to this class accordingly
         # We want all the context that went in and the result that came out too
         # updated_file_content.
@@ -126,7 +140,7 @@ class TaskManager:
         # TODO: Actually add the paths to processed and unprocessed files.
 
     def execute_task(self, task: Task) -> TaskResult:
-        return self.get_agent_for_task(task).execute_task(task)
+        return self.get_agent_for_task(task).execute_task(self.rcm, task)
 
     def get_agent_for_task(self, task: Task) -> TaskRunner:
         for agent in self.agents:

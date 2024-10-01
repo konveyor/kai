@@ -9,11 +9,12 @@ from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from pygments import lexers
 from pygments.util import ClassNotFound
 
-from playpen.repo_level_awareness.api import Task, TaskResult, TaskRunner
-from playpen.repo_level_awareness.git_vfs import RepoContextManager
+from playpen.repo_level_awareness.api import Task, TaskResult
 from playpen.repo_level_awareness.task_runner.analyzer_lsp.api import (
     AnalyzerRuleViolation,
 )
+from playpen.repo_level_awareness.task_runner.api import TaskRunner
+from playpen.repo_level_awareness.vfs.git_vfs import RepoContextManager
 
 KAI_LOG = logging.getLogger(__name__)
 
