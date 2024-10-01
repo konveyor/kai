@@ -14,18 +14,15 @@ from langchain.prompts.chat import (
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
+from playpen.repo_level_awareness.agent.api import Agent, AgentTask, AgentTaskResult
 from playpen.repo_level_awareness.agent.ast_diff.parser import (
     Language,
     extract_ast_info,
 )
-from playpen.repo_level_awareness.api import Agent, Task, TaskResult
-from playpen.repo_level_awareness.task_runner.compiler.compiler_task_runner import (
-    MavenCompilerLLMResponse,
-)
 
 
 @dataclass
-class ReflectionTask(Task):
+class ReflectionTask(AgentTask):
     """TODO (pgaikwad): We shouldn't need this class. this is a stop-gap solution as Task is mostly unknown atm"""
 
     # path to the input file
@@ -141,27 +138,9 @@ Here's the input information:
         self._retries = retries
         self._silent = silent
 
-    def refine_task(self, errors: list[str]) -> None:
-        return super().refine_task(errors)
-
-    def can_handle_error(self, errors: list[str]) -> bool:
-        # cannot handle an error right now
-        return False
-
-    def can_handle_task(self, task: Task) -> bool:
-        if (
-            isinstance(task, ReflectionTask)
-            and task.issues
-            and task.original_file
-            and task.updated_file
-            and task.reasoning
-        ):
-            return True
-        return False
-
-    def execute_task(self, task: Task) -> TaskResult:
+    def execute(self, task: AgentTask) -> AgentTaskResult:
         if not isinstance(task, ReflectionTask):
-            return TaskResult(encountered_errors=[], modified_files=[])
+            return AgentTaskResult(encountered_errors=[], modified_files=[])
 
         t: ReflectionTask = task
 
@@ -176,7 +155,7 @@ Here's the input information:
         diff = self._get_diff(t.original_file, t.updated_file, language)
 
         if language is None or not diff or not t.issues:
-            return TaskResult(encountered_errors=[], modified_files=[])
+            return AgentTaskResult(encountered_errors=[], modified_files=[])
 
         # initiate chats
         chat_fix_gen = [
@@ -225,11 +204,11 @@ Here's the input information:
                     if updated_file_contents:
                         break
                 if updated_file_contents is None or fix_gen_response is None:
-                    return TaskResult(encountered_errors=[], modified_files=[])
+                    return AgentTaskResult(encountered_errors=[], modified_files=[])
                 chat_fix_gen.append(AIMessage(content=fix_gen_response.content))
                 diff = self._get_diff(last_updated_file_contents, updated_file_contents)
                 if not diff:
-                    return TaskResult(encountered_errors=[], modified_files=[])
+                    return AgentTaskResult(encountered_errors=[], modified_files=[])
                 last_updated_file_contents = updated_file_contents
                 chat_reflect.append(
                     self.msg_templ_user_reflect.format(
@@ -238,7 +217,7 @@ Here's the input information:
                 )
             except Exception as e:
                 self._out(to="user", frm="agent", msg=f"error occurred: {str(e)}")
-                return TaskResult(encountered_errors=[], modified_files=[])
+                return AgentTaskResult(encountered_errors=[], modified_files=[])
 
         # commit the result here
         if last_updated_file_contents:
@@ -246,7 +225,7 @@ Here's the input information:
             with open(t.file_path, "w+") as f:
                 f.write(last_updated_file_contents)
 
-        return TaskResult(encountered_errors=[], modified_files=modified_files)
+        return AgentTaskResult(encountered_errors=[], modified_files=modified_files)
 
     def _get_diff(
         self, original_content: str, updated_content: str, language=Language
@@ -285,13 +264,13 @@ Here's the input information:
             print(f"{'*'*10}({frm} -> {to})\n\n{msg}\n")
 
 
-def reflection_task_from_agent_output(output: Any) -> ReflectionTask:
-    match output:
-        case MavenCompilerLLMResponse():
-            return ReflectionTask(
-                file_path=output.file_path,
-                issues=set(output.input_errors),
-                original_file=output.input_file,
-                reasoning=output.reasoning,
-                updated_file=output.java_file,
-            )
+# def reflection_task_from_agent_output(output: Any) -> ReflectionTask:
+#     match output:
+#         case MavenCompilerLLMResponse():
+#             return ReflectionTask(
+#                 file_path=output.file_path,
+#                 issues=set(output.input_errors),
+#                 original_file=output.input_file,
+#                 reasoning=output.reasoning,
+#                 updated_file=output.java_file,
+#             )
