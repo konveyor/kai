@@ -6,9 +6,12 @@ from jinja2 import Template
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
-from playpen.repo_level_awareness.api import Task, TaskResult, TaskRunner
-from playpen.repo_level_awareness.git_vfs import RepoContextManager
-from playpen.repo_level_awareness.maven_validator import MavenCompilerError
+from playpen.repo_level_awareness.api import Task, TaskResult
+from playpen.repo_level_awareness.task_runner.api import TaskRunner
+from playpen.repo_level_awareness.task_runner.compiler.maven_validator import (
+    MavenCompilerError,
+)
+from playpen.repo_level_awareness.vfs.git_vfs import RepoContextManager
 
 
 @dataclass
@@ -18,7 +21,7 @@ class MavenCompilerLLMResponse:
     addional_information: str
     file_path: str = ""
     input_file: str = ""
-    input_errors: List[str] = field(factory_method=list)
+    input_errors: List[str] = field(default_factory=list)
 
 
 class MavenCompilerTaskRunner(TaskRunner):
