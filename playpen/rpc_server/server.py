@@ -1,5 +1,4 @@
 import logging
-import sys
 from pathlib import Path
 from typing import Optional
 
@@ -25,7 +24,7 @@ class KaiRpcApplicationConfig(BaseModel):
     modelProvider: KaiConfigModels
     kaiBackendUrl: str
 
-    logLevel: Optional[str] = "INFO"
+    logLevel: str = "INFO"
     fileLogLevel: Optional[str] = None
     logDirUri: Optional[str] = None
 

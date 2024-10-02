@@ -4,7 +4,7 @@ import logging
 import threading
 from abc import ABC, abstractmethod
 from enum import IntEnum
-from typing import Any, BinaryIO, Callable, Literal, Optional
+from typing import IO, Any, Callable, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, validate_call
 
@@ -51,8 +51,8 @@ class JsonRpcRequest(BaseModel):
 class JsonRpcStream(ABC):
     def __init__(
         self,
-        recv_file: BinaryIO,
-        send_file: BinaryIO,
+        recv_file: IO[bytes],
+        send_file: IO[bytes],
         json_dumps_kwargs: Optional[dict] = None,
         json_loads_kwargs: Optional[dict] = None,
     ):

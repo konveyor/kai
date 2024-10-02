@@ -2,8 +2,8 @@ import argparse
 import logging
 import os
 import subprocess
-import time
 from pathlib import Path
+from typing import IO, cast
 
 from kai.models.kai_config import KaiConfigModels
 from playpen.rpc_server.rpc import JsonRpcServer, LspStyleStream
@@ -40,7 +40,10 @@ def main() -> None:
     )
 
     rpc_communication = JsonRpcServer(
-        json_rpc_stream=LspStyleStream(rpc_subprocess.stdout, rpc_subprocess.stdin),
+        json_rpc_stream=LspStyleStream(
+            cast(IO[bytes], rpc_subprocess.stdout),
+            cast(IO[bytes], rpc_subprocess.stdin),
+        ),
         app=app,
         request_timeout=2.0,
     )
@@ -64,7 +67,7 @@ def main() -> None:
         )
 
         print(repr(result))
-    except Exception as e:
+    except Exception:
         pass
     finally:
         rpc_subprocess.terminate()
