@@ -1,7 +1,9 @@
 import argparse
 import logging
+import sys
 
-from playpen.rpc_server.server import KAI_RPC_SERVER
+from playpen.rpc_server.rpc import JsonRpcServer, LspStyleStream
+from playpen.rpc_server.server import app
 
 log = logging.getLogger(__name__)
 
@@ -15,6 +17,16 @@ def main() -> None:
     add_arguments(parser)
     _args = parser.parse_args()
 
+    log.setLevel(logging.INFO)  # Set initial log level
     log.info("Starting Kai RPC Server")
 
-    KAI_RPC_SERVER.run()
+    rpc_server = JsonRpcServer(
+        json_rpc_stream=LspStyleStream(sys.stdin.buffer, sys.stdout.buffer),
+        app=app,
+    )
+
+    rpc_server.run()
+
+
+if __name__ == "__main__":
+    main()

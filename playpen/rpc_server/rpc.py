@@ -4,9 +4,9 @@ import logging
 import threading
 from abc import ABC, abstractmethod
 from enum import IntEnum
-from typing import Any, BinaryIO, Callable, Optional
+from typing import Any, BinaryIO, Callable, Literal, Optional
 
-from pydantic import BaseModel, validate_call
+from pydantic import BaseModel, ConfigDict, validate_call
 
 log = logging.getLogger(__name__)
 
@@ -17,8 +17,8 @@ class JsonRpcErrorCode(IntEnum):
     MethodNotFound = -32601
     InvalidParams = -32602
     InternalError = -32603
-    serverErrorStart = -32099
-    serverErrorEnd = -32000
+    ServerErrorStart = -32099
+    ServerErrorEnd = -32000
     ServerNotInitialized = -32002
     UnknownErrorCode = -32001
 
@@ -95,11 +95,11 @@ class LspStyleStream(JsonRpcStream):
             content_length = -1
 
             while True:
-                line = self.recv_file.readline()
-                if not line:
+                line_bytes = self.recv_file.readline()
+                if not line_bytes:
                     return None
 
-                line = line.decode("utf-8")
+                line = line_bytes.decode("utf-8")
                 if not line.endswith("\r\n"):
                     return JsonRpcError(
                         code=JsonRpcErrorCode.ParseError,
@@ -153,111 +153,187 @@ class LspStyleStream(JsonRpcStream):
                 )
 
 
-JsonRpcMethodCallback = Callable[..., tuple[JsonRpcResult | None, JsonRpcError | None]]
-JsonRpcNotifyCallback = Callable[..., None]
+JsonRpcMethodCallable = Callable[..., tuple[JsonRpcResult | None, JsonRpcError | None]]
+JsonRpcNotifyCallable = Callable[..., None]
 
 
-# NOTE: Maybe we should have a separation between server and application a la
-# asgi? The server would be responsible for handling the stream and the
-# application would be responsible for handling the methods and notifications.
-class JsonRpcServer(threading.Thread):
+class JsonRpcCallback:
     def __init__(
         self,
-        json_rpc_stream: JsonRpcStream,
-        method_callbacks: Optional[dict[str, JsonRpcMethodCallback]] = None,
-        notify_callbacks: Optional[dict[str, JsonRpcNotifyCallback]] = None,
-        timeout: float = 60.0,
+        func: JsonRpcMethodCallable | JsonRpcNotifyCallable,
+        extract_params: bool,
+        include_server: bool,
+        include_self: bool,
     ):
-        if method_callbacks is None:
-            method_callbacks = {}
+        self.func = func
+        self.extract_params = extract_params
+        self.include_server = include_server
+        self.include_self = include_self
+
+        @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
+        @functools.wraps(self.func)
+        def validate_func_args(*args, **kwargs):
+            return args, kwargs
+
+        self.validate_func_args = validate_func_args
+
+    def __call__(
+        self,
+        params: dict | None,
+        server: Optional["JsonRpcServer"],
+        app: Optional["JsonRpcApplication"],
+    ) -> tuple[JsonRpcResult | None, JsonRpcError | None] | None:
+        if params is None:
+            params = {}
+
+        kwargs = params if self.extract_params else {"params": params}
+
+        if self.include_server:
+            kwargs["server"] = server
+        if self.include_self:
+            kwargs["self"] = app
+
+        try:
+            self.validate_func_args(**kwargs)
+            return self.func(**kwargs)
+        except Exception as e:
+            return None, JsonRpcError(
+                code=JsonRpcErrorCode.InvalidParams,
+                message=f"Invalid parameters: {e}",
+            )
+
+
+class JsonRpcApplication:
+    def __init__(
+        self,
+        request_callbacks: Optional[dict[str, JsonRpcCallback]] = None,
+        notify_callbacks: Optional[dict[str, JsonRpcCallback]] = None,
+    ):
+        if request_callbacks is None:
+            request_callbacks = {}
         if notify_callbacks is None:
             notify_callbacks = {}
 
-        threading.Thread.__init__(self)
-
-        self.jsonrpc_stream = json_rpc_stream
-        self.method_callbacks = method_callbacks
+        self.request_callbacks = request_callbacks
         self.notify_callbacks = notify_callbacks
 
-        self.event_dict: dict[JsonRpcId, threading.Condition] = {}
-        self.response_dict: dict[JsonRpcId, JsonRpcResponse] = {}
-        self.next_id = 0
-        self.timeout = timeout
-        self.shutdown_flag = False
+    def handle_request(
+        self, msg: JsonRpcRequest, server: "JsonRpcServer"
+    ) -> tuple[JsonRpcResult | None, JsonRpcError | None] | None:
+        if msg.id is not None:
+            # bona fide request
+            if msg.method not in self.request_callbacks:
+                return None, JsonRpcError(
+                    code=JsonRpcErrorCode.MethodNotFound,
+                    message=f"Method not found: {msg.method}",
+                )
 
-    def add_method(
-        self,
-        func: JsonRpcMethodCallback | None = None,
-        /,
-        *,
-        method: str | None = None,
-        model: type[BaseModel] | None = None,
-    ):
-        return self.__add_callback(
-            func=func,
-            method=method,
-            model=model,
-            callbacks=self.method_callbacks,
-        )
+            return self.request_callbacks[msg.method](
+                params=msg.params, server=server, app=self
+            )
+        else:
+            # notification
+            if msg.method not in self.notify_callbacks:
+                log.error(f"Notify method not found: {msg.method}")
+                return None
 
-    def add_notify(
-        self,
-        func: JsonRpcNotifyCallback | None = None,
-        /,
-        *,
-        method: str | None = None,
-        model: type[BaseModel] | None = None,
-    ):
-        return self.__add_callback(
-            func=func,
-            method=method,
-            model=model,
-            callbacks=self.notify_callbacks,
-        )
+            self.notify_callbacks[msg.method](
+                params=msg.params, server=server, app=self
+            )
+            return None
 
-    def __add_callback(
+    def add(
         self,
-        /,
-        func: JsonRpcNotifyCallback | None = None,
+        func: JsonRpcMethodCallable | JsonRpcNotifyCallable | None = None,
         *,
+        kind: Literal["request", "notify"] = "request",
         method: str | None = None,
-        model: type[BaseModel] | None = None,
-        callbacks: dict[str, JsonRpcMethodCallback | JsonRpcNotifyCallback],
+        extract_params: bool = True,
+        include_server: bool = False,
+        include_self: bool = True,
     ):
         if method is None:
             raise ValueError("Method name must be provided")
 
-        def decorator(func: JsonRpcMethodCallback):
-            @functools.wraps(func)
-            def wrapper(*args, **kwargs):
-                try:
-                    if model is None:
+        if kind == "request":
+            callbacks = self.request_callbacks
+        else:
+            callbacks = self.notify_callbacks
 
-                        @validate_call
-                        @functools.wraps(func)
-                        def validate_func_args(*args, **kwargs):
-                            return args, kwargs
+        def decorator(func: JsonRpcMethodCallable | JsonRpcNotifyCallable):
+            callback = JsonRpcCallback(
+                func, extract_params, include_server, include_self
+            )
+            callbacks[method] = callback
 
-                        validate_func_args(*args, **kwargs)
-                    else:
-                        model.model_validate(*args, **kwargs)
-
-                except Exception as e:
-                    return None, JsonRpcError(
-                        code=JsonRpcErrorCode.InvalidParams,
-                        message=f"Invalid parameters: {e}",
-                    )
-
-                return func(*args, **kwargs)
-
-            callbacks[method] = wrapper
-
-            return wrapper
+            return callback
 
         if func:
             return decorator(func)
         else:
             return decorator
+
+    def add_notify(
+        self,
+        func: JsonRpcNotifyCallable | None = None,
+        *,
+        method: str | None = None,
+        extract_params: bool = True,
+        include_server: bool = False,
+        include_self: bool = True,
+    ):
+        return self.add(
+            func=func,
+            kind="notify",
+            method=method,
+            extract_params=extract_params,
+            include_server=include_server,
+            include_self=include_self,
+        )
+
+    def add_request(
+        self,
+        func: JsonRpcMethodCallable | None = None,
+        *,
+        method: str | None = None,
+        extract_params: bool = True,
+        include_server: bool = False,
+        include_self: bool = True,
+    ):
+        return self.add(
+            func=func,
+            kind="request",
+            method=method,
+            extract_params=extract_params,
+            include_server=include_server,
+            include_self=include_self,
+        )
+
+    def generate_docs(self):
+        raise NotImplementedError()
+
+
+class JsonRpcServer(threading.Thread):
+    def __init__(
+        self,
+        json_rpc_stream: JsonRpcStream,
+        app: JsonRpcApplication | None = None,
+        request_timeout: float = 60.0,
+    ):
+        if app is None:
+            app = JsonRpcApplication()
+
+        threading.Thread.__init__(self)
+
+        self.jsonrpc_stream = json_rpc_stream
+        self.app = app
+
+        self.event_dict: dict[JsonRpcId, threading.Condition] = {}
+        self.response_dict: dict[JsonRpcId, JsonRpcResponse] = {}
+        self.next_id = 0
+        self.request_timeout = request_timeout
+
+        self.shutdown_flag = False
 
     def stop(self) -> None:
         self.shutdown_flag = True
@@ -274,30 +350,12 @@ class JsonRpcServer(threading.Thread):
                 continue
 
             elif isinstance(msg, JsonRpcRequest):
-                if msg.id is not None:
-                    # bona fide request
-                    if msg.method not in self.method_callbacks:
-                        error = JsonRpcError(
-                            code=JsonRpcErrorCode.MethodNotFound,
-                            message=f"Method not found: {msg.method}",
-                        )
-                        self.jsonrpc_stream.send(
-                            JsonRpcResponse(error=error, id=msg.id)
-                        )
-                        continue
-
-                    params = msg.params or {}
-                    result, error = self.method_callbacks[msg.method](**params)
+                if (tmp := self.app.handle_request(msg, self)) is not None:
+                    result, error = tmp
                     self.jsonrpc_stream.send(
                         JsonRpcResponse(result=result, error=error, id=msg.id)
                     )
-                else:
-                    if msg.method not in self.notify_callbacks:
-                        log.error(f"Notify method not found: {msg.method}")
-                        continue
-
-                    params = msg.params or {}
-                    self.notify_callbacks[msg.method](**params)
+                    continue
 
             elif isinstance(msg, JsonRpcResponse):
                 self.response_dict[msg.id] = msg
@@ -324,7 +382,7 @@ class JsonRpcServer(threading.Thread):
             cond.release()
             return None
 
-        if not cond.wait(self.timeout):
+        if not cond.wait(self.request_timeout):
             cond.release()
             return JsonRpcError(
                 code=JsonRpcErrorCode.InternalError,
@@ -340,3 +398,20 @@ class JsonRpcServer(threading.Thread):
 
     def send_notification(self, method: str, **params):
         self.jsonrpc_stream.send(JsonRpcRequest(method=method, params=params))
+
+
+class JsonRpcLoggingHandler(logging.Handler):
+    def __init__(self, server: JsonRpcServer, method: str = "logMessage"):
+        logging.Handler.__init__(self)
+        self.server = server
+        self.method = method
+
+    def emit(self, record):
+        try:
+            self.server.send_notification(
+                self.method,
+                type=record.levelname,
+                message=record.getMessage(),
+            )
+        except Exception:
+            self.handleError(record)
