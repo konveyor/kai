@@ -70,6 +70,10 @@ class JsonRpcStream(ABC):
         self.json_dumps_kwargs = json_dumps_kwargs
         self.json_loads_kwargs = json_loads_kwargs
 
+    def close(self):
+        self.recv_file.close()
+        self.send_file.close()
+
     @abstractmethod
     def send(self, msg: JsonRpcRequest | JsonRpcResponse) -> None: ...
 
@@ -95,6 +99,9 @@ class LspStyleStream(JsonRpcStream):
             content_length = -1
 
             while True:
+                if self.recv_file.closed:
+                    return None
+
                 line_bytes = self.recv_file.readline()
                 if not line_bytes:
                     return None
@@ -163,12 +170,12 @@ class JsonRpcCallback:
         func: JsonRpcMethodCallable | JsonRpcNotifyCallable,
         extract_params: bool,
         include_server: bool,
-        include_self: bool,
+        include_app: bool,
     ):
         self.func = func
         self.extract_params = extract_params
         self.include_server = include_server
-        self.include_self = include_self
+        self.include_app = include_app
 
         @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
         @functools.wraps(self.func)
@@ -190,8 +197,8 @@ class JsonRpcCallback:
 
         if self.include_server:
             kwargs["server"] = server
-        if self.include_self:
-            kwargs["self"] = app
+        if self.include_app:
+            kwargs["app"] = app
 
         try:
             self.validate_func_args(**kwargs)
@@ -367,6 +374,8 @@ class JsonRpcServer(threading.Thread):
             else:
                 log.error(f"Unknown message type: {type(msg)}")
 
+        self.jsonrpc_stream.close()
+
     def send_request(self, method: str, **params):
         current_id = self.next_id
         self.next_id += 1
@@ -391,10 +400,7 @@ class JsonRpcServer(threading.Thread):
         cond.release()
 
         self.event_dict.pop(current_id)
-        response = self.response_dict.pop(current_id)
-        if response.error:
-            return response.error
-        return response.result
+        return self.response_dict.pop(current_id)
 
     def send_notification(self, method: str, **params):
         self.jsonrpc_stream.send(JsonRpcRequest(method=method, params=params))
@@ -406,12 +412,17 @@ class JsonRpcLoggingHandler(logging.Handler):
         self.server = server
         self.method = method
 
-    def emit(self, record):
+    def emit(self, record: logging.LogRecord):
         try:
             self.server.send_notification(
                 self.method,
-                type=record.levelname,
+                level=record.levelname,
                 message=record.getMessage(),
             )
         except Exception:
+            self.server.send_notification(
+                self.method,
+                level="ERROR",
+                message="Failed to log message",
+            )
             self.handleError(record)

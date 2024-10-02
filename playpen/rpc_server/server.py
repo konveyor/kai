@@ -25,9 +25,9 @@ class KaiRpcApplicationConfig(BaseModel):
     modelProvider: KaiConfigModels
     kaiBackendUrl: str
 
-    logLevel: Optional[str] = None
+    logLevel: Optional[str] = "INFO"
     fileLogLevel: Optional[str] = None
-    logDirUri: Optional[Path] = None
+    logDirUri: Optional[str] = None
 
 
 class KaiRpcApplication(JsonRpcApplication):
@@ -47,48 +47,50 @@ ERROR_NOT_INITIALIZED = JsonRpcError(
 
 
 @app.add_request(method="shutdown", include_server=True)
-def shutdown(self: KaiRpcApplication, server: JsonRpcServer):
+def shutdown(app: KaiRpcApplication, server: JsonRpcServer):
     server.shutdown_flag = True
 
     return {}, None
 
 
 @app.add_request(method="exit", include_server=True)
-def exit(self: KaiRpcApplication, server: JsonRpcServer):
+def exit(app: KaiRpcApplication, server: JsonRpcServer):
     server.shutdown_flag = True
 
     return {}, None
 
 
 @app.add_request(method="initialize", extract_params=False, include_server=True)
-def initialize(self: KaiRpcApplication, params: dict, server: JsonRpcServer):
-    if self.initialized:
+def initialize(app: KaiRpcApplication, params: dict, server: JsonRpcServer):
+    if app.initialized:
         return {}, JsonRpcError(
             code=JsonRpcErrorCode.ServerErrorStart,
             message="Server already initialized",
         )
 
     try:
-        self.config = KaiRpcApplicationConfig.model_validate(params)
+        app.config = KaiRpcApplicationConfig.model_validate(params)
 
-        logging.root.handlers.clear()
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.DEBUG)
+
+        root_logger.handlers.clear()
 
         notify_handler = JsonRpcLoggingHandler(server)
-        notify_handler.setLevel(self.config.logLevel or logging.INFO)
+        notify_handler.setLevel(app.config.logLevel)
+        root_logger.addHandler(notify_handler)
 
-        logging.root.addHandler(notify_handler)
-
-        if self.config.fileLogLevel and self.config.logDirUri:
-            log_dir = self.config.logDirUri
+        if app.config.fileLogLevel and app.config.logDirUri:
+            log_dir = Path(app.config.logDirUri)  # FIXME: urlparse?
             log_file = log_dir / "kai_rpc.log"
             log_file.parent.mkdir(parents=True, exist_ok=True)
 
             file_handler = logging.FileHandler(log_file)
-            file_handler.setLevel(self.config.fileLogLevel)
+            file_handler.setLevel(app.config.fileLogLevel)
 
-            logging.root.addHandler(file_handler)
+            root_logger.addHandler(file_handler)
 
-        log.info(f"Initialized with config: {self.config}")
+        log.info(f"Initialized with config: {app.config}")
 
     except Exception as e:
         return {}, JsonRpcError(
@@ -96,32 +98,32 @@ def initialize(self: KaiRpcApplication, params: dict, server: JsonRpcServer):
             message=str(e),
         )
 
-    self.initialized = True
+    app.initialized = True
 
     return {}, None
 
 
 @app.add_request(method="setConfig", extract_params=False, include_server=True)
-def set_config(self: KaiRpcApplication, params: dict, server: JsonRpcServer):
-    if not self.initialized:
+def set_config(app: KaiRpcApplication, params: dict, server: JsonRpcServer):
+    if not app.initialized:
         return {}, ERROR_NOT_INITIALIZED
 
     # Basically reset everything
-    self.initialized = False
-    return initialize(app=self, params=params, server=server)
+    app.initialized = False
+    return initialize(app=app, params=params, server=server)
 
 
 @app.add_request(method="getRAGSolution")
-def get_rag_solution(self: KaiRpcApplication):
-    if not self.initialized:
+def get_rag_solution(app: KaiRpcApplication):
+    if not app.initialized:
         return {}, ERROR_NOT_INITIALIZED
 
     return {}, None
 
 
 @app.add_request(method="getCodeplanAgentSolution")
-def get_codeplan_agent_solution(self: KaiRpcApplication):
-    if not self.initialized:
+def get_codeplan_agent_solution(app: KaiRpcApplication):
+    if not app.initialized:
         return {}, ERROR_NOT_INITIALIZED
 
     return {}, None

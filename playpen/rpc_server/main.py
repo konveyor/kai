@@ -25,7 +25,7 @@ def main() -> None:
         app=app,
     )
 
-    rpc_server.run()
+    rpc_server.start()
 
 
 if __name__ == "__main__":
