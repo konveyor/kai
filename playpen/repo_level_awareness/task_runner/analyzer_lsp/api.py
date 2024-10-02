@@ -9,5 +9,7 @@ class AnalyzerRuleViolation(ValidationError):
     incident: Incident
     violation: Violation
     ruleset: RuleSet
+    # TODO Highest priority?
+    priority: int = 1
 
     # TODO: Define a new hash function?

@@ -52,12 +52,13 @@ class SymbolNotFoundError(MavenCompilerError):
 
 @dataclass(eq=False)
 class PackageDoesNotExistError(MavenCompilerError):
+    priority: int = 3
     missing_package: Optional[str] = None
 
 
 @dataclass(eq=False)
 class SyntaxError(MavenCompilerError):
-    pass
+    priority: int = 2
 
 
 @dataclass(eq=False)
@@ -78,7 +79,7 @@ class AccessControlError(MavenCompilerError):
 
 @dataclass(eq=False)
 class OtherError(MavenCompilerError):
-    pass
+    priority: int = 6
 
 
 def run_maven(source_directory=".") -> str:
