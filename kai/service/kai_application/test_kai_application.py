@@ -136,6 +136,114 @@ class TestKaiApplication(unittest.TestCase):
                 file_name, file_contents, application_name, incidents
             )
 
+    def test_has_tokens_exceeded_when_actualTokens_exceeds_limit(self):
+        file_name = "test.py"
+        valid_response_metadata_flat_dict = {
+            "prompt_tokens": 884,
+            "completion_tokens": 645,
+            "total_tokens": 1529,
+            "input_token_count": 884,
+            "generated_token_count": 645,
+        }
+        valid_response_metadata_nested_dict = {
+            "token_usage": {
+                "prompt_tokens": 19,
+                "total_tokens": 141,
+                "completion_tokens": 122,
+            },
+            "model": "mistral-small",
+            "finish_reason": "stop",
+        }
+
+        with self.assertLogs() as captured:
+            self.app.has_tokens_exceeded(
+                valid_response_metadata_flat_dict, 12, file_name
+            )
+        self.assertEqual(captured.records[0].levelname, "WARNING")
+        self.assertIn(
+            "test.py exceeds the estimated token count. Estimated Tokens: 12, Actual Tokens: 884. Consider reducing the prompt size.",
+            captured.records[0].getMessage(),
+        )
+
+        with self.assertLogs() as captured2:
+            self.app.has_tokens_exceeded(
+                valid_response_metadata_nested_dict, 12, file_name
+            )
+        self.assertEqual(captured2.records[0].levelname, "WARNING")
+        self.assertIn(
+            "test.py exceeds the estimated token count. Estimated Tokens: 12, Actual Tokens: 19. Consider reducing the prompt size.",
+            captured2.records[0].getMessage(),
+        )
+
+    def test_has_tokens_exceeded_when_actual_within_limit(self):
+        file_name = "test.py"
+        valid_response_metadata_flat_dict = {
+            "prompt_tokens": 884,
+            "completion_tokens": 645,
+            "total_tokens": 1529,
+            "input_token_count": 884,
+            "generated_token_count": 645,
+        }
+        valid_response_metadata_nested_dict = {
+            "token_usage": {
+                "prompt_tokens": 19,
+                "total_tokens": 141,
+                "completion_tokens": 122,
+            },
+            "model": "mistral-small",
+            "finish_reason": "stop",
+        }
+        results1 = self.app.has_tokens_exceeded(
+            valid_response_metadata_flat_dict, 885, file_name
+        )
+        self.assertEqual(results1, None)
+
+        results2 = self.app.has_tokens_exceeded(
+            valid_response_metadata_nested_dict, 885, file_name
+        )
+        self.assertEqual(results2, None)
+
+    def test_has_tokens_exceeded_when_key_missing(self):
+        file_name = "test.py"
+        invalid_response_metadata_nested_dict = {
+            "token_usage": {
+                "input_prompt_tokens": 19,
+                "total_tokens": 141,
+                "completion_tokens": 122,
+            },
+            "model": "mistral-small",
+            "finish_reason": "stop",
+        }
+        invalid_response_metadata_flat_dict = {
+            "input_prompt_tokens": 884,
+            "completion_tokens": 645,
+            "total_tokens": 1529,
+            "input_token_count": 884,
+            "generated_token_count": 645,
+        }
+        with self.assertLogs() as captured:
+            self.app.has_tokens_exceeded(
+                invalid_response_metadata_flat_dict, 12, file_name
+            )
+
+        self.assertIn(
+            "None of the token key are not found in the response metadata. Please verify the response metadata for the specified model.",
+            captured.records[0].getMessage(),
+        )
+        self.assertEqual(captured.records[0].levelname, "WARNING")
+
+        file_name = "test.py"
+        with self.assertLogs() as captured2:
+            self.app.has_tokens_exceeded(
+                invalid_response_metadata_nested_dict, 12, file_name
+            )
+
+        self.assertIn(
+            "None of the token key are not found in the response metadata. Please verify the response metadata for the specified model.",
+            captured.records[0].getMessage(),
+        )
+        self.assertEqual(captured2.records[0].levelname, "WARNING")
+
 
 if __name__ == "__main__":
     unittest.main()
