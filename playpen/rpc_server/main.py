@@ -1,6 +1,5 @@
 import argparse
 import logging
-import sys
 
 from playpen.rpc_server.server import KAI_RPC_SERVER
 
@@ -14,7 +13,7 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     add_arguments(parser)
-    args = parser.parse_args()
+    _args = parser.parse_args()
 
     log.info("Starting Kai RPC Server")
 

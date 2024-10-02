@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from enum import IntEnum
 from typing import Any, BinaryIO, Callable, Optional
 
-from pydantic import BaseModel, ValidationError, model_serializer, validate_call
+from pydantic import BaseModel, validate_call
 
 log = logging.getLogger(__name__)
 

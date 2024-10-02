@@ -1,7 +1,6 @@
 import sys
 from pathlib import Path
 from typing import Optional
-from unittest.mock import MagicMock
 
 from pydantic import BaseModel
 
@@ -32,6 +31,31 @@ class CodeplanState:
         self.config: Optional[KaiRpcServerConfig] = None
 
 
+@KAI_RPC_SERVER.add_method(method="shutdown")
+def shutdown():
+    return {}, None
+
+
+@KAI_RPC_SERVER.add_method(method="exit")
+def exit():
+    return {}, None
+
+
 @KAI_RPC_SERVER.add_method(method="initialize", model=KaiRpcServerConfig)
 def initialize(config: KaiRpcServerConfig):
+    return {}, None
+
+
+@KAI_RPC_SERVER.add_method(method="setConfig")
+def set_config(config: KaiRpcServerConfig):
+    return {}, None
+
+
+@KAI_RPC_SERVER.add_method(method="getRAGSolution")
+def get_rag_solution():
+    return {}, None
+
+
+@KAI_RPC_SERVER.add_method(method="getCodeplanAgentSolution")
+def get_codeplan_agent_solution():
     return {}, None
