@@ -7,11 +7,11 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/konveyor/analyzer-lsp/engine"
 	"github.com/konveyor/analyzer-lsp/engine/labels"
-	"github.com/konveyor/analyzer-lsp/output/v1/konveyor"
 	"github.com/konveyor/analyzer-lsp/parser"
 	"github.com/konveyor/analyzer-lsp/provider"
 	"github.com/konveyor/analyzer-lsp/provider/lib"
-	"github.com/konveyor/kai-analyzer/provider/java"
+
+	javaexp "github.com/konveyor/analyzer-lsp/external-providers/java-external-provider/pkg/java_external_provider"
 )
 
 type Analyzer struct {
@@ -22,84 +22,91 @@ type Analyzer struct {
 	cancelFunc context.CancelFunc
 
 	initedProviders map[string]provider.InternalProviderClient
-	ruleSets        []engine.RuleSet
 }
 
-func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector string, ruleFiles []string, log logr.Logger) (*Analyzer, error) {
+func NewAnalyzer(log logr.Logger) *Analyzer {
+	return &Analyzer{
+		Logger:          log,
+		initedProviders: map[string]provider.InternalProviderClient{},
+	}
+}
+
+func (a *Analyzer) Initialize(args InitializeArgs) error {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	eng := engine.CreateRuleEngine(ctx,
-		10,
-		log,
-		engine.WithIncidentLimit(limitIncidents),
-		engine.WithCodeSnipLimit(limitCodeSnips),
-		engine.WithContextLines(contextLines),
-		engine.WithIncidentSelector(incidentSelector),
+		args.Workers,
+		a.Logger,
+		engine.WithIncidentLimit(args.LimitIncidents),
+		engine.WithCodeSnipLimit(args.LimitCodeSnips),
+		engine.WithContextLines(args.ContextLines),
+		engine.WithIncidentSelector(args.IncidentSelector),
 	)
 
-	// this function already init's the java provider
-	jProvider, err := java.NewInternalProviderClient(ctx, log, contextLines, location)
+	javaProvider := javaexp.NewJavaProvider(a.Logger, "java", args.ContextLines, provider.Config{Name: "java"})
+	_, _, err := javaProvider.Init(ctx, a.Logger, provider.InitConfig{
+		Location: args.Location,
+		ProviderSpecificConfig: map[string]interface{}{
+			"lspServerName": "java",
+			"bundles":       args.JavaConfig.Bundles,
+			"lspServerPath": args.JavaConfig.LSPServerPath,
+		},
+		Proxy:        &provider.Proxy{},
+		AnalysisMode: provider.AnalysisMode(args.AnalysisMode),
+	})
 	if err != nil {
 		cancelFunc()
-		return nil, err
+		return err
 	}
+	_, err = javaProvider.ProviderInit(ctx, []provider.InitConfig{})
+	if err != nil {
+		cancelFunc()
+		return err
+	}
+	a.initedProviders["java"] = javaProvider
 
-	bProvider, err := lib.GetProviderClient(provider.Config{Name: "builtin"}, log)
+	builtinProvider, err := lib.GetProviderClient(provider.Config{Name: "builtin"}, a.Logger)
 	if err != nil {
 		cancelFunc()
-		return nil, err
+		return err
 	}
-	_, err = bProvider.ProviderInit(context.Background(), []provider.InitConfig{{Location: location}})
+	_, _, err = builtinProvider.Init(ctx, a.Logger, provider.InitConfig{})
 	if err != nil {
 		cancelFunc()
-		return nil, err
+		return err
 	}
+	_, err = builtinProvider.ProviderInit(context.Background(), []provider.InitConfig{{Location: args.Location}})
+	if err != nil {
+		cancelFunc()
+		return err
+	}
+	a.initedProviders["builtin"] = builtinProvider
 
-	providers := map[string]provider.InternalProviderClient{
-		"java":    jProvider,
-		"builtin": bProvider,
-	}
+	a.engine = eng
+	a.engineCtx = ctx
+	a.cancelFunc = cancelFunc
+
+	return nil
+}
+
+func (a *Analyzer) Analyze(args AnalyzeArgs, response *AnalyzeResponse) error {
 
 	parser := parser.RuleParser{
-		ProviderNameToClient: providers,
-		Log:                  log.WithName("parser"),
+		ProviderNameToClient: a.initedProviders,
+		Log:                  a.Logger.WithName("parser"),
 		NoDependencyRules:    true,
 	}
 
 	ruleSets := []engine.RuleSet{}
-	for _, f := range ruleFiles {
+	for _, f := range args.RuleFiles {
 		internRuleSet, _, err := parser.LoadRules(f)
 		if err != nil {
-			log.Error(err, "unable to parse all the rules for ruleset", "file", f)
-			cancelFunc()
-			return nil, err
+			a.Logger.Error(err, "unable to parse all the rules for ruleset", "file", f)
+			a.cancelFunc()
+			return err
 		}
 		ruleSets = append(ruleSets, internRuleSet...)
 	}
 
-	return &Analyzer{
-		Logger:          log,
-		engine:          eng,
-		engineCtx:       ctx,
-		cancelFunc:      cancelFunc,
-		initedProviders: map[string]provider.InternalProviderClient{},
-		ruleSets:        ruleSets,
-	}, nil
-
-}
-
-// These will be the args that the client can use to tell the anlayzer LSP what to do.
-type Args struct {
-	LabelSelector    string   `json:"label_selector,omitempty"`
-	IncidentSelector string   `json:"incident_selector,omitempty"`
-	IncludedPaths    []string `json:"included_paths,omitempty"`
-	// RulesFiles       []string
-}
-
-type Response struct {
-	Rulesets []konveyor.RuleSet
-}
-
-func (a *Analyzer) Analyze(args Args, response *Response) error {
 	selectors := []engine.RuleSelector{}
 	if args.LabelSelector != "" {
 		selector, err := labels.NewLabelSelector[*engine.RuleMeta](args.LabelSelector, nil)
@@ -111,7 +118,7 @@ func (a *Analyzer) Analyze(args Args, response *Response) error {
 	}
 
 	// This will already wait
-	rulesets := a.engine.RunRules(context.Background(), a.ruleSets, selectors...)
+	rulesets := a.engine.RunRules(context.Background(), ruleSets, selectors...)
 
 	sort.SliceStable(rulesets, func(i, j int) bool {
 		return rulesets[i].Name < rulesets[j].Name
@@ -119,5 +126,12 @@ func (a *Analyzer) Analyze(args Args, response *Response) error {
 
 	response.Rulesets = rulesets
 	return nil
-
 }
+
+func (a *Analyzer) Shutdown() {
+	for _, provider := range a.initedProviders {
+		provider.Stop()
+	}
+}
+
+func (a *Analyzer) Exit() {}

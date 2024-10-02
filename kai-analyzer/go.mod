@@ -5,7 +5,7 @@ go 1.23.1
 require (
 	github.com/go-logr/logr v1.4.2
 	github.com/konveyor/analyzer-lsp v0.5.3
-	github.com/shawn-hurley/java-external-provider v0.5.4-0.20240904135407-b0958af4ebdf
+	github.com/konveyor/analyzer-lsp/external-providers/java-external-provider v0.0.0-20240930182605-8f5ccf72040d
 )
 
 require (

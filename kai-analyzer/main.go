@@ -38,12 +38,10 @@ func main() {
 	})
 
 	l := logr.FromSlogHandler(logger)
-	l.Info("Starting Analyzer", "source-dir", *sourceDirectory, "rules-dir", *rulesDirectory)
+	l.Info("Starting Analyzer")
 	// We need to start up the JSON RPC server and start listening for messages
-	analyzerService, err := service.NewAnalyzer(10000, 10, 10, *sourceDirectory, "", []string{*rulesDirectory}, l)
-	if err != nil {
-		panic(err)
-	}
+	analyzerService := service.NewAnalyzer(l)
+
 	server := rpc.NewServer()
 	err = server.RegisterName("analysis_engine", analyzerService)
 	if err != nil {
