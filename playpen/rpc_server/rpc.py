@@ -49,6 +49,11 @@ class JsonRpcRequest(BaseModel):
 
 
 class JsonRpcStream(ABC):
+    """
+    And abstract base class for a JSON-RPC stream. This class is used to
+    communicate with the JSON-RPC server and client.
+    """
+
     def __init__(
         self,
         recv_file: IO[bytes],
@@ -82,6 +87,11 @@ class JsonRpcStream(ABC):
 
 
 class LspStyleStream(JsonRpcStream):
+    """
+    Standard LSP-style stream for JSON-RPC communication. This uses HTTP-style
+    headers for content length and content type.
+    """
+
     JSON_RPC_REQ_FORMAT = "Content-Length: {json_string_len}\r\n\r\n{json_string}"
     LEN_HEADER = "Content-Length: "
     TYPE_HEADER = "Content-Type: "
@@ -165,6 +175,14 @@ JsonRpcNotifyCallable = Callable[..., None]
 
 
 class JsonRpcCallback:
+    """
+    A JsonRpcCallback is a wrapper around a JsonRpcMethodCallable or
+    JsonRpcNotifyCallable. It validates the parameters and calls the function.
+
+    We use this class to allow for more flexibility in the parameters that can
+    be passed to the function.
+    """
+
     def __init__(
         self,
         func: JsonRpcMethodCallable | JsonRpcNotifyCallable,
@@ -211,6 +229,12 @@ class JsonRpcCallback:
 
 
 class JsonRpcApplication:
+    """
+    Taking a page out of the ASGI standards, JsonRpcApplication is a collection
+    of JsonRpcCallbacks that can be used to handle incoming requests and
+    notifications.
+    """
+
     def __init__(
         self,
         request_callbacks: Optional[dict[str, JsonRpcCallback]] = None,
@@ -249,6 +273,8 @@ class JsonRpcApplication:
             )
             return None
 
+    # TODO: Type check these properly.
+    # https://mypy.readthedocs.io/en/stable/generics.html#declaring-decorators
     def add(
         self,
         func: JsonRpcMethodCallable | JsonRpcNotifyCallable | None = None,
@@ -321,6 +347,17 @@ class JsonRpcApplication:
 
 
 class JsonRpcServer(threading.Thread):
+    """
+    Taking a page from Python's ASGI standards, JsonRpcServer serves a
+    JsonRpcApplication. It is a thread that listens for incoming requests and
+    notifications on a JsonRpcStream, and sends responses over the same stream.
+
+    We separate the two classes to allow one to define routes in different
+    files.
+
+    Despite being called "server", you can also use this as a client.
+    """
+
     def __init__(
         self,
         json_rpc_stream: JsonRpcStream,

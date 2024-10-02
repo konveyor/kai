@@ -1,3 +1,7 @@
+"""
+A fake IDE client that connects to the Kai RPC Server.
+"""
+
 import argparse
 import logging
 import os
@@ -36,10 +40,9 @@ def main() -> None:
         ["python", rpc_binary_path],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
-        # text=True,
     )
 
-    rpc_communication = JsonRpcServer(
+    rpc_server = JsonRpcServer(
         json_rpc_stream=LspStyleStream(
             cast(IO[bytes], rpc_subprocess.stdout),
             cast(IO[bytes], rpc_subprocess.stdin),
@@ -47,12 +50,11 @@ def main() -> None:
         app=app,
         request_timeout=2.0,
     )
-    rpc_communication.start()
+    rpc_server.start()
 
     try:
-        result = rpc_communication.send_request(
+        result = rpc_server.send_request(
             "initialize",
-            # Get the current process id
             processId=os.getpid(),
             rootUri="file:///path/to/root",
             kantraUri="file:///path/to/kantra",
@@ -72,7 +74,7 @@ def main() -> None:
     finally:
         rpc_subprocess.terminate()
         rpc_subprocess.wait()
-        rpc_communication.stop()
+        rpc_server.stop()
 
 
 if __name__ == "__main__":
