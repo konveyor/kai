@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from pathlib import Path
-from typing import Any, Generator, Optional
+from typing import Any, Dict, Generator, List, Optional, Set
 
 from langchain_core.language_models.chat_models import BaseChatModel
 
@@ -112,14 +112,14 @@ class TaskManager:
         validators: Optional[list[ValidationStep]] = None,
         agents: Optional[list[TaskRunner]] = None,
     ) -> None:
+        self.validators: List(ValidationStep) = []
 
-        # TODO: Files maybe could become unprocessed again, but that could lead
-        # to infinite looping really hard, so we're avoiding it for now. Could
-        # even have like a MAX_DEPTH or something.
         self.processed_files: list[Path] = []
         self.unprocessed_files: list[Path] = []
 
-        self.validators: list[ValidationStep] = []
+        self.processed_tasks: Set[Task] = set()
+        self.task_stacks: Dict[int, List[Task]] = {}
+
         if validators is not None:
             self.validators.extend(validators)
 
@@ -168,61 +168,109 @@ class TaskManager:
         if len(result.encountered_errors) > 0:
             raise NotImplementedError("What should we do with errors?")
 
-    def run_validators(self) -> list[tuple[type, Task]]:
-        # NOTE: Do it this way so that in the future we could do something
-        # like get all the errors in an affected file and then send THAT as
-        # a task, versus locking us into, one validation error per task at a
-        # time. i.e. Make it soe wae can combine validation errors into
-        # single tasks. Or grabbing all errors of a type, or all errors
-        # referencing a specific type.
-        #
-        # Basically, we're surfacing this functionality cause this whole.
-        # process is going to get more complicated in the future.
-        validation_errors: list[tuple[type, Task]] = []
+    def run_validators(self) -> list[Task]:
+        validation_tasks: List[Task] = []
 
         for validator in self.validators:
             result = validator.run()
             if not result.passed:
-                validation_errors.extend((type(validator), e) for e in result.errors)
+                # TODO(@fabianvf): result.errors should probably be result.tasks or something instead
+                # Not all validators return errors? Maybe?
+                validation_tasks.extend(
+                    result.errors
+                )  # Assuming result.errors are Task instances
 
+        # TODO(@fabianvf) do we need this?
         self._validators_are_stale = False
 
-        return validation_errors
+        return validation_tasks
 
     def get_next_task(self) -> Generator[Task, Any, None]:
-        validation_errors: list[tuple[type, Task]] = []
+        # validation_errors: list[tuple[type, Task]] = []
         ignored_tasks = []
 
-        prior_error = None
-        # Check to see if validators are stale. If so, run them
-        while True:
-            if self._validators_are_stale:
-                validation_errors = self.run_validators()
-
+        prior_task = None
+        self.initialize_task_stacks()
+        while any(self.task_stacks.values()):
             # pop an error of the stack of errors
-            if len(validation_errors) > 0:
-                print(validation_errors.__len__())
-                err = validation_errors.pop(0)
-                if prior_error and fuzzy_equals(prior_error, err[1], offset=2):
-                    ignored_tasks.append(err[1])
-                    continue
-                if any([fuzzy_equals(err[1], v, offset=2) for v in ignored_tasks]):
-                    print(f"failed to solve error, skipping for now\n{err[1]}")
-                    continue
-                yield err[1]  # TODO: This is a placeholder
-                prior_error = err[1]
+            task = self.pop_task_from_highest_priority()
+
+            if task in self.processed_tasks:
                 continue
 
-            if len(ignored_tasks) > 0:
-                # Time to give these errors another try since we've fixed everything else
-                ignored_tasks = []
+            if self.has_unprocessed_children(task):
+                self.handle_unprocessed_children(task)
                 continue
 
-            # if len(self.unprocessed_files) > 0:
-            #     yield Task(self.unprocessed_files.pop(0))
-            #     continue
+            if fuzzy_equals(prior_task, task, offset=2):
+                # TODO What to do with these now?
+                ignored_tasks.append(task)
 
-            break
+            yield task
+            self.processed_tasks.add(task)
+            self.handle_new_tasks_after_processing(task)
+            prior_task = task
+            # TODO handle clearing processed tasks at some point? THis sort of broke the ignore stuff I was doing
+
+        self.stop()
+
+    def initialize_task_stacks(self):
+        """Initializes the task stacks by running validators and populating tasks."""
+        if self._validators_are_stale or not any(self.task_stacks.values()):
+            new_tasks = self.run_validators()
+            for task in new_tasks:
+                self.add_task_to_stack(task)
+
+    def add_task_to_stack(self, task: Task):
+        """Adds a task to its corresponding priority stack."""
+        priority = task.priority
+        if priority not in self.task_stacks:
+            self.task_stacks[priority] = []
+        self.task_stacks[priority].append(task)
+
+    def pop_task_from_highest_priority(self) -> Task:
+        """Pops a task from the highest priority stack."""
+        highest_priority = min(self.task_stacks.keys())
+        task_stack = self.task_stacks[highest_priority]
+        task = task_stack.pop()
+        if not task_stack:
+            del self.task_stacks[highest_priority]
+        return task
+
+    def has_unprocessed_children(self, task: Task) -> bool:
+        """Checks if the task has unprocessed child tasks."""
+        return any(child not in self.processed_tasks for child in task.children)
+
+    def handle_unprocessed_children(self, task: Task):
+        """
+        Handles unprocessed child tasks by re-adding the parent task to the stack
+        and adding unprocessed children to their respective stacks.
+        """
+        self.add_task_to_stack(task)
+        unprocessed_children = [
+            child for child in task.children if child not in self.processed_tasks
+        ]
+        for child in unprocessed_children:
+            self.add_task_to_stack(child)
+
+    def handle_new_tasks_after_processing(self, task: Task):
+        """
+        After processing a task, reruns validators to find new tasks,
+        associates them as children of the current task, and adds them to the stacks.
+        """
+        self._validators_are_stale = True
+        new_tasks = self.run_validators()
+        new_tasks_set = set(new_tasks)
+        unprocessed_new_tasks = new_tasks_set - self.processed_tasks
+
+        if unprocessed_new_tasks:
+            task.children.extend(unprocessed_new_tasks)
+            for child_task in unprocessed_new_tasks:
+                child_task.parent = task
+                child_task.depth = task.depth + 1  # Increase depth for DFS
+                self.add_task_to_stack(child_task)
+            # Re-add the parent task to handle its new children
+            self.add_task_to_stack(task)
 
     def stop(self):
         """For all agents or validators, if they have a running thread stop them."""

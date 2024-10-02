@@ -20,7 +20,7 @@ class MavenCompileStep(ValidationStep):
         return ValidationResult(passed=not errors, errors=errors)
 
 
-@dataclass
+@dataclass(eq=False)
 class MavenCompilerError(ValidationError):
     details: List[str] = field(default_factory=list)
     parse_lines: Optional[str] = None
@@ -44,39 +44,39 @@ class MavenCompilerError(ValidationError):
 
 
 # Subclasses for specific error categories
-@dataclass
+@dataclass(eq=False)
 class SymbolNotFoundError(MavenCompilerError):
     missing_symbol: Optional[str] = None
     symbol_location: Optional[str] = None
 
 
-@dataclass
+@dataclass(eq=False)
 class PackageDoesNotExistError(MavenCompilerError):
     missing_package: Optional[str] = None
 
 
-@dataclass
+@dataclass(eq=False)
 class SyntaxError(MavenCompilerError):
     pass
 
 
-@dataclass
+@dataclass(eq=False)
 class TypeMismatchError(MavenCompilerError):
     expected_type: Optional[str] = None
     found_type: Optional[str] = None
 
 
-@dataclass
+@dataclass(eq=False)
 class AnnotationError(MavenCompilerError):
     pass
 
 
-@dataclass
+@dataclass(eq=False)
 class AccessControlError(MavenCompilerError):
     inaccessible_class: Optional[str] = None
 
 
-@dataclass
+@dataclass(eq=False)
 class OtherError(MavenCompilerError):
     pass
 
