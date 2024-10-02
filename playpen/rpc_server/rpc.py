@@ -23,6 +23,8 @@ class JsonRpcErrorCode(IntEnum):
     UnknownErrorCode = -32001
 
 
+JsonRpcId = Optional[str | int]
+
 JsonRpcResult = Any
 
 
@@ -36,14 +38,14 @@ class JsonRpcResponse(BaseModel):
     jsonrpc: str = "2.0"
     result: Optional[JsonRpcResult] = None
     error: Optional[JsonRpcError] = None
-    id: Optional[str | int] = None
+    id: JsonRpcId = None
 
 
 class JsonRpcRequest(BaseModel):
     jsonrpc: str = "2.0"
     method: str
     params: Optional[dict] = None
-    id: Optional[str | int] = None
+    id: JsonRpcId = None
 
 
 class JsonRpcStream(ABC):
@@ -54,6 +56,11 @@ class JsonRpcStream(ABC):
         json_dumps_kwargs: Optional[dict] = None,
         json_loads_kwargs: Optional[dict] = None,
     ):
+        if json_dumps_kwargs is None:
+            json_dumps_kwargs = {}
+        if json_loads_kwargs is None:
+            json_loads_kwargs = {}
+
         self.recv_file = recv_file
         self.recv_lock = threading.Lock()
 
@@ -64,7 +71,7 @@ class JsonRpcStream(ABC):
         self.json_loads_kwargs = json_loads_kwargs
 
     @abstractmethod
-    def send(self, msg: dict) -> None: ...
+    def send(self, msg: JsonRpcRequest | JsonRpcResponse) -> None: ...
 
     @abstractmethod
     def recv(self) -> JsonRpcError | JsonRpcRequest | JsonRpcResponse | None: ...
@@ -75,7 +82,7 @@ class LspStyleStream(JsonRpcStream):
     LEN_HEADER = "Content-Length: "
     TYPE_HEADER = "Content-Type: "
 
-    def send(self, msg: JsonRpcRequest | JsonRpcRequest) -> None:
+    def send(self, msg: JsonRpcRequest | JsonRpcResponse) -> None:
         json_str = msg.model_dump_json()
         json_req = f"Content-Length: {len(json_str)}\r\n\r\n{json_str}"
 
@@ -95,8 +102,8 @@ class LspStyleStream(JsonRpcStream):
                 line = line.decode("utf-8")
                 if not line.endswith("\r\n"):
                     return JsonRpcError(
-                        JsonRpcErrorCode.ParseError,
-                        "Bad header: missing newline",
+                        code=JsonRpcErrorCode.ParseError,
+                        message="Bad header: missing newline",
                     )
 
                 line = line[:-2]
@@ -107,22 +114,22 @@ class LspStyleStream(JsonRpcStream):
                     line = line[len(self.LEN_HEADER) :]
                     if not line.isdigit():
                         return JsonRpcError(
-                            JsonRpcErrorCode.ParseError,
-                            "Bad header: size is not int",
+                            code=JsonRpcErrorCode.ParseError,
+                            message="Bad header: size is not int",
                         )
                     content_length = int(line)
                 elif line.startswith(self.TYPE_HEADER):
                     pass
                 else:
                     return JsonRpcError(
-                        JsonRpcErrorCode.ParseError,
-                        f"Bad header: unknown header {line}",
+                        code=JsonRpcErrorCode.ParseError,
+                        message=f"Bad header: unknown header {line}",
                     )
 
             if content_length < 0:
                 return JsonRpcError(
-                    JsonRpcErrorCode.ParseError,
-                    "Bad header: missing Content-Length",
+                    code=JsonRpcErrorCode.ParseError,
+                    message="Bad header: missing Content-Length",
                 )
 
             try:
@@ -130,8 +137,8 @@ class LspStyleStream(JsonRpcStream):
                 msg_dict = json.loads(msg_str, **self.json_loads_kwargs)
             except Exception as e:
                 return JsonRpcError(
-                    JsonRpcErrorCode.ParseError,
-                    f"Invalid JSON: {e}",
+                    code=JsonRpcErrorCode.ParseError,
+                    message=f"Invalid JSON: {e}",
                 )
 
             try:
@@ -141,8 +148,8 @@ class LspStyleStream(JsonRpcStream):
                     return JsonRpcResponse.model_validate(msg_dict)
             except Exception as e:
                 return JsonRpcError(
-                    JsonRpcErrorCode.ParseError,
-                    f"Could not validate JSON: {e}",
+                    code=JsonRpcErrorCode.ParseError,
+                    message=f"Could not validate JSON: {e}",
                 )
 
 
@@ -172,19 +179,24 @@ class JsonRpcServer(threading.Thread):
         self.method_callbacks = method_callbacks
         self.notify_callbacks = notify_callbacks
 
-        self.event_dict: dict[int, threading.Condition] = {}
-        self.response_dict: dict[int, JsonRpcResponse] = {}
+        self.event_dict: dict[JsonRpcId, threading.Condition] = {}
+        self.response_dict: dict[JsonRpcId, JsonRpcResponse] = {}
         self.next_id = 0
         self.timeout = timeout
         self.shutdown_flag = False
 
     def add_method(
-        self, func: JsonRpcMethodCallback | None = None, /, *, method: str | None = None
+        self,
+        func: JsonRpcMethodCallback | None = None,
+        /,
+        *,
+        method: str | None = None,
+        model: type[BaseModel] | None = None,
     ):
         return self.__add_callback(
             func=func,
             method=method,
-            model=None,
+            model=model,
             callbacks=self.method_callbacks,
         )
 
@@ -205,8 +217,8 @@ class JsonRpcServer(threading.Thread):
 
     def __add_callback(
         self,
-        func: JsonRpcNotifyCallback | None = None,
         /,
+        func: JsonRpcNotifyCallback | None = None,
         *,
         method: str | None = None,
         model: type[BaseModel] | None = None,
@@ -232,8 +244,8 @@ class JsonRpcServer(threading.Thread):
 
                 except Exception as e:
                     return None, JsonRpcError(
-                        JsonRpcErrorCode.InvalidParams,
-                        f"Invalid parameters: {e}",
+                        code=JsonRpcErrorCode.InvalidParams,
+                        message=f"Invalid parameters: {e}",
                     )
 
                 return func(*args, **kwargs)
@@ -266,15 +278,16 @@ class JsonRpcServer(threading.Thread):
                     # bona fide request
                     if msg.method not in self.method_callbacks:
                         error = JsonRpcError(
-                            JsonRpcErrorCode.MethodNotFound,
-                            f"Method not found: {msg.method}",
+                            code=JsonRpcErrorCode.MethodNotFound,
+                            message=f"Method not found: {msg.method}",
                         )
                         self.jsonrpc_stream.send(
                             JsonRpcResponse(error=error, id=msg.id)
                         )
                         continue
 
-                    result, error = self.method_callbacks[msg.method](**msg.params)
+                    params = msg.params or {}
+                    result, error = self.method_callbacks[msg.method](**params)
                     self.jsonrpc_stream.send(
                         JsonRpcResponse(result=result, error=error, id=msg.id)
                     )
@@ -283,7 +296,8 @@ class JsonRpcServer(threading.Thread):
                         log.error(f"Notify method not found: {msg.method}")
                         continue
 
-                    self.notify_callbacks[msg.method](**msg.params)
+                    params = msg.params or {}
+                    self.notify_callbacks[msg.method](**params)
 
             elif isinstance(msg, JsonRpcResponse):
                 self.response_dict[msg.id] = msg
@@ -313,8 +327,8 @@ class JsonRpcServer(threading.Thread):
         if not cond.wait(self.timeout):
             cond.release()
             return JsonRpcError(
-                JsonRpcErrorCode.InternalError,
-                "Timeout waiting for response",
+                code=JsonRpcErrorCode.InternalError,
+                message="Timeout waiting for response",
             )
         cond.release()
 

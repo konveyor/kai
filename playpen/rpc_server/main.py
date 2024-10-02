@@ -2,8 +2,7 @@ import argparse
 import logging
 import sys
 
-from playpen.rpc_server.rpc import JsonRpcServer, LspStyleStream
-from playpen.rpc_server.server import KAI_RPC_SERVER, ROUTES
+from playpen.rpc_server.server import KAI_RPC_SERVER
 
 log = logging.getLogger(__name__)
 
