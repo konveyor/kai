@@ -13,7 +13,7 @@ from gunicorn.app.wsgiapp import WSGIApplication
 from kai.kai_logging import initLoggingFromConfig
 from kai.models.kai_config import KaiConfig
 from kai.routes import kai_routes
-from kai.service.kai_application.kai_application import KaiApplication
+from kai.service.incident_store.incident_store import incident_store_from_config
 
 log = logging.getLogger(__name__)
 
@@ -51,7 +51,8 @@ def app() -> web.Application:
     initLoggingFromConfig(config)
 
     webapp = web.Application()
-    webapp["kai_application"] = KaiApplication(config)
+
+    webapp["kai_incident_store"] = incident_store_from_config(config)
     webapp["kai_config"] = config
     webapp.add_routes(kai_routes)
 

@@ -16,8 +16,11 @@ from pydantic import BaseModel, Field
 
 from kai.models.kai_config import KaiConfig
 from kai.models.report import Report
-from kai.service.incident_store import Application, IncidentStore
-from kai.service.kai_application.kai_application import KaiApplication
+from kai.service.incident_store import (
+    Application,
+    IncidentStore,
+    incident_store_from_config,
+)
 
 KAI_LOG = logging.getLogger(__name__)
 
@@ -166,14 +169,14 @@ Example: --loglevel debug (default: warning)""",
     config.log_level = args.loglevel
     KAI_LOG.info(f"Config loaded: {pprint.pformat(config)}")
 
-    app = KaiApplication(config)
+    incident_store = incident_store_from_config(config)
 
     if args.skip_verify:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     poll_api(
         args.konveyor_hub_url,
-        app.incident_store,
+        incident_store,
         interval=args.interval,
         timeout=args.timeout,
         verify=not args.skip_verify,
@@ -207,14 +210,23 @@ def poll_api(
         new_last_analysis = import_from_api(
             incident_store, konveyor_hub_url, last_analysis, timeout, verify
         )
+
         if new_last_analysis == last_analysis:
-            KAI_LOG.info(f"No new analyses. Sleeping for {interval} seconds.")
-            time.sleep(interval)
+            KAI_LOG.info("No new analyses. Running post process.")
         else:
             KAI_LOG.info(
                 f"New analyses found. Updating last_analysis to {new_last_analysis}."
             )
             last_analysis = new_last_analysis
+
+        post_proc_start = time.time()
+        # generate solutions for some incidents
+        incident_store.post_process(limit=5)
+        post_proc_duration = int(time.time() - post_proc_start)
+
+        if new_last_analysis == last_analysis and post_proc_duration < interval:
+            KAI_LOG.info(f"Sleeping for {interval-post_proc_duration} seconds.")
+            time.sleep(interval - post_proc_duration)
 
 
 def import_from_api(
