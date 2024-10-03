@@ -1,11 +1,17 @@
+import os
 import unittest
 from dataclasses import dataclass
+from pathlib import Path
 
 from playpen.repo_level_awareness.agent.dependency_agent import (
+    FindInPomResponse,
+    FQDNResponse,
     MavenDependencyAgent,
     _action,
     _llm_response,
+    find_in_pom,
     get_maven_query,
+    search_fqdn,
 )
 
 
@@ -79,12 +85,12 @@ Added the `io.quarkus:quarkus-spring-cache` dependency to the `pom.xml` file and
         expected = _llm_response(
             actions=[
                 _action(
-                    code='start_line, end_line = find_in_pom._run(relative_file_path="pom.xml", keywords={"groupId": "org.springframework.boot", "artifactId": "spring-boot-starter-cache"})")',
+                    code='start_line, end_line = find_in_pom._run(relative_file_path="pom.xml", keywords={"groupId": "org.springframework.boot", "artifactId": "spring-boot-starter-cache"})',
                     thought="I need to find the current version of the SpringBoot Cache module artifact in the `pom.xml` file.",
                     observation="I now have the start and end line of the SpringBoot Cache module artifact in the `pom.xml` file.",
                 ),
                 _action(
-                    code='result = search_fqdn.run(artificat_id="quarkus-spring-cache", group_id="io.quarkus"))',
+                    code='result = search_fqdn.run(artificat_id="quarkus-spring-cache", group_id="io.quarkus")',
                     thought="I need to search for the `io.quarkus:quarkus-spring-cache` dependency.",
                     observation="I now have the fully qualified domain name for the `io.quarkus:quarkus-spring-cache` dependency.",
                 ),
@@ -97,11 +103,6 @@ Added the `io.quarkus:quarkus-spring-cache` dependency to the `pom.xml` file and
             final_answer="Added the `io.quarkus:quarkus-spring-cache` dependency to the `pom.xml` file and replaced the SpringBoot Cache module artifact with it.",
         )
         result = agent.parse_llm_response(content)
-        for a in result.actions:
-            print(a)
-        for a in expected.actions:
-            print(a)
-
         self.assertEqual(expected, result)
 
     def test_get_query_group_artificat(self):
@@ -129,4 +130,52 @@ Added the `io.quarkus:quarkus-spring-cache` dependency to the `pom.xml` file and
 
         for t in testCases:
             result = get_maven_query(t.code)
+            self.assertEqual(t.expected, result)
+
+    def test_search_fqdn(self):
+        @dataclass
+        class TestCase:
+            code: str
+            expected: FQDNResponse
+
+        testCases = [
+            TestCase(
+                'result = search_fqdn.run(artifact_id="javax.annotation", group_id="javax.annotation")',
+                FQDNResponse("", "", ""),
+            ),
+            TestCase(
+                'result = search_fqdn.run(artifact_id="javax.annotation-api", group_id="javax.annotation")',
+                FQDNResponse("javax.annotation-api", "javax.annotation", "1.3.2"),
+            ),
+        ]
+
+        for t in testCases:
+            result = search_fqdn(t.code)
+            self.assertEqual(t.expected, result)
+
+    def test_find_in_pom(self):
+        test_data_dir = Path(
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "test-data")
+        )
+
+        test_func = find_in_pom(test_data_dir)
+
+        @dataclass
+        class TestCase:
+            code: str
+            expected: FindInPomResponse
+
+        test_cases = [
+            TestCase(
+                'start_line, end_line = open_file_gen._run(relative_file_path="module/file.py", keywords={"groupId": "org.jboss.spec.javax.jms", "artifactId": "jboss-jms-api_2.0_spec"})',
+                FindInPomResponse(18, 22),
+            ),
+            TestCase(
+                'start_line, end_line = open_file_gen._run(relative_file_path="module/file.py", keywords={"groupId": "google.com", "artifactId": "guava"})',
+                FindInPomResponse(17, 17),
+            ),
+        ]
+
+        for t in test_cases:
+            result = test_func(t.code)
             self.assertEqual(t.expected, result)
