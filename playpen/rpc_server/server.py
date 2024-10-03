@@ -1,4 +1,5 @@
 import logging
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -70,10 +71,15 @@ def initialize(app: KaiRpcApplication, params: dict, server: JsonRpcServer):
     try:
         app.config = KaiRpcApplicationConfig.model_validate(params)
 
-        root_logger = logging.getLogger()
-        root_logger.setLevel(logging.DEBUG)
+        # FIXME: All this logging stuff is causing issues with hanging
 
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.DEBUG - 5)
         root_logger.handlers.clear()
+
+        stderr_handler = logging.StreamHandler(sys.stderr)
+        stderr_handler.setLevel(logging.DEBUG - 5)
+        root_logger.addHandler(stderr_handler)
 
         notify_handler = JsonRpcLoggingHandler(server)
         notify_handler.setLevel(app.config.logLevel)

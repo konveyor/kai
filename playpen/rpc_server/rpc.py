@@ -1,14 +1,19 @@
 import functools
 import json
 import logging
+import sys
 import threading
 from abc import ABC, abstractmethod
 from enum import IntEnum
+from io import BufferedReader, BufferedWriter
 from typing import IO, Any, Callable, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, validate_call
 
+TRACE = logging.DEBUG - 5
+
 log = logging.getLogger(__name__)
+log.setLevel(TRACE)
 
 
 class JsonRpcErrorCode(IntEnum):
@@ -56,8 +61,8 @@ class JsonRpcStream(ABC):
 
     def __init__(
         self,
-        recv_file: IO[bytes],
-        send_file: IO[bytes],
+        recv_file: BufferedReader,
+        send_file: BufferedWriter,
         json_dumps_kwargs: Optional[dict] = None,
         json_loads_kwargs: Optional[dict] = None,
     ):
@@ -100,19 +105,29 @@ class LspStyleStream(JsonRpcStream):
         json_str = msg.model_dump_json()
         json_req = f"Content-Length: {len(json_str)}\r\n\r\n{json_str}"
 
+        # Prevent infinite recursion
+        if isinstance(msg, JsonRpcRequest) and msg.method != "logMessage":
+            log.log(TRACE, "Sending request: %s", json_req)
+
         with self.send_lock:
             self.send_file.write(json_req.encode())
             self.send_file.flush()
 
     def recv(self) -> JsonRpcError | JsonRpcRequest | JsonRpcResponse | None:
+        log.debug("Waiting for message")
+
         with self.recv_lock:
+            log.log(TRACE, "Reading headers")
             content_length = -1
 
             while True:
                 if self.recv_file.closed:
                     return None
 
+                log.log(TRACE, "Reading header line")
                 line_bytes = self.recv_file.readline()
+
+                log.log(TRACE, "Read header line: %s", line_bytes)
                 if not line_bytes:
                     return None
 
@@ -149,6 +164,8 @@ class LspStyleStream(JsonRpcStream):
                     message="Bad header: missing Content-Length",
                 )
 
+            log.log(TRACE, "Got message with content length: %s", content_length)
+
             try:
                 msg_str = self.recv_file.read(content_length).decode("utf-8")
                 msg_dict = json.loads(msg_str, **self.json_loads_kwargs)
@@ -157,6 +174,8 @@ class LspStyleStream(JsonRpcStream):
                     code=JsonRpcErrorCode.ParseError,
                     message=f"Invalid JSON: {e}",
                 )
+
+            log.log(TRACE, "Got message: %s", msg_dict)
 
             try:
                 if "method" in msg_dict:
@@ -168,6 +187,74 @@ class LspStyleStream(JsonRpcStream):
                     code=JsonRpcErrorCode.ParseError,
                     message=f"Could not validate JSON: {e}",
                 )
+
+
+class BareJsonStream(JsonRpcStream):
+    def __init__(
+        self,
+        recv_file: BufferedReader,
+        send_file: BufferedWriter,
+        json_dumps_kwargs: dict | None = None,
+        json_loads_kwargs: dict | None = None,
+    ):
+        super().__init__(recv_file, send_file, json_dumps_kwargs, json_loads_kwargs)
+
+        self.buffer: str = ""
+        self.decoder = json.JSONDecoder()
+        self.chunk_size = 512
+
+    def send(self, msg: JsonRpcRequest | JsonRpcResponse) -> None:
+        json_req = msg.model_dump_json()
+
+        # Prevent infinite recursion
+        if not isinstance(msg, JsonRpcRequest) or msg.method != "logMessage":
+            log.log(TRACE, "send: %s", json_req)
+            log.log(TRACE, "send: %s", json_req)
+            log.log(TRACE, "send: %s", json_req)
+        else:
+            log_msg = msg.model_copy()
+            log_msg.params["message"] = "..."
+            print(f"send: {log_msg.model_dump_json()}", file=sys.stderr)
+
+        with self.send_lock:
+            self.send_file.write(json_req.encode())
+            self.send_file.flush()
+
+    def get_from_buffer(self) -> JsonRpcError | JsonRpcRequest | JsonRpcResponse | None:
+        try:
+            msg, idx = self.decoder.raw_decode(self.buffer)
+            self.buffer = self.buffer[idx:]
+
+            log.log(TRACE, "recv msg: %s", msg)
+            log.log(TRACE, "recv buffer: %s", self.buffer)
+
+            if "method" in msg:
+                return JsonRpcRequest.model_validate(msg)
+            else:
+                return JsonRpcResponse.model_validate(msg)
+        except json.JSONDecodeError:
+            return None
+        except Exception as e:
+            return JsonRpcError(
+                code=JsonRpcErrorCode.ParseError,
+                message=f"Invalid JSON: {e}",
+            )
+
+    def recv(self) -> JsonRpcError | JsonRpcRequest | JsonRpcResponse | None:
+        with self.recv_lock:
+            result = self.get_from_buffer()
+            if result is not None:
+                return result
+
+            while chunk := self.recv_file.read1(self.chunk_size):
+                self.buffer += chunk.decode("utf-8")
+                log.log(TRACE, "recv buffer: %s", self.buffer)
+
+                result = self.get_from_buffer()
+                if result is not None:
+                    return result
+
+        return None
 
 
 JsonRpcMethodCallable = Callable[..., tuple[JsonRpcResult | None, JsonRpcError | None]]
@@ -251,7 +338,10 @@ class JsonRpcApplication:
     def handle_request(
         self, msg: JsonRpcRequest, server: "JsonRpcServer"
     ) -> tuple[JsonRpcResult | None, JsonRpcError | None] | None:
+        log.log(TRACE, "Handling request: %s", msg)
+
         if msg.id is not None:
+            log.log(TRACE, "Request is a bona fide request")
             # bona fide request
             if msg.method not in self.request_callbacks:
                 return None, JsonRpcError(
@@ -259,21 +349,52 @@ class JsonRpcApplication:
                     message=f"Method not found: {msg.method}",
                 )
 
-            return self.request_callbacks[msg.method](
+            log.log(TRACE, "Calling method: %s", msg.method)
+
+            result = self.request_callbacks[msg.method](
                 params=msg.params, server=server, app=self
             )
+
+            err = JsonRpcError(
+                code=JsonRpcErrorCode.InternalError,
+                message="Method did not return a tuple[JsonRpcResult | None, JsonRpcError | None]",
+            )
+
+            if not isinstance(result, tuple) or len(result) != 2:
+                return None, err
+            # NOTE: If we ever narrow down JsonRpcResult from Any, we should
+            # re-enable this check.
+            # if not isinstance(result[0], (type(None), JsonRpcResult)):
+            #     return None, err
+            if not isinstance(result[1], (type(None), JsonRpcError)):
+                return None, err
+
+            return result
+
         else:
+            log.log(TRACE, "Request is a notification")
+
             # notification
             if msg.method not in self.notify_callbacks:
                 log.error(f"Notify method not found: {msg.method}")
                 return None
 
-            self.notify_callbacks[msg.method](
+            log.log(TRACE, "Calling method: %s", msg.method)
+
+            result = self.notify_callbacks[msg.method](
                 params=msg.params, server=server, app=self
             )
+
+            if result is not None:
+                return None, JsonRpcError(
+                    code=JsonRpcErrorCode.InternalError,
+                    message="Notification did not return None",
+                )
+
             return None
 
-    # TODO: Type check these properly.
+    # TODO: Type check these properly so we don't have to do the isinstance
+    # checks in handle_request.
     # https://mypy.readthedocs.io/en/stable/generics.html#declaring-decorators
     def add(
         self,
@@ -283,7 +404,7 @@ class JsonRpcApplication:
         method: str | None = None,
         extract_params: bool = True,
         include_server: bool = False,
-        include_self: bool = True,
+        include_app: bool = True,
     ):
         if method is None:
             raise ValueError("Method name must be provided")
@@ -295,7 +416,7 @@ class JsonRpcApplication:
 
         def decorator(func: JsonRpcMethodCallable | JsonRpcNotifyCallable):
             callback = JsonRpcCallback(
-                func, extract_params, include_server, include_self
+                func, extract_params, include_server, include_app
             )
             callbacks[method] = callback
 
@@ -313,7 +434,7 @@ class JsonRpcApplication:
         method: str | None = None,
         extract_params: bool = True,
         include_server: bool = False,
-        include_self: bool = True,
+        include_app: bool = True,
     ):
         return self.add(
             func=func,
@@ -321,7 +442,7 @@ class JsonRpcApplication:
             method=method,
             extract_params=extract_params,
             include_server=include_server,
-            include_self=include_self,
+            include_app=include_app,
         )
 
     def add_request(
@@ -331,7 +452,7 @@ class JsonRpcApplication:
         method: str | None = None,
         extract_params: bool = True,
         include_server: bool = False,
-        include_self: bool = True,
+        include_app: bool = True,
     ):
         return self.add(
             func=func,
@@ -339,7 +460,7 @@ class JsonRpcApplication:
             method=method,
             extract_params=extract_params,
             include_server=include_server,
-            include_self=include_self,
+            include_app=include_app,
         )
 
     def generate_docs(self):
@@ -383,6 +504,8 @@ class JsonRpcServer(threading.Thread):
         self.shutdown_flag = True
 
     def run(self):
+        log.debug("Server thread started")
+
         while not self.shutdown_flag:
             msg = self.jsonrpc_stream.recv()
             if msg is None:
@@ -394,7 +517,9 @@ class JsonRpcServer(threading.Thread):
                 continue
 
             elif isinstance(msg, JsonRpcRequest):
+                log.log(TRACE, "Received request: %s", msg)
                 if (tmp := self.app.handle_request(msg, self)) is not None:
+                    log.log(TRACE, "Sending response: %s", tmp)
                     result, error = tmp
                     self.jsonrpc_stream.send(
                         JsonRpcResponse(result=result, error=error, id=msg.id)
@@ -414,6 +539,7 @@ class JsonRpcServer(threading.Thread):
         self.jsonrpc_stream.close()
 
     def send_request(self, method: str, **params):
+        log.log(TRACE, "Sending request: %s", method)
         current_id = self.next_id
         self.next_id += 1
         cond = threading.Condition()
@@ -457,9 +583,10 @@ class JsonRpcLoggingHandler(logging.Handler):
                 message=record.getMessage(),
             )
         except Exception:
-            self.server.send_notification(
-                self.method,
-                level="ERROR",
-                message="Failed to log message",
-            )
+            print("Failed to log message", file=sys.stderr)
+            # self.server.send_notification(
+            #     self.method,
+            #     level="ERROR",
+            #     message="Failed to log message",
+            # )
             self.handleError(record)
