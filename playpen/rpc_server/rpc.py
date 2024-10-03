@@ -6,14 +6,62 @@ import threading
 from abc import ABC, abstractmethod
 from enum import IntEnum
 from io import BufferedReader, BufferedWriter
-from typing import IO, Any, Callable, Literal, Optional
+from typing import Any, Callable, Literal, Optional, overload
 
 from pydantic import BaseModel, ConfigDict, validate_call
 
 TRACE = logging.DEBUG - 5
+DEFAULT_FORMATTER = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
-log = logging.getLogger(__name__)
-log.setLevel(TRACE)
+
+def get_logger(
+    name: str,
+    stderr_level: int | str = "TRACE",
+    formatter: logging.Formatter = DEFAULT_FORMATTER,
+) -> logging.Logger:
+    logging.addLevelName(logging.DEBUG - 5, "TRACE")
+
+    logger = logging.getLogger(name)
+
+    if logger.hasHandlers():
+        return logger
+
+    logger.setLevel(TRACE)
+
+    stderr_handler = logging.StreamHandler(sys.stderr)
+    stderr_handler.setLevel(stderr_level)
+    stderr_handler.setFormatter(formatter)
+    logger.addHandler(stderr_handler)
+
+    return logger
+
+
+def log_record_to_dict(record: logging.LogRecord) -> dict[str, Any]:
+    return {
+        "name": record.name,
+        "levelno": record.levelno,
+        "levelname": record.levelname,
+        "pathname": record.pathname,
+        "filename": record.filename,
+        "module": record.module,
+        "lineno": record.lineno,
+        "funcName": record.funcName,
+        "created": record.created,
+        "asctime": record.asctime,
+        "msecs": record.msecs,
+        "relativeCreated": record.relativeCreated,
+        "thread": record.thread,
+        "threadName": record.threadName,
+        "process": record.process,
+        "msg": record.msg,
+        "args": record.args,
+        "message": record.getMessage(),
+    }
+
+
+log = get_logger("jsonrpc")
 
 
 class JsonRpcErrorCode(IntEnum):
@@ -80,7 +128,7 @@ class JsonRpcStream(ABC):
         self.json_dumps_kwargs = json_dumps_kwargs
         self.json_loads_kwargs = json_loads_kwargs
 
-    def close(self):
+    def close(self) -> None:
         self.recv_file.close()
         self.send_file.close()
 
@@ -209,12 +257,13 @@ class BareJsonStream(JsonRpcStream):
         # Prevent infinite recursion
         if not isinstance(msg, JsonRpcRequest) or msg.method != "logMessage":
             log.log(TRACE, "send: %s", json_req)
-            log.log(TRACE, "send: %s", json_req)
-            log.log(TRACE, "send: %s", json_req)
         else:
             log_msg = msg.model_copy()
-            log_msg.params["message"] = "..."
-            print(f"send: {log_msg.model_dump_json()}", file=sys.stderr)
+            if log_msg.params is None:
+                log_msg.params = {}
+            if "message" in log_msg.params:
+                log_msg.params["message"] = "<omitted>"
+            log.log(TRACE, f"send: {log_msg.model_dump_json()}")
 
         with self.send_lock:
             self.send_file.write(json_req.encode())
@@ -257,7 +306,9 @@ class BareJsonStream(JsonRpcStream):
         return None
 
 
-JsonRpcMethodCallable = Callable[..., tuple[JsonRpcResult | None, JsonRpcError | None]]
+JsonRpcRequestResult = tuple[JsonRpcResult | None, JsonRpcError | None]
+
+JsonRpcRequestCallable = Callable[..., JsonRpcRequestResult]
 JsonRpcNotifyCallable = Callable[..., None]
 
 
@@ -272,7 +323,7 @@ class JsonRpcCallback:
 
     def __init__(
         self,
-        func: JsonRpcMethodCallable | JsonRpcNotifyCallable,
+        func: JsonRpcRequestCallable | JsonRpcNotifyCallable,
         extract_params: bool,
         include_server: bool,
         include_app: bool,
@@ -284,7 +335,9 @@ class JsonRpcCallback:
 
         @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
         @functools.wraps(self.func)
-        def validate_func_args(*args, **kwargs):
+        def validate_func_args(
+            *args: Any, **kwargs: Any
+        ) -> tuple[tuple[Any, ...], dict[str, Any]]:
             return args, kwargs
 
         self.validate_func_args = validate_func_args
@@ -393,18 +446,44 @@ class JsonRpcApplication:
 
             return None
 
-    # TODO: Type check these properly so we don't have to do the isinstance
-    # checks in handle_request.
-    # https://mypy.readthedocs.io/en/stable/generics.html#declaring-decorators
+    @overload
     def add(
         self,
-        func: JsonRpcMethodCallable | JsonRpcNotifyCallable | None = None,
+        func: JsonRpcRequestCallable | JsonRpcNotifyCallable,
+        *,
+        kind: Literal["request", "notify"] = ...,
+        method: str | None = ...,
+        extract_params: bool = ...,
+        include_server: bool = ...,
+        include_app: bool = ...,
+    ) -> JsonRpcCallback: ...
+
+    @overload
+    def add(
+        self,
+        func: None = ...,
+        *,
+        kind: Literal["request", "notify"] = ...,
+        method: str | None = ...,
+        extract_params: bool = ...,
+        include_server: bool = ...,
+        include_app: bool = ...,
+    ) -> Callable[
+        [JsonRpcRequestCallable | JsonRpcNotifyCallable], JsonRpcCallback
+    ]: ...
+
+    def add(
+        self,
+        func: JsonRpcRequestCallable | JsonRpcNotifyCallable | None = None,
         *,
         kind: Literal["request", "notify"] = "request",
         method: str | None = None,
         extract_params: bool = True,
         include_server: bool = False,
         include_app: bool = True,
+    ) -> (
+        JsonRpcCallback
+        | Callable[[JsonRpcRequestCallable | JsonRpcNotifyCallable], JsonRpcCallback]
     ):
         if method is None:
             raise ValueError("Method name must be provided")
@@ -414,7 +493,9 @@ class JsonRpcApplication:
         else:
             callbacks = self.notify_callbacks
 
-        def decorator(func: JsonRpcMethodCallable | JsonRpcNotifyCallable):
+        def decorator(
+            func: JsonRpcRequestCallable | JsonRpcNotifyCallable,
+        ) -> JsonRpcCallback:
             callback = JsonRpcCallback(
                 func, extract_params, include_server, include_app
             )
@@ -427,6 +508,28 @@ class JsonRpcApplication:
         else:
             return decorator
 
+    @overload
+    def add_notify(
+        self,
+        func: JsonRpcNotifyCallable,
+        *,
+        method: str | None = ...,
+        extract_params: bool = ...,
+        include_server: bool = ...,
+        include_app: bool = ...,
+    ) -> JsonRpcCallback: ...
+
+    @overload
+    def add_notify(
+        self,
+        func: None = ...,
+        *,
+        method: str | None = ...,
+        extract_params: bool = ...,
+        include_server: bool = ...,
+        include_app: bool = ...,
+    ) -> Callable[[JsonRpcNotifyCallable], JsonRpcCallback]: ...
+
     def add_notify(
         self,
         func: JsonRpcNotifyCallable | None = None,
@@ -435,7 +538,7 @@ class JsonRpcApplication:
         extract_params: bool = True,
         include_server: bool = False,
         include_app: bool = True,
-    ):
+    ) -> JsonRpcCallback | Callable[[JsonRpcNotifyCallable], JsonRpcCallback]:
         return self.add(
             func=func,
             kind="notify",
@@ -445,15 +548,37 @@ class JsonRpcApplication:
             include_app=include_app,
         )
 
+    @overload
     def add_request(
         self,
-        func: JsonRpcMethodCallable | None = None,
+        func: JsonRpcRequestCallable,
+        *,
+        method: str | None = ...,
+        extract_params: bool = ...,
+        include_server: bool = ...,
+        include_app: bool = ...,
+    ) -> JsonRpcCallback: ...
+
+    @overload
+    def add_request(
+        self,
+        func: None = ...,
+        *,
+        method: str | None = ...,
+        extract_params: bool = ...,
+        include_server: bool = ...,
+        include_app: bool = ...,
+    ) -> Callable[[JsonRpcRequestCallable], JsonRpcCallback]: ...
+
+    def add_request(
+        self,
+        func: JsonRpcRequestCallable | None = None,
         *,
         method: str | None = None,
         extract_params: bool = True,
         include_server: bool = False,
         include_app: bool = True,
-    ):
+    ) -> JsonRpcCallback | Callable[[JsonRpcRequestCallable], JsonRpcCallback]:
         return self.add(
             func=func,
             kind="request",
@@ -463,7 +588,7 @@ class JsonRpcApplication:
             include_app=include_app,
         )
 
-    def generate_docs(self):
+    def generate_docs(self) -> None:
         raise NotImplementedError()
 
 
@@ -503,7 +628,7 @@ class JsonRpcServer(threading.Thread):
     def stop(self) -> None:
         self.shutdown_flag = True
 
-    def run(self):
+    def run(self) -> None:
         log.debug("Server thread started")
 
         while not self.shutdown_flag:
@@ -538,7 +663,9 @@ class JsonRpcServer(threading.Thread):
 
         self.jsonrpc_stream.close()
 
-    def send_request(self, method: str, **params):
+    def send_request(
+        self, method: str, **params: Any
+    ) -> JsonRpcResponse | JsonRpcError | None:
         log.log(TRACE, "Sending request: %s", method)
         current_id = self.next_id
         self.next_id += 1
@@ -565,7 +692,7 @@ class JsonRpcServer(threading.Thread):
         self.event_dict.pop(current_id)
         return self.response_dict.pop(current_id)
 
-    def send_notification(self, method: str, **params):
+    def send_notification(self, method: str, **params: Any) -> None:
         self.jsonrpc_stream.send(JsonRpcRequest(method=method, params=params))
 
 
@@ -575,11 +702,25 @@ class JsonRpcLoggingHandler(logging.Handler):
         self.server = server
         self.method = method
 
-    def emit(self, record: logging.LogRecord):
+    def emit(self, record: logging.LogRecord) -> None:
         try:
             self.server.send_notification(
                 self.method,
-                level=record.levelname,
+                name=record.name,
+                levelno=record.levelno,
+                levelname=record.levelname,
+                pathname=record.pathname,
+                filename=record.filename,
+                module=record.module,
+                lineno=record.lineno,
+                funcName=record.funcName,
+                created=record.created,
+                asctime=record.asctime,
+                msecs=record.msecs,
+                relativeCreated=record.relativeCreated,
+                thread=record.thread,
+                threadName=record.threadName,
+                process=record.process,
                 message=record.getMessage(),
             )
         except Exception:

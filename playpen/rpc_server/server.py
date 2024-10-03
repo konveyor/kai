@@ -1,16 +1,19 @@
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast
 
 from pydantic import BaseModel
 
 from kai.models.kai_config import KaiConfigModels
 from playpen.rpc_server.rpc import (
+    DEFAULT_FORMATTER,
+    TRACE,
     JsonRpcApplication,
     JsonRpcError,
     JsonRpcErrorCode,
     JsonRpcLoggingHandler,
+    JsonRpcRequestResult,
     JsonRpcServer,
 )
 
@@ -26,16 +29,18 @@ class KaiRpcApplicationConfig(BaseModel):
     kaiBackendUrl: str
 
     logLevel: str = "INFO"
+    stderrLogLevel: str = "TRACE"
     fileLogLevel: Optional[str] = None
     logDirUri: Optional[str] = None
 
 
 class KaiRpcApplication(JsonRpcApplication):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.initialized = False
         self.config: Optional[KaiRpcApplicationConfig] = None
+        self.log = logging.getLogger("kai_rpc_application")
 
 
 app = KaiRpcApplication()
@@ -47,21 +52,23 @@ ERROR_NOT_INITIALIZED = JsonRpcError(
 
 
 @app.add_request(method="shutdown", include_server=True)
-def shutdown(app: KaiRpcApplication, server: JsonRpcServer):
+def shutdown(app: KaiRpcApplication, server: JsonRpcServer) -> JsonRpcRequestResult:
     server.shutdown_flag = True
 
     return {}, None
 
 
 @app.add_request(method="exit", include_server=True)
-def exit(app: KaiRpcApplication, server: JsonRpcServer):
+def exit(app: KaiRpcApplication, server: JsonRpcServer) -> JsonRpcRequestResult:
     server.shutdown_flag = True
 
     return {}, None
 
 
 @app.add_request(method="initialize", extract_params=False, include_server=True)
-def initialize(app: KaiRpcApplication, params: dict, server: JsonRpcServer):
+def initialize(
+    app: KaiRpcApplication, params: dict, server: JsonRpcServer
+) -> JsonRpcRequestResult:
     if app.initialized:
         return {}, JsonRpcError(
             code=JsonRpcErrorCode.ServerErrorStart,
@@ -71,19 +78,19 @@ def initialize(app: KaiRpcApplication, params: dict, server: JsonRpcServer):
     try:
         app.config = KaiRpcApplicationConfig.model_validate(params)
 
-        # FIXME: All this logging stuff is causing issues with hanging
-
-        root_logger = logging.getLogger()
-        root_logger.setLevel(logging.DEBUG - 5)
-        root_logger.handlers.clear()
+        app.log.setLevel(TRACE)
+        app.log.handlers.clear()
+        app.log.filters.clear()
 
         stderr_handler = logging.StreamHandler(sys.stderr)
-        stderr_handler.setLevel(logging.DEBUG - 5)
-        root_logger.addHandler(stderr_handler)
+        stderr_handler.setLevel(TRACE)
+        stderr_handler.setFormatter(DEFAULT_FORMATTER)
+        app.log.addHandler(stderr_handler)
 
         notify_handler = JsonRpcLoggingHandler(server)
         notify_handler.setLevel(app.config.logLevel)
-        root_logger.addHandler(notify_handler)
+        notify_handler.setFormatter(DEFAULT_FORMATTER)
+        app.log.addHandler(notify_handler)
 
         if app.config.fileLogLevel and app.config.logDirUri:
             log_dir = Path(app.config.logDirUri)  # FIXME: urlparse?
@@ -92,10 +99,10 @@ def initialize(app: KaiRpcApplication, params: dict, server: JsonRpcServer):
 
             file_handler = logging.FileHandler(log_file)
             file_handler.setLevel(app.config.fileLogLevel)
+            file_handler.setFormatter(DEFAULT_FORMATTER)
+            app.log.addHandler(file_handler)
 
-            root_logger.addHandler(file_handler)
-
-        log.info(f"Initialized with config: {app.config}")
+        app.log.info(f"Initialized with config: {app.config}")
 
     except Exception as e:
         return {}, JsonRpcError(
@@ -109,17 +116,19 @@ def initialize(app: KaiRpcApplication, params: dict, server: JsonRpcServer):
 
 
 @app.add_request(method="setConfig", extract_params=False, include_server=True)
-def set_config(app: KaiRpcApplication, params: dict, server: JsonRpcServer):
+def set_config(
+    app: KaiRpcApplication, params: dict, server: JsonRpcServer
+) -> JsonRpcRequestResult:
     if not app.initialized:
         return {}, ERROR_NOT_INITIALIZED
 
     # Basically reset everything
     app.initialized = False
-    return initialize(app=app, params=params, server=server)
+    return cast(JsonRpcRequestResult, initialize(app=app, params=params, server=server))
 
 
 @app.add_request(method="getRAGSolution")
-def get_rag_solution(app: KaiRpcApplication):
+def get_rag_solution(app: KaiRpcApplication) -> JsonRpcRequestResult:
     if not app.initialized:
         return {}, ERROR_NOT_INITIALIZED
 
@@ -127,7 +136,7 @@ def get_rag_solution(app: KaiRpcApplication):
 
 
 @app.add_request(method="getCodeplanAgentSolution")
-def get_codeplan_agent_solution(app: KaiRpcApplication):
+def get_codeplan_agent_solution(app: KaiRpcApplication) -> JsonRpcRequestResult:
     if not app.initialized:
         return {}, ERROR_NOT_INITIALIZED
 

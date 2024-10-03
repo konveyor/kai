@@ -6,39 +6,43 @@ import argparse
 import logging
 import os
 import subprocess
-import sys
 import threading
 import time
+from io import BufferedReader, BufferedWriter
 from pathlib import Path
+from types import SimpleNamespace
 from typing import IO, cast
 
 from kai.models.kai_config import KaiConfigModels
-from playpen.rpc_server.rpc import BareJsonStream, JsonRpcServer
+from playpen.rpc_server.rpc import BareJsonStream, JsonRpcServer, get_logger
 from playpen.rpc_server.server import KaiRpcApplication
 
-# Add a formatter to the root logger
-formatter = logging.Formatter("\033[94m%(levelname)s:%(name)s:%(message)s\033[0m")
-handler = logging.StreamHandler()
-handler.setFormatter(formatter)
-logging.getLogger().addHandler(handler)
+log = get_logger("jsonrpc")
 
-logging.addLevelName(logging.DEBUG - 5, "TRACE")
-
-log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG - 5)
+rpc_log = get_logger(
+    "rpc_subprocess",
+    formatter=logging.Formatter(
+        fmt="rpc_log: %(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    ),
+)
 
 app = KaiRpcApplication()
 
 
-@app.add_notify(method="logMessage")
-def log_message(app: KaiRpcApplication, message: str, level: str):
-    print(f"{level}: {message}")
+@app.add_notify(method="logMessage", extract_params=False)
+def log_message(app: KaiRpcApplication, params: dict) -> None:
+    hack = SimpleNamespace(**params)
+    hack.getMessage = lambda: hack.message
+    hack.exc_info = None
+    hack.exc_text = None
+    hack.stack_info = None
+
+    rpc_log.handle(hack)  # type: ignore
 
 
-def log_stderr(stderr: IO[bytes], color: str) -> None:
-    print("Logging stderr")
+def log_stderr(stderr: IO[bytes]) -> None:
     for line in iter(stderr.readline, b""):
-        print(f"  {color}{line.decode('utf-8')}\033[0m", end="")
+        print(f"\033[91mrpc_err: {line.decode('utf-8')}\033[0m", end="")
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
@@ -46,6 +50,12 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def main() -> None:
+    log.handlers[0].formatter = logging.Formatter(
+        fmt="\033[94mide_log: %(asctime)s - %(name)s - %(levelname)s - %(message)s\033[0m",
+    )
+
+    rpc_log.info("Starting Fake IDE client using Kai RPC Server")
+
     parser = argparse.ArgumentParser()
     add_arguments(parser)
     _args = parser.parse_args()
@@ -61,20 +71,13 @@ def main() -> None:
         stderr=subprocess.PIPE,
     )
 
-    stderr_thread_1 = threading.Thread(
-        target=log_stderr, args=(rpc_subprocess.stderr, "\033[91m")
-    )
+    stderr_thread_1 = threading.Thread(target=log_stderr, args=(rpc_subprocess.stderr,))
     stderr_thread_1.start()
-
-    import inspect
-
-    log.info(inspect.getmro(rpc_subprocess.stdout.__class__))
-    log.info(inspect.getmro(rpc_subprocess.stdin.__class__))
 
     rpc_server = JsonRpcServer(
         json_rpc_stream=BareJsonStream(
-            rpc_subprocess.stdout,
-            rpc_subprocess.stdin,
+            cast(BufferedReader, rpc_subprocess.stdout),
+            cast(BufferedWriter, rpc_subprocess.stdin),
         ),
         app=app,
         request_timeout=5.0,

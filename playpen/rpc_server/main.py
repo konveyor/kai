@@ -1,18 +1,13 @@
 import argparse
-import logging
 import sys
 import time
-from io import BufferedIOBase, BufferedReader, BufferedWriter
+from io import BufferedReader, BufferedWriter
 from typing import cast
 
-from playpen.rpc_server.rpc import BareJsonStream, JsonRpcServer
+from playpen.rpc_server.rpc import TRACE, BareJsonStream, JsonRpcServer, get_logger
 from playpen.rpc_server.server import app
 
-logging.basicConfig()
-logging.addLevelName(logging.DEBUG - 5, "TRACE")
-
-log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG - 5)
+log = get_logger("jsonrpc")
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
@@ -26,7 +21,7 @@ def main() -> None:
     _args = parser.parse_args()
 
     log.info("Starting Kai RPC Server")
-    log.log(logging.DEBUG - 5, "Trace log level enabled")
+    log.log(TRACE, "Trace log level enabled")
 
     # mypy incorrectly type checks sys.stdin.buffer and sys.stdout.buffer as
     # simply IO[bytes], rather than as BufferedReader and BufferedWriter for
