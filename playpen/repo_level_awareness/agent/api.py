@@ -4,17 +4,17 @@ from pathlib import Path
 
 
 @dataclass
-class AgentTask:
-    pass
+class AgentRequest:
+    file_path: str
 
 
 @dataclass
-class AgentTaskResult:
+class AgentResult:
     encountered_errors: list[str]
     modified_files: list[Path]
 
 
 class Agent(ABC):
     @abstractmethod
-    def execute(self, ask: AgentTask) -> AgentTaskResult:
+    def execute(self, ask: AgentRequest) -> AgentResult:
         pass

@@ -14,7 +14,7 @@ from langchain.prompts.chat import (
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-from playpen.repo_level_awareness.agent.api import Agent, AgentTask, AgentTaskResult
+from playpen.repo_level_awareness.agent.api import Agent, AgentRequest, AgentResult
 from playpen.repo_level_awareness.agent.ast_diff.parser import (
     Language,
     extract_ast_info,
@@ -22,11 +22,9 @@ from playpen.repo_level_awareness.agent.ast_diff.parser import (
 
 
 @dataclass
-class ReflectionTask(AgentTask):
+class ReflectionTask(AgentRequest):
     """TODO (pgaikwad): We shouldn't need this class. this is a stop-gap solution as Task is mostly unknown atm"""
 
-    # path to the input file
-    file_path: str = ""
     # contents of input file prior to invoking previous agent
     original_file: str = ""
     # contents of updated file produced by previous agent
@@ -138,9 +136,9 @@ Here's the input information:
         self._retries = retries
         self._silent = silent
 
-    def execute(self, task: AgentTask) -> AgentTaskResult:
+    def execute(self, task: AgentRequest) -> AgentResult:
         if not isinstance(task, ReflectionTask):
-            return AgentTaskResult(encountered_errors=[], modified_files=[])
+            return AgentResult(encountered_errors=[], modified_files=[])
 
         t: ReflectionTask = task
 
@@ -155,7 +153,7 @@ Here's the input information:
         diff = self._get_diff(t.original_file, t.updated_file, language)
 
         if language is None or not diff or not t.issues:
-            return AgentTaskResult(encountered_errors=[], modified_files=[])
+            return AgentResult(encountered_errors=[], modified_files=[])
 
         # initiate chats
         chat_fix_gen = [
@@ -204,11 +202,11 @@ Here's the input information:
                     if updated_file_contents:
                         break
                 if updated_file_contents is None or fix_gen_response is None:
-                    return AgentTaskResult(encountered_errors=[], modified_files=[])
+                    return AgentResult(encountered_errors=[], modified_files=[])
                 chat_fix_gen.append(AIMessage(content=fix_gen_response.content))
                 diff = self._get_diff(last_updated_file_contents, updated_file_contents)
                 if not diff:
-                    return AgentTaskResult(encountered_errors=[], modified_files=[])
+                    return AgentResult(encountered_errors=[], modified_files=[])
                 last_updated_file_contents = updated_file_contents
                 chat_reflect.append(
                     self.msg_templ_user_reflect.format(
@@ -217,7 +215,7 @@ Here's the input information:
                 )
             except Exception as e:
                 self._out(to="user", frm="agent", msg=f"error occurred: {str(e)}")
-                return AgentTaskResult(encountered_errors=[], modified_files=[])
+                return AgentResult(encountered_errors=[], modified_files=[])
 
         # commit the result here
         if last_updated_file_contents:
@@ -225,7 +223,7 @@ Here's the input information:
             with open(t.file_path, "w+") as f:
                 f.write(last_updated_file_contents)
 
-        return AgentTaskResult(encountered_errors=[], modified_files=modified_files)
+        return AgentResult(encountered_errors=[], modified_files=modified_files)
 
     def _get_diff(
         self, original_content: str, updated_content: str, language=Language
