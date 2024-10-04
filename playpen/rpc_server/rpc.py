@@ -78,7 +78,7 @@ class JsonRpcErrorCode(IntEnum):
 
 JsonRpcId = Optional[str | int]
 
-JsonRpcResult = Any
+JsonRpcResult = BaseModel | dict
 
 
 class JsonRpcError(BaseModel):
@@ -324,14 +324,23 @@ class JsonRpcCallback:
     def __init__(
         self,
         func: JsonRpcRequestCallable | JsonRpcNotifyCallable,
-        extract_params: bool,
         include_server: bool,
         include_app: bool,
+        kind: Literal["request", "notify"],
+        method: str,
+        params_model: type[JsonRpcResult] | None = None,
     ):
+        """
+        If params_model is not supplied, the schema will be generated from the
+        function arguments.
+        """
+
         self.func = func
-        self.extract_params = extract_params
+        self.params_model = params_model
         self.include_server = include_server
         self.include_app = include_app
+        self.kind = kind
+        self.method = method
 
         @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
         @functools.wraps(self.func)
@@ -342,6 +351,77 @@ class JsonRpcCallback:
 
         self.validate_func_args = validate_func_args
 
+        # TODO: Generate docs
+
+        # self.docstring = inspect.getdoc(func)
+
+        # # params json schema
+
+        # self.params_json_schema: dict | None = None
+        # self.return_json_schema: dict | None = None
+        # self.error_json_schema: dict | None = None
+
+        # config: ConfigDict | None = ConfigDict(
+        #     ignored_types=(JsonRpcApplication, JsonRpcServer),
+        #     arbitrary_types_allowed=True,
+        # )
+        # local_ns = _typing_extra.parent_frame_namespace()
+        # global_ns = _typing_extra.add_module_globals(func, None)
+        # type_params: list = []
+
+        # for param in getattr(func, "__type_params__", ()):
+        #     if param.__name__ not in ("app", "server", "params"):
+        #         type_params.append(param)
+
+        # namespace = {
+        #     **{param.__name__: param for param in type_params},
+        #     **(global_ns or {}),
+        #     **(local_ns or {}),
+        # }
+        # config_wrapper = _config.ConfigWrapper(config)
+
+        # def generate(obj: object) -> dict:
+        #     gen = _generate_schema.GenerateSchema(config_wrapper, namespace)
+        #     core = gen.clean_schema(gen.generate_schema(obj))
+        #     return GenerateJsonSchema().generate(core)
+
+        # if params_model is None:
+        #     func_signature = inspect.signature(func)
+        #     new_parameters = [
+        #         param for name, param in func_signature.parameters.items()
+        #         if name not in ("server", "app")
+        #     ]
+        #     new_signature = func_signature.replace(parameters=new_parameters)
+        #     def new_func(*args, **kwargs):
+        #         bound_args = func_signature.bind_partial(*args, **kwargs)
+        #         bound_args.arguments.pop("server", None)
+        #         bound_args.arguments.pop("app", None)
+        #         return func(*bound_args.args, **bound_args.kwargs)
+        #     new_func.__signature__ = new_signature
+        #     new_func.__name__ = func.__name__
+
+        #     self.params_json_schema = generate(new_func)
+        # else:
+        #     self.params_json_schema = generate(params_model)
+
+        # # return and error json schema
+
+        # if kind == "request":
+        #     func_signature = inspect.signature(func)
+        #     if func_signature.return_annotation is not func_signature.empty:
+        #         func_return_annotation = func_signature.return_annotation
+        #     else:
+        #         func_return_annotation = Any
+
+        #     if get_origin(func_return_annotation) is not tuple:
+        #         raise ValueError("Request must return a tuple")
+        #     func_return_args = get_args(func_return_annotation)
+        #     if len(func_return_args) != 2:
+        #         raise ValueError("Request must return a tuple of length 2")
+
+        #     self.return_json_schema = generate(func_return_args[0])
+        #     self.error_json_schema = generate(func_return_args[1])
+
     def __call__(
         self,
         params: dict | None,
@@ -351,7 +431,20 @@ class JsonRpcCallback:
         if params is None:
             params = {}
 
-        kwargs = params if self.extract_params else {"params": params}
+        kwargs = {}
+
+        if self.params_model is None:
+            kwargs = params.copy()
+        elif self.params_model is dict:
+            kwargs["params"] = params
+        else:
+            try:
+                kwargs["params"] = self.params_model.model_validate(params)
+            except Exception as e:
+                return None, JsonRpcError(
+                    code=JsonRpcErrorCode.InvalidParams,
+                    message=f"Invalid parameters: {e}",
+                )
 
         if self.include_server:
             kwargs["server"] = server
@@ -449,11 +542,23 @@ class JsonRpcApplication:
     @overload
     def add(
         self,
-        func: JsonRpcRequestCallable | JsonRpcNotifyCallable,
+        func: JsonRpcRequestCallable,
         *,
-        kind: Literal["request", "notify"] = ...,
+        kind: Literal["request"] = "request",
         method: str | None = ...,
-        extract_params: bool = ...,
+        params_model: type[JsonRpcResult] | None = ...,
+        include_server: bool = ...,
+        include_app: bool = ...,
+    ) -> JsonRpcCallback: ...
+
+    @overload
+    def add(
+        self,
+        func: JsonRpcNotifyCallable,
+        *,
+        kind: Literal["notify"] = "notify",
+        method: str | None = ...,
+        params_model: type[JsonRpcResult] | None = ...,
         include_server: bool = ...,
         include_app: bool = ...,
     ) -> JsonRpcCallback: ...
@@ -463,14 +568,24 @@ class JsonRpcApplication:
         self,
         func: None = ...,
         *,
-        kind: Literal["request", "notify"] = ...,
+        kind: Literal["request"] = "request",
         method: str | None = ...,
-        extract_params: bool = ...,
+        params_model: type[JsonRpcResult] | None = ...,
         include_server: bool = ...,
         include_app: bool = ...,
-    ) -> Callable[
-        [JsonRpcRequestCallable | JsonRpcNotifyCallable], JsonRpcCallback
-    ]: ...
+    ) -> Callable[[JsonRpcRequestCallable], JsonRpcCallback]: ...
+
+    @overload
+    def add(
+        self,
+        func: None = ...,
+        *,
+        kind: Literal["notify"] = "notify",
+        method: str | None = ...,
+        params_model: type[JsonRpcResult] | None = ...,
+        include_server: bool = ...,
+        include_app: bool = ...,
+    ) -> Callable[[JsonRpcNotifyCallable], JsonRpcCallback]: ...
 
     def add(
         self,
@@ -478,7 +593,7 @@ class JsonRpcApplication:
         *,
         kind: Literal["request", "notify"] = "request",
         method: str | None = None,
-        extract_params: bool = True,
+        params_model: type[JsonRpcResult] | None = None,
         include_server: bool = False,
         include_app: bool = True,
     ) -> (
@@ -497,7 +612,12 @@ class JsonRpcApplication:
             func: JsonRpcRequestCallable | JsonRpcNotifyCallable,
         ) -> JsonRpcCallback:
             callback = JsonRpcCallback(
-                func, extract_params, include_server, include_app
+                func=func,
+                include_server=include_server,
+                include_app=include_app,
+                kind=kind,
+                method=method,
+                params_model=params_model,
             )
             callbacks[method] = callback
 
@@ -514,7 +634,7 @@ class JsonRpcApplication:
         func: JsonRpcNotifyCallable,
         *,
         method: str | None = ...,
-        extract_params: bool = ...,
+        params_model: type[JsonRpcResult] | None = ...,
         include_server: bool = ...,
         include_app: bool = ...,
     ) -> JsonRpcCallback: ...
@@ -525,7 +645,7 @@ class JsonRpcApplication:
         func: None = ...,
         *,
         method: str | None = ...,
-        extract_params: bool = ...,
+        params_model: type[JsonRpcResult] | None = ...,
         include_server: bool = ...,
         include_app: bool = ...,
     ) -> Callable[[JsonRpcNotifyCallable], JsonRpcCallback]: ...
@@ -535,7 +655,7 @@ class JsonRpcApplication:
         func: JsonRpcNotifyCallable | None = None,
         *,
         method: str | None = None,
-        extract_params: bool = True,
+        params_model: type[JsonRpcResult] | None = None,
         include_server: bool = False,
         include_app: bool = True,
     ) -> JsonRpcCallback | Callable[[JsonRpcNotifyCallable], JsonRpcCallback]:
@@ -543,7 +663,7 @@ class JsonRpcApplication:
             func=func,
             kind="notify",
             method=method,
-            extract_params=extract_params,
+            params_model=params_model,
             include_server=include_server,
             include_app=include_app,
         )
@@ -554,7 +674,7 @@ class JsonRpcApplication:
         func: JsonRpcRequestCallable,
         *,
         method: str | None = ...,
-        extract_params: bool = ...,
+        params_model: type[JsonRpcResult | None] = ...,
         include_server: bool = ...,
         include_app: bool = ...,
     ) -> JsonRpcCallback: ...
@@ -565,7 +685,7 @@ class JsonRpcApplication:
         func: None = ...,
         *,
         method: str | None = ...,
-        extract_params: bool = ...,
+        params_model: type[JsonRpcResult] | None = ...,
         include_server: bool = ...,
         include_app: bool = ...,
     ) -> Callable[[JsonRpcRequestCallable], JsonRpcCallback]: ...
@@ -575,7 +695,7 @@ class JsonRpcApplication:
         func: JsonRpcRequestCallable | None = None,
         *,
         method: str | None = None,
-        extract_params: bool = True,
+        params_model: type[JsonRpcResult] | None = None,
         include_server: bool = False,
         include_app: bool = True,
     ) -> JsonRpcCallback | Callable[[JsonRpcRequestCallable], JsonRpcCallback]:
@@ -583,13 +703,36 @@ class JsonRpcApplication:
             func=func,
             kind="request",
             method=method,
-            extract_params=extract_params,
+            params_model=params_model,
             include_server=include_server,
             include_app=include_app,
         )
 
-    def generate_docs(self) -> None:
+    def generate_docs(self) -> str:
         raise NotImplementedError()
+
+        doc = "# JSON-RPC Methods\n\n"
+
+        for method, callback in self.request_callbacks.items():
+            doc += f"## {callback.kind.title()} {method}\n\n"
+            doc += f"{callback.docstring}\n\n"
+            doc += "### Parameters\n\n"
+            doc += (
+                f"```json\n{json.dumps(callback.params_json_schema, indent=2)}\n```\n\n"
+            )
+
+            if callback.return_json_schema is None:
+                continue
+            doc += "### Return\n\n"
+            doc += (
+                f"```json\n{json.dumps(callback.return_json_schema, indent=2)}\n```\n\n"
+            )
+            doc += "### Error\n\n"
+            doc += (
+                f"```json\n{json.dumps(callback.error_json_schema, indent=2)}\n```\n\n"
+            )
+
+        return doc
 
 
 class JsonRpcServer(threading.Thread):
@@ -664,7 +807,7 @@ class JsonRpcServer(threading.Thread):
         self.jsonrpc_stream.close()
 
     def send_request(
-        self, method: str, **params: Any
+        self, method: str, params: dict[str, Any]
     ) -> JsonRpcResponse | JsonRpcError | None:
         log.log(TRACE, "Sending request: %s", method)
         current_id = self.next_id
@@ -692,7 +835,7 @@ class JsonRpcServer(threading.Thread):
         self.event_dict.pop(current_id)
         return self.response_dict.pop(current_id)
 
-    def send_notification(self, method: str, **params: Any) -> None:
+    def send_notification(self, method: str, params: dict[str, Any]) -> None:
         self.jsonrpc_stream.send(JsonRpcRequest(method=method, params=params))
 
 
@@ -704,30 +847,26 @@ class JsonRpcLoggingHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         try:
-            self.server.send_notification(
-                self.method,
-                name=record.name,
-                levelno=record.levelno,
-                levelname=record.levelname,
-                pathname=record.pathname,
-                filename=record.filename,
-                module=record.module,
-                lineno=record.lineno,
-                funcName=record.funcName,
-                created=record.created,
-                asctime=record.asctime,
-                msecs=record.msecs,
-                relativeCreated=record.relativeCreated,
-                thread=record.thread,
-                threadName=record.threadName,
-                process=record.process,
-                message=record.getMessage(),
-            )
+            params = {
+                "name": record.name,
+                "levelno": record.levelno,
+                "levelname": record.levelname,
+                "pathname": record.pathname,
+                "filename": record.filename,
+                "module": record.module,
+                "lineno": record.lineno,
+                "funcName": record.funcName,
+                "created": record.created,
+                "asctime": record.asctime,
+                "msecs": record.msecs,
+                "relativeCreated": record.relativeCreated,
+                "thread": record.thread,
+                "threadName": record.threadName,
+                "process": record.process,
+                "message": record.getMessage(),
+            }
+
+            self.server.send_notification(self.method, params)
         except Exception:
             print("Failed to log message", file=sys.stderr)
-            # self.server.send_notification(
-            #     self.method,
-            #     level="ERROR",
-            #     message="Failed to log message",
-            # )
             self.handleError(record)

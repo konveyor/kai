@@ -29,7 +29,7 @@ rpc_log = get_logger(
 app = KaiRpcApplication()
 
 
-@app.add_notify(method="logMessage", extract_params=False)
+@app.add_notify(method="logMessage", params_model=dict)
 def log_message(app: KaiRpcApplication, params: dict) -> None:
     hack = SimpleNamespace(**params)
     hack.getMessage = lambda: hack.message
@@ -89,17 +89,19 @@ def main() -> None:
     try:
         result = rpc_server.send_request(
             "initialize",
-            processId=os.getpid(),
-            rootUri="file:///path/to/root",
-            kantraUri="file:///path/to/kantra",
-            modelProvider=KaiConfigModels(
-                provider="fake_provider",
-                args={},
-            ),
-            kaiBackendUrl="http://localhost:8080",
-            logLevel="TRACE",
-            fileLogLevel="TRACE",
-            logDirUri=f"{current_directory}/logs",
+            {
+                "processId": os.getpid(),
+                "rootUri": "file:///path/to/root",
+                "kantraUri": "file:///path/to/kantra",
+                "modelProvider": KaiConfigModels(
+                    provider="fake_provider",
+                    args={},
+                ),
+                "kaiBackendUrl": "http://localhost:8080",
+                "logLevel": "TRACE",
+                "fileLogLevel": "TRACE",
+                "logDirUri": f"{current_directory}/logs",
+            },
         )
 
         print(repr(result))

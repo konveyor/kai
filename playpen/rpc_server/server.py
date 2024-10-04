@@ -52,7 +52,7 @@ ERROR_NOT_INITIALIZED = JsonRpcError(
 
 
 @app.add_request(method="shutdown", include_server=True)
-def shutdown(app: KaiRpcApplication, server: JsonRpcServer) -> JsonRpcRequestResult:
+def shutdown(app: KaiRpcApplication, server: JsonRpcServer) -> tuple[dict, None]:
     server.shutdown_flag = True
 
     return {}, None
@@ -65,9 +65,11 @@ def exit(app: KaiRpcApplication, server: JsonRpcServer) -> JsonRpcRequestResult:
     return {}, None
 
 
-@app.add_request(method="initialize", extract_params=False, include_server=True)
+@app.add_request(
+    method="initialize", params_model=KaiRpcApplicationConfig, include_server=True
+)
 def initialize(
-    app: KaiRpcApplication, params: dict, server: JsonRpcServer
+    app: KaiRpcApplication, params: KaiRpcApplicationConfig, server: JsonRpcServer
 ) -> JsonRpcRequestResult:
     if app.initialized:
         return {}, JsonRpcError(
@@ -76,7 +78,7 @@ def initialize(
         )
 
     try:
-        app.config = KaiRpcApplicationConfig.model_validate(params)
+        app.config = params
 
         app.log.setLevel(TRACE)
         app.log.handlers.clear()
@@ -115,7 +117,7 @@ def initialize(
     return {}, None
 
 
-@app.add_request(method="setConfig", extract_params=False, include_server=True)
+@app.add_request(method="setConfig", params_model=dict, include_server=True)
 def set_config(
     app: KaiRpcApplication, params: dict, server: JsonRpcServer
 ) -> JsonRpcRequestResult:
@@ -141,3 +143,12 @@ def get_codeplan_agent_solution(app: KaiRpcApplication) -> JsonRpcRequestResult:
         return {}, ERROR_NOT_INITIALIZED
 
     return {}, None
+
+
+# if __name__ == "__main__":
+#     # with __import__("ipdb").launch_ipdb_on_exception():
+#     file_path = Path(__file__).resolve()
+#     docs_path = file_path.parent / "docs.md"
+#     print(docs_path)
+#     with open(str(docs_path), "w") as f:
+#         f.write(app.generate_docs())
