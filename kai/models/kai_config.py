@@ -247,15 +247,15 @@ class KaiConfig(BaseSettings):
         Config is loaded with the following priority (higher overrides lower):
 
         - Command line args (not implemented)
-        - Config file that is declared on the command line / via init arguments.
         - Environment vars
+        - Config file that is declared on the command line / via init arguments.
         - Global config file (kai.config.toml)
         - Default field values
         """
         return (
-            init_settings,
             env_settings,
             dotenv_settings,
+            init_settings,
             file_secret_settings,
             TomlConfigSettingsSource(
                 settings_cls, os.path.join(PATH_KAI, "config.toml")
