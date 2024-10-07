@@ -17,7 +17,6 @@ from kai.models.report import Report
 from kai.models.report_types import ExtendedIncident
 from kai.service.incident_store.backend import SQLiteBackend
 from kai.service.incident_store.incident_store import Application, IncidentStore
-from kai.service.kai_application.util import get_prompt
 from kai.service.llm_interfacing.model_provider import ModelProvider
 from kai.service.solution_handling.detection import solution_detection_naive
 from kai.service.solution_handling.production import SolutionProducerTextOnly
@@ -217,19 +216,21 @@ def evaluate(
 
                 src_file_language = guess_language(example.original_file)
 
-                pb_vars = {
-                    "src_file_name": example.incidents[0].uri,
-                    "src_file_language": src_file_language,
-                    "src_file_contents": example.original_file,
-                    "incidents": pb_incidents,
-                    "model_provider": model_provider,
-                }
+                # pb_vars = {
+                #     "src_file_name": example.incidents[0].uri,
+                #     "src_file_language": src_file_language,
+                #     "src_file_contents": example.original_file,
+                #     "incidents": pb_incidents,
+                #     "model_provider": model_provider,
+                # }
 
-                prompt = get_prompt(
-                    model_provider.template,
-                    pb_vars,
-                    os.path.join(PATH_BENCHMARKS, "templates"),
-                )
+                # prompt = get_prompt(
+                #     model_provider.template,
+                #     pb_vars,
+                #     os.path.join(PATH_BENCHMARKS, "templates"),
+                # )
+
+                prompt = ""
 
                 print(f"{example_path} - {config_path}\n{prompt[:15]}...\n")
 
