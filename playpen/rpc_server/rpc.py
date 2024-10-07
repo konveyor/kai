@@ -6,7 +6,7 @@ import threading
 from abc import ABC, abstractmethod
 from enum import IntEnum
 from io import BufferedReader, BufferedWriter
-from typing import Any, Callable, Literal, Optional, overload
+from typing import Any, Callable, Literal, Optional, cast, overload
 
 from pydantic import BaseModel, ConfigDict, validate_call
 
@@ -352,75 +352,7 @@ class JsonRpcCallback:
         self.validate_func_args = validate_func_args
 
         # TODO: Generate docs
-
-        # self.docstring = inspect.getdoc(func)
-
-        # # params json schema
-
-        # self.params_json_schema: dict | None = None
-        # self.return_json_schema: dict | None = None
-        # self.error_json_schema: dict | None = None
-
-        # config: ConfigDict | None = ConfigDict(
-        #     ignored_types=(JsonRpcApplication, JsonRpcServer),
-        #     arbitrary_types_allowed=True,
-        # )
-        # local_ns = _typing_extra.parent_frame_namespace()
-        # global_ns = _typing_extra.add_module_globals(func, None)
-        # type_params: list = []
-
-        # for param in getattr(func, "__type_params__", ()):
-        #     if param.__name__ not in ("app", "server", "params"):
-        #         type_params.append(param)
-
-        # namespace = {
-        #     **{param.__name__: param for param in type_params},
-        #     **(global_ns or {}),
-        #     **(local_ns or {}),
-        # }
-        # config_wrapper = _config.ConfigWrapper(config)
-
-        # def generate(obj: object) -> dict:
-        #     gen = _generate_schema.GenerateSchema(config_wrapper, namespace)
-        #     core = gen.clean_schema(gen.generate_schema(obj))
-        #     return GenerateJsonSchema().generate(core)
-
-        # if params_model is None:
-        #     func_signature = inspect.signature(func)
-        #     new_parameters = [
-        #         param for name, param in func_signature.parameters.items()
-        #         if name not in ("server", "app")
-        #     ]
-        #     new_signature = func_signature.replace(parameters=new_parameters)
-        #     def new_func(*args, **kwargs):
-        #         bound_args = func_signature.bind_partial(*args, **kwargs)
-        #         bound_args.arguments.pop("server", None)
-        #         bound_args.arguments.pop("app", None)
-        #         return func(*bound_args.args, **bound_args.kwargs)
-        #     new_func.__signature__ = new_signature
-        #     new_func.__name__ = func.__name__
-
-        #     self.params_json_schema = generate(new_func)
-        # else:
-        #     self.params_json_schema = generate(params_model)
-
-        # # return and error json schema
-
-        # if kind == "request":
-        #     func_signature = inspect.signature(func)
-        #     if func_signature.return_annotation is not func_signature.empty:
-        #         func_return_annotation = func_signature.return_annotation
-        #     else:
-        #         func_return_annotation = Any
-
-        #     if get_origin(func_return_annotation) is not tuple:
-        #         raise ValueError("Request must return a tuple")
-        #     func_return_args = get_args(func_return_annotation)
-        #     if len(func_return_args) != 2:
-        #         raise ValueError("Request must return a tuple of length 2")
-
-        #     self.return_json_schema = generate(func_return_args[0])
-        #     self.error_json_schema = generate(func_return_args[1])
+        # See https://github.com/konveyor/kai/blob/d7727a8113f185ee393d368a924da7c9deedd45b/playpen/rpc_server/rpc.py#L354
 
     def __call__(
         self,
@@ -439,7 +371,9 @@ class JsonRpcCallback:
             kwargs["params"] = params
         else:
             try:
-                kwargs["params"] = self.params_model.model_validate(params)
+                kwargs["params"] = cast(
+                    type[BaseModel], self.params_model
+                ).model_validate(params)
             except Exception as e:
                 return None, JsonRpcError(
                     code=JsonRpcErrorCode.InvalidParams,
@@ -510,8 +444,8 @@ class JsonRpcApplication:
                 return None, err
             # NOTE: If we ever narrow down JsonRpcResult from Any, we should
             # re-enable this check.
-            # if not isinstance(result[0], (type(None), JsonRpcResult)):
-            #     return None, err
+            if not isinstance(result[0], (type(None), JsonRpcResult)):
+                return None, err
             if not isinstance(result[1], (type(None), JsonRpcError)):
                 return None, err
 
@@ -598,7 +532,8 @@ class JsonRpcApplication:
         include_app: bool = True,
     ) -> (
         JsonRpcCallback
-        | Callable[[JsonRpcRequestCallable | JsonRpcNotifyCallable], JsonRpcCallback]
+        | Callable[[JsonRpcRequestCallable], JsonRpcCallback]
+        | Callable[[JsonRpcNotifyCallable], JsonRpcCallback]
     ):
         if method is None:
             raise ValueError("Method name must be provided")
@@ -674,7 +609,7 @@ class JsonRpcApplication:
         func: JsonRpcRequestCallable,
         *,
         method: str | None = ...,
-        params_model: type[JsonRpcResult | None] = ...,
+        params_model: type[JsonRpcResult] | None = ...,
         include_server: bool = ...,
         include_app: bool = ...,
     ) -> JsonRpcCallback: ...
@@ -710,29 +645,6 @@ class JsonRpcApplication:
 
     def generate_docs(self) -> str:
         raise NotImplementedError()
-
-        doc = "# JSON-RPC Methods\n\n"
-
-        for method, callback in self.request_callbacks.items():
-            doc += f"## {callback.kind.title()} {method}\n\n"
-            doc += f"{callback.docstring}\n\n"
-            doc += "### Parameters\n\n"
-            doc += (
-                f"```json\n{json.dumps(callback.params_json_schema, indent=2)}\n```\n\n"
-            )
-
-            if callback.return_json_schema is None:
-                continue
-            doc += "### Return\n\n"
-            doc += (
-                f"```json\n{json.dumps(callback.return_json_schema, indent=2)}\n```\n\n"
-            )
-            doc += "### Error\n\n"
-            doc += (
-                f"```json\n{json.dumps(callback.error_json_schema, indent=2)}\n```\n\n"
-            )
-
-        return doc
 
 
 class JsonRpcServer(threading.Thread):

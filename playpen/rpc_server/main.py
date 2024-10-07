@@ -1,6 +1,5 @@
 import argparse
 import sys
-import time
 from io import BufferedReader, BufferedWriter
 from typing import cast
 
@@ -15,7 +14,6 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def main() -> None:
-    time.sleep(1)
     parser = argparse.ArgumentParser()
     add_arguments(parser)
     _args = parser.parse_args()

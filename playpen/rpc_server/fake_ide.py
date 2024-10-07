@@ -84,7 +84,8 @@ def main() -> None:
     )
     rpc_server.start()
 
-    time.sleep(4)
+    log.info("Letting the RPC server start up")
+    time.sleep(1)
 
     try:
         result = rpc_server.send_request(
