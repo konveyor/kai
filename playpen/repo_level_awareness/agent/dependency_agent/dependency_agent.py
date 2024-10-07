@@ -1,8 +1,8 @@
+# trunk-ignore-begin(ruff/E402)
 import sys
 
 sys.modules["_elementtree"] = None
 
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -24,6 +24,8 @@ from playpen.repo_level_awareness.agent.dependency_agent.util import (
     find_in_pom,
     search_fqdn,
 )
+
+# trunk-ignore-end(ruff/E402)
 
 
 @dataclass
@@ -276,7 +278,10 @@ Message:{message}
         observation_str = ""
         final_answer = ""
         for line in content.splitlines():
-            if not line.strip().strip("```") or line == "```python":
+            if (
+                not line.strip().strip("```")  # trunk-ignore(ruff/B005)
+                or line == "```python"
+            ):
                 continue
 
             parts = line.split(":")

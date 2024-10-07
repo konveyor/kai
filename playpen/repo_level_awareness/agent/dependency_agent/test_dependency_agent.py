@@ -130,7 +130,7 @@ Added the `io.quarkus:quarkus-spring-cache` dependency to the `pom.xml` file and
             ),
         ]
 
-        agent = MavenDependencyAgent(None, 1)
+        MavenDependencyAgent(None, 1)
 
         for t in testCases:
             result = get_maven_query_from_code(t.code)

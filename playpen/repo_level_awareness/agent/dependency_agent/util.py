@@ -1,3 +1,4 @@
+# trunk-ignore-begin(ruff/E402)
 import sys
 
 sys.modules['_elementtree'] = None
@@ -14,6 +15,8 @@ from playpen.repo_level_awareness.agent.dependency_agent.api import (
     FQDNResponse,
 )
 from playpen.repo_level_awareness.utils.xml import LineNumberingParser
+
+# trunk-ignore-end(ruff/E402)
 
 
 def search_fqdn_query(query: str) -> Optional[FQDNResponse] | List[FQDNResponse]:
@@ -41,7 +44,6 @@ def search_fqdn(code: str) -> Optional[FQDNResponse] | List[FQDNResponse]:
 
 def get_maven_query(**kwargs) -> str:
     print(f"{kwargs}")
-    #fmt: off
     query = []
     if "artifact_id" in kwargs:
         query.append(f"a:{kwargs["artifact_id"]}")
@@ -66,7 +68,7 @@ def get_maven_query_from_code(code: str) -> str:
 
     for p in parts:
         args = p.split("=")
-        kwargs[args[0].strip().strip('""()')] = args[1].strip().strip('""')
+        kwargs[args[0].strip().strip('""()')] = args[1].strip().strip('""') # trunk-ignore(ruff/B005)
     return get_maven_query(**kwargs)
 
 def find_in_pom(path: Path) -> Callable:
@@ -93,7 +95,7 @@ def find_in_pom(path: Path) -> Callable:
         kwargs = {}
         for p in parts:
             v = p.split(":")
-            kwargs[v[0].strip(' ""')]= v[1].strip(' ""').strip()
+            kwargs[v[0].strip(' ""')]= v[1].strip(' ""').strip() # trunk-ignore(ruff/B005)
         
         for d in deps:
             found = []

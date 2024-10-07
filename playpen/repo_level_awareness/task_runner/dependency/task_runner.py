@@ -1,13 +1,12 @@
+# trunk-ignore-begin(ruff/E402)
 import sys
 from pathlib import Path
 
 sys.modules["_elementtree"] = None
 import os
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET  # trunk-ignore(bandit/B405)
 from dataclasses import dataclass
-from typing import Optional
 
-from playpen.repo_level_awareness.agent.api import AgentRequest
 from playpen.repo_level_awareness.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
     MavenDependencyRequest,
@@ -23,6 +22,8 @@ from playpen.repo_level_awareness.task_runner.dependency.api import (
 )
 from playpen.repo_level_awareness.utils.xml import LineNumberingParser
 from playpen.repo_level_awareness.vfs.git_vfs import RepoContextManager
+
+# trunk-ignore-end(ruff/E402)
 
 
 @dataclass
@@ -68,7 +69,7 @@ class DependencyTaskRunner(TaskRunner):
         pom = os.path.join(os.path.join(rcm.project_root, "pom.xml"))
         # Needed to remove ns0:
         ET.register_namespace("", "http://maven.apache.org/POM/4.0.0")
-        tree = ET.parse(pom, LineNumberingParser())
+        tree = ET.parse(pom, LineNumberingParser())  # trunk-ignore(bandit/B314)
         root = tree.getroot()
         deps = root.find("{http://maven.apache.org/POM/4.0.0}dependencies")
 

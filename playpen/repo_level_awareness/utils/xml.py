@@ -1,9 +1,12 @@
 # Force python XML parser not faster C accelerators
 # because we can't hook the C implementation
+# trunk-ignore-begin(ruff/E402)
 import sys
 
 sys.modules["_elementtree"] = None
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET  # trunk-ignore(bandit/B405)
+
+# trunk-ignore-end(ruff/E402)
 
 
 class LineNumberingParser(ET.XMLParser):
@@ -22,21 +25,3 @@ class LineNumberingParser(ET.XMLParser):
         element._end_column_number = self.parser.CurrentColumnNumber
         element._end_byte_index = self.parser.CurrentByteIndex
         return element
-
-
-def indent(elem, level=0):
-    # Add indentation
-    indent_size = "  "
-    i = "\n" + level * indent_size
-    if len(elem):
-        if not elem.text or not elem.text.strip():
-            elem.text = i + indent_size
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = i
-        for elem in elem:
-            indent(elem, level + 1)
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = i
-    else:
-        if level and (not elem.tail or not elem.tail.strip()):
-            elem.tail = i

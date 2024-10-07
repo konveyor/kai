@@ -1,4 +1,6 @@
 import json
+
+# trunk-ignore(bandit/B405)
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 
