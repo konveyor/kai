@@ -1,7 +1,5 @@
 import unittest
-from pathlib import Path
 from typing import List
-from unittest.mock import MagicMock
 
 # Import classes from your codebase
 from playpen.repo_level_awareness.api import (
@@ -68,9 +66,6 @@ class TestTaskManager(unittest.TestCase):
         # Execute tasks
         for task in task_manager.get_next_task():
             executed_tasks.append(task)
-            # Simulate task execution
-            task_manager.processed_tasks.add(task)
-            task_manager.handle_new_tasks_after_processing(task)
 
         # Assertions
         self.assertEqual(len(executed_tasks), 1)
@@ -88,7 +83,11 @@ class TestTaskManager(unittest.TestCase):
                 ],  # First run
                 [
                     ValidationError(
-                        file="test.py", line=2, column=1, message="ChildError1"
+                        file="test.py",
+                        line=2,
+                        column=1,
+                        message="ChildError1",
+                        priority=4,
                     ),
                     ValidationError(
                         file="test.py", line=3, column=1, message="ChildError2"
@@ -109,9 +108,6 @@ class TestTaskManager(unittest.TestCase):
 
         for task in task_manager.get_next_task():
             executed_tasks.append(task)
-            # Simulate task execution
-            task_manager.processed_tasks.add(task)
-            task_manager.handle_new_tasks_after_processing(task)
 
         self.assertEqual(len(executed_tasks), 3)
         self.assertEqual(
@@ -164,9 +160,6 @@ class TestTaskManager(unittest.TestCase):
             executed_tasks.append(task)
             if task.retry_count > 0:
                 retries += 1
-            # Simulate task execution
-            task_manager.processed_tasks.add(task)
-            task_manager.handle_new_tasks_after_processing(task)
 
         self.assertEqual(len(executed_tasks), 3)  # max_retries is 3
         self.assertEqual(executed_tasks[0].message, "PersistentError")
@@ -215,10 +208,8 @@ class TestTaskManager(unittest.TestCase):
             agents=[MockTaskRunner()],
         )
 
-        for task in task_manager.get_next_task():
-            # Simulate task execution
-            task_manager.processed_tasks.add(task)
-            task_manager.handle_new_tasks_after_processing(task)
+        for _task in task_manager.get_next_task():
+            pass
 
         self.assertEqual(len(task_manager.ignored_tasks), 1)
         ignored_task = task_manager.ignored_tasks[0]
@@ -262,20 +253,17 @@ class TestTaskManager(unittest.TestCase):
         executed_tasks = []
 
         for task in task_manager.get_next_task():
-            executed_tasks.append((task.depth, task.message))
-            # Simulate task execution
-            task_manager.processed_tasks.add(task)
-            task_manager.handle_new_tasks_after_processing(task)
+            executed_tasks.append((task.priority, task.depth, task.message))
 
         executed_tasks_sorted = sorted(
-            executed_tasks, key=lambda x: (x[0], executed_tasks.index(x))
+            executed_tasks, key=lambda x: ((x[0], x[1], x[2]), executed_tasks.index(x))
         )
 
         expected_order = [
-            (0, "ParentError"),
-            (1, "ChildError1"),
-            (1, "ChildError2"),
-            (2, "GrandchildError"),
+            (5, 0, "ParentError"),
+            (5, 1, "ChildError1"),
+            (5, 1, "ChildError2"),
+            (5, 2, "GrandchildError"),
         ]
         self.assertEqual(executed_tasks_sorted, expected_order)
 
