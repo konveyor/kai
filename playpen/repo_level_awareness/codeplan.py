@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import logging
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Set
 
@@ -29,6 +30,10 @@ from playpen.repo_level_awareness.task_runner.compiler.maven_validator import (
     MavenCompileStep,
 )
 from playpen.repo_level_awareness.vfs.git_vfs import RepoContextManager
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def main():
@@ -72,6 +77,7 @@ def codeplan(
     config: RpcClientConfig,
     updated_file_content: UpdatedFileContent,
 ):
+    logger.info("Starting codeplan with configuration: %s", config)
 
     kai_config = KaiConfig.model_validate_filepath("../../kai/config.toml")
     modelProvider = ModelProvider(kai_config.models)
@@ -89,18 +95,15 @@ def codeplan(
             MavenCompilerTaskRunner(modelProvider.llm),
         ],
     )
-    # has a list of files affected and unprocessed
-    # has a list of registered validators
-    # has a list of current validation errors
+    logger.info("TaskManager initialized with validators and agents.")
 
     for task in task_manager.get_next_task():
-        print(f"Next task is {type(task)}")
-        task_manager.supply_result(task_manager.execute_task(task))
-        # all current failing validations and all currently affected AND UNDEALT
-        # WITH files
-
-        # Can do revalidation, or use cached results or whatever
+        logger.info("Received next task: %s", task)
+        result = task_manager.execute_task(task)
+        logger.info("Executed task: %s, Result: %s", task, result)
+        task_manager.supply_result(result)
     task_manager.stop()
+    logger.info("Codeplan execution completed.")
 
 
 class TaskManager:
@@ -112,7 +115,7 @@ class TaskManager:
         validators: Optional[list[ValidationStep]] = None,
         agents: Optional[list[TaskRunner]] = None,
     ) -> None:
-        self.validators: List(ValidationStep) = []
+        self.validators: List[ValidationStep] = []
 
         self.processed_files: list[Path] = []
         self.unprocessed_files: list[Path] = []
@@ -123,10 +126,12 @@ class TaskManager:
 
         if validators is not None:
             self.validators.extend(validators)
+            logger.debug("Validators initialized: %s", self.validators)
 
         self.agents: list[TaskRunner] = []
         if agents is not None:
             self.agents.extend(agents)
+            logger.debug("Agents initialized: %s", self.agents)
 
         self.config = config
 
@@ -134,190 +139,179 @@ class TaskManager:
 
         self.rcm = rcm
 
-        # TODO: Modify the inputs to this class accordingly
-        # We want all the context that went in and the result that came out too
-        # updated_file_content.
-
-        # TODO: Actually add the paths to processed and unprocessed files.
+        logger.info("TaskManager initialized.")
 
     def execute_task(self, task: Task) -> TaskResult:
-        return self.get_agent_for_task(task).execute_task(self.rcm, task)
+        logger.info("Executing task: %s", task)
+        agent = self.get_agent_for_task(task)
+        logger.debug("Agent selected for task: %s", agent)
+        result = agent.execute_task(self.rcm, task)
+        logger.debug("Task execution result: %s", result)
+        return result
 
     def get_agent_for_task(self, task: Task) -> TaskRunner:
         for agent in self.agents:
             if agent.can_handle_task(task):
+                logger.debug("Agent %s can handle task %s", agent, task)
                 return agent
-
+        logger.error("No agent available for task: %s", task)
         raise Exception("No agent available for this task")
 
     def supply_result(self, result: TaskResult) -> None:
-        # One result is the filesystem changes
-        # SUCCESS
-        # - Did something, modified file system -> Recompute
-        # - Did nothing -> Go to next task
-
-        # another is that the agent failed
-        # FAILURE
-        # - Did it give us more info to feed back to the repo context
-        # - It failed and gave us nothing -> >:(
-
+        logger.info("Supplying result: %s", result)
         for file_path in result.modified_files:
             if file_path not in self.unprocessed_files:
                 self.unprocessed_files.append(file_path)
                 self._validators_are_stale = True
+                logger.debug("File %s marked as unprocessed.", file_path)
 
         if len(result.encountered_errors) > 0:
+            logger.warning("Encountered errors: %s", result.encountered_errors)
             raise NotImplementedError("What should we do with errors?")
 
     def run_validators(self) -> list[Task]:
+        logger.info("Running validators.")
         validation_tasks: List[Task] = []
 
         for validator in self.validators:
+            logger.debug("Running validator: %s", validator)
             result = validator.run()
+            logger.debug("Validator result: %s", result)
             if not result.passed:
-                # TODO(@fabianvf): result.errors should probably be result.tasks or something instead
-                # Not all validators return errors? Maybe?
-                validation_tasks.extend(
-                    result.errors
-                )  # Assuming result.errors are Task instances
+                validation_tasks.extend(result.errors)
+                logger.info("Validator %s found errors: %s", validator, result.errors)
 
-        # TODO(@fabianvf) do we need this?
         self._validators_are_stale = False
-
+        logger.debug("Validators are up to date.")
         return validation_tasks
 
     def get_next_task(self) -> Generator[Task, Any, None]:
         prior_task = None
         self.initialize_task_stacks()
-        while any(self.task_stacks.values()) or self.ignored_tasks:
-            if not any(self.task_stacks.values()) and self.ignored_tasks:
-                # Reinsert ignored tasks to the stack
-                self.reinsert_ignored_tasks()
-            # pop an error of the stack of errors
+        while any(self.task_stacks.values()):
             task = self.pop_task_from_highest_priority()
+            logger.debug("Popped task from stack: %s", task)
             if self.should_skip_task(task):
+                logger.debug("Skipping task: %s", task)
                 continue
 
-            if self.is_similar_to_prior_task(task, prior_task):
-                self.handle_ignored_task(task)
-                continue
-
-            if self.has_unprocessed_children(task):
-                self.handle_unprocessed_children(task)
-                continue
-
+            logger.info("Yielding task: %s", task)
             yield task
-            self.processed_tasks.add(task)
-            self.handle_new_tasks_after_processing(task)
             prior_task = task
-
-        self.stop()
+            self.handle_new_tasks_after_processing(task, prior_task)
 
     def initialize_task_stacks(self):
-        """Initializes the task stacks by running validators and populating tasks."""
+        logger.info("Initializing task stacks.")
         if self._validators_are_stale or not any(self.task_stacks.values()):
             new_tasks = self.run_validators()
+            logger.debug("New tasks from validators: %s", new_tasks)
             for task in new_tasks:
                 self.add_task_to_stack(task)
+                logger.debug("Task %s added to stack.", task)
 
     def add_task_to_stack(self, task: Task):
-        """Adds a task to its corresponding priority stack."""
         priority = task.priority
         if priority not in self.task_stacks:
             self.task_stacks[priority] = []
+            logger.debug("Created new task stack for priority %s.", priority)
         self.task_stacks[priority].append(task)
+        logger.debug("Task %s added to priority %s stack.", task, priority)
 
     def pop_task_from_highest_priority(self) -> Task:
-        """Pops a task from the highest priority stack."""
         highest_priority = min(self.task_stacks.keys())
         task_stack = self.task_stacks[highest_priority]
         task = task_stack.pop()
+        logger.debug("Popped task %s from priority %s stack.", task, highest_priority)
         if not task_stack:
             del self.task_stacks[highest_priority]
+            logger.debug("Priority %s stack is empty and removed.", highest_priority)
         return task
 
-    def has_unprocessed_children(self, task: Task) -> bool:
-        """Checks if the task has unprocessed child tasks."""
-        return any(child not in self.processed_tasks for child in task.children)
-
-    def handle_unprocessed_children(self, task: Task):
-        """
-        Handles unprocessed child tasks by re-adding the parent task to the stack
-        and adding unprocessed children to their respective stacks.
-        """
-        self.add_task_to_stack(task)
-        unprocessed_children = [
-            child for child in task.children if child not in self.processed_tasks
-        ]
-        for child in unprocessed_children:
-            self.add_task_to_stack(child)
-
-    def handle_new_tasks_after_processing(self, task: Task):
-        """
-        After processing a task, reruns validators to find new tasks,
-        associates them as children of the current task, and adds them to the stacks.
-        """
+    def handle_new_tasks_after_processing(
+        self, task: Task, prior_task: Optional[Task] = None
+    ):
+        logger.info("Handling new tasks after processing task: %s", task)
         self._validators_are_stale = True
         new_tasks = self.run_validators()
         new_tasks_set = set(new_tasks)
         unprocessed_new_tasks = new_tasks_set - self.processed_tasks
+        logger.debug("Unprocessed new tasks: %s", unprocessed_new_tasks)
 
         if unprocessed_new_tasks:
-            if task in unprocessed_new_tasks:
-                unprocessed_new_tasks.remove(task)
-                self.handle_ignored_task(task)
+            old_tasks = list(
+                filter(
+                    lambda x: self.is_similar_to_prior_task(x, prior_task),
+                    unprocessed_new_tasks,
+                )
+            )
+            if len(old_tasks) == 1:
+                old_task = old_tasks[0]
+                unprocessed_new_tasks.remove(old_task)
+                # The error may have moved slightly, we'll make sure we track the latest iteration
+                # without losing any of our meta values
+                old_task.priority = task.priority
+                old_task.depth = task.depth
+                old_task.retry_count = task.retry_count
+                logger.debug("Task %s still unprocessed after execution.", task)
+                self.handle_ignored_task(old_tasks[0])
             else:
                 self.processed_tasks.add(task)
+                logger.debug("Task %s processed successfully.", task)
 
-            task.children.extend(unprocessed_new_tasks)
             for child_task in unprocessed_new_tasks:
                 child_task.parent = task
-                child_task.depth = task.depth + 1  # Increase depth for DFS
+                child_task.depth = task.depth + 1
+                task.children.append(child_task)
                 self.add_task_to_stack(child_task)
+                logger.debug("Child task %s added to stack.", child_task)
         else:
             self.processed_tasks.add(task)
+            logger.debug("Task %s processed successfully.", task)
 
     def should_skip_task(self, task: Task) -> bool:
-        """Determines if a task should be skipped because it's already processed, or is currently ignored."""
-        return task in self.processed_tasks or task in self.ignored_tasks
+        skip = (
+            task in self.processed_tasks
+            or task in self.ignored_tasks
+            and not all([self.should_skip_task(child) for child in task.children])
+        )
+        logger.debug("Should skip task %s: %s", task, skip)
+        return skip
 
     def is_similar_to_prior_task(self, task: Task, prior_task: Optional[Task]) -> bool:
-        """Determines if the current task is similar to the prior task."""
         if prior_task is None:
             return False
-        return fuzzy_equals(prior_task, task, offset=2)
+        same = prior_task == task
+        logger.debug("Task %s is same to prior task %s: %s", task, prior_task, same)
+        similar = fuzzy_equals(prior_task, task, offset=2)
+        logger.debug(
+            "Task %s is similar to prior task %s: %s", task, prior_task, similar
+        )
+        return same or similar
 
     def handle_ignored_task(self, task: Task):
-        """Handles tasks that have been attempted but didn't resolve the issue."""
+        logger.info("Handling ignored task: %s", task)
         task.retry_count += 1
         if task.retry_count < task.max_retries:
-            # Lower the priority to retry later
             task.priority += 1
             self.add_task_to_stack(task)
+            logger.debug("Retrying task %s (retry count: %s).", task, task.retry_count)
         else:
-            # Exceeded max retries, add to ignored tasks
             self.ignored_tasks.append(task)
-
-    def reinsert_ignored_tasks(self):
-        """Reinserts ignored tasks back into the task stacks for another attempt."""
-        tasks_to_retry = self.ignored_tasks
-        self.ignored_tasks = []
-        for task in tasks_to_retry:
-            if task.retry_count < task.max_retries:
-                self.add_task_to_stack(task)
-            else:
-                # Task has reached max retries, mark as processed
-                self.processed_tasks.add(task)
+            logger.warning(
+                "Task %s exceeded max retries and added to ignored tasks.", task
+            )
 
     def stop(self):
-        """For all agents or validators, if they have a running thread stop them."""
+        logger.info("Stopping TaskManager.")
         for a in self.agents:
             if hasattr(a, "stop"):
                 a.stop()
+                logger.debug("Stopped agent: %s", a)
 
         for v in self.validators:
             if hasattr(v, "stop"):
                 v.stop()
+                logger.debug("Stopped validator: %s", v)
 
 
 if __name__ == "__main__":
