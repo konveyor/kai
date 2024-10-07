@@ -4,8 +4,12 @@ from kai.models.report_types import Incident, RuleSet, Violation
 from playpen.repo_level_awareness.api import ValidationError
 
 
-@dataclass
+@dataclass(eq=False, kw_only=True)
 class AnalyzerRuleViolation(ValidationError):
     incident: Incident
     violation: Violation
     ruleset: RuleSet
+    # TODO Highest priority?
+    priority: int = 1
+
+    # TODO: Define a new hash function?
