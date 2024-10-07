@@ -228,18 +228,23 @@ class TestTaskManager(unittest.TestCase):
                 ],  # First run
                 [
                     ValidationError(
-                        file="test.py", line=2, column=1, message="ChildError1"
+                        file="test.py",
+                        line=2,
+                        column=1,
+                        message="ChildError1",
+                        priority=4,
                     ),
                     ValidationError(
                         file="test.py", line=3, column=1, message="ChildError2"
                     ),
                 ],  # Second run
+                [],  # Third run, no new errors
                 [
                     ValidationError(
                         file="test.py", line=4, column=1, message="GrandchildError"
                     )
-                ],  # Third run
-                [],  # Fourth run, no errors
+                ],  # Fourth run
+                [],  # Fifth run, no errors
             ],
         )
         task_manager = TaskManager(
@@ -253,19 +258,29 @@ class TestTaskManager(unittest.TestCase):
         executed_tasks = []
 
         for task in task_manager.get_next_task():
-            executed_tasks.append((task.priority, task.depth, task.message))
+            executed_tasks.append(task)
 
-        executed_tasks_sorted = sorted(
-            executed_tasks, key=lambda x: ((x[0], x[1], x[2]), executed_tasks.index(x))
-        )
+        self.assertEqual(len(executed_tasks), 4)
+        parent, child1, child2, grandchild = executed_tasks
 
-        expected_order = [
-            (5, 0, "ParentError"),
-            (5, 1, "ChildError1"),
-            (5, 1, "ChildError2"),
-            (5, 2, "GrandchildError"),
-        ]
-        self.assertEqual(executed_tasks_sorted, expected_order)
+        self.assertEqual(parent.message, "ParentError")
+        self.assertEqual(parent.depth, 0)
+        self.assertEqual(len(parent.children), 2)
+
+        self.assertEqual(child1.message, "ChildError1")
+        self.assertEqual(child1.depth, 1)
+        self.assertEqual(len(child1.children), 0)
+        self.assertEqual(parent, child1.parent)
+
+        self.assertEqual(child2.message, "ChildError2")
+        self.assertEqual(child2.depth, 1)
+        self.assertEqual(len(child2.children), 1)
+        self.assertEqual(parent, child2.parent)
+
+        self.assertEqual(grandchild.message, "GrandchildError")
+        self.assertEqual(grandchild.depth, 2)
+        self.assertEqual(len(grandchild.children), 0)
+        self.assertEqual(child2, grandchild.parent)
 
 
 if __name__ == "__main__":

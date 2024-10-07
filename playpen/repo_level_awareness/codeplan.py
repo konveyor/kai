@@ -253,7 +253,7 @@ class TaskManager:
                 old_task.depth = task.depth
                 old_task.retry_count = task.retry_count
                 logger.debug("Task %s still unprocessed after execution.", task)
-                self.handle_ignored_task(old_tasks[0])
+                self.handle_ignored_task(old_task)
             else:
                 self.processed_tasks.add(task)
                 logger.debug("Task %s processed successfully.", task)
