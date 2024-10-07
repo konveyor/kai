@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
@@ -14,9 +14,46 @@ class RpcClientConfig:
     included_paths: Optional[List[str]]
 
 
-@dataclass
+@dataclass(eq=False, kw_only=True)
 class Task:
-    pass
+    priority: int = 10
+    depth: int = 0
+    parent: Optional["Task"] = None
+    children: List["Task"] = field(default_factory=list, compare=False)
+    retry_count: int = 0
+    max_retries: int = 3
+
+    def __eq__(self, other):
+        return isinstance(other, Task) and self.__dict__ == other.__dict__
+
+    def __lt__(self, other):
+        # Lower priority number means higher priority
+        # For same priority, higher depth means process children first (DFS)
+        return (self.priority, -self.depth) < (other.priority, -other.depth)
+
+    def __hash__(self):
+        return hash(tuple(sorted(self.__dict__.items())))
+
+
+@dataclass(eq=False, kw_only=True)
+class ValidationError(Task):
+    file: str
+    line: int
+    column: int
+    message: str
+    priority: int = 5
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, self.__class__)
+            and self.file == other.file
+            and self.line == other.line
+            and self.column == other.column
+            and self.message == other.message
+        )
+
+    def __hash__(self):
+        return hash((self.file, self.line, self.column, self.message))
 
 
 # FIXME: Might not need
@@ -24,14 +61,6 @@ class Task:
 class TaskResult:
     encountered_errors: list[str]
     modified_files: list[Path]
-
-
-@dataclass
-class ValidationError(Task):
-    file: str
-    line: int
-    column: int
-    message: str
 
 
 @dataclass
