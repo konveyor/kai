@@ -3,15 +3,19 @@ import unittest
 from dataclasses import dataclass
 from pathlib import Path
 
-from playpen.repo_level_awareness.agent.dependency_agent import (
+from playpen.repo_level_awareness.agent.dependency_agent.api import (
     FindInPomResponse,
     FQDNResponse,
+)
+from playpen.repo_level_awareness.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
     _action,
     _llm_response,
     find_in_pom,
-    get_maven_query,
     search_fqdn,
+)
+from playpen.repo_level_awareness.agent.dependency_agent.util import (
+    get_maven_query_from_code,
 )
 
 
@@ -129,7 +133,7 @@ Added the `io.quarkus:quarkus-spring-cache` dependency to the `pom.xml` file and
         agent = MavenDependencyAgent(None, 1)
 
         for t in testCases:
-            result = get_maven_query(t.code)
+            result = get_maven_query_from_code(t.code)
             self.assertEqual(t.expected, result)
 
     def test_search_fqdn(self):
@@ -141,7 +145,7 @@ Added the `io.quarkus:quarkus-spring-cache` dependency to the `pom.xml` file and
         testCases = [
             TestCase(
                 'result = search_fqdn.run(artifact_id="javax.annotation", group_id="javax.annotation")',
-                FQDNResponse("", "", ""),
+                None,
             ),
             TestCase(
                 'result = search_fqdn.run(artifact_id="javax.annotation-api", group_id="javax.annotation")',

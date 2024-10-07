@@ -1,8 +1,14 @@
+import sys
+from pathlib import Path
+
+sys.modules["_elementtree"] = None
+import os
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import Optional
 
 from playpen.repo_level_awareness.agent.api import AgentRequest
-from playpen.repo_level_awareness.agent.dependency_agent import (
+from playpen.repo_level_awareness.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
     MavenDependencyRequest,
 )
@@ -15,6 +21,7 @@ from playpen.repo_level_awareness.task_runner.compiler.maven_validator import (
 from playpen.repo_level_awareness.task_runner.dependency.api import (
     DependencyValidationError,
 )
+from playpen.repo_level_awareness.utils.xml import LineNumberingParser
 from playpen.repo_level_awareness.vfs.git_vfs import RepoContextManager
 
 
@@ -41,15 +48,51 @@ class DependencyTaskRunner(TaskRunner):
         return isinstance(task, self.handeled_type)
 
     def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
-        response: Optional[DependencyTaskResponse] = None
+        msg = task.message
         if isinstance(task, PackageDoesNotExistError):
-            p: PackageDoesNotExistError = task
             msg = f"Maven Compiler Error:\n{task.message}"
-            response = self._agent.execute(MavenDependencyRequest(task.file, msg))
 
-        response = self._agent.execute(MavenDependencyRequest(task.file, task.message))
-        print(response)
-        return TaskResult(encountered_errors=[], modified_files=[])
+        r = self._agent.execute(MavenDependencyRequest(task.file, msg))
+
+        if not r.final_answer:
+            print("No final answer was given, we need to return with nothing modified")
+            return TaskResult(encountered_errors=[], modified_files=[])
+
+        if not r.fqdn_response or not r.find_in_pom:
+            print(
+                f"we got a final answer, but it must have skipped steps in the LLM, we need to review the LLM call resposne. -- {r.fqdn_response} -- {r.find_in_pom}"
+            )
+            return TaskResult(encountered_errors=[], modified_files=[])
+
+        print(f"we are now updating the pom based on f{r.final_answer}")
+        pom = os.path.join(os.path.join(rcm.project_root, "pom.xml"))
+        # Needed to remove ns0:
+        ET.register_namespace("", "http://maven.apache.org/POM/4.0.0")
+        tree = ET.parse(pom, LineNumberingParser())
+        root = tree.getroot()
+        deps = root.find("{http://maven.apache.org/POM/4.0.0}dependencies")
+
+        ## We always need to add the new dep
+        deps.append(r.fqdn_response.to_xml_element())
+
+        if deps._start_line_number != r.find_in_pom.start_line:
+            ## we know we need to remove this dep
+            for dep in deps:
+                if (
+                    dep._start_line_number == r.find_in_pom.start_line
+                    and dep._end_line_number == r.find_in_pom.end_line
+                ):
+                    print(f"found dep - {dep.keys}")
+                    deps.remove(dep)
+
+        with open(pom, "w") as p:
+            ET.indent(tree, "\t", 0)
+            pretty_xml = ET.tostring(root, encoding="UTF-8", default_namespace="")
+            print(pretty_xml.decode("utf-8"))
+            p.write(pretty_xml.decode("utf-8"))
+            rcm.commit("dependnecy", r)
+
+        return TaskResult(modified_files=[Path(pom)], encountered_errors=[])
 
     def refine_task(self, errors: list[str]) -> None:
         # Knows that it's the refine step so that it might not spawn as much

@@ -6,22 +6,32 @@ from jinja2 import Template
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
+from playpen.repo_level_awareness.agent.reflection_agent import ReflectionTask
 from playpen.repo_level_awareness.api import Task, TaskResult
 from playpen.repo_level_awareness.task_runner.api import TaskRunner
 from playpen.repo_level_awareness.task_runner.compiler.maven_validator import (
     MavenCompilerError,
 )
-from playpen.repo_level_awareness.vfs.git_vfs import RepoContextManager
+from playpen.repo_level_awareness.vfs.git_vfs import RepoContextManager, SpawningResult
 
 
 @dataclass
-class MavenCompilerLLMResponse:
+class MavenCompilerLLMResponse(SpawningResult):
     reasoning: str
     java_file: str
     addional_information: str
     file_path: str = ""
     input_file: str = ""
     input_errors: List[str] = field(default_factory=list)
+
+    def to_reflection_task(self) -> ReflectionTask:
+        return ReflectionTask(
+            file_path=self.file_path,
+            issues=self.input_errors,
+            reasoning=self.reasoning,
+            updated_file=self.java_file,
+            original_file=self.input_file,
+        )
 
 
 class MavenCompilerTaskRunner(TaskRunner):

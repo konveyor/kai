@@ -1,21 +1,29 @@
-
 import sys
 
-sys.modules['_elementtree'] = None
-import json
-import os
+sys.modules["_elementtree"] = None
+
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
-import requests
 from langchain.prompts.chat import HumanMessagePromptTemplate
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langchain_core.messages import SystemMessage
 
 from playpen.repo_level_awareness.agent.api import Agent, AgentRequest, AgentResult
-from playpen.repo_level_awareness.utils.xml import LineNumberingParser
+from playpen.repo_level_awareness.agent.dependency_agent.api import (
+    FindInPomResponse,
+    FQDNResponse,
+)
+from playpen.repo_level_awareness.agent.dependency_agent.dependency_fqdn_selection import (
+    FQDNDependencySelectorAgent,
+    FQDNDependencySelectorRequest,
+)
+from playpen.repo_level_awareness.agent.dependency_agent.util import (
+    find_in_pom,
+    search_fqdn,
+)
 
 
 @dataclass
@@ -23,6 +31,7 @@ class MavenDependencyRequest(AgentRequest):
 
     # message from the analyzer or from the compiler
     message: str = ""
+
 
 @dataclass
 class _action:
@@ -32,117 +41,22 @@ class _action:
 
 
 @dataclass
-class FQDNResponse:
-    artifact_id: str
-    group_id: str
-    version: str
-
-    def to_llm_message(self) -> HumanMessage:
-        return HumanMessage(f"the result is {json.dumps(self.__dict__)}")
-
-@dataclass
-class FindInPomResponse:
-    start_line: int
-    end_line: int
-
-    def to_llm_message(self) -> HumanMessage:
-        return HumanMessage(f"the start_line is {self.start_line} and end_line is {self.end_line}")
-
-@dataclass
 class MavenDependencyResult(AgentResult):
     final_answer: str
     fqdn_response: FQDNResponse
     find_in_pom: FindInPomResponse
 
+
 @dataclass
-class _llm_response():
+class _llm_response:
     actions: List[_action]
     final_answer: str
-
-def search_fqdn(code: str) -> FQDNResponse:
-    query = get_maven_query(code)
-    resp = requests.get(f"https://search.maven.org/solrsearch/select?q={query}")
-    if resp.status_code != 200:
-        return FQDNResponse(artifact_id="", group_id="", version="")
-    o = resp.json()
-    docs = o['response']['docs']
-    if not docs:
-        return FQDNResponse(artifact_id="", group_id="", version="")
-    if len(docs) > 1:
-        ### Here, I think we need to have a specific return, that then asks the LLM to chose which one based on the
-        ### context.
-        
-        return FQDNResponse(artifact_id="", group_id="", version="")
-    else: 
-        d = docs[0]
-        return FQDNResponse(artifact_id= d['a'], group_id=d['g'], version=d['latestVersion'])
-
-def get_maven_query(code: str) -> str:
-    # We need to remove the function call information from the code.
-    start_i = code.index("(")
-    end_i = code.index(")")
-
-    # Need to remove the not needed chars, whitespace and '"' and ()
-    o = code[start_i:end_i].strip()
-    
-    parts = o.split(",")
-    kwargs = {}
-
-    for p in parts:
-        args = p.split("=")
-        kwargs[args[0].strip().strip('""()')] = args[1].strip().strip('""')
-
-    #fmt: off
-    query = []
-    if "artifact_id" in kwargs:
-        query.append(f"a:{kwargs["artifact_id"]}")
-    if "group_id" in kwargs:
-        query.append(f"g:{kwargs["group_id"]}")
-    if "version" in kwargs:
-        query.append(f"v:{kwargs["version"]}")
-    return " AND ".join(query)
-    #fmt: on
-
-def find_in_pom(path: Path) -> Callable:
-    ## Open XML file
-    ## parse XML, find the dependency node if we have group and artifact we will return start_line and end_line for the full node
-    ## If we don't have group and artifact, but we have dependencies, then we will find the start of the dependecies node. start_line and end_line will be the same. The start of the dependencies.
-    tagToKwargs = {
-        "{http://maven.apache.org/POM/4.0.0}artifactId": "artifactId",
-        "{http://maven.apache.org/POM/4.0.0}groupId": "groupId"
-    }
-    def f(code: str) -> FindInPomResponse:
-        i = code.index("keywords")
-        # Remove 8 chars to get ride of keyword=
-        s = code[i+9:].strip('(){}')
-        parts = s.split(",")
-        kwargs = {}
-        for p in parts:
-            v = p.split(":")
-            kwargs[v[0].strip(' ""')]= v[1].strip(' ""').strip()
-        
-        tree = ET.parse(os.path.join(path, "pom.xml"), parser=LineNumberingParser())
-        root = tree.getroot()
-        dep = root.find('{http://maven.apache.org/POM/4.0.0}dependencies')
-        deps = root.findall('*//{http://maven.apache.org/POM/4.0.0}dependency')
-        for d in deps:
-            found = []
-            for c in d:
-                key = tagToKwargs.get(c.tag)
-                if not key:
-                    continue
-                v = kwargs[key]
-                if c.text == v:
-                    found.append(True)
-            if len(found) == 2:
-                return FindInPomResponse(d._start_line_number, d._end_line_number)
-        return FindInPomResponse(dep._start_line_number, dep._start_line_number)
-    return f
 
 
 class MavenDependencyAgent(Agent):
 
-    sys_msg=SystemMessage("""
+    sys_msg = SystemMessage(
+        """
 You are an excellent java developer focused on updating dependencies in a maven `pom.xml` file. 
 
 ### Guidelines:
@@ -218,9 +132,11 @@ Observation: The pom.xml file is now updatedd setting the xml at start line with
 
 Final Answer:
 Updated the guava to the commons-collections4 dependency
-    """)
+    """
+    )
 
-    inst_msg_template = HumanMessagePromptTemplate.from_template("""
+    inst_msg_template = HumanMessagePromptTemplate.from_template(
+        """
 [INST]
 Given the message, you should determine the dependency that needs to be changed.
 
@@ -236,11 +152,12 @@ When completed, add Final Answer that tells the steps taken
 If you are at the point of editing, add the final answer of what you did
 
 Message:{message}
-    """)
+    """
+    )
 
-    agent_methods = {"search_fqdn.run": search_fqdn, 
-                     "find_in_pom.run": find_in_pom
-                     }
+    agent_methods = {
+        "search_fqdn.run": search_fqdn,
+    }
 
     def __init__(
         self,
@@ -250,16 +167,16 @@ Message:{message}
     ) -> None:
         self.__llm = llm
         self._retries = retries
-        self.agent_methods.update({"find_in_pom.run": find_in_pom(project_base)})
-    
+        self.child_agent = FQDNDependencySelectorAgent(llm=llm)
+        self.agent_methods.update({"find_in_pom._run": find_in_pom(project_base)})
 
     def execute(self, ask: AgentRequest) -> MavenDependencyResult:
         if not isinstance(ask, MavenDependencyRequest):
             return AgentResult(encountered_errors=[], modified_files=[])
 
-        t: MavenDependencyRequest= ask
+        t: MavenDependencyRequest = ask
 
-        if not t.message :
+        if not t.message:
             return AgentResult(None, None)
 
         msg = [self.sys_msg, self.inst_msg_template.format(message=t.message)]
@@ -267,70 +184,84 @@ Message:{message}
         llm_response: Optional[_llm_response] = None
         maven_search: FQDNResponse = None
         find_pom_lines: FindInPomResponse = None
-        
-        #TODO: shawn-hurley: this is needs to be different to allow for the sub-agent's that are needed. 
+
+        # TODO: shawn-hurley: this is needs to be different to allow for the sub-agent's that are needed.
         # We need a sub-agent in the case when searching for the fqdn does not return a single result or
         # no result. In this case we will want the sub agent to try and give us additional information.
         # Today, if we don't have the FQDN then we are going to skip updating for now.
 
-        while fix_gen_attempts < self._retries: 
+        while fix_gen_attempts < self._retries:
             fix_gen_attempts += 1
 
             fix_gen_response = self.__llm.invoke(msg)
-            llm_response = self.parse_llm_response(
-                fix_gen_response.content
-            )
+            llm_response = self.parse_llm_response(fix_gen_response.content)
             print(llm_response)
             # Break out of the while loop, if we don't have a final answer then we need to retry
-            if not self.__should_continue(llm_response): 
+            if not self.__should_continue(llm_response):
                 break
 
             # We do not believe that we should not conintue now we have to continue after running the code that is asked to be run.
             # The only exception to this rule, is when we actually update the file, that should be handled by the caller.
-            # This happens sometimes that the LLM will stop and wait for more information. 
+            # This happens sometimes that the LLM will stop and wait for more information.
 
             for a in llm_response.actions:
                 for s, method in self.agent_methods:
+                    print(f"{s} -- {method}")
                     if s in a.code:
-                        print(method)
                         method_out = method(a.code)
                         a = getattr(method_out, "to_llm_message", None)
                         if callable(a):
                             msg.append(method_out.to_llm_message())
                             print(msg)
-            
+
             self._retries += 1
 
         if llm_response is None or fix_gen_response is None:
             return AgentResult(encountered_errors=[], modified_files=[])
 
         if not maven_search:
+            print("here")
             for a in llm_response.actions:
+                print(a)
                 if "search_fqdn.run" in a.code:
                     m = self.agent_methods.get("search_fqdn.run")
-                    print(m)
-                    maven_search= m(a.code)
-        
+                    result = m(a.code)
+                    print(result)
+                    if not result or isinstance(result, list):
+                        print("here need to call dependent agent")
+                        r = self.child_agent.execute(
+                            FQDNDependencySelectorRequest(
+                                t.file_path, t.message, a.code, query=[], times=0
+                            )
+                        )
+                        print(f"here response: {r}")
+                        maven_search = r.response
+                    else:
+                        maven_search = result
+
         if not find_pom_lines:
             for a in llm_response.actions:
-                if "find_in_pom.run" in a.code:
-                    m = self.agent_methods.get("find_in_pom.run")
+                print(a.code)
+                if "find_in_pom._run" in a.code:
+                    m = self.agent_methods.get("find_in_pom._run")
                     print(m)
-                    find_pom_lines= m(a.code)
+                    find_pom_lines = m(a.code)
 
-
-
-        # We are going to give back the response, The caller should be responsible for running the code generated by the AI.      
+        # We are going to give back the response, The caller should be responsible for running the code generated by the AI.
         # If we have not take the actions step wise, in the LLM, we need to run all but editor here
         # and give that information to the caller.
-        return MavenDependencyResult(encountered_errors=None, 
-                                     modified_files=None, 
-                                     final_answer=llm_response.final_answer,
-                                     fqdn_response=maven_search,
-                                     find_in_pom=find_pom_lines)
+        return MavenDependencyResult(
+            encountered_errors=None,
+            modified_files=None,
+            final_answer=llm_response.final_answer,
+            fqdn_response=maven_search,
+            find_in_pom=find_pom_lines,
+        )
 
-    def parse_llm_response(self, content: str | List[str] | Dict) -> Optional[_llm_response]:
-        # We should not expect that the value is anything other than str for the type of 
+    def parse_llm_response(
+        self, content: str | List[str] | Dict
+    ) -> Optional[_llm_response]:
+        # We should not expect that the value is anything other than str for the type of
         # call that we know we are making
         if isinstance(content, Dict) or isinstance(content, List):
             return None
@@ -349,13 +280,15 @@ Message:{message}
                 continue
 
             parts = line.split(":")
-            
-            if len(parts) > 1 :
+
+            if len(parts) > 1:
                 match parts[0]:
                     case "Thought":
                         s = ":".join(parts[1:])
                         if code_block or observation_str:
-                            actions.append(_action(code_block, thought_str, observation_str))
+                            actions.append(
+                                _action(code_block, thought_str, observation_str)
+                            )
                             code_block = ""
                             thought_str = ""
                             observation_str = ""
@@ -374,12 +307,14 @@ Message:{message}
                         in_observation = True
                         continue
                     case "Final Answer":
-                        actions.append(_action(code_block, thought_str, observation_str))
+                        actions.append(
+                            _action(code_block, thought_str, observation_str)
+                        )
                         in_final_answer = True
                         in_code = False
                         in_thought = False
                         continue
-            
+
             # TODO: There has to be a better way with python to do this.
             if in_code:
                 if code_block:
@@ -398,7 +333,7 @@ Message:{message}
                     thought_str = line.strip()
             if in_observation:
                 if observation_str:
-                    observation_str= "\n".join([observation_str, line]).strip()
+                    observation_str = "\n".join([observation_str, line]).strip()
                 else:
                     observation_str = line.strip()
         return _llm_response(actions, final_answer)
@@ -408,14 +343,3 @@ Message:{message}
         if not llm_response or not llm_response.final_answer:
             return True
         return False
-        
-
-
-            
-                
-                
-
-            
-
-
-            
