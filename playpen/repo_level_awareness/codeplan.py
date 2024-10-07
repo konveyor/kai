@@ -119,6 +119,7 @@ class TaskManager:
 
         self.processed_tasks: Set[Task] = set()
         self.task_stacks: Dict[int, List[Task]] = {}
+        self.ignored_tasks: List[Task] = []
 
         if validators is not None:
             self.validators.extend(validators)
@@ -186,31 +187,29 @@ class TaskManager:
         return validation_tasks
 
     def get_next_task(self) -> Generator[Task, Any, None]:
-        # validation_errors: list[tuple[type, Task]] = []
-        ignored_tasks = []
-
         prior_task = None
         self.initialize_task_stacks()
-        while any(self.task_stacks.values()):
+        while any(self.task_stacks.values()) or self.ignored_tasks:
+            if not any(self.task_stacks.values()) and self.ignored_tasks:
+                # Reinsert ignored tasks to the stack
+                self.reinsert_ignored_tasks()
             # pop an error of the stack of errors
             task = self.pop_task_from_highest_priority()
+            if self.should_skip_task(task):
+                continue
 
-            if task in self.processed_tasks:
+            if self.is_similar_to_prior_task(task, prior_task):
+                self.handle_ignored_task(task)
                 continue
 
             if self.has_unprocessed_children(task):
                 self.handle_unprocessed_children(task)
                 continue
 
-            if fuzzy_equals(prior_task, task, offset=2):
-                # TODO What to do with these now?
-                ignored_tasks.append(task)
-
             yield task
             self.processed_tasks.add(task)
             self.handle_new_tasks_after_processing(task)
             prior_task = task
-            # TODO handle clearing processed tasks at some point? THis sort of broke the ignore stuff I was doing
 
         self.stop()
 
@@ -264,13 +263,51 @@ class TaskManager:
         unprocessed_new_tasks = new_tasks_set - self.processed_tasks
 
         if unprocessed_new_tasks:
+            if task in unprocessed_new_tasks:
+                unprocessed_new_tasks.remove(task)
+                self.handle_ignored_task(task)
+            else:
+                self.processed_tasks.add(task)
+
             task.children.extend(unprocessed_new_tasks)
             for child_task in unprocessed_new_tasks:
                 child_task.parent = task
                 child_task.depth = task.depth + 1  # Increase depth for DFS
                 self.add_task_to_stack(child_task)
-            # Re-add the parent task to handle its new children
+        else:
+            self.processed_tasks.add(task)
+
+    def should_skip_task(self, task: Task) -> bool:
+        """Determines if a task should be skipped because it's already processed, or is currently ignored."""
+        return task in self.processed_tasks or task in self.ignored_tasks
+
+    def is_similar_to_prior_task(self, task: Task, prior_task: Optional[Task]) -> bool:
+        """Determines if the current task is similar to the prior task."""
+        if prior_task is None:
+            return False
+        return fuzzy_equals(prior_task, task, offset=2)
+
+    def handle_ignored_task(self, task: Task):
+        """Handles tasks that have been attempted but didn't resolve the issue."""
+        task.retry_count += 1
+        if task.retry_count < task.max_retries:
+            # Lower the priority to retry later
+            task.priority += 1
             self.add_task_to_stack(task)
+        else:
+            # Exceeded max retries, add to ignored tasks
+            self.ignored_tasks.append(task)
+
+    def reinsert_ignored_tasks(self):
+        """Reinserts ignored tasks back into the task stacks for another attempt."""
+        tasks_to_retry = self.ignored_tasks
+        self.ignored_tasks = []
+        for task in tasks_to_retry:
+            if task.retry_count < task.max_retries:
+                self.add_task_to_stack(task)
+            else:
+                # Task has reached max retries, mark as processed
+                self.processed_tasks.add(task)
 
     def stop(self):
         """For all agents or validators, if they have a running thread stop them."""

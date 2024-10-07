@@ -20,6 +20,8 @@ class Task:
     depth: int = 0
     parent: Optional["Task"] = None
     children: List["Task"] = field(default_factory=list, compare=False)
+    retry_count: int = 0
+    max_retries: int = 3
 
     def __eq__(self, other):
         return isinstance(other, Task) and self.__dict__ == other.__dict__
