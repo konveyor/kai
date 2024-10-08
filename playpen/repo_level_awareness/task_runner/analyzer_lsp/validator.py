@@ -1,3 +1,4 @@
+import logging
 import subprocess  # trunk-ignore(bandit/B404)
 from typing import Dict, List
 from urllib.parse import urlparse
@@ -12,6 +13,9 @@ from playpen.repo_level_awareness.api import (
 from playpen.repo_level_awareness.task_runner.analyzer_lsp.api import (
     AnalyzerRuleViolation,
 )
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class AnlayzerLSPStep(ValidationStep):
@@ -48,7 +52,6 @@ class AnlayzerLSPStep(ValidationStep):
 
     def run(self) -> ValidationResult:
         analyzer_output = self.__run_analyzer_lsp()
-        print(type(analyzer_output))
         errors = self.__parse_analyzer_lsp_output(analyzer_output)
         return ValidationResult(passed=not errors, errors=errors)
 
@@ -79,17 +82,14 @@ class AnlayzerLSPStep(ValidationStep):
         rulesets = analyzer_output.get("Rulesets")
 
         if not rulesets or not isinstance(rulesets, list):
-            print(f"here rulesets: {rulesets}")
             return []
 
         r = Report.load_report_from_object(rulesets, "analysis_run_task_runner")
 
         validation_errors: List[AnalyzerRuleViolation] = []
         for k, v in r.rulesets.items():
-            print(f"ruleset: {k}")
 
             for vk, vio in v.violations.items():
-                print(f"violation {vk} -- {vio.incidents.__len__()}")
                 for i in vio.incidents:
                     validation_errors.append(
                         AnalyzerRuleViolation(

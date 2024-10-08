@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List
@@ -13,6 +14,9 @@ from playpen.repo_level_awareness.task_runner.compiler.maven_validator import (
     MavenCompilerError,
 )
 from playpen.repo_level_awareness.vfs.git_vfs import RepoContextManager, SpawningResult
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -90,7 +94,6 @@ class MavenCompilerTaskRunner(TaskRunner):
 
     def can_handle_task(self, task: Task) -> bool:
         """Will determine if the task if a MavenCompilerError, and if we can handle these issues."""
-        print(task)
         return isinstance(task, MavenCompilerError)
 
     def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
@@ -116,7 +119,6 @@ class MavenCompilerTaskRunner(TaskRunner):
         )
 
         resp = self.parse_llm_response(aimessage)
-        print(resp)
         resp.file_path = task.file
         resp.input_file = src_file_contents
         resp.input_errors = [task.message]
@@ -131,8 +133,6 @@ class MavenCompilerTaskRunner(TaskRunner):
 
     def parse_llm_response(self, message: BaseMessage) -> MavenCompilerLLMResponse:
         """Private method that will be used to parse the contents and get the results"""
-
-        print(message.content)
 
         lines_of_output = message.content.splitlines()
 

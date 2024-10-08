@@ -1,11 +1,12 @@
 # trunk-ignore-begin(ruff/E402)
 import sys
-from pathlib import Path
 
 sys.modules["_elementtree"] = None
+import logging
 import os
 import xml.etree.ElementTree as ET  # trunk-ignore(bandit/B405)
 from dataclasses import dataclass
+from pathlib import Path
 
 from playpen.repo_level_awareness.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
@@ -24,6 +25,9 @@ from playpen.repo_level_awareness.utils.xml import LineNumberingParser
 from playpen.repo_level_awareness.vfs.git_vfs import RepoContextManager
 
 # trunk-ignore-end(ruff/E402)
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -56,16 +60,20 @@ class DependencyTaskRunner(TaskRunner):
         r = self._agent.execute(MavenDependencyRequest(task.file, msg))
 
         if not r.final_answer:
-            print("No final answer was given, we need to return with nothing modified")
-            return TaskResult(encountered_errors=[], modified_files=[])
-
-        if not r.fqdn_response or not r.find_in_pom:
-            print(
-                f"we got a final answer, but it must have skipped steps in the LLM, we need to review the LLM call resposne. -- {r.fqdn_response} -- {r.find_in_pom}"
+            logger.info(
+                "No final answer was given, we need to return with nothing modified. result: %r",
+                r,
             )
             return TaskResult(encountered_errors=[], modified_files=[])
 
-        print(f"we are now updating the pom based on f{r.final_answer}")
+        if not r.fqdn_response or not r.find_in_pom:
+            logger.info(
+                "we got a final answer, but it must have skipped steps in the LLM, we need to review the LLM call resposne %r",
+                r,
+            )
+            return TaskResult(encountered_errors=[], modified_files=[])
+
+        logger.debug("we are now updating the pom based %s", r.final_answer)
         pom = os.path.join(os.path.join(rcm.project_root, "pom.xml"))
         # Needed to remove ns0:
         ET.register_namespace("", "http://maven.apache.org/POM/4.0.0")
@@ -83,13 +91,12 @@ class DependencyTaskRunner(TaskRunner):
                     dep._start_line_number == r.find_in_pom.start_line
                     and dep._end_line_number == r.find_in_pom.end_line
                 ):
-                    print(f"found dep - {dep.keys}")
+                    logger.debug("found dep %r and removing", dep)
                     deps.remove(dep)
 
         with open(pom, "w") as p:
             ET.indent(tree, "\t", 0)
             pretty_xml = ET.tostring(root, encoding="UTF-8", default_namespace="")
-            print(pretty_xml.decode("utf-8"))
             p.write(pretty_xml.decode("utf-8"))
             rcm.commit("dependnecy", r)
 

@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
@@ -12,6 +13,9 @@ from playpen.repo_level_awareness.agent.dependency_agent.util import (
     get_maven_query_from_code,
     search_fqdn_query,
 )
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -74,10 +78,8 @@ Searched dependencies:
             query.append(get_maven_query_from_code(ask.code))
 
         msg = [HumanMessage(content=self.message.render(message=ask.msg, query=query))]
-        print(msg)
         fix_gen_response = self.__llm.invoke(msg)
         llm_response = self.parse_llm_response(fix_gen_response.content)
-        print(llm_response)
         # Really we need to re-call the agent
         if not llm_response:
             return FQDNDependencySelectorResult(
@@ -88,7 +90,7 @@ Searched dependencies:
             artifact_id=llm_response.artifact_id, group_id=llm_response.group_id
         )
         response = search_fqdn_query(new_query)
-        print(response)
+        logger.debug("got response: %r from searchign FQDN")
         ## only run this 5 times
         if not response and ask.times < 5:
             ## need to recursively call execute.
@@ -123,12 +125,12 @@ Searched dependencies:
                 # Get the line
                 parts = line.split(":")
                 if len(parts) != 2:
-                    print("error here")
+                    logger.error("invalid parts: %r", parts)
                 artifact_id = parts[1].strip()
             elif "GroupId:" in line:
                 parts = line.split(":")
                 if len(parts) != 2:
-                    print("error here")
+                    logger.error("invalid parts: %r", parts)
                 group_id = parts[1].strip()
                 pass
             elif "Reasoning" in line or in_reasoning:

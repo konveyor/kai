@@ -53,7 +53,6 @@ def search_fqdn(code: str) -> Optional[FQDNResponse] | List[FQDNResponse]:
 
 
 def get_maven_query(**kwargs) -> str:
-    print(f"{kwargs}")
     query = []
     if "artifact_id" in kwargs:
         query.append("a:" + kwargs["artifact_id"])
