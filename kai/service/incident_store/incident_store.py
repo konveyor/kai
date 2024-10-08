@@ -173,6 +173,7 @@ class Application:
     current_branch: str
     current_commit: str
     generated_at: datetime.datetime
+    path: str = "."
 
 
 class IncidentStore:
@@ -220,7 +221,7 @@ class IncidentStore:
             )
 
             if session.scalars(select_report_stmt).first() is not None:
-                KAI_LOG.info(f"Report {report.report_id()} already exists")
+                KAI_LOG.info(f"Report {report.report_id} already exists")
                 return (0, 0, 0)
 
             select_application_stmt = select(SQLApplication).where(
@@ -237,6 +238,7 @@ class IncidentStore:
                     current_branch=app.current_branch,
                     current_commit=app.current_commit,
                     generated_at=app.generated_at,
+                    path=app.path,
                 )
                 session.add(application)
                 session.commit()
@@ -296,6 +298,7 @@ class IncidentStore:
                                 violation_name=violation.violation_name,
                                 ruleset_name=ruleset.ruleset_name,
                                 application_name=application.application_name,
+                                application_path=application.path,
                                 incident_uri=incident.uri,
                                 incident_snip=incident.code_snip,
                                 incident_line=incident.line_number,
@@ -310,6 +313,7 @@ class IncidentStore:
                 repo=repo,
                 old_commit=old_commit,
                 new_commit=new_commit,
+                app_path=application.path,
             )
 
             categorized_incidents = self.solution_detector(solution_detector_ctx)
