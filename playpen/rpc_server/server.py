@@ -1,11 +1,16 @@
 import logging
 import sys
+import traceback
 from pathlib import Path
 from typing import Optional, cast
 
+import requests
 from pydantic import BaseModel
 
 from kai.models.kai_config import KaiConfigModels
+from kai.routes.get_incident_solutions_for_file import (
+    PostGetIncidentSolutionsForFileParams,
+)
 from playpen.rpc_server.rpc import (
     DEFAULT_FORMATTER,
     TRACE,
@@ -49,6 +54,11 @@ ERROR_NOT_INITIALIZED = JsonRpcError(
     code=JsonRpcErrorCode.ServerErrorStart,
     message="Server not initialized",
 )
+
+
+@app.add_request(method="echo", params_model=dict)
+def echo(app: KaiRpcApplication, params: dict) -> JsonRpcRequestResult:
+    return params, None
 
 
 @app.add_request(method="shutdown", include_server=True)
@@ -129,20 +139,46 @@ def set_config(
     return cast(JsonRpcRequestResult, initialize(app=app, params=params, server=server))
 
 
-@app.add_request(method="getRAGSolution")
-def get_rag_solution(app: KaiRpcApplication) -> JsonRpcRequestResult:
+@app.add_request(
+    method="getRAGSolution", params_model=PostGetIncidentSolutionsForFileParams
+)
+def get_rag_solution(
+    app: KaiRpcApplication, params: PostGetIncidentSolutionsForFileParams
+) -> JsonRpcRequestResult:
     if not app.initialized:
         return {}, ERROR_NOT_INITIALIZED
 
-    return {}, None
+    # NOTE: This is not at all what we should be doing
+    try:
+        app.log.info(f"get_rag_solution: {params}")
+        params_dict = params.model_dump()
+        result = requests.post(
+            f"{app.config.kaiBackendUrl}/get_incident_solutions_for_file",
+            json=params_dict,
+        )
+        app.log.info(f"get_rag_solution result: {result}")
+        app.log.info(f"get_rag_solution result.json(): {result.json()}")
+
+        return dict(result.json()), None
+    except Exception:
+        return {}, JsonRpcError(
+            code=JsonRpcErrorCode.InternalError,
+            message=str(traceback.format_exc()),
+        )
 
 
-@app.add_request(method="getCodeplanAgentSolution")
-def get_codeplan_agent_solution(app: KaiRpcApplication) -> JsonRpcRequestResult:
+@app.add_request(method="getCodeplanAgentSolution", params_model=dict)
+def get_codeplan_agent_solution(
+    app: KaiRpcApplication, params: dict
+) -> JsonRpcRequestResult:
     if not app.initialized:
         return {}, ERROR_NOT_INITIALIZED
 
-    return {}, None
+    return {
+        "result": "Not implemented",
+        "message": "Beep boop, I'm a robot",
+        "echo": params,
+    }, None
 
 
 # if __name__ == "__main__":
