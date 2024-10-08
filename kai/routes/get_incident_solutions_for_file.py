@@ -1,6 +1,7 @@
 import logging
 import time
 import traceback
+from unittest.mock import MagicMock
 
 from aiohttp import web
 from aiohttp.web_request import Request
@@ -41,17 +42,17 @@ async def post_get_incident_solutions_for_file(request: Request):
 
     kai_application: KaiApplication = request.app["kai_application"]
 
-    trace = KaiTrace(
-        trace_enabled=kai_application.config.trace_enabled,
-        log_dir=kai_application.config.log_dir,
-        model_id=kai_application.model_provider.model_id,
-        batch_mode=params.batch_mode,
-        application_name=params.application_name,
-        file_name=params.file_name,
-    )
+    # trace = KaiTrace(
+    #     trace_enabled=kai_application.config.trace_enabled,
+    #     log_dir=kai_application.config.log_dir,
+    #     model_id=kai_application.model_provider.model_id,
+    #     batch_mode=params.batch_mode,
+    #     application_name=params.application_name,
+    #     file_name=params.file_name,
+    # )
 
-    trace.start(start)
-    trace.params(params)
+    # trace.start(start)
+    # trace.params(params)
 
     try:
         result: UpdatedFileContent = kai_application.get_incident_solutions_for_file(
@@ -62,16 +63,16 @@ async def post_get_incident_solutions_for_file(request: Request):
             batch_mode=params.batch_mode,
             include_solved_incidents=params.include_solved_incidents,
             include_llm_results=params.include_llm_results,
-            trace=trace,
+            trace=MagicMock(),
         )
     except Exception as e:
-        trace.exception(-1, -1, e, traceback.format_exc())
+        # trace.exception(-1, -1, e, traceback.format_exc())
         raise e
     finally:
         end = time.time()
-        trace.end(end)
+        # trace.end(end)
         KAI_LOG.info(
             f"END - completed in '{end-start}s:  - App: '{params.application_name}', File: '{params.file_name}' with {len(params.incidents)} incidents'"
         )
 
-    return web.json_response(result.model_dump_json())
+    return web.json_response(result.model_dump())

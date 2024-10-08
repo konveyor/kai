@@ -78,7 +78,9 @@ class JsonRpcErrorCode(IntEnum):
 
 JsonRpcId = Optional[str | int]
 
-JsonRpcResult = BaseModel | dict
+# NOTE: dict must come before BaseModel in the union, otherwise Pydantic breaks
+# when calling model_validate on JsonRpcResponse.
+JsonRpcResult = dict | BaseModel
 
 
 class JsonRpcError(BaseModel):
@@ -663,7 +665,7 @@ class JsonRpcServer(threading.Thread):
         self,
         json_rpc_stream: JsonRpcStream,
         app: JsonRpcApplication | None = None,
-        request_timeout: float = 60.0,
+        request_timeout: float | None = 60.0,
     ):
         if app is None:
             app = JsonRpcApplication()
@@ -699,11 +701,12 @@ class JsonRpcServer(threading.Thread):
             elif isinstance(msg, JsonRpcRequest):
                 log.log(TRACE, "Received request: %s", msg)
                 if (tmp := self.app.handle_request(msg, self)) is not None:
-                    log.log(TRACE, "Sending response: %s", tmp)
                     result, error = tmp
-                    self.jsonrpc_stream.send(
-                        JsonRpcResponse(result=result, error=error, id=msg.id)
+                    sending_response = JsonRpcResponse(
+                        result=result, error=error, id=msg.id
                     )
+                    log.log(TRACE, "Sending response: %s", sending_response)
+                    self.jsonrpc_stream.send(sending_response)
                     continue
 
             elif isinstance(msg, JsonRpcResponse):
