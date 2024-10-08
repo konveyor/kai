@@ -65,7 +65,7 @@ def main() -> None:
     current_directory = Path(os.path.dirname(os.path.realpath(__file__)))
     rpc_binary_path = current_directory / "main.py"
     rpc_subprocess = subprocess.Popen(  # trunk-ignore(bandit/B603,bandit/B607)
-        ["python", rpc_binary_path],  # trunk-ignore(bandit/B603,bandit/B607)
+        ["python", rpc_binary_path],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

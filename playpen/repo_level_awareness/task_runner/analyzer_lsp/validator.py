@@ -87,9 +87,9 @@ class AnlayzerLSPStep(ValidationStep):
         r = Report.load_report_from_object(rulesets, "analysis_run_task_runner")
 
         validation_errors: List[AnalyzerRuleViolation] = []
-        for k, v in r.rulesets.items():
+        for _k, v in r.rulesets.items():
 
-            for vk, vio in v.violations.items():
+            for _vk, vio in v.violations.items():
                 for i in vio.incidents:
                     validation_errors.append(
                         AnalyzerRuleViolation(
