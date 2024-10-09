@@ -7,7 +7,6 @@ from typing import Any, Dict, Generator, List, Optional, Set
 from langchain_core.language_models.chat_models import BaseChatModel
 
 from kai.models.kai_config import KaiConfig
-from kai.service.kai_application.kai_application import UpdatedFileContent
 from kai.service.llm_interfacing.model_provider import ModelProvider
 from playpen.repo_level_awareness.api import (
     RpcClientConfig,
@@ -73,10 +72,7 @@ def main():
     codeplan(config, None)
 
 
-def codeplan(
-    config: RpcClientConfig,
-    updated_file_content: UpdatedFileContent,
-):
+def codeplan(config: RpcClientConfig, seed_tasks: list[Task]):
     logger.info("Starting codeplan with configuration: %s", config)
 
     kai_config = KaiConfig.model_validate_filepath("../../kai/config.toml")
@@ -88,7 +84,7 @@ def codeplan(
     task_manager = TaskManager(
         config,
         RepoContextManager(config.repo_directory, llm=llm),
-        updated_file_content,
+        seed_tasks,
         validators=[MavenCompileStep(config), AnlayzerLSPStep(config)],
         agents=[
             AnalyzerTaskRunner(modelProvider.llm),
@@ -111,7 +107,7 @@ class TaskManager:
         self,
         config: RpcClientConfig,
         rcm: RepoContextManager,
-        updated_file_content: UpdatedFileContent,
+        seed_tasks: Optional[list[Task]] = None,
         validators: Optional[list[ValidationStep]] = None,
         agents: Optional[list[TaskRunner]] = None,
     ) -> None:
@@ -138,6 +134,8 @@ class TaskManager:
         self._validators_are_stale = True
 
         self.rcm = rcm
+
+        self.seed_tasks = seed_tasks
 
         logger.info("TaskManager initialized.")
 
@@ -185,10 +183,17 @@ class TaskManager:
         logger.debug("Validators are up to date.")
         return validation_tasks
 
-    def get_next_task(self) -> Generator[Task, Any, None]:
+    def get_next_task(
+        self, max_priority: Optional[int] = None
+    ) -> Generator[Task, Any, None]:
         self.initialize_task_stacks()
+
         while any(self.task_stacks.values()):
             task = self.pop_task_from_highest_priority()
+            if max_priority is not None and task.priority > max_priority:
+                # Put the task back and stop iteration
+                self.add_task_to_stack(task)
+                return
             logger.debug("Popped task from stack: %s", task)
             if self.should_skip_task(task):
                 logger.debug("Skipping task: %s", task)
@@ -200,14 +205,31 @@ class TaskManager:
 
     def initialize_task_stacks(self):
         logger.info("Initializing task stacks.")
-        if self._validators_are_stale or not any(self.task_stacks.values()):
-            new_tasks = self.run_validators()
-            logger.debug("New tasks from validators: %s", new_tasks)
-            for task in new_tasks:
+
+        if self.seed_tasks:
+            for task in self.seed_tasks:
+                # Seed tasks are assumed to be of the highest priority
+                task.priority = 0
                 self.add_task_to_stack(task)
                 logger.debug("Task %s added to stack.", task)
 
+        new_tasks = self.run_validators()
+        logger.debug("New tasks from validators: %s", new_tasks)
+        for task in new_tasks:
+            self.add_task_to_stack(task)
+            logger.debug("Task %s added to stack.", task)
+
     def add_task_to_stack(self, task: Task):
+        for priority_level, task_stack in self.task_stacks.items():
+            if task in task_stack:
+                logger.debug(
+                    "Task %s already exists in priority %s stack. Existing task takes precedence.",
+                    task,
+                    priority_level,
+                )
+                # Existing task takes precedence; do not add or modify
+                return
+
         priority = task.priority
         if priority not in self.task_stacks:
             self.task_stacks[priority] = []
@@ -233,37 +255,56 @@ class TaskManager:
         unprocessed_new_tasks = new_tasks_set - self.processed_tasks
         logger.debug("Unprocessed new tasks: %s", unprocessed_new_tasks)
 
-        if unprocessed_new_tasks:
-            old_tasks = list(
-                filter(
-                    lambda x: self.is_similar_to_task(x, task),
-                    unprocessed_new_tasks,
-                )
-            )
-            if len(old_tasks) == 1:
-                old_task = old_tasks[0]
-                unprocessed_new_tasks.remove(old_task)
-                # The error may have moved slightly, we'll make sure we track the latest iteration
-                # without losing any of our meta values
-                old_task.priority = task.priority
-                old_task.depth = task.depth
-                old_task.retry_count = task.retry_count
-                logger.debug("Task %s still unprocessed after execution.", task)
-                self.handle_ignored_task(old_task)
-            else:
-                self.processed_tasks.add(task)
-                logger.debug("Task %s processed successfully.", task)
+        # Identify resolved tasks to remove from stacks
+        tasks_in_stacks = set().union(*self.task_stacks.values())
+        resolved_tasks = tasks_in_stacks - new_tasks_set
+        logger.debug("Resolved tasks to remove from stacks: %s", resolved_tasks)
 
-            for child_task in unprocessed_new_tasks:
-                child_task.parent = task
-                child_task.depth = task.depth + 1
-                child_task.priority = task.priority
-                task.children.append(child_task)
-                self.add_task_to_stack(child_task)
-                logger.debug("Child task %s added to stack.", child_task)
+        # Remove resolved tasks from the stacks and mark them as processed
+        for resolved_task in resolved_tasks:
+            self.remove_task_from_stacks(resolved_task)
+            self.processed_tasks.add(resolved_task)
+            logger.info(
+                "Task %s resolved indirectly and removed from queue.", resolved_task
+            )
+
+        # Check if the current task is still unprocessed (or similar)
+        similar_tasks = [
+            t for t in unprocessed_new_tasks if self.is_similar_to_task(t, task)
+        ]
+
+        if similar_tasks:
+            new_dupe_task = similar_tasks[0]  # Assuming only one similar task
+            unprocessed_new_tasks.remove(new_dupe_task)
+            logger.debug("Task %s still unprocessed after execution.", task)
+            self.handle_ignored_task(task)
         else:
             self.processed_tasks.add(task)
             logger.debug("Task %s processed successfully.", task)
+
+        new_child_tasks = unprocessed_new_tasks - tasks_in_stacks
+        for child_task in sorted(list(new_child_tasks)):
+            child_task.parent = task
+            child_task.depth = task.depth + 1
+            child_task.priority = task.priority
+            task.children.append(child_task)
+            self.add_task_to_stack(child_task)
+            logger.debug("Child task %s added to stack.", child_task)
+
+    def remove_task_from_stacks(self, task: Task):
+        for priority_level in list(self.task_stacks.keys()):
+            task_stack = self.task_stacks[priority_level]
+            if task in task_stack:
+                task_stack.remove(task)
+                logger.debug(
+                    "Removed task %s from priority %s stack.", task, priority_level
+                )
+                if not task_stack:
+                    del self.task_stacks[priority_level]
+                    logger.debug(
+                        "Priority %s stack is empty and removed.", priority_level
+                    )
+                break  # Since tasks should only be in one stack, we can break
 
     def should_skip_task(self, task: Task) -> bool:
         skip = (
