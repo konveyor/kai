@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List
@@ -6,22 +7,35 @@ from jinja2 import Template
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
+from playpen.repo_level_awareness.agent.reflection_agent import ReflectionTask
 from playpen.repo_level_awareness.api import Task, TaskResult
 from playpen.repo_level_awareness.task_runner.api import TaskRunner
 from playpen.repo_level_awareness.task_runner.compiler.maven_validator import (
     MavenCompilerError,
 )
-from playpen.repo_level_awareness.vfs.git_vfs import RepoContextManager
+from playpen.repo_level_awareness.vfs.git_vfs import RepoContextManager, SpawningResult
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 @dataclass
-class MavenCompilerLLMResponse:
+class MavenCompilerLLMResponse(SpawningResult):
     reasoning: str
     java_file: str
     addional_information: str
     file_path: str = ""
     input_file: str = ""
     input_errors: List[str] = field(default_factory=list)
+
+    def to_reflection_task(self) -> ReflectionTask:
+        return ReflectionTask(
+            file_path=self.file_path,
+            issues=self.input_errors,
+            reasoning=self.reasoning,
+            updated_file=self.java_file,
+            original_file=self.input_file,
+        )
 
 
 class MavenCompilerTaskRunner(TaskRunner):
@@ -80,7 +94,6 @@ class MavenCompilerTaskRunner(TaskRunner):
 
     def can_handle_task(self, task: Task) -> bool:
         """Will determine if the task if a MavenCompilerError, and if we can handle these issues."""
-        print(task)
         return isinstance(task, MavenCompilerError)
 
     def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
@@ -106,7 +119,6 @@ class MavenCompilerTaskRunner(TaskRunner):
         )
 
         resp = self.parse_llm_response(aimessage)
-        print(resp)
         resp.file_path = task.file
         resp.input_file = src_file_contents
         resp.input_errors = [task.message]
@@ -121,8 +133,6 @@ class MavenCompilerTaskRunner(TaskRunner):
 
     def parse_llm_response(self, message: BaseMessage) -> MavenCompilerLLMResponse:
         """Private method that will be used to parse the contents and get the results"""
-
-        print(message.content)
 
         lines_of_output = message.content.splitlines()
 
