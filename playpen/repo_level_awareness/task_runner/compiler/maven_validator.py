@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import logging
 import re
 import subprocess  # trunk-ignore(bandit/B404)
 from dataclasses import dataclass, field
@@ -10,6 +11,9 @@ from playpen.repo_level_awareness.api import (
     ValidationResult,
     ValidationStep,
 )
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class MavenCompileStep(ValidationStep):
@@ -100,7 +104,7 @@ def run_maven(source_directory=".") -> str:
         return process.stdout
     #  trunk-ignore-end(bandit/B603)
     except FileNotFoundError:
-        print("Maven is not installed or not found in the system PATH.")
+        logger.info("Maven is not installed or not found in the system PATH.")
         return ""
 
 
