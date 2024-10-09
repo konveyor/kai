@@ -12,7 +12,13 @@ import traceback
 from typing import Any, Dict, List
 from warnings import filterwarnings
 
-from cli import (
+from pylspclient.json_rpc_endpoint import JsonRpcEndpoint, MyEncoder
+from pylspclient.lsp_client import LspEndpoint as RpcServer
+from pylspclient.lsp_errors import ErrorCodes, ResponseError
+
+from kai.kai_logging import parent_log, setup_file_handler
+from kai.models.report_types import ExtendedIncident
+from playpen.client.cli import (
     generate_fix,
     get_config,
     get_impacted_files_from_report,
@@ -20,12 +26,6 @@ from cli import (
     get_trace,
     render_prompt,
 )
-from pylspclient.json_rpc_endpoint import JsonRpcEndpoint, MyEncoder
-from pylspclient.lsp_client import LspEndpoint as RpcServer
-from pylspclient.lsp_errors import ErrorCodes, ResponseError
-
-from kai.kai_logging import parent_log, setup_file_handler
-from kai.models.report_types import ExtendedIncident
 
 log = logging.getLogger("kai-rpc")
 
@@ -35,6 +35,7 @@ TYPE_HEADER = "Content-Type: "
 
 
 class CustomRpcServer(RpcServer):
+
     def run(self):
         while not self.shutdown_flag:
             try:
@@ -85,7 +86,7 @@ class CustomRpcEndpoint(JsonRpcEndpoint):
     def send_request(self, message):
         json_string = json.dumps(message, cls=MyEncoder)
         jsonrpc_req = self.__add_header(json_string)
-        log.debug(f"sending data over stdin {repr(jsonrpc_req)}")
+        print(f"sending data over stdin {repr(jsonrpc_req)}")
         with self.write_lock:
             self.stdin.buffer.write(jsonrpc_req.encode())
             self.stdin.flush()
@@ -121,7 +122,7 @@ class CustomRpcEndpoint(JsonRpcEndpoint):
                 raise ResponseError(ErrorCodes.ParseError, "Bad header: missing size")
 
             jsonrpc_res = self.stdout.buffer.read(message_size).decode("utf-8")
-            log.debug(f"read data from stdout {repr(jsonrpc_res)}")
+            print(f"read data from stdout {repr(jsonrpc_res)}")
             return json.loads(jsonrpc_res)
 
 

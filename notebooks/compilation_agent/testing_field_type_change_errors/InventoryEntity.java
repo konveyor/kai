@@ -15,7 +15,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 @Table(name = "INVENTORY", uniqueConstraints = @UniqueConstraint(columnNames = "itemId"))
 public class InventoryEntity implements Serializable {
 
-	private static final long serialVersionUID = 7526472295622776147L; 
+	private static final long serialVersionUID = 7526472295622776147L;
 
     @Id
     private UUID itemId;
