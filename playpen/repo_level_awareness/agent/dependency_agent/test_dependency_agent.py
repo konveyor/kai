@@ -1,3 +1,8 @@
+# trunk-ignore-begin(ruff/E402)
+import sys
+
+sys.modules["_elementtree"] = None
+
 import os
 import unittest
 from dataclasses import dataclass
@@ -17,6 +22,8 @@ from playpen.repo_level_awareness.agent.dependency_agent.dependency_agent import
 from playpen.repo_level_awareness.agent.dependency_agent.util import (
     get_maven_query_from_code,
 )
+
+# trunk-ignore-end(ruff/E402)
 
 
 class TestDependencyAgent(unittest.TestCase):
