@@ -5,7 +5,7 @@ A fake IDE client that connects to the Kai RPC Server.
 import argparse
 import logging
 import os
-import subprocess
+import subprocess  # trunk-ignore(bandit/B404)
 import threading
 import time
 from io import BufferedReader, BufferedWriter
@@ -64,7 +64,7 @@ def main() -> None:
 
     current_directory = Path(os.path.dirname(os.path.realpath(__file__)))
     rpc_binary_path = current_directory / "main.py"
-    rpc_subprocess = subprocess.Popen(
+    rpc_subprocess = subprocess.Popen(  # trunk-ignore(bandit/B603,bandit/B607)
         ["python", rpc_binary_path],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
@@ -106,7 +106,7 @@ def main() -> None:
         )
 
         print(repr(result))
-    except Exception:
+    except Exception:  # trunk-ignore(bandit/B110)
         pass
     finally:
         rpc_subprocess.terminate()
