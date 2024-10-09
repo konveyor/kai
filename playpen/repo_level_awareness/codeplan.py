@@ -186,7 +186,6 @@ class TaskManager:
         return validation_tasks
 
     def get_next_task(self) -> Generator[Task, Any, None]:
-        prior_task = None
         self.initialize_task_stacks()
         while any(self.task_stacks.values()):
             task = self.pop_task_from_highest_priority()
@@ -197,8 +196,7 @@ class TaskManager:
 
             logger.info("Yielding task: %s", task)
             yield task
-            prior_task = task
-            self.handle_new_tasks_after_processing(task, prior_task)
+            self.handle_new_tasks_after_processing(task)
 
     def initialize_task_stacks(self):
         logger.info("Initializing task stacks.")
@@ -227,9 +225,7 @@ class TaskManager:
             logger.debug("Priority %s stack is empty and removed.", highest_priority)
         return task
 
-    def handle_new_tasks_after_processing(
-        self, task: Task, prior_task: Optional[Task] = None
-    ):
+    def handle_new_tasks_after_processing(self, task: Task):
         logger.info("Handling new tasks after processing task: %s", task)
         self._validators_are_stale = True
         new_tasks = self.run_validators()
@@ -240,7 +236,7 @@ class TaskManager:
         if unprocessed_new_tasks:
             old_tasks = list(
                 filter(
-                    lambda x: self.is_similar_to_prior_task(x, prior_task),
+                    lambda x: self.is_similar_to_task(x, task),
                     unprocessed_new_tasks,
                 )
             )
@@ -261,6 +257,7 @@ class TaskManager:
             for child_task in unprocessed_new_tasks:
                 child_task.parent = task
                 child_task.depth = task.depth + 1
+                child_task.priority = task.priority
                 task.children.append(child_task)
                 self.add_task_to_stack(child_task)
                 logger.debug("Child task %s added to stack.", child_task)
@@ -277,15 +274,14 @@ class TaskManager:
         logger.debug("Should skip task %s: %s", task, skip)
         return skip
 
-    def is_similar_to_prior_task(self, task: Task, prior_task: Optional[Task]) -> bool:
-        if prior_task is None:
+    def is_similar_to_task(self, task1: Task, task2: Optional[Task]) -> bool:
+        if task2 is None:
             return False
-        same = prior_task == task
-        logger.debug("Task %s is same to prior task %s: %s", task, prior_task, same)
-        similar = fuzzy_equals(prior_task, task, offset=2)
-        logger.debug(
-            "Task %s is similar to prior task %s: %s", task, prior_task, similar
-        )
+        same = task2 == task1
+        logger.debug("Task %s is same to prior task %s: %s", task1, task2, same)
+        # TODO(fabianvf): Give tasks the ability to provide a specific fuzzy equals function?
+        similar = fuzzy_equals(task2, task1, offset=2)
+        logger.debug("Task %s is similar to prior task %s: %s", task1, task2, similar)
         return same or similar
 
     def handle_ignored_task(self, task: Task):
