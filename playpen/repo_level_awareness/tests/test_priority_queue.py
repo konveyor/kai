@@ -223,8 +223,19 @@ class TestTaskManager(unittest.TestCase):
             error_sequences=[
                 [
                     ValidationError(
-                        file="test.py", line=1, column=1, message="ParentError"
-                    )
+                        file="test.py",
+                        line=1,
+                        column=1,
+                        message="ParentError",
+                        priority=3,
+                    ),
+                    ValidationError(
+                        file="test.py",
+                        line=1,
+                        column=1,
+                        message="TopLevelError",
+                        priority=4,
+                    ),
                 ],  # First run
                 [
                     ValidationError(
@@ -260,8 +271,8 @@ class TestTaskManager(unittest.TestCase):
         for task in task_manager.get_next_task():
             executed_tasks.append(task)
 
-        self.assertEqual(len(executed_tasks), 4)
-        parent, child1, child2, grandchild = executed_tasks
+        self.assertEqual(len(executed_tasks), 5)
+        parent, child1, child2, grandchild, toplevel = executed_tasks
 
         self.assertEqual(parent.message, "ParentError")
         self.assertEqual(parent.depth, 0)
@@ -281,6 +292,10 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(grandchild.depth, 2)
         self.assertEqual(len(grandchild.children), 0)
         self.assertEqual(child2, grandchild.parent)
+
+        self.assertEqual(toplevel.message, "TopLevelError")
+        self.assertEqual(toplevel.depth, 0)
+        self.assertEqual(len(toplevel.children), 0)
 
 
 if __name__ == "__main__":
