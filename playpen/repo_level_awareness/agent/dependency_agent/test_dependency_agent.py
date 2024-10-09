@@ -1,10 +1,16 @@
 # trunk-ignore-begin(ruff/E402)
+import importlib
 import sys
+import xml.etree.ElementTree as ET  # trunk-ignore(bandit/B405)
 
+# Forcing the reload after changing and re-importing will allow us
+# to pass the test.
 sys.modules["_elementtree"] = None
+importlib.reload(ET)
 
 import os
 import unittest
+import xml.etree.ElementTree as ET  # trunk-ignore(bandit/B405)
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -160,9 +166,9 @@ Added the `io.quarkus:quarkus-spring-cache` dependency to the `pom.xml` file and
             ),
         ]
 
-        for t in testCases:
-            result = search_fqdn(t.code)
-            self.assertEqual(t.expected, result)
+        for test in testCases:
+            result = search_fqdn(test.code)
+            self.assertEqual(test.expected, result)
 
     def test_find_in_pom(self):
         test_data_dir = Path(
@@ -187,6 +193,6 @@ Added the `io.quarkus:quarkus-spring-cache` dependency to the `pom.xml` file and
             ),
         ]
 
-        for t in test_cases:
-            result = test_func(t.code)
-            self.assertEqual(t.expected, result)
+        for test in test_cases:
+            result = test_func(test.code)
+            self.assertEqual(test.expected, result)
