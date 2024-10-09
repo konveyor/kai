@@ -1,6 +1,7 @@
 import logging
 import time
 import traceback
+from unittest.mock import MagicMock
 
 from aiohttp import web
 from aiohttp.web_request import Request
