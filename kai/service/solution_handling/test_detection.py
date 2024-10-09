@@ -77,7 +77,9 @@ class TestDetection(unittest.TestCase):
         ]
 
         result = solution_detection_naive(
-            SolutionDetectorContext(db_incidents, report_incidents, MagicMock(), "", "")
+            SolutionDetectorContext(
+                db_incidents, report_incidents, MagicMock(), ".", "", ""
+            )
         )
 
         self.assertTrue(len(result.new) == 1)
@@ -126,7 +128,7 @@ class TestDetection(unittest.TestCase):
         # No incidents, no changes
 
         result = solution_detection_line_match(
-            SolutionDetectorContext([], [], mock_repo, old_commit, new_commit)
+            SolutionDetectorContext([], [], mock_repo, ".", old_commit, new_commit)
         )
 
         self.assertEqual(result.new, [], "Failed no incidents no changes")
@@ -140,7 +142,7 @@ class TestDetection(unittest.TestCase):
 
         result = solution_detection_line_match(
             SolutionDetectorContext(
-                old_incidents, new_incidents, mock_repo, old_commit, new_commit
+                old_incidents, new_incidents, mock_repo, ".", old_commit, new_commit
             )
         )
 
@@ -159,7 +161,7 @@ class TestDetection(unittest.TestCase):
 
         result = solution_detection_line_match(
             SolutionDetectorContext(
-                old_incidents, new_incidents, mock_repo, old_commit, new_commit
+                old_incidents, new_incidents, mock_repo, ".", old_commit, new_commit
             )
         )
 
@@ -178,7 +180,7 @@ class TestDetection(unittest.TestCase):
 
         result = solution_detection_line_match(
             SolutionDetectorContext(
-                old_incidents, new_incidents, mock_repo, old_commit, new_commit
+                old_incidents, new_incidents, mock_repo, ".", old_commit, new_commit
             )
         )
 
