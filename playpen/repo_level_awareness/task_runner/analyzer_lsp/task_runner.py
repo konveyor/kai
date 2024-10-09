@@ -16,7 +16,8 @@ from playpen.repo_level_awareness.task_runner.analyzer_lsp.api import (
 from playpen.repo_level_awareness.task_runner.api import TaskRunner
 from playpen.repo_level_awareness.vfs.git_vfs import RepoContextManager
 
-KAI_LOG = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -141,8 +142,6 @@ If you have any additional details or steps that need to be performed, put it he
 
         resp = self.parse_llm_response(aimessage)
 
-        print(resp)
-
         # rewrite the file, based on the java file returned
         if resp.java_file:
             with open(task.file, "w") as f:
@@ -155,8 +154,6 @@ If you have any additional details or steps that need to be performed, put it he
 
     def parse_llm_response(self, message: BaseMessage) -> AnalyzerLLMResponse:
         """Private method that will be used to parse the contents and get the results"""
-
-        print(message.content)
 
         lines_of_output = message.content.splitlines()
 
@@ -197,13 +194,13 @@ def guess_language(code: str, filename: str = None) -> str:
     try:
         if filename:
             lexer = lexers.guess_lexer_for_filename(filename, code)
-            KAI_LOG.debug(f"{filename} classified as {lexer.aliases[0]}")
+            logger.debug(f"{filename} classified as {lexer.aliases[0]}")
         else:
             lexer = lexers.guess_lexer(code)
-            KAI_LOG.debug(f"Code content classified as {lexer.aliases[0]}\n{code}")
+            logger.debug(f"Code content classified as {lexer.aliases[0]}\n{code}")
         return lexer.aliases[0]
     except ClassNotFound:
-        KAI_LOG.debug(
+        logger.debug(
             f"Code content for filename {filename} could not be classified\n{code}"
         )
         return "unknown"

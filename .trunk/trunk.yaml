@@ -2,17 +2,17 @@
 # To learn more about the format of this file, see https://docs.trunk.io/reference/trunk-yaml
 version: 0.1
 cli:
-  version: 1.22.5
+  version: 1.22.6
 # Trunk provides extensibility via plugins. (https://docs.trunk.io/plugins)
 plugins:
   sources:
     - id: trunk
-      ref: v1.6.2
+      ref: v1.6.3
       uri: https://github.com/trunk-io/plugins
 # Many linters and tools depend on runtimes - configure them here. (https://docs.trunk.io/runtimes)
 runtimes:
   enabled:
-    - go@1.21.0
+    - go@1.23.0
     - node@18.12.1
     - python@3.10.8
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
@@ -24,23 +24,25 @@ lint:
         - name: lint
           run: bandit --exit-zero -c bandit.yaml --format json --output ${tmpfile} ${target}
   enabled:
-    - actionlint@1.7.1
+    - gofmt@1.20.4
+    - golangci-lint@1.61.0
+    - actionlint@1.7.3
     - taplo@0.9.3
-    - bandit@1.7.9
+    - bandit@1.7.10
     - black@24.8.0
-    - checkov@3.2.245
+    - checkov@3.2.257
     - git-diff-check
     - isort@5.13.2
-    - markdownlint@0.41.0
-    - osv-scanner@1.8.4
+    - markdownlint@0.42.0
+    - osv-scanner@1.9.0
     - oxipng@9.1.2
     - prettier@3.3.3
-    - ruff@0.6.3
+    - ruff@0.6.9
     - shellcheck@0.10.0
     - shfmt@3.6.0
-    - svgo@3.2.0
-    - trivy@0.49.1
-    - trufflehog@3.81.10
+    - svgo@3.3.2
+    - trivy@0.55.2
+    - trufflehog@3.82.6
     - yamllint@1.35.1
   ignore:
     - linters: [ALL]

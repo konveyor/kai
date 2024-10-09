@@ -3,6 +3,7 @@ import functools
 import logging
 import os
 import subprocess  # trunk-ignore(bandit/B404)
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import StrEnum
@@ -12,7 +13,11 @@ from unittest.mock import MagicMock
 
 from langchain_core.language_models.chat_models import BaseChatModel
 
-from playpen.repo_level_awareness.agent.reflection_agent import ReflectionAgent
+from playpen.repo_level_awareness.agent.api import AgentResult
+from playpen.repo_level_awareness.agent.reflection_agent import (
+    ReflectionAgent,
+    ReflectionTask,
+)
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -20,6 +25,12 @@ formatter = logging.Formatter("[%(levelname)s] %(message)s")
 handler = logging.StreamHandler()
 handler.setFormatter(formatter)
 log.addHandler(handler)
+
+
+class SpawningResult(ABC):
+    @abstractmethod
+    def to_reflection_task(self) -> ReflectionTask:
+        pass
 
 
 # NOTE: I'd like to use GitPython, but using custom a work-tree and git-dir with
@@ -34,7 +45,7 @@ class RepoContextSnapshot:
     children: list["RepoContextSnapshot"] = field(default_factory=list)
 
     # Narrow down this type, could be task, or errors or what have you
-    spawning_result: Optional[Any] = None
+    spawning_result: Optional[SpawningResult] = None
 
     @functools.cached_property
     def msg(self) -> str:
@@ -51,7 +62,7 @@ class RepoContextSnapshot:
         return stdout.strip()
 
     @functools.cached_property
-    def parent_spawning_results(self) -> list[Any]:
+    def parent_spawning_results(self) -> list[SpawningResult]:
         """
         Returns a list of spawning results from the parent snapshots, including
         itself, in order from oldest to newest.
@@ -133,7 +144,7 @@ class RepoContextSnapshot:
         )
 
     def commit(
-        self, msg: str | None = None, spawning_result: Any | None = None
+        self, msg: str | None = None, spawning_result: SpawningResult | None = None
     ) -> "RepoContextSnapshot":
         """
         Commits the current state of the repository and returns a new snapshot.
@@ -183,15 +194,19 @@ class RepoContextManager:
 
         self.reflection_agent = ReflectionAgent(llm=llm, iterations=1, retries=3)
 
-    def commit(self, msg: str | None = None, spawning_result: Any | None = None):
+    def commit(
+        self, msg: str | None = None, spawning_result: SpawningResult | None = None
+    ):
         """
         Commits the current state of the repository and updates the snapshot.
         Also runs the reflection agent validate the repository state.
         """
 
-        reflection_result = self.reflection_agent.execute_task(
-            None, self.reflection_task_generator(spawning_result)
-        )
+        reflection_result = AgentResult(encountered_errors=[], modified_files=None)
+        if spawning_result is not None and isinstance(spawning_result, SpawningResult):
+            reflection_result = self.reflection_agent.execute(
+                None, spawning_result.to_reflection_task()
+            )
 
         new_spawning_result = union_the_result_and_the_errors(
             reflection_result.encountered_errors, spawning_result
