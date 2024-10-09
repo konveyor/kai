@@ -504,28 +504,28 @@ class IncidentStore:
             else:
                 KAI_LOG.debug(f"Processed {processed_count} solutions, limit {limit}")
 
+    @staticmethod
+    def incident_store_from_config(config: KaiConfig) -> "IncidentStore":
+        model_provider = ModelProvider(config.models)
 
-def incident_store_from_config(config: KaiConfig) -> IncidentStore:
-    model_provider = ModelProvider(config.models)
+        KAI_LOG.info(f"Selected provider: {config.models.provider}")
+        KAI_LOG.info(f"Selected model: {model_provider.model_id}")
 
-    KAI_LOG.info(f"Selected provider: {config.models.provider}")
-    KAI_LOG.info(f"Selected model: {model_provider.model_id}")
+        backend = incident_store_backend_factory(config.incident_store.args)
 
-    backend = incident_store_backend_factory(config.incident_store.args)
+        solution_detector = solution_detection_factory(
+            config.incident_store.solution_detectors
+        )
 
-    solution_detector = solution_detection_factory(
-        config.incident_store.solution_detectors
-    )
+        solution_producer = solution_producer_factory(
+            config.incident_store.solution_producers, model_provider
+        )
 
-    solution_producer = solution_producer_factory(
-        config.incident_store.solution_producers, model_provider
-    )
-
-    return IncidentStore(
-        backend=backend,
-        solution_detector=solution_detector,
-        solution_producer=solution_producer,
-    )
+        return IncidentStore(
+            backend=backend,
+            solution_detector=solution_detector,
+            solution_producer=solution_producer,
+        )
 
 
 def cmd(provider: str = None):
@@ -569,12 +569,12 @@ def cmd(provider: str = None):
         config = KaiConfig()
 
     KAI_LOG.info(f"config: {config}")
-    incident_store = incident_store_from_config(config)
+    incident_store = IncidentStore.incident_store_from_config(config)
 
     if provider is not None and config.incident_store.args.provider != provider:
         raise Exception(f"This script only works with {provider} incident store.")
 
-    incident_store = incident_store_from_config(config)
+    incident_store = IncidentStore.incident_store_from_config(config)
 
     if args.drop_tables:
         incident_store.delete_store()
