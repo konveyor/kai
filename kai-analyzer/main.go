@@ -16,6 +16,8 @@ func main() {
 
 	sourceDirectory := flag.String("source-directory", ".", "This will be the absolute path to the source code directory that should be analyzed")
 	rulesDirectory := flag.String("rules-directory", ".", "This will be the absolute path to the rules directory")
+	lspServerPath := flag.String("lspServerPath", "/Users/shurley/repos/kai/jdtls/bin/jdtls", "this will be the path to the lsp")
+	bundles := flag.String("bundles", "/Users/shurley/repos/MTA/java-analyzer-bundle/java-analyzer-bundle.core/target/java-analyzer-bundle.core-1.0.0-SNAPSHOT.jar", "this is the path to the java analyzer bundle")
 
 	flag.Parse()
 	// In the future add cobra for flags maybe
@@ -29,18 +31,22 @@ func main() {
 		panic(fmt.Errorf("rules directory must be valid"))
 	}
 
-	file, err := os.Create("kai-analyzer.log")
-	if err != nil {
-		panic(err)
-	}
-	logger := slog.NewJSONHandler(file, &slog.HandlerOptions{
+	logger := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.Level(-100),
 	})
 
 	l := logr.FromSlogHandler(logger)
 	l.Info("Starting Analyzer", "source-dir", *sourceDirectory, "rules-dir", *rulesDirectory)
 	// We need to start up the JSON RPC server and start listening for messages
-	analyzerService, err := service.NewAnalyzer(10000, 10, 10, *sourceDirectory, "", []string{*rulesDirectory}, l)
+	analyzerService, err := service.NewAnalyzer(
+		10000, 10, 10,
+		*sourceDirectory,
+		"",
+		*lspServerPath,
+		*bundles,
+		[]string{*rulesDirectory},
+		l,
+	)
 	if err != nil {
 		panic(err)
 	}
