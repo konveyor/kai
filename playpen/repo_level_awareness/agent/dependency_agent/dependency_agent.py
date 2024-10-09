@@ -1,4 +1,7 @@
 # trunk-ignore-begin(ruff/E402)
+# This is needed because we are overriding the parser to get line numbers
+# The only way to do that, is tell it not to use the c-version of the parser
+# so that we can hook into the parser and add attributes to the element.
 import sys
 
 sys.modules["_elementtree"] = None
@@ -180,12 +183,12 @@ Message:{message}
         if not isinstance(ask, MavenDependencyRequest):
             return AgentResult(encountered_errors=[], modified_files=[])
 
-        t: MavenDependencyRequest = ask
+        request: MavenDependencyRequest = ask
 
-        if not t.message:
+        if not request.message:
             return AgentResult(None, None)
 
-        msg = [self.sys_msg, self.inst_msg_template.format(message=t.message)]
+        msg = [self.sys_msg, self.inst_msg_template.format(message=request.message)]
         fix_gen_attempts = 0
         llm_response: Optional[_llm_response] = None
         maven_search: FQDNResponse = None
@@ -209,12 +212,12 @@ Message:{message}
             # The only exception to this rule, is when we actually update the file, that should be handled by the caller.
             # This happens sometimes that the LLM will stop and wait for more information.
 
-            for a in llm_response.actions:
-                for s, method in self.agent_methods:
-                    if s in a.code:
-                        method_out = method(a.code)
-                        a = getattr(method_out, "to_llm_message", None)
-                        if callable(a):
+            for action in llm_response.actions:
+                for method_name, method in self.agent_methods:
+                    if method_name in action.code:
+                        method_out = method(action.code)
+                        to_llm_message = getattr(method_out, "to_llm_message", None)
+                        if callable(to_llm_message):
                             msg.append(method_out.to_llm_message())
 
             self._retries += 1
@@ -232,7 +235,11 @@ Message:{message}
                         logger.info("Need to call sub-agent for selecting FQDN")
                         r = self.child_agent.execute(
                             FQDNDependencySelectorRequest(
-                                t.file_path, t.message, a.code, query=[], times=0
+                                request.file_path,
+                                request.message,
+                                a.code,
+                                query=[],
+                                times=0,
                             )
                         )
                         logger.debug("result from dependent agent: %r", r)

@@ -52,10 +52,10 @@ Think through the problem fully. Do not update the dependency if it has moved to
 
 Output in the format of:
 
+Reasoning
+
 ArtifactId:
 GroupId:
-
-Reasoning
 
 {{message}}
 

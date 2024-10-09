@@ -140,29 +140,37 @@ Here's the input information:
         if not isinstance(task, ReflectionTask):
             return AgentResult(encountered_errors=[], modified_files=[])
 
-        t: ReflectionTask = task
+        reflection_task: ReflectionTask = task
 
-        _, file_ext = os.path.splitext(t.file_path)
+        _, file_ext = os.path.splitext(reflection_task.file_path)
 
         language = {
             ".java": Language.Java,
         }.get(file_ext.lower(), None)
 
-        issues = json.dumps({"issues": list(t.issues)}, indent=4)
+        issues = json.dumps({"issues": list(reflection_task.issues)}, indent=4)
 
-        diff = self._get_diff(t.original_file, t.updated_file, language)
+        diff = self._get_diff(
+            reflection_task.original_file, reflection_task.updated_file, language
+        )
 
-        if language is None or not diff or not t.issues:
+        if language is None or not diff or not reflection_task.issues:
             return AgentResult(encountered_errors=[], modified_files=[])
 
         # initiate chats
         chat_fix_gen = [
-            self.msg_templ_sys_fix.format(target_technology=t.target_technology),
+            self.msg_templ_sys_fix.format(
+                target_technology=reflection_task.target_technology
+            ),
             self.msg_templ_user_fix.format(
-                language=language, input_file=t.original_file, issues=issues
+                language=language,
+                input_file=reflection_task.original_file,
+                issues=issues,
             ),
             self.msg_templ_ai_fix.format(
-                language=language, updated_file=t.updated_file, reasoning=t.reasoning
+                language=language,
+                updated_file=reflection_task.updated_file,
+                reasoning=reflection_task.reasoning,
             ),
         ]
         chat_reflect = [
@@ -176,7 +184,7 @@ Here's the input information:
         modified_files = []
         # run agent loop
         curr_iter = 0
-        last_updated_file_contents = t.updated_file
+        last_updated_file_contents = reflection_task.updated_file
         while curr_iter < self._iterations:
             curr_iter += 1
             try:
@@ -219,8 +227,8 @@ Here's the input information:
 
         # commit the result here
         if last_updated_file_contents:
-            modified_files.append(t.file_path)
-            with open(t.file_path, "w+") as f:
+            modified_files.append(reflection_task.file_path)
+            with open(reflection_task.file_path, "w+") as f:
                 f.write(last_updated_file_contents)
 
         return AgentResult(encountered_errors=[], modified_files=modified_files)

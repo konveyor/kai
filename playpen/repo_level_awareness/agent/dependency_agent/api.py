@@ -1,3 +1,7 @@
+# trunk-ignore-begin(ruff/E402)
+import sys
+
+sys.modules["_elementtree"] = None
 import json
 
 # trunk-ignore(bandit/B405)
@@ -5,6 +9,8 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 
 from langchain_core.messages import HumanMessage
+
+# trunk-ignore-end(ruff/E402)
 
 
 @dataclass
