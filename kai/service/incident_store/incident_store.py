@@ -10,6 +10,7 @@ import yaml
 from git import Repo
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from kai.constants import PATH_GIT_ROOT, PATH_LOCAL_REPO
 from kai.models.kai_config import KaiConfig
@@ -488,18 +489,14 @@ class IncidentStore:
                                 f"Skipping already processed solution {original_solution.solution_id}"
                             )
                         else:
-                            # # TODO: This first line doesn't work for some reason. The second
-                            # # line is a hack to get around it.
-                            original_solution.solution = processed_solution
-                            session.query(SQLAcceptedSolution).filter(
-                                SQLAcceptedSolution.solution_id
-                                == related_incident.solution_id
-                            ).update({"solution": processed_solution})
-                            session.commit()
+                            # (pgaikwad): since we have a custom TypeDecorator on solution field
+                            # we need to force set modified flag, this may be done better
+                            flag_modified(original_solution, "solution")
                             processed_count += 1
                             KAI_LOG.debug(
                                 f"Processed solution {original_solution.solution_id}"
                             )
+                            session.commit()
                             if processed_count >= limit:
                                 break
                     except Exception as e:
@@ -554,6 +551,12 @@ def cmd(provider: str = None):
         action="store_true",
         help="Whether to run producer post process",
     )
+    parser.add_argument(
+        "--post_process_limit",
+        type=int,
+        default=-1,
+        help="Whether to run producer post process",
+    )
     console_handler = logging.StreamHandler()
     KAI_LOG.addHandler(console_handler)
     KAI_LOG.setLevel("DEBUG")
@@ -577,7 +580,7 @@ def cmd(provider: str = None):
         incident_store.delete_store()
 
     if args.post_process:
-        incident_store.post_process(limit=-1)
+        incident_store.post_process(limit=args.post_process_limit)
     else:
         load_reports_from_directory(incident_store, args.analysis_dir_path)
 

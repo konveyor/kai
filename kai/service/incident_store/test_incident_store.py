@@ -299,7 +299,6 @@ class TestIncidentStore(unittest.TestCase):
 
         self.incident_store.load_report(initial_application, initial_report)
         self.incident_store.load_report(solved_application, solved_report)
-        self.incident_store.post_process(limit=-1)
 
         queries: list[tuple] = []
 
@@ -320,6 +319,8 @@ class TestIncidentStore(unittest.TestCase):
                         incident.incident_snip,
                     )
                 )
+
+        self.incident_store.post_process(limit=-1)
 
         for query in queries:
             solutions = self.incident_store.find_solutions(
