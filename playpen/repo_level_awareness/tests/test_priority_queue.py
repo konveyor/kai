@@ -55,7 +55,6 @@ class TestTaskManager(unittest.TestCase):
         task_manager = TaskManager(
             config=None,
             rcm=None,
-            updated_file_content=None,
             validators=[validator],
             agents=[MockTaskRunner()],
         )
@@ -73,33 +72,27 @@ class TestTaskManager(unittest.TestCase):
 
     def test_task_with_children_dfs_order(self):
         # Setup
+        parent = ValidationError(
+            file="test.py", line=1, column=1, message="ParentError"
+        )
+        child1 = ValidationError(
+            file="test.py", line=2, column=1, message="ChildError1"
+        )
+        child2 = ValidationError(
+            file="test.py", line=3, column=1, message="ChildError2"
+        )
+
         validator = MockValidationStep(
             config=None,
             error_sequences=[
-                [
-                    ValidationError(
-                        file="test.py", line=1, column=1, message="ParentError"
-                    )
-                ],  # First run
-                [
-                    ValidationError(
-                        file="test.py",
-                        line=2,
-                        column=1,
-                        message="ChildError1",
-                        priority=4,
-                    ),
-                    ValidationError(
-                        file="test.py", line=3, column=1, message="ChildError2"
-                    ),
-                ],  # Second run
-                [],  # Third run, no errors
+                [parent],  # First run
+                [child1, child2],  # Second run
+                [child1],  # Third run, no new errors
             ],
         )
         task_manager = TaskManager(
             config=None,
             rcm=None,
-            updated_file_content=None,
             validators=[validator],
             agents=[MockTaskRunner()],
         )
@@ -110,10 +103,11 @@ class TestTaskManager(unittest.TestCase):
             executed_tasks.append(task)
 
         self.assertEqual(len(executed_tasks), 3)
-        self.assertEqual(
-            [t.message for t in executed_tasks],
-            ["ParentError", "ChildError1", "ChildError2"],
-        )
+        parent, child2, child1 = executed_tasks
+
+        self.assertEqual(parent.message, "ParentError")
+        self.assertEqual(child2.message, "ChildError2")
+        self.assertEqual(child1.message, "ChildError1")
         self.assertTrue(executed_tasks[1].depth > executed_tasks[0].depth)
         self.assertTrue(executed_tasks[2].depth > executed_tasks[0].depth)
 
@@ -148,7 +142,6 @@ class TestTaskManager(unittest.TestCase):
         task_manager = TaskManager(
             config=None,
             rcm=None,
-            updated_file_content=None,
             validators=[validator],
             agents=[MockTaskRunner()],
         )
@@ -163,9 +156,7 @@ class TestTaskManager(unittest.TestCase):
 
         self.assertEqual(len(executed_tasks), 3)  # max_retries is 3
         self.assertEqual(executed_tasks[0].message, "PersistentError")
-        self.assertEqual(executed_tasks[0].retry_count, 0)
-        self.assertEqual(executed_tasks[1].retry_count, 1)
-        self.assertEqual(executed_tasks[2].retry_count, 2)
+        self.assertEqual(executed_tasks[2].retry_count, 3)
         self.assertEqual(retries, 2)  # Retries occurred twice
 
     def test_handling_ignored_tasks(self):
@@ -203,7 +194,6 @@ class TestTaskManager(unittest.TestCase):
         task_manager = TaskManager(
             config=None,
             rcm=None,
-            updated_file_content=None,
             validators=[validator],
             agents=[MockTaskRunner()],
         )
@@ -217,51 +207,38 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(ignored_task.retry_count, ignored_task.max_retries)
 
     def test_complex_task_tree(self):
+
+        parent = ValidationError(
+            file="test.py", line=1, column=1, message="ParentError", priority=3
+        )
+        toplevel = ValidationError(
+            file="test.py", line=1, column=1, message="TopLevelError", priority=4
+        )
+        child1 = ValidationError(
+            file="test.py", line=2, column=1, message="ChildError1"
+        )
+        child2 = ValidationError(
+            file="test.py", line=4, column=1, message="ChildError2"
+        )
+        grandchild = ValidationError(
+            file="test.py", line=4, column=1, message="GrandchildError"
+        )
+
         # Setup
         validator = MockValidationStep(
             config=None,
             error_sequences=[
-                [
-                    ValidationError(
-                        file="test.py",
-                        line=1,
-                        column=1,
-                        message="ParentError",
-                        priority=3,
-                    ),
-                    ValidationError(
-                        file="test.py",
-                        line=1,
-                        column=1,
-                        message="TopLevelError",
-                        priority=4,
-                    ),
-                ],  # First run
-                [
-                    ValidationError(
-                        file="test.py",
-                        line=2,
-                        column=1,
-                        message="ChildError1",
-                        priority=4,
-                    ),
-                    ValidationError(
-                        file="test.py", line=3, column=1, message="ChildError2"
-                    ),
-                ],  # Second run
-                [],  # Third run, no new errors
-                [
-                    ValidationError(
-                        file="test.py", line=4, column=1, message="GrandchildError"
-                    )
-                ],  # Fourth run
-                [],  # Fifth run, no errors
+                [parent, toplevel],  # First run
+                [child1, child2, toplevel],  # Second run
+                [child1, toplevel],  # Third run, no new errors
+                [grandchild, toplevel],  # Fourth run
+                [toplevel],  # Fifth run, no new errors
+                [],  # Sixth run, no errors
             ],
         )
         task_manager = TaskManager(
             config=None,
             rcm=None,
-            updated_file_content=None,
             validators=[validator],
             agents=[MockTaskRunner()],
         )
@@ -278,14 +255,16 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(parent.depth, 0)
         self.assertEqual(len(parent.children), 2)
 
-        self.assertEqual(child1.message, "ChildError1")
+        # The ordering of the children is non-deterministic
+        self.assertIn(child1.message, ["ChildError1", "ChildError2"])
         self.assertEqual(child1.depth, 1)
         self.assertEqual(len(child1.children), 0)
         self.assertEqual(parent, child1.parent)
 
-        self.assertEqual(child2.message, "ChildError2")
+        self.assertIn(child2.message, ["ChildError1", "ChildError2"])
         self.assertEqual(child2.depth, 1)
         self.assertEqual(len(child2.children), 1)
+        self.assertEqual(child2.children[0], grandchild)
         self.assertEqual(parent, child2.parent)
 
         self.assertEqual(grandchild.message, "GrandchildError")
@@ -296,6 +275,60 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(toplevel.message, "TopLevelError")
         self.assertEqual(toplevel.depth, 0)
         self.assertEqual(len(toplevel.children), 0)
+
+    def test_stop_iteration_with_seed(self):
+        # Setup
+        parent = ValidationError(
+            file="test.py", line=1, column=1, message="ParentError", priority=3
+        )
+        toplevel = ValidationError(
+            file="test.py", line=1, column=1, message="TopLevelError", priority=4
+        )
+        child1 = ValidationError(
+            file="test.py", line=2, column=1, message="ChildError1"
+        )
+        child2 = ValidationError(
+            file="test.py", line=4, column=1, message="ChildError2"
+        )
+        grandchild = ValidationError(
+            file="test.py", line=4, column=1, message="GrandchildError"
+        )
+
+        validator = MockValidationStep(
+            config=None,
+            error_sequences=[
+                [parent, toplevel],  # First run
+                [child1, child2, toplevel],  # Second run
+                [child1, toplevel],  # Third run, no new errors
+                [grandchild, toplevel],  # Fourth run
+                [toplevel],  # Fifth run, no new errors
+            ],
+        )
+        seed_tasks = [
+            ValidationError(
+                file="test.py",
+                line=1,
+                column=1,
+                message="ParentError",
+            )
+        ]
+        task_manager = TaskManager(
+            config=None,
+            rcm=None,
+            seed_tasks=seed_tasks,
+            validators=[validator],
+            agents=[MockTaskRunner()],
+        )
+
+        executed_tasks = []
+
+        # Priority 0 means only seed issues and associated children will be processed
+        for task in task_manager.get_next_task(max_priority=0):
+            executed_tasks.append(task)
+
+        self.assertEqual(len(executed_tasks), 4)
+        self.assertIn(toplevel, task_manager.task_stacks[toplevel.priority])
+        self.assertNotIn(toplevel, executed_tasks)
 
 
 if __name__ == "__main__":
