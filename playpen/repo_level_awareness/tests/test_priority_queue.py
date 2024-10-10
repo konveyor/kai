@@ -249,28 +249,27 @@ class TestTaskManager(unittest.TestCase):
             executed_tasks.append(task)
 
         self.assertEqual(len(executed_tasks), 5)
-        parent, child1, child2, grandchild, toplevel = executed_tasks
+        parent, child2, child1, grandchild, toplevel = executed_tasks
 
         self.assertEqual(parent.message, "ParentError")
         self.assertEqual(parent.depth, 0)
         self.assertEqual(len(parent.children), 2)
 
-        # The ordering of the children is non-deterministic
-        self.assertIn(child1.message, ["ChildError1", "ChildError2"])
-        self.assertEqual(child1.depth, 1)
-        self.assertEqual(len(child1.children), 0)
-        self.assertEqual(parent, child1.parent)
-
-        self.assertIn(child2.message, ["ChildError1", "ChildError2"])
+        self.assertEqual(child2.message, "ChildError2")
         self.assertEqual(child2.depth, 1)
-        self.assertEqual(len(child2.children), 1)
-        self.assertEqual(child2.children[0], grandchild)
+        self.assertEqual(len(child2.children), 0)
         self.assertEqual(parent, child2.parent)
+
+        self.assertEqual(child1.message, "ChildError1")
+        self.assertEqual(child1.depth, 1)
+        self.assertEqual(len(child1.children), 1)
+        self.assertEqual(child1.children[0], grandchild)
+        self.assertEqual(parent, child1.parent)
 
         self.assertEqual(grandchild.message, "GrandchildError")
         self.assertEqual(grandchild.depth, 2)
         self.assertEqual(len(grandchild.children), 0)
-        self.assertEqual(child2, grandchild.parent)
+        self.assertEqual(child1, grandchild.parent)
 
         self.assertEqual(toplevel.message, "TopLevelError")
         self.assertEqual(toplevel.depth, 0)
@@ -329,6 +328,13 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(len(executed_tasks), 4)
         self.assertIn(toplevel, task_manager.task_stacks[toplevel.priority])
         self.assertNotIn(toplevel, executed_tasks)
+
+        for task in task_manager.get_next_task(max_priority=10):
+            executed_tasks.append(task)
+
+        self.assertEqual(len(executed_tasks), 5)
+        self.assertEqual(toplevel, executed_tasks[-1])
+        self.assertEqual(task_manager.task_stacks, {})
 
 
 if __name__ == "__main__":
