@@ -24,6 +24,7 @@ def create_test_incident(**kwargs):
         incident_line=1,
         incident_variables={},
         solution_id=None,
+        application_path=".",
         **kwargs,
     )
 

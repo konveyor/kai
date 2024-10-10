@@ -22,6 +22,7 @@ class SolutionDetectorContext:
     old_incidents: list[SQLIncident]
     new_incidents: list[SQLIncident]
     repo: Repo
+    app_path: str
     old_commit: str
     new_commit: str
 
@@ -210,6 +211,7 @@ def solution_detection_line_match(
 
         file_path = os.path.join(
             cast(str, ctx.repo.working_tree_dir),
+            ctx.app_path,
             remove_known_prefixes(unquote(urlparse(incident.incident_uri).path)),
         )
 

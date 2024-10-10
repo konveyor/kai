@@ -70,6 +70,7 @@ class SolutionProducerTextOnly(SolutionProducer):
         )
         file_path = os.path.join(
             repo.working_tree_dir,
+            incident.application_path,
             local_file_path,
         )
 

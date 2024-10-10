@@ -5,9 +5,9 @@ from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Set
 
 from langchain_core.language_models.chat_models import BaseChatModel
+from pydantic import BaseModel, ConfigDict
 
 from kai.models.kai_config import KaiConfig
-from kai.service.kai_application.kai_application import UpdatedFileContent
 from kai.service.llm_interfacing.model_provider import ModelProvider
 from playpen.repo_level_awareness.api import (
     RpcClientConfig,
@@ -34,6 +34,20 @@ from playpen.repo_level_awareness.vfs.git_vfs import RepoContextManager
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+class UpdatedFileContent(BaseModel):
+    updated_file: str
+    total_reasoning: list[str]
+    used_prompts: list[str]
+    model_id: str
+    additional_information: list[str]
+    response_metadatas: list[dict]
+
+    llm_results: Optional[list[str | list[str | dict]]]
+
+    # "model_" is a Pydantic protected namespace, so we must remove it
+    model_config = ConfigDict(protected_namespaces=())
 
 
 def main():
