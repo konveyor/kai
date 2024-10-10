@@ -9,6 +9,8 @@ class RpcClientConfig:
     repo_directory: Path
     analyzer_lsp_server_binary: Path
     rules_directory: Path
+    analyzer_lsp_path: Path
+    analyzer_java_bundle: Path
     label_selector: Optional[str]
     incident_selector: Optional[str]
     included_paths: Optional[List[str]]

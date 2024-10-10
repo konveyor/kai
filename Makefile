@@ -25,3 +25,6 @@ run-konveyor-importer:
 
 load-data:
 	PYTHONPATH=$(KAI_PYTHON_PATH) python kai/service/incident_store/incident_store.py  --config_filepath ./kai/config.toml --drop_tables $(DROP_TABLES)
+
+build-kai-analyzer:
+	cd kai-analyzer && go build -o kai-analyzer main.go
