@@ -22,6 +22,13 @@ class Task:
     children: List["Task"] = field(default_factory=list, compare=False)
     retry_count: int = 0
     max_retries: int = 3
+    creation_order: int = field(init=False)
+
+    _creation_counter = 0
+
+    def __post_init__(self):
+        self.creation_order = Task._creation_counter
+        Task._creation_counter += 1
 
     def __eq__(self, other):
         return isinstance(other, Task) and self.__dict__ == other.__dict__
@@ -29,7 +36,12 @@ class Task:
     def __lt__(self, other):
         # Lower priority number means higher priority
         # For same priority, higher depth means process children first (DFS)
-        return (self.priority, -self.depth) < (other.priority, -other.depth)
+        # For same priority and depth, rely on creation order just to make it deterministic
+        return (self.priority, -self.depth, self.creation_order) < (
+            other.priority,
+            -other.depth,
+            other.creation_order,
+        )
 
     def __hash__(self):
         return hash(tuple(sorted(self.__dict__.items())))
