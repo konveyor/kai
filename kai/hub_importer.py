@@ -16,8 +16,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from kai.models.kai_config import KaiConfig
 from kai.models.report import Report
-from kai.service.incident_store.incident_store import Application, IncidentStore
-from kai.service.kai_application.kai_application import KaiApplication
+from kai.service.incident_store import Application, IncidentStore
 
 KAI_LOG = logging.getLogger(__name__)
 
@@ -151,6 +150,7 @@ Example: --loglevel debug (default: warning)""",
         "--interval",
         default=60,
         help="Interval to poll the konveyor API for changes",
+        type=int,
     )
 
     arg_parser.add_argument(
@@ -166,10 +166,21 @@ Example: --loglevel debug (default: warning)""",
         "--timeout",
         default=60,
         help="Set the request timeout for Konveyor API requests",
+        type=int,
+    )
+
+    arg_parser.add_argument(
+        "--log_file",
+        help="Set the request timeout for Konveyor API requests",
+        type=str,
     )
 
     args, _ = arg_parser.parse_known_args()
     KAI_LOG.setLevel(args.loglevel.upper())
+    if args.log_file:
+        KAI_LOG.addHandler(logging.FileHandler(args.log_file))
+    else:
+        KAI_LOG.addHandler(logging.StreamHandler())
 
     config: KaiConfig
     if os.path.exists(args.config_filepath):
@@ -180,15 +191,14 @@ Example: --loglevel debug (default: warning)""",
     config.log_level = args.loglevel
     KAI_LOG.info(f"Config loaded: {pprint.pformat(config)}")
 
-    app = KaiApplication(config)
+    incident_store = IncidentStore.incident_store_from_config(config)
 
     if args.skip_verify:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     poll_api(
         args.konveyor_hub_url,
-        args.hub_token,
-        app.incident_store,
+        incident_store,
         interval=args.interval,
         timeout=args.timeout,
         verify=not args.skip_verify,
@@ -225,14 +235,23 @@ def poll_api(
         new_last_analysis = import_from_api(
             incident_store, konveyor_hub_url, token, last_analysis, timeout, verify
         )
+
         if new_last_analysis == last_analysis:
-            KAI_LOG.info(f"No new analyses. Sleeping for {interval} seconds.")
-            time.sleep(interval)
+            KAI_LOG.info("No new analyses.")
         else:
             KAI_LOG.info(
                 f"New analyses found. Updating last_analysis to {new_last_analysis}."
             )
             last_analysis = new_last_analysis
+
+        post_proc_start = time.time()
+        # generate solutions for some incidents
+        KAI_LOG.info("Running post_process to generate solutions")
+        incident_store.post_process(limit=5)
+        post_proc_duration = int(time.time() - post_proc_start)
+        if new_last_analysis == last_analysis and post_proc_duration < interval:
+            KAI_LOG.info(f"Sleeping for {interval-post_proc_duration} seconds.")
+            time.sleep(interval - post_proc_duration)
 
 
 def import_from_api(
@@ -293,9 +312,9 @@ def process_analyses(
     application_dir: str,
     request_timeout: int = 60,
     request_verify: bool = True,
-):
+) -> List[Tuple[Application, Optional[Identity], Report]]:
 
-    reports: list[tuple[Application, Identity | None, Report]] = []
+    reports: List[Tuple[Application, Optional[Identity], Report]] = []
     for analysis in analyses:
         KAI_LOG.info(
             f"Processing analysis {analysis.id} for application {analysis.application.id}"
@@ -341,28 +360,40 @@ def process_analyses(
             )
             key = issue.ruleset
             if key not in report_data:
-                report_data[key] = {"description": issue.description, "violations": {}}
+                report_data[key] = {
+                    "name": key,
+                    "description": issue.description,
+                    "violations": {},
+                }
             for incident in issue.incidents:
-                incident.file = incident.file.removeprefix(
-                    f"/addon/source/{application.application_name}/"
-                )
-                incident.uri = incident.uri.removeprefix(
-                    f"/addon/source/{application.application_name}/"
-                )
+                for prefix in [
+                    "/addon/source/",
+                    "/shared/source/",
+                ]:
+                    incident.file = incident.file.replace(prefix, "", -1)
+                    incident.uri = incident.uri.replace(prefix, "", -1)
+
+                def remove_base_dir(x):
+                    return x.split("/", 1)[1] if len(x.split("/", 1)) > 1 else x
+
+                incident.file = remove_base_dir(incident.file)
+                incident.uri = remove_base_dir(incident.uri)
                 KAI_LOG.debug(f"{incident.variables=}")
 
             report_data[key]["violations"][issue.rule] = {  # type: ignore
                 "category": issue.category,
                 "description": issue.description,
                 "effort": issue.effort,
-                "incidents": issue.incidents,
+                "incidents": [i.model_dump() for i in issue.incidents],
             }
         if report_data:
             reports.append(
                 (
                     application,
                     credentials,
-                    Report.load_report_from_object(report_data, str(analysis.id)),
+                    Report.load_report_from_object(
+                        [rs for rs in report_data.values()], str(analysis.id)
+                    ),
                 )
             )
     return reports
@@ -422,6 +453,7 @@ def parse_application_data(api_response, application_dir):
         current_branch=current_branch,
         current_commit=current_commit,
         generated_at=generated_at,
+        path=api_response.get("repository", {}).get("path", ""),
     )
 
     return application

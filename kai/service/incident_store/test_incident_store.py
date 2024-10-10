@@ -320,6 +320,8 @@ class TestIncidentStore(unittest.TestCase):
                     )
                 )
 
+        self.incident_store.post_process(limit=-1)
+
         for query in queries:
             solutions = self.incident_store.find_solutions(
                 query[0], query[1], query[2], query[3]
