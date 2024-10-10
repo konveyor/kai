@@ -150,7 +150,12 @@ class TaskManager:
 
         self.rcm = rcm
 
-        self.seed_tasks = seed_tasks
+        if seed_tasks:
+            for task in seed_tasks:
+                # Seed tasks are assumed to be of the highest priority
+                task.priority = 0
+                self.add_task_to_stack(task)
+                logger.debug("Seed task %s added to stack.", task)
 
         logger.info("TaskManager initialized.")
 
@@ -220,13 +225,6 @@ class TaskManager:
 
     def initialize_task_stacks(self):
         logger.info("Initializing task stacks.")
-
-        if self.seed_tasks:
-            for task in self.seed_tasks:
-                # Seed tasks are assumed to be of the highest priority
-                task.priority = 0
-                self.add_task_to_stack(task)
-                logger.debug("Task %s added to stack.", task)
 
         new_tasks = self.run_validators()
         logger.debug("New tasks from validators: %s", new_tasks)
