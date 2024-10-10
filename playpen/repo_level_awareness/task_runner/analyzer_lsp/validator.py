@@ -29,6 +29,10 @@ class AnlayzerLSPStep(ValidationStep):
                 RpcClientConfig.repo_directory,
                 "-rules-directory",
                 RpcClientConfig.rules_directory,
+                "-lspServerPath",
+                RpcClientConfig.analyzer_lsp_path,
+                "-bundles",
+                RpcClientConfig.analyzer_java_bundle,
             ],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -60,13 +64,13 @@ class AnlayzerLSPStep(ValidationStep):
             "incident_selector": "",
         }
         if self.config.label_selector is not None:
-            request_params.LabelSelector = self.config.label_selector
+            request_params["label_selector"] = self.config.label_selector
 
         if self.config.included_paths is not None:
-            request_params.IncludedPaths = self.config.included_paths
+            request_params["included_paths"] = self.config.included_paths
 
         if self.config.incident_selector is not None:
-            request_params.IncidentSelector = self.config.incident_selector
+            request_params["incident_selector"] = self.config.incident_selector
 
         return self.rpc.call_method(
             "analysis_engine.Analyze",
