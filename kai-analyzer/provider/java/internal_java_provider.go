@@ -13,7 +13,7 @@ type InternalProviderClient struct {
 	provider.ServiceClient
 }
 
-func NewInternalProviderClient(ctx context.Context, log logr.Logger, contextLines int, location string) (provider.InternalProviderClient, error) {
+func NewInternalProviderClient(ctx context.Context, log logr.Logger, contextLines int, location string, lspServerPath string, bundles string) (provider.InternalProviderClient, error) {
 	// Create JavaProvider From external provider
 	p := extjava.NewJavaProvider(log, "java", contextLines)
 	log.Info("logger", "v", p)
@@ -22,8 +22,8 @@ func NewInternalProviderClient(ctx context.Context, log logr.Logger, contextLine
 		Location: location,
 		ProviderSpecificConfig: map[string]interface{}{
 			"lspServerName": "java",
-			"bundles":       "/Users/shurley/repos/MTA/java-analyzer-bundle/java-analyzer-bundle.core/target/java-analyzer-bundle.core-1.0.0-SNAPSHOT.jar",
-			"lspServerPath": "/Users/shurley/repos/kai/jdtls/bin/jdtls",
+			"bundles":       bundles,
+			"lspServerPath": lspServerPath,
 		},
 		Proxy:        &provider.Proxy{},
 		AnalysisMode: "source-only",
