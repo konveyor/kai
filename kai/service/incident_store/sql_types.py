@@ -86,7 +86,7 @@ class SQLApplication(SQLBase):
     __tablename__ = "applications"
 
     application_name: Mapped[str] = mapped_column(primary_key=True)
-
+    path: Mapped[str] = mapped_column(primary_key=True)
     repo_uri_origin: Mapped[str]
     repo_uri_local: Mapped[str]
     current_branch: Mapped[str]
@@ -145,9 +145,8 @@ class SQLIncident(SQLBase):
 
     violation_name = Column(String)
     ruleset_name = Column(String)
-    application_name: Mapped[str] = mapped_column(
-        ForeignKey("applications.application_name")
-    )
+    application_name: Mapped[str] = mapped_column(String)
+    application_path: Mapped[str] = mapped_column(String)
     incident_uri: Mapped[str]
     incident_message: Mapped[str]
     incident_snip: Mapped[str]
@@ -161,6 +160,10 @@ class SQLIncident(SQLBase):
         ForeignKeyConstraint(
             [violation_name, ruleset_name],
             [SQLViolation.violation_name, SQLViolation.ruleset_name],
+        ),
+        ForeignKeyConstraint(
+            [application_name, application_path],
+            [SQLApplication.application_name, SQLApplication.path],
         ),
         {},
     )

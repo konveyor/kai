@@ -11,13 +11,16 @@ import yaml
 from git import Repo
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from kai.constants import PATH_GIT_ROOT, PATH_LOCAL_REPO
-from kai.kai_logging import initLogging
 from kai.models.kai_config import KaiConfig
 from kai.models.report import Report
 from kai.models.util import filter_incident_vars
-from kai.service.incident_store.backend import IncidentStoreBackend
+from kai.service.incident_store.backend import (
+    IncidentStoreBackend,
+    incident_store_backend_factory,
+)
 from kai.service.incident_store.sql_types import (
     SQLAcceptedSolution,
     SQLApplication,
@@ -27,11 +30,16 @@ from kai.service.incident_store.sql_types import (
     SQLUnmodifiedReport,
     SQLViolation,
 )
+from kai.service.llm_interfacing.model_provider import ModelProvider
 from kai.service.solution_handling.detection import (
     SolutionDetectionAlgorithm,
     SolutionDetectorContext,
+    solution_detection_factory,
 )
-from kai.service.solution_handling.production import SolutionProducer
+from kai.service.solution_handling.production import (
+    SolutionProducer,
+    solution_producer_factory,
+)
 from kai.service.solution_handling.solution_types import Solution
 
 KAI_LOG = logging.getLogger(__name__)
@@ -175,6 +183,7 @@ class Application:
     current_branch: str
     current_commit: str
     generated_at: datetime.datetime
+    path: str = "."
 
 
 class IncidentStore:
@@ -217,6 +226,14 @@ class IncidentStore:
         report_incidents: list[SQLIncident] = []
 
         with Session(self.engine) as session:
+            select_report_stmt = select(SQLUnmodifiedReport).where(
+                SQLUnmodifiedReport.report_id == report.report_id
+            )
+
+            if session.scalars(select_report_stmt).first() is not None:
+                KAI_LOG.info(f"Report {report.report_id} already exists")
+                return (0, 0, 0)
+
             select_application_stmt = select(SQLApplication).where(
                 SQLApplication.application_name == app.application_name
             )
@@ -231,6 +248,7 @@ class IncidentStore:
                     current_branch=app.current_branch,
                     current_commit=app.current_commit,
                     generated_at=app.generated_at,
+                    path=app.path,
                 )
                 session.add(application)
                 session.commit()
@@ -290,6 +308,7 @@ class IncidentStore:
                                 violation_name=violation.violation_name,
                                 ruleset_name=ruleset.ruleset_name,
                                 application_name=application.application_name,
+                                application_path=application.path,
                                 incident_uri=incident.uri,
                                 incident_snip=incident.code_snip,
                                 incident_line=incident.line_number,
@@ -304,6 +323,7 @@ class IncidentStore:
                 repo=repo,
                 old_commit=old_commit,
                 new_commit=new_commit,
+                app_path=application.path,
             )
 
             categorized_incidents = self.solution_detector(solution_detector_ctx)
@@ -422,29 +442,99 @@ class IncidentStore:
                     select_accepted_solution_stmt
                 ).first()
 
-                if accepted_solution is None:
-                    raise Exception(
-                        f"Accepted solution with id {incident.solution_id} not found. This should not occur."
-                    )
+                result.append(accepted_solution.solution)
+            return result
 
-                processed_solution = self.solution_producer.post_process_one(
-                    incident, accepted_solution.solution
+    def post_process(self, limit=5):
+        """Runs post_process function of producer for all applicable solutions
+        It can take significant amount of time (~50-60 secs per solution) to run this for all solutions at once.
+        A positive limit value will limit the number of solutions processed.
+
+        Args:
+            limit (int, optional): Max number of solutions to pick. -ve value picks "all". Defaults to 5.
+        """
+        page_size = 100
+        page = 0
+        processed_count = 0
+        limit = float("inf") if limit < 0 else limit
+        KAI_LOG.debug(f"Running post_process with limit {limit}")
+        with Session(self.engine) as session:
+            while processed_count < limit:
+                select_solutions_without_summary_stmt = (
+                    select(SQLAcceptedSolution)
+                    .limit(page_size)
+                    .offset(page * page_size)
                 )
 
-                # TODO: This first line doesn't work for some reason. The second
-                # line is a hack to get around it.
-                accepted_solution.solution = processed_solution
-                session.query(SQLAcceptedSolution).filter(
-                    SQLAcceptedSolution.solution_id == incident.solution_id
-                ).update({"solution": processed_solution})
+                page += 1
 
-                result.append(processed_solution)
+                solutions = session.scalars(select_solutions_without_summary_stmt).all()
 
-                session.commit()
+                if len(solutions) < 1:
+                    break
 
-            session.commit()
+                for original_solution in solutions:
+                    original_sol = original_solution.solution.model_copy()
+                    select_incidents_for_solution_stmt = select(SQLIncident).where(
+                        SQLIncident.solution_id == original_solution.solution_id
+                    )
+                    related_incident = session.scalars(
+                        select_incidents_for_solution_stmt
+                    ).first()
+                    if related_incident is None:
+                        KAI_LOG.debug(
+                            f"No incident found for solution {original_solution.solution_id}"
+                        )
+                        continue
+                    KAI_LOG.debug(
+                        f"Running producer post_process for solution {original_solution.solution_id}"
+                    )
+                    try:
+                        processed_solution = self.solution_producer.post_process_one(
+                            related_incident, original_solution.solution
+                        )
+                        if original_sol.model_dump() == processed_solution.model_dump():
+                            KAI_LOG.debug(
+                                f"Skipping already processed solution {original_solution.solution_id}"
+                            )
+                        else:
+                            # (pgaikwad): since we have a custom TypeDecorator on solution field
+                            # we need to force set modified flag, this may be done better
+                            flag_modified(original_solution, "solution")
+                            processed_count += 1
+                            KAI_LOG.debug(
+                                f"Processed solution {original_solution.solution_id}"
+                            )
+                            session.commit()
+                            if processed_count >= limit:
+                                break
+                    except Exception as e:
+                        KAI_LOG.error(f"Error running post_process - {e}")
+            else:
+                KAI_LOG.debug(f"Processed {processed_count} solutions, limit {limit}")
 
-            return result
+    @staticmethod
+    def incident_store_from_config(config: KaiConfig) -> "IncidentStore":
+        model_provider = ModelProvider(config.models)
+
+        KAI_LOG.info(f"Selected provider: {config.models.provider}")
+        KAI_LOG.info(f"Selected model: {model_provider.model_id}")
+
+        backend = incident_store_backend_factory(config.incident_store.args)
+
+        solution_detector = solution_detection_factory(
+            config.incident_store.solution_detectors
+        )
+
+        solution_producer = solution_producer_factory(
+            config.incident_store.solution_producers, model_provider
+        )
+
+        return IncidentStore(
+            backend=backend,
+            solution_detector=solution_detector,
+            solution_producer=solution_producer,
+        )
 
 
 def cmd(provider: Optional[str] = None):
@@ -453,11 +543,11 @@ def cmd(provider: Optional[str] = None):
         "--config_filepath",
         type=str,
         default=None,
-        required=False,
+        required=True,
         help="Path to the config file.",
     )
     parser.add_argument(
-        "--drop_tables", type=str, default="False", help="Whether to drop tables."
+        "--drop_tables", action="store_true", help="Whether to drop tables."
     )
     parser.add_argument(
         "--analysis_dir_path",
@@ -465,6 +555,20 @@ def cmd(provider: Optional[str] = None):
         default=os.path.join(PATH_GIT_ROOT, "samples/analysis_reports/"),
         help="Path to analysis reports folder",
     )
+    parser.add_argument(
+        "--post_process",
+        action="store_true",
+        help="Whether to run producer post process",
+    )
+    parser.add_argument(
+        "--post_process_limit",
+        type=int,
+        default=-1,
+        help="Whether to run producer post process",
+    )
+    console_handler = logging.StreamHandler()
+    KAI_LOG.addHandler(console_handler)
+    KAI_LOG.setLevel("DEBUG")
 
     args = parser.parse_args()
 
@@ -473,29 +577,21 @@ def cmd(provider: Optional[str] = None):
     else:
         config = KaiConfig()
 
-    initLogging(
-        config.log_level.upper(),
-        config.file_log_level.upper(),
-        config.log_dir,
-        "kai_psql.log",
-    )
-    KAI_LOG.setLevel(config.log_level.upper())
-
     KAI_LOG.info(f"config: {config}")
-    print(f"config: {config}")
+    incident_store = IncidentStore.incident_store_from_config(config)
 
     if provider is not None and config.incident_store.args.provider != provider:
         raise Exception(f"This script only works with {provider} incident store.")
 
-    from kai.service.kai_application.kai_application import KaiApplication
-
-    kai_application = KaiApplication(config)
-    incident_store = kai_application.incident_store
+    incident_store = IncidentStore.incident_store_from_config(config)
 
     if args.drop_tables:
         incident_store.delete_store()
 
-    load_reports_from_directory(incident_store, args.analysis_dir_path)
+    if args.post_process:
+        incident_store.post_process(limit=args.post_process_limit)
+    else:
+        load_reports_from_directory(incident_store, args.analysis_dir_path)
 
 
 if __name__ == "__main__":
