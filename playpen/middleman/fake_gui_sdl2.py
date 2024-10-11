@@ -25,7 +25,12 @@ from kai.models.util import remove_known_prefixes
 from kai.routes.get_incident_solutions_for_file import (
     PostGetIncidentSolutionsForFileParams,
 )
-from playpen.middleman.server import KaiRpcApplicationConfig
+from playpen.middleman.server import (
+    KaiRpcApplicationConfig,
+    get_codeplan_agent_solution,
+    initialize,
+)
+from playpen.rpc.callbacks import JsonRpcCallback
 from playpen.rpc.core import JsonRpcServer
 from playpen.rpc.streams import BareJsonStream
 
@@ -102,24 +107,27 @@ class ConfigurationEditorOld(Drawable):
         imgui.end()
 
 
-@dataclass
 class ConfigurationEditorFunction:
-    method: str
-    cls: type[BaseModel]
-    func: Callable[[str, BaseModel], None]
-    obj: BaseModel | None = None
+    def __init__(self, method: str, cls: type[BaseModel], *, obj: dict = None):
+        self.method = method
+        self.cls = cls
+        self.obj = obj or {}
+        self.gui_obj = {}
+        self.schema = cls.model_json_schema()
 
 
 class ConfigurationEditor(Drawable):
-    def __init__(self, requests: list[ConfigurationEditorFunction]):
+    def __init__(self, requests: list[ConfigurationEditorFunction | JsonRpcCallback]):
         super().__init__()
 
         self.requests: dict[str, ConfigurationEditorFunction] = {}
         for request in requests:
-            self.requests[request.method] = request
-            self.requests[request.method].obj = self.requests[
-                request.method
-            ].cls.model_construct()
+            if isinstance(request, JsonRpcCallback):
+                self.requests[request.method] = ConfigurationEditorFunction(
+                    request.method, request.params_model
+                )
+            else:
+                self.requests[request.method] = request
 
     def _draw(self):
         _, self.show = imgui.begin("Configuration Editor", closable=True)
@@ -127,11 +135,91 @@ class ConfigurationEditor(Drawable):
         if imgui.begin_tab_bar("ConfigurationEditorTabBar"):
             for method in self.requests:
                 if imgui.begin_tab_item(method).selected:
-                    self.requests[method].func(method, self.requests[method].obj)
-                imgui.end_tab_item()
+                    self.draw_from_request(self.requests[method])
+                    imgui.end_tab_item()
+
             imgui.end_tab_bar()
 
         imgui.end()
+
+    def draw_from_request(self, request: ConfigurationEditorFunction):
+        if imgui.button(f"Populate `{request.method}` request"):
+            JSON_RPC_REQUEST_WINDOW.rpc_kind_n = 0
+            JSON_RPC_REQUEST_WINDOW.rpc_method = request.method
+
+            try:
+                JSON_RPC_REQUEST_WINDOW.rpc_params = json.dumps(
+                    request.cls.model_validate(request.obj).model_dump(), indent=2
+                )
+            except Exception as e:
+                JSON_RPC_REQUEST_WINDOW.rpc_params = f"Error parsing JSON: {e}"
+
+            imgui.set_window_focus_labeled("JSON RPC Request Window")
+
+        self.draw_jsonschema(
+            request.schema, request.obj, request.schema.get("$defs", {})
+        )
+
+        imgui.separator()
+        imgui.text("Schema:")
+        imgui.begin_child(
+            f"Schema {request.method}",
+            border=True,
+            flags=imgui.WINDOW_ALWAYS_VERTICAL_SCROLLBAR
+            | imgui.WINDOW_HORIZONTAL_SCROLLING_BAR,
+        )
+        lines = yaml.dump(request.schema).split("\n")
+        for line in lines:
+            imgui.text(line)
+        imgui.end_child()
+
+    def draw_jsonschema(self, schema: dict[str, Any], obj: Any, defs: dict[str, Any]):
+        # assuming only one restriction
+        if schema.get("type") == "string":
+            _, obj = imgui.input_text(schema.get("title", "string"), str(obj), 400)
+
+            return obj
+        elif schema.get("type") == "integer" or schema.get("type") == "number":
+            _, obj = imgui.input_int(schema.get("title", "integer"), obj)
+
+            return obj
+        elif schema.get("type") == "boolean":
+            _, obj = imgui.checkbox(schema.get("title", "boolean"), obj)
+
+            return obj
+        elif schema.get("type") == "null":
+            imgui.text("null")
+
+            return None
+        elif schema.get("type") == "array":
+            _, obj_str = imgui.input_text(schema.get("title", "array"), str(obj), 400)
+
+            try:
+                obj = json.loads(obj_str)
+            except json.JSONDecodeError:
+                obj = obj_str
+
+            return obj
+        elif schema.get("type") == "object":
+            for property in schema.get("properties", {}):
+                prop_schema = schema["properties"][property]
+                prop_default = prop_schema.get("default", None)
+                obj[property] = obj.get(property, prop_default)
+                obj[property] = self.draw_jsonschema(prop_schema, obj[property], defs)
+
+            return obj
+
+        else:
+            _, obj_str = imgui.input_text(
+                schema.get("title", "unknown") + " (!)", str(obj), 400
+            )
+
+            try:
+                obj = json.loads(obj_str)
+            except json.JSONDecodeError:
+                obj = obj_str
+
+            return obj
 
 
 class SourceEditor(Drawable):
@@ -457,37 +545,14 @@ JSON_RPC_REQUEST_WINDOW = JsonRpcRequestWindow()
 REQUEST_RESPONSE_INSPECTOR = RequestResponseInspector()
 SUBPROCESS_INSPECTOR = SubprocessInspector()
 
+CONFIGURATION_EDITOR = ConfigurationEditor(
+    requests=[
+        initialize,
+        get_codeplan_agent_solution,
+    ]
+)
 
-def draw_initialize(method, obj):
-    if imgui.button("Populate `initialize` request"):
-        JSON_RPC_REQUEST_WINDOW.rpc_kind_n = 0
-        JSON_RPC_REQUEST_WINDOW.rpc_method = "initialize"
-        JSON_RPC_REQUEST_WINDOW.rpc_params = json.dumps(CONFIG.model_dump(), indent=2)
-
-        imgui.set_window_focus_labeled("JSON RPC Request Window")
-
-    imgui.input_int("Process ID", CONFIG.process_id, flags=imgui.INPUT_TEXT_READ_ONLY)
-    _, CONFIG.root_uri = imgui.input_text("Root URI", CONFIG.root_uri, 400)
-    _, CONFIG.kantra_uri = imgui.input_text("Kantra URI", CONFIG.kantra_uri, 400)
-    _, CONFIG.kai_backend_url = imgui.input_text(
-        "Kai Backend URL", CONFIG.kai_backend_url, 400
-    )
-    _, CONFIG.model_provider.provider = imgui.input_text(
-        "Model Provider", CONFIG.model_provider.provider, 400
-    )
-    _, self.model_args = imgui.input_text("Model Args", self.model_args, 400)
-
-
-# CONFIGURATION_EDITOR = ConfigurationEditor(
-#     requests=[
-#         ConfigurationEditorFunction(
-#             method="initialize",
-#             cls=KaiRpcApplicationConfig,
-
-#     ]
-# )
-
-CONFIGURATION_EDITOR = ConfigurationEditorOld()
+# CONFIGURATION_EDITOR = ConfigurationEditorOld()
 
 json_rpc_responses = []
 rpc_subprocess_stderr_log = []

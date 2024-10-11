@@ -13,6 +13,7 @@ from kai.models.kai_config import KaiConfigModels
 from kai.routes.get_incident_solutions_for_file import (
     PostGetIncidentSolutionsForFileParams,
 )
+from kai.service.kai_application.kai_application import UpdatedFileContent
 from kai.service.llm_interfacing.model_provider import ModelProvider
 from playpen.repo_level_awareness.api import RpcClientConfig, TaskResult
 from playpen.repo_level_awareness.codeplan import TaskManager
@@ -180,7 +181,10 @@ def get_rag_solution(
 
 
 class GetCodeplanAgentSolutionParams(BaseModel):
-    pass
+    file_path: Path
+
+    # For demo only
+    replacing_file_path: Path
 
 
 @app.add_request(
@@ -200,14 +204,29 @@ def get_codeplan_agent_solution(
             message=str(e),
         )
 
-    # TODO: It'd be nice to unify these config classes
-    task_manager_config = RpcClientConfig(
-        repo_directory=Path(urlparse(app.config.root_uri).path),
-    )
-
     rcm = RepoContextManager(
         project_root=Path(urlparse(app.config.root_uri).path),
         llm=model_provider.llm,
+    )
+
+    replaced_file_content = open(params.replacing_file_path).read()
+    # overwrite the file content with the replaced file content
+    with open(params.file_path, "w") as f:
+        f.write(replaced_file_content)
+
+    rcm.commit("Replaced file content")
+
+    updated_file_content = UpdatedFileContent(
+        updated_file=replaced_file_content,
+        total_reasoning=[],
+        used_prompts=[],
+        model_id=model_provider.llm.model_id,
+        llm_results=None,
+    )
+
+    # TODO: It'd be nice to unify these config classes
+    task_manager_config = RpcClientConfig(
+        repo_directory=Path(urlparse(app.config.root_uri).path),
     )
 
     task_manager = TaskManager(
@@ -229,7 +248,11 @@ def get_codeplan_agent_solution(
         result = task_manager.execute_task(task)
         task_manager.supply_result(result)
 
+        rcm.commit(f"Executed task {task.__class__.__name__}")
+
     task_manager.stop()
+
+    rcm.reset_to_first()
 
     return {
         "encountered_errors": [str(e) for e in result.encountered_errors],

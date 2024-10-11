@@ -234,6 +234,13 @@ class RepoContextManager:
 
         self.reset(self.snapshot.parent)
 
+    def reset_to_first(self):
+        """
+        Resets the repository to the initial commit.
+        """
+        while self.snapshot.parent is not None:
+            self.reset_to_parent()
+
 
 # FIXME: remove this function, only there for the little demo below so the
 # pseudo code works
