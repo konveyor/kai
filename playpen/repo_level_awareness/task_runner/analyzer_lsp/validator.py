@@ -11,6 +11,7 @@ from playpen.repo_level_awareness.api import (
     ValidationStep,
 )
 from playpen.repo_level_awareness.task_runner.analyzer_lsp.api import (
+    AnalyzerDependnecyRuleViolation,
     AnalyzerRuleViolation,
 )
 
@@ -37,6 +38,8 @@ class AnlayzerLSPStep(ValidationStep):
                 RpcClientConfig.analyzer_lsp_path,
                 "-bundles",
                 RpcClientConfig.analyzer_java_bundle,
+                "-log-file",
+                "./kai-analyzer.log",
             ],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -48,7 +51,7 @@ class AnlayzerLSPStep(ValidationStep):
             json_rpc_endpoint=analyzer_rpc.AnlayzerRPCEndpoint(
                 rpc_server.stdin, rpc_server.stdout
             ),
-            timeout=60,
+            timeout=180,
         )
         self.rpc.start()
 
@@ -62,7 +65,7 @@ class AnlayzerLSPStep(ValidationStep):
     def __run_analyzer_lsp(self) -> List[AnalyzerRuleViolation]:
 
         request_params = {
-            "label_selector": "konveyor.io/target=quarkus",
+            "label_selector": "konveyor.io/target=quarkus konveyor.io/target=jakarta-ee ",
             "included_paths": [],
             "incident_selector": "",
         }
@@ -92,11 +95,13 @@ class AnlayzerLSPStep(ValidationStep):
 
         validation_errors: List[AnalyzerRuleViolation] = []
         for _k, v in r.rulesets.items():
-
             for _vk, vio in v.violations.items():
                 for i in vio.incidents:
+                    class_to_use = AnalyzerRuleViolation
+                    if "pom.xml" in i.uri:
+                        class_to_use = AnalyzerDependnecyRuleViolation
                     validation_errors.append(
-                        AnalyzerRuleViolation(
+                        class_to_use(
                             file=urlparse(i.uri).path,
                             line=i.line_number,
                             column=None,

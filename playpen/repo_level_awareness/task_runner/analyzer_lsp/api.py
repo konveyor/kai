@@ -10,6 +10,12 @@ class AnalyzerRuleViolation(ValidationError):
     violation: Violation
     ruleset: RuleSet
     # TODO Highest priority?
-    priority: int = 1
+    priority: int = 2
 
     # TODO: Define a new hash function?
+
+
+class AnalyzerDependnecyRuleViolation(AnalyzerRuleViolation):
+    """The same as a AnalyzerRuleValidation but higher priority and used by the dependency task_runner"""
+
+    priority: int = 1
