@@ -155,7 +155,7 @@ class TaskManager:
                 # Seed tasks are assumed to be of the highest priority
                 task.priority = 0
                 self.add_task_to_stack(task)
-                logger.debug("Seed task %s added to stack.", task)
+                logger.info("Seed task %s added to stack.", task)
 
         logger.info("TaskManager initialized.")
 
@@ -197,9 +197,15 @@ class TaskManager:
             logger.debug("Validator result: %s", result)
             if not result.passed:
                 validation_tasks.extend(result.errors)
-                logger.info("Validator %s found errors: %s", validator, result.errors)
+                logger.info(
+                    "Found %d new tasks from validator %s",
+                    len(result.errors),
+                    validator,
+                )
+                logger.debug("Validator %s found errors: %s", validator, result.errors)
 
         self._validators_are_stale = False
+        logger.info("Found %d new tasks from validators", len(validation_tasks))
         logger.debug("Validators are up to date.")
         return validation_tasks
 
@@ -227,10 +233,8 @@ class TaskManager:
         logger.info("Initializing task stacks.")
 
         new_tasks = self.run_validators()
-        logger.debug("New tasks from validators: %s", new_tasks)
         for task in new_tasks:
             self.add_task_to_stack(task)
-            logger.debug("Task %s added to stack.", task)
 
     def add_task_to_stack(self, task: Task):
         for priority_level, task_stack in self.task_stacks.items():
@@ -302,7 +306,6 @@ class TaskManager:
             child_task.priority = task.priority
             task.children.append(child_task)
             self.add_task_to_stack(child_task)
-            logger.debug("Child task %s added to stack.", child_task)
 
     def remove_task_from_stacks(self, task: Task):
         for priority_level in list(self.task_stacks.keys()):
@@ -343,8 +346,12 @@ class TaskManager:
         task.retry_count += 1
         if task.retry_count < task.max_retries:
             task.priority += 1
+            logger.debug(
+                "Task %s failed (retry count: %s), decreasing priority and attempting to add back to stack",
+                task,
+                task.retry_count,
+            )
             self.add_task_to_stack(task)
-            logger.debug("Retrying task %s (retry count: %s).", task, task.retry_count)
         else:
             self.ignored_tasks.append(task)
             logger.warning(
