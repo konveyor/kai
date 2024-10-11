@@ -1,6 +1,7 @@
 import logging
 import subprocess  # trunk-ignore(bandit/B404)
-from typing import Any
+import threading
+from typing import IO, Any
 from urllib.parse import urlparse
 
 from kai.models.report import Report
@@ -18,6 +19,11 @@ from playpen.rpc.streams import BareJsonStream
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def log_stderr(stderr: IO[bytes]) -> None:
+    for line in iter(stderr.readline, b""):
+        logger.info(line.decode("utf-8"))
 
 
 class AnalyzerLSPStep(ValidationStep):
@@ -41,13 +47,18 @@ class AnalyzerLSPStep(ValidationStep):
             ],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            text=True,
+            stderr=subprocess.PIPE,
         )
         # trunk-ignore-end(bandit/B603)
 
+        self.stderr_logging_thread = threading.Thread(
+            target=log_stderr, args=(rpc_server.stderr,)
+        )
+        self.stderr_logging_thread.start()
+
         self.rpc = JsonRpcServer(
-            json_rpc_stream=BareJsonStream(rpc_server.stdin, rpc_server.stdout),
-            request_timeout=180,
+            json_rpc_stream=BareJsonStream(rpc_server.stdout, rpc_server.stdin),
+            request_timeout=60,
         )
         self.rpc.start()
 
@@ -111,4 +122,5 @@ class AnalyzerLSPStep(ValidationStep):
         return validation_errors
 
     def stop(self):
+        self.stderr_logging_thread.join()
         self.rpc.stop()

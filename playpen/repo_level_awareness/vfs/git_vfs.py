@@ -191,6 +191,7 @@ class RepoContextManager:
     def __init__(self, project_root: Path, llm: BaseChatModel):
         self.project_root = project_root
         self.snapshot = RepoContextSnapshot.initialize(project_root)
+        self.first_snapshot = self.snapshot
 
         self.reflection_agent = ReflectionAgent(llm=llm, iterations=1, retries=3)
 

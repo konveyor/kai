@@ -43,6 +43,7 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
 
     root_uri: str
     kantra_uri: str
+    analyzer_lsp_uri: str
     model_provider: KaiConfigModels
     kai_backend_url: str
 
@@ -220,13 +221,19 @@ def get_codeplan_agent_solution(
         updated_file=replaced_file_content,
         total_reasoning=[],
         used_prompts=[],
-        model_id=model_provider.llm.model_id,
+        model_id=model_provider.model_id,
+        additional_information=[],
         llm_results=None,
     )
 
     # TODO: It'd be nice to unify these config classes
     task_manager_config = RpcClientConfig(
         repo_directory=Path(urlparse(app.config.root_uri).path),
+        analyzer_lsp_server_binary=Path(urlparse(app.config.analyzer_lsp_uri).path),
+        rules_directory=Path(urlparse(app.config.analyzer_lsp_uri).path) / "rules",
+        label_selector=None,
+        incident_selector=None,
+        included_paths=None,
     )
 
     task_manager = TaskManager(
@@ -235,10 +242,10 @@ def get_codeplan_agent_solution(
         updated_file_content=updated_file_content,
         validators=[
             MavenCompileStep(task_manager_config),
-            AnalyzerLSPStep(task_manager_config),
+            # AnalyzerLSPStep(task_manager_config),
         ],
         agents=[
-            AnalyzerTaskRunner(model_provider.llm),
+            # AnalyzerTaskRunner(model_provider.llm),
             MavenCompilerTaskRunner(model_provider.llm),
         ],
     )
@@ -252,9 +259,14 @@ def get_codeplan_agent_solution(
 
     task_manager.stop()
 
+    diff = rcm.snapshot.git(
+        ["diff", f"{rcm.snapshot.git_sha}", f"{rcm.first_snapshot.git_sha}"]
+    )[1]
+
     rcm.reset_to_first()
 
     return {
         "encountered_errors": [str(e) for e in result.encountered_errors],
         "modified_files": [str(f) for f in result.modified_files],
+        "diff": diff,
     }, None

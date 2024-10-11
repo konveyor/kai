@@ -8,7 +8,7 @@ import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urlparse
 
 import imgui
@@ -55,6 +55,7 @@ CONFIG = KaiRpcApplicationConfig(
     process_id=os.getpid(),
     root_uri=f"file://{KAI_DIR / 'example/coolstore'}",
     kantra_uri=f"file://{KAI_DIR / 'kantra'}",
+    analyzer_lsp_uri=f"file://{KAI_DIR / 'analyzer-lsp'}",
     model_provider=KaiConfigModels(
         provider="ChatIBMGenAI",
         args={
@@ -116,6 +117,35 @@ class ConfigurationEditorFunction:
         self.schema = cls.model_json_schema()
 
 
+@dataclass
+class Combo:
+    items: list[str]
+    selected: int
+    objs: list[Any]
+
+
+def deep_copy_with_filter(obj: dict, remove: Callable[[Any, Any], bool]) -> dict:
+    result = {}
+    for key, value in obj.items():
+        while isinstance(value, Combo):
+            value = value.objs[value.selected]
+
+        # FIXME: Work with lists
+        if not remove(key, value):
+            if isinstance(value, dict):
+                result[key] = deep_copy_with_filter(value, remove)
+            else:
+                result[key] = value
+    return result
+
+
+class MyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Path):
+            return str(obj)
+        return super().default(obj)
+
+
 class ConfigurationEditor(Drawable):
     def __init__(self, requests: list[ConfigurationEditorFunction | JsonRpcCallback]):
         super().__init__()
@@ -133,6 +163,10 @@ class ConfigurationEditor(Drawable):
         _, self.show = imgui.begin("Configuration Editor", closable=True)
 
         if imgui.begin_tab_bar("ConfigurationEditorTabBar"):
+            if imgui.begin_tab_item("Old config editor").selected:
+                self.draw_old_config_editor()
+                imgui.end_tab_item()
+
             for method in self.requests:
                 if imgui.begin_tab_item(method).selected:
                     self.draw_from_request(self.requests[method])
@@ -142,14 +176,51 @@ class ConfigurationEditor(Drawable):
 
         imgui.end()
 
+    @property
+    def model_args(self):
+        return json.dumps(CONFIG.model_provider.args)
+
+    @model_args.setter
+    def model_args(self, value):
+        CONFIG.model_provider.args = json.loads(value)
+
+    def draw_old_config_editor(self):
+        imgui.input_int(
+            "Process ID", CONFIG.process_id, flags=imgui.INPUT_TEXT_READ_ONLY
+        )
+        _, CONFIG.root_uri = imgui.input_text("Root URI", CONFIG.root_uri, 400)
+        _, CONFIG.kantra_uri = imgui.input_text("Kantra URI", CONFIG.kantra_uri, 400)
+        _, CONFIG.kai_backend_url = imgui.input_text(
+            "Kai Backend URL", CONFIG.kai_backend_url, 400
+        )
+        _, CONFIG.model_provider.provider = imgui.input_text(
+            "Model Provider", CONFIG.model_provider.provider, 400
+        )
+        _, self.model_args = imgui.input_text("Model Args", self.model_args, 400)
+
+        if imgui.button("Populate `initialize` request"):
+            JSON_RPC_REQUEST_WINDOW.rpc_kind_n = 0
+            JSON_RPC_REQUEST_WINDOW.rpc_method = "initialize"
+            JSON_RPC_REQUEST_WINDOW.rpc_params = json.dumps(
+                CONFIG.model_dump(), indent=2
+            )
+
+            imgui.set_window_focus_labeled("JSON RPC Request Window")
+
     def draw_from_request(self, request: ConfigurationEditorFunction):
         if imgui.button(f"Populate `{request.method}` request"):
             JSON_RPC_REQUEST_WINDOW.rpc_kind_n = 0
             JSON_RPC_REQUEST_WINDOW.rpc_method = request.method
 
             try:
+                request.obj = deep_copy_with_filter(
+                    request.gui_obj,
+                    lambda k, v: k.startswith("__gui_"),
+                )
                 JSON_RPC_REQUEST_WINDOW.rpc_params = json.dumps(
-                    request.cls.model_validate(request.obj).model_dump(), indent=2
+                    request.cls.model_validate(request.obj).model_dump(),
+                    indent=2,
+                    cls=MyEncoder,
                 )
             except Exception as e:
                 JSON_RPC_REQUEST_WINDOW.rpc_params = f"Error parsing JSON: {e}"
@@ -157,7 +228,7 @@ class ConfigurationEditor(Drawable):
             imgui.set_window_focus_labeled("JSON RPC Request Window")
 
         self.draw_jsonschema(
-            request.schema, request.obj, request.schema.get("$defs", {})
+            request.schema, request.gui_obj, request.schema.get("$defs", {})
         )
 
         imgui.separator()
@@ -173,53 +244,94 @@ class ConfigurationEditor(Drawable):
             imgui.text(line)
         imgui.end_child()
 
-    def draw_jsonschema(self, schema: dict[str, Any], obj: Any, defs: dict[str, Any]):
+    def draw_jsonschema(
+        self, schema: dict[str, Any], gui_obj: Any, defs: dict[str, Any]
+    ):
         # assuming only one restriction
         if schema.get("type") == "string":
-            _, obj = imgui.input_text(schema.get("title", "string"), str(obj), 400)
+            if not isinstance(gui_obj, str):
+                gui_obj = str(gui_obj)
+            _, gui_obj = imgui.input_text(
+                schema.get("title", "string"), str(gui_obj), 400
+            )
 
-            return obj
+            return gui_obj
         elif schema.get("type") == "integer" or schema.get("type") == "number":
-            _, obj = imgui.input_int(schema.get("title", "integer"), obj)
+            if gui_obj is None:
+                gui_obj = 0
+            elif not isinstance(gui_obj, int):
+                gui_obj = int(gui_obj)
+            _, gui_obj = imgui.input_int(schema.get("title", "integer"), int(gui_obj))
 
-            return obj
+            return gui_obj
         elif schema.get("type") == "boolean":
-            _, obj = imgui.checkbox(schema.get("title", "boolean"), obj)
+            _, gui_obj = imgui.checkbox(schema.get("title", "boolean"), bool(gui_obj))
 
-            return obj
+            return gui_obj
         elif schema.get("type") == "null":
-            imgui.text("null")
+            # imgui.text("null")
 
             return None
         elif schema.get("type") == "array":
-            _, obj_str = imgui.input_text(schema.get("title", "array"), str(obj), 400)
-
-            try:
-                obj = json.loads(obj_str)
-            except json.JSONDecodeError:
-                obj = obj_str
-
-            return obj
-        elif schema.get("type") == "object":
-            for property in schema.get("properties", {}):
-                prop_schema = schema["properties"][property]
-                prop_default = prop_schema.get("default", None)
-                obj[property] = obj.get(property, prop_default)
-                obj[property] = self.draw_jsonschema(prop_schema, obj[property], defs)
-
-            return obj
-
-        else:
             _, obj_str = imgui.input_text(
-                schema.get("title", "unknown") + " (!)", str(obj), 400
+                schema.get("title", "array"), str(gui_obj), 400
             )
 
             try:
-                obj = json.loads(obj_str)
+                gui_obj = json.loads(obj_str)
             except json.JSONDecodeError:
-                obj = obj_str
+                gui_obj = obj_str
 
-            return obj
+            return gui_obj
+        elif schema.get("type") == "object":
+            imgui.indent()
+            if not isinstance(gui_obj, dict):
+                gui_obj = {}
+
+            for property in schema.get("properties", {}):
+                prop_schema = schema["properties"][property]
+                prop_default = prop_schema.get("default", None)
+                gui_obj[property] = gui_obj.get(property, prop_default)
+                gui_obj[property] = self.draw_jsonschema(
+                    prop_schema, gui_obj[property], defs
+                )
+            imgui.unindent()
+            return gui_obj
+        elif schema.get("anyOf"):
+            if not isinstance(gui_obj, Combo):
+                items = [
+                    e.get("title", e.get("type", f"anyOf {idx}"))
+                    for idx, e in enumerate(schema["anyOf"])
+                ]
+                gui_obj = Combo(
+                    items=items, selected=0, objs=[None] * len(schema["anyOf"])
+                )
+
+            _, gui_obj.selected = imgui.combo(
+                schema.get("title", "anyOf"),
+                gui_obj.selected,
+                gui_obj.items,
+            )
+
+            gui_obj.objs[gui_obj.selected] = self.draw_jsonschema(
+                schema["anyOf"][gui_obj.selected], gui_obj.objs[gui_obj.selected], defs
+            )
+
+            return gui_obj
+        elif ref := schema.get("$ref"):
+            ref = ref.split("/")[-1]
+            return self.draw_jsonschema(defs[ref], gui_obj, defs)
+        else:
+            _, obj_str = imgui.input_text(
+                schema.get("title", "unknown") + " (!)", str(gui_obj), 400
+            )
+
+            try:
+                gui_obj = json.loads(obj_str)
+            except json.JSONDecodeError:
+                gui_obj = obj_str
+
+            return gui_obj
 
 
 class SourceEditor(Drawable):
