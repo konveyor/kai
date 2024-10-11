@@ -2,41 +2,39 @@ import logging
 import sys
 import traceback
 from pathlib import Path
-from typing import Optional, cast
+from typing import Any, Optional, cast
+from urllib.parse import urlparse
 
 import requests
-from pydantic import BaseModel
+from pydantic import AliasChoices, AliasGenerator, BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 
 from kai.models.kai_config import KaiConfigModels
 from kai.routes.get_incident_solutions_for_file import (
     PostGetIncidentSolutionsForFileParams,
 )
-from playpen.rpc_server.rpc import (
-    DEFAULT_FORMATTER,
-    TRACE,
-    JsonRpcApplication,
-    JsonRpcError,
-    JsonRpcErrorCode,
-    JsonRpcLoggingHandler,
-    JsonRpcRequestResult,
-    JsonRpcServer,
-)
+from kai.service.llm_interfacing.model_provider import ModelProvider
+from playpen.repo_level_awareness.api import RpcClientConfig
+from playpen.rpc.core import JsonRpcApplication, JsonRpcServer
+from playpen.rpc.logs import JsonRpcLoggingHandler
+from playpen.rpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcRequestResult
+from playpen.rpc.util import DEFAULT_FORMATTER, TRACE, CamelCaseBaseModel
 
 log = logging.getLogger(__name__)
 
 
-class KaiRpcApplicationConfig(BaseModel):
-    processId: Optional[int]
+class KaiRpcApplicationConfig(CamelCaseBaseModel):
+    process_id: Optional[int]
 
-    rootUri: str
-    kantraUri: str
-    modelProvider: KaiConfigModels
-    kaiBackendUrl: str
+    root_uri: str
+    kantra_uri: str
+    model_provider: KaiConfigModels
+    kai_backend_url: str
 
-    logLevel: str = "INFO"
-    stderrLogLevel: str = "TRACE"
-    fileLogLevel: Optional[str] = None
-    logDirUri: Optional[str] = None
+    log_level: str = "INFO"
+    stderr_log_level: str = "TRACE"
+    file_log_level: Optional[str] = None
+    log_dir_uri: Optional[str] = None
 
 
 class KaiRpcApplication(JsonRpcApplication):
@@ -100,17 +98,17 @@ def initialize(
         app.log.addHandler(stderr_handler)
 
         notify_handler = JsonRpcLoggingHandler(server)
-        notify_handler.setLevel(app.config.logLevel)
+        notify_handler.setLevel(app.config.log_level)
         notify_handler.setFormatter(DEFAULT_FORMATTER)
         app.log.addHandler(notify_handler)
 
-        if app.config.fileLogLevel and app.config.logDirUri:
-            log_dir = Path(app.config.logDirUri)  # FIXME: urlparse?
+        if app.config.file_log_level and app.config.log_dir_uri:
+            log_dir = Path(app.config.log_dir_uri)  # FIXME: urlparse?
             log_file = log_dir / "kai_rpc.log"
             log_file.parent.mkdir(parents=True, exist_ok=True)
 
             file_handler = logging.FileHandler(log_file)
-            file_handler.setLevel(app.config.fileLogLevel)
+            file_handler.setLevel(app.config.file_log_level)
             file_handler.setFormatter(DEFAULT_FORMATTER)
             app.log.addHandler(file_handler)
 
@@ -153,7 +151,7 @@ def get_rag_solution(
         app.log.info(f"get_rag_solution: {params}")
         params_dict = params.model_dump()
         result = requests.post(
-            f"{app.config.kaiBackendUrl}/get_incident_solutions_for_file",
+            f"{app.config.kai_backend_url}/get_incident_solutions_for_file",
             json=params_dict,
         )
         app.log.info(f"get_rag_solution result: {result}")
@@ -167,24 +165,28 @@ def get_rag_solution(
         )
 
 
-@app.add_request(method="getCodeplanAgentSolution", params_model=dict)
+class GetCodeplanAgentSolutionParams(BaseModel):
+    pass
+
+
+@app.add_request(
+    method="getCodeplanAgentSolution", params_model=GetCodeplanAgentSolutionParams
+)
 def get_codeplan_agent_solution(
-    app: KaiRpcApplication, params: dict
+    app: KaiRpcApplication, params: GetCodeplanAgentSolutionParams
 ) -> JsonRpcRequestResult:
     if not app.initialized:
         return {}, ERROR_NOT_INITIALIZED
 
-    return {
-        "result": "Not implemented",
-        "message": "Beep boop, I'm a robot",
-        "echo": params,
-    }, None
+    try:
+        model_provider = ModelProvider(app.config.model_provider)
+    except Exception as e:
+        return {}, JsonRpcError(
+            code=JsonRpcErrorCode.InternalError,
+            message=str(e),
+        )
 
-
-# if __name__ == "__main__":
-#     # with __import__("ipdb").launch_ipdb_on_exception():
-#     file_path = Path(__file__).resolve()
-#     docs_path = file_path.parent / "docs.md"
-#     print(docs_path)
-#     with open(str(docs_path), "w") as f:
-#         f.write(app.generate_docs())
+    # TODO: It'd be nice to unify these config classes
+    task_manager_config = RpcClientConfig(
+        repo_directory=Path(urlparse(app.config.root_uri).path),
+    )

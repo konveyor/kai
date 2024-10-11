@@ -22,8 +22,9 @@ from kai.models.util import remove_known_prefixes
 from kai.routes.get_incident_solutions_for_file import (
     PostGetIncidentSolutionsForFileParams,
 )
-from playpen.rpc_server.rpc import BareJsonStream, JsonRpcRequest, JsonRpcServer
-from playpen.rpc_server.server import KaiRpcApplicationConfig
+from playpen.middleman.server import KaiRpcApplicationConfig
+from playpen.rpc.core import JsonRpcServer
+from playpen.rpc.streams import BareJsonStream
 
 THIS_FILE_PATH = Path(os.path.abspath(__file__)).resolve()
 THIS_DIR_PATH = THIS_FILE_PATH.parent
@@ -43,16 +44,16 @@ class Drawable(ABC):
 
 
 CONFIG = KaiRpcApplicationConfig(
-    processId=os.getpid(),
-    rootUri=f"file://{KAI_DIR / 'example/coolstore'}",
-    kantraUri=f"file://{KAI_DIR / 'kantra'}",
-    modelProvider=KaiConfigModels(
+    process_id=os.getpid(),
+    root_uri=f"file://{KAI_DIR / 'example/coolstore'}",
+    kantra_uri=f"file://{KAI_DIR / 'kantra'}",
+    model_provider=KaiConfigModels(
         provider="ChatIBMGenAI",
         args={
             "model_id": "meta-llama/llama-3-70b-instruct",
         },
     ),
-    kaiBackendUrl="http://localhost:8080",
+    kai_backend_url="http://localhost:8080",
 )
 
 
@@ -62,11 +63,11 @@ class ConfigurationEditor(Drawable):
 
     @property
     def model_args(self):
-        return json.dumps(CONFIG.modelProvider.args)
+        return json.dumps(CONFIG.model_provider.args)
 
     @model_args.setter
     def model_args(self, value):
-        CONFIG.modelProvider.args = json.loads(value)
+        CONFIG.model_provider.args = json.loads(value)
 
     def _draw(self):
         _, self.show = imgui.begin("Configuration Editor", closable=True)
@@ -74,15 +75,15 @@ class ConfigurationEditor(Drawable):
         imgui.text("Configuration Editor")
 
         imgui.input_int(
-            "Process ID", CONFIG.processId, flags=imgui.INPUT_TEXT_READ_ONLY
+            "Process ID", CONFIG.process_id, flags=imgui.INPUT_TEXT_READ_ONLY
         )
-        _, CONFIG.rootUri = imgui.input_text("Root URI", CONFIG.rootUri, 400)
-        _, CONFIG.kantraUri = imgui.input_text("Kantra URI", CONFIG.kantraUri, 400)
-        _, CONFIG.kaiBackendUrl = imgui.input_text(
-            "Kai Backend URL", CONFIG.kaiBackendUrl, 400
+        _, CONFIG.root_uri = imgui.input_text("Root URI", CONFIG.root_uri, 400)
+        _, CONFIG.kantra_uri = imgui.input_text("Kantra URI", CONFIG.kantra_uri, 400)
+        _, CONFIG.kai_backend_url = imgui.input_text(
+            "Kai Backend URL", CONFIG.kai_backend_url, 400
         )
-        _, CONFIG.modelProvider.provider = imgui.input_text(
-            "Model Provider", CONFIG.modelProvider.provider, 400
+        _, CONFIG.model_provider.provider = imgui.input_text(
+            "Model Provider", CONFIG.model_provider.provider, 400
         )
         _, self.model_args = imgui.input_text("Model Args", self.model_args, 400)
 
