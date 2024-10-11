@@ -9,7 +9,7 @@ sys.modules["_elementtree"] = None
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 from langchain.prompts.chat import HumanMessagePromptTemplate
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -58,7 +58,7 @@ class MavenDependencyResult(AgentResult):
 
 @dataclass
 class _llm_response:
-    actions: List[_action]
+    actions: list[_action]
     final_answer: str
 
 
@@ -266,11 +266,11 @@ Message:{message}
         )
 
     def parse_llm_response(
-        self, content: str | List[str] | Dict
+        self, content: str | list[str] | dict
     ) -> Optional[_llm_response]:
         # We should not expect that the value is anything other than str for the type of
         # call that we know we are making
-        if isinstance(content, Dict) or isinstance(content, List):
+        if isinstance(content, dict) or isinstance(content, list):
             return None
 
         actions = []

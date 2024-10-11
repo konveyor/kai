@@ -1,7 +1,6 @@
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
 
 from jinja2 import Template
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -31,7 +30,7 @@ class MavenCompilerLLMResponse(SpawningResult):
     addional_information: str
     file_path: str = ""
     input_file: str = ""
-    input_errors: List[str] = field(default_factory=list)
+    input_errors: list[str] = field(default_factory=list)
 
     def to_reflection_task(self) -> ReflectionTask:
         return ReflectionTask(

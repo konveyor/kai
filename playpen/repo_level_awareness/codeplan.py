@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Set
+from typing import Any, Generator, Optional
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from pydantic import BaseModel, ConfigDict
@@ -20,7 +20,7 @@ from playpen.repo_level_awareness.task_runner.analyzer_lsp.task_runner import (
     AnalyzerTaskRunner,
 )
 from playpen.repo_level_awareness.task_runner.analyzer_lsp.validator import (
-    AnlayzerLSPStep,
+    AnalyzerLSPStep,
 )
 from playpen.repo_level_awareness.task_runner.api import TaskRunner
 from playpen.repo_level_awareness.task_runner.compiler.compiler_task_runner import (
@@ -100,7 +100,7 @@ def codeplan(config: RpcClientConfig, seed_tasks: list[Task]):
         config,
         RepoContextManager(config.repo_directory, llm=llm),
         seed_tasks,
-        validators=[MavenCompileStep(config), AnlayzerLSPStep(config)],
+        validators=[MavenCompileStep(config), AnalyzerLSPStep(config)],
         agents=[
             AnalyzerTaskRunner(modelProvider.llm),
             MavenCompilerTaskRunner(modelProvider.llm),
@@ -126,14 +126,14 @@ class TaskManager:
         validators: Optional[list[ValidationStep]] = None,
         agents: Optional[list[TaskRunner]] = None,
     ) -> None:
-        self.validators: List[ValidationStep] = []
+        self.validators: list[ValidationStep] = []
 
         self.processed_files: list[Path] = []
         self.unprocessed_files: list[Path] = []
 
-        self.processed_tasks: Set[Task] = set()
-        self.task_stacks: Dict[int, List[Task]] = {}
-        self.ignored_tasks: List[Task] = []
+        self.processed_tasks: set[Task] = set()
+        self.task_stacks: dict[int, list[Task]] = {}
+        self.ignored_tasks: list[Task] = []
 
         if validators is not None:
             self.validators.extend(validators)
@@ -164,6 +164,7 @@ class TaskManager:
         agent = self.get_agent_for_task(task)
         logger.info("Agent selected for task: %s", agent)
         result = agent.execute_task(self.rcm, task)
+
         logger.debug("Task execution result: %s", result)
         return result
 
@@ -172,6 +173,7 @@ class TaskManager:
             if agent.can_handle_task(task):
                 logger.debug("Agent %s can handle task %s", agent, task)
                 return agent
+
         logger.error("No agent available for task: %s", task)
         raise Exception("No agent available for this task")
 
@@ -189,7 +191,7 @@ class TaskManager:
 
     def run_validators(self) -> list[Task]:
         logger.info("Running validators.")
-        validation_tasks: List[Task] = []
+        validation_tasks: list[Task] = []
 
         for validator in self.validators:
             logger.debug("Running validator: %s", validator)
@@ -375,5 +377,11 @@ class TaskManager:
 
 
 if __name__ == "__main__":
-    with __import__("ipdb").launch_ipdb_on_exception():
+    try:
+        import ipdb
+
+        with ipdb.launch_ipdb_on_exception():
+            main()
+
+    except ImportError:
         main()

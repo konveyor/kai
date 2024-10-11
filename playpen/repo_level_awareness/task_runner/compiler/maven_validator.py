@@ -4,7 +4,7 @@ import logging
 import re
 import subprocess  # trunk-ignore(bandit/B404)
 from dataclasses import dataclass, field
-from typing import List, Optional, Type
+from typing import Optional, Type
 
 from playpen.repo_level_awareness.api import (
     ValidationError,
@@ -26,7 +26,7 @@ class MavenCompileStep(ValidationStep):
 
 @dataclass(eq=False)
 class MavenCompilerError(ValidationError):
-    details: List[str] = field(default_factory=list)
+    details: list[str] = field(default_factory=list)
     parse_lines: Optional[str] = None
     priority = 1
 
@@ -136,11 +136,11 @@ def classify_error(message: str) -> Type[MavenCompilerError]:
         return OtherError
 
 
-def parse_maven_output(output: str) -> List[MavenCompilerError]:
+def parse_maven_output(output: str) -> list[MavenCompilerError]:
     """
     Parses the Maven output and returns a list of MavenCompilerError instances.
     """
-    errors: List[MavenCompilerError] = []
+    errors: list[MavenCompilerError] = []
     lines = output.splitlines()
     in_compilation_error_section = False
     error_pattern = re.compile(r"\[ERROR\] (.+?):\[(\d+),(\d+)\] (.+)")

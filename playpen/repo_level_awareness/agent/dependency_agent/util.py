@@ -6,7 +6,7 @@ sys.modules["_elementtree"] = None
 import os
 import xml.etree.ElementTree as ET  # trunk-ignore(bandit/B405)
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Callable, Optional
 
 import requests
 
@@ -19,7 +19,7 @@ from playpen.repo_level_awareness.utils.xml import LineNumberingParser
 # trunk-ignore-end(ruff/E402)
 
 
-def search_fqdn_query(query: str) -> Optional[FQDNResponse] | List[FQDNResponse]:
+def search_fqdn_query(query: str) -> Optional[FQDNResponse] | list[FQDNResponse]:
     resp = requests.get(
         f"https://search.maven.org/solrsearch/select?q={query}", timeout=10
     )
@@ -47,7 +47,7 @@ def search_fqdn_query(query: str) -> Optional[FQDNResponse] | List[FQDNResponse]
         )
 
 
-def search_fqdn(code: str) -> Optional[FQDNResponse] | List[FQDNResponse]:
+def search_fqdn(code: str) -> Optional[FQDNResponse] | list[FQDNResponse]:
     query = get_maven_query_from_code(code)
     return search_fqdn_query(query)
 
