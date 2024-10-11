@@ -14,7 +14,21 @@ from kai.routes.get_incident_solutions_for_file import (
     PostGetIncidentSolutionsForFileParams,
 )
 from kai.service.llm_interfacing.model_provider import ModelProvider
-from playpen.repo_level_awareness.api import RpcClientConfig
+from playpen.repo_level_awareness.api import RpcClientConfig, TaskResult
+from playpen.repo_level_awareness.codeplan import TaskManager
+from playpen.repo_level_awareness.task_runner.analyzer_lsp.task_runner import (
+    AnalyzerTaskRunner,
+)
+from playpen.repo_level_awareness.task_runner.analyzer_lsp.validator import (
+    AnalyzerLSPStep,
+)
+from playpen.repo_level_awareness.task_runner.compiler.compiler_task_runner import (
+    MavenCompilerTaskRunner,
+)
+from playpen.repo_level_awareness.task_runner.compiler.maven_validator import (
+    MavenCompileStep,
+)
+from playpen.repo_level_awareness.vfs.git_vfs import RepoContextManager
 from playpen.rpc.core import JsonRpcApplication, JsonRpcServer
 from playpen.rpc.logs import JsonRpcLoggingHandler
 from playpen.rpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcRequestResult
@@ -190,3 +204,34 @@ def get_codeplan_agent_solution(
     task_manager_config = RpcClientConfig(
         repo_directory=Path(urlparse(app.config.root_uri).path),
     )
+
+    rcm = RepoContextManager(
+        project_root=Path(urlparse(app.config.root_uri).path),
+        llm=model_provider.llm,
+    )
+
+    task_manager = TaskManager(
+        config=task_manager_config,
+        rcm=rcm,
+        updated_file_content=updated_file_content,
+        validators=[
+            MavenCompileStep(task_manager_config),
+            AnalyzerLSPStep(task_manager_config),
+        ],
+        agents=[
+            AnalyzerTaskRunner(model_provider.llm),
+            MavenCompilerTaskRunner(model_provider.llm),
+        ],
+    )
+
+    result: TaskResult
+    for task in task_manager.get_next_task():
+        result = task_manager.execute_task(task)
+        task_manager.supply_result(result)
+
+    task_manager.stop()
+
+    return {
+        "encountered_errors": [str(e) for e in result.encountered_errors],
+        "modified_files": [str(f) for f in result.modified_files],
+    }, None

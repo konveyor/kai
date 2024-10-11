@@ -6,13 +6,16 @@ import subprocess
 import sys
 import threading
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 import imgui
 import OpenGL.GL as gl
 import yaml
 from imgui.integrations.sdl2 import SDL2Renderer
+from pydantic import BaseModel
 from sdl2 import *
 
 from kai.models.kai_config import KaiConfigModels
@@ -57,7 +60,7 @@ CONFIG = KaiRpcApplicationConfig(
 )
 
 
-class ConfigurationEditor(Drawable):
+class ConfigurationEditorOld(Drawable):
     def __init__(self):
         super().__init__()
 
@@ -95,6 +98,38 @@ class ConfigurationEditor(Drawable):
             )
 
             imgui.set_window_focus_labeled("JSON RPC Request Window")
+
+        imgui.end()
+
+
+@dataclass
+class ConfigurationEditorFunction:
+    method: str
+    cls: type[BaseModel]
+    func: Callable[[str, BaseModel], None]
+    obj: BaseModel | None = None
+
+
+class ConfigurationEditor(Drawable):
+    def __init__(self, requests: list[ConfigurationEditorFunction]):
+        super().__init__()
+
+        self.requests: dict[str, ConfigurationEditorFunction] = {}
+        for request in requests:
+            self.requests[request.method] = request
+            self.requests[request.method].obj = self.requests[
+                request.method
+            ].cls.model_construct()
+
+    def _draw(self):
+        _, self.show = imgui.begin("Configuration Editor", closable=True)
+
+        if imgui.begin_tab_bar("ConfigurationEditorTabBar"):
+            for method in self.requests:
+                if imgui.begin_tab_item(method).selected:
+                    self.requests[method].func(method, self.requests[method].obj)
+                imgui.end_tab_item()
+            imgui.end_tab_bar()
 
         imgui.end()
 
@@ -421,7 +456,38 @@ FILE_LOADER = FileLoader()
 JSON_RPC_REQUEST_WINDOW = JsonRpcRequestWindow()
 REQUEST_RESPONSE_INSPECTOR = RequestResponseInspector()
 SUBPROCESS_INSPECTOR = SubprocessInspector()
-CONFIGURATION_EDITOR = ConfigurationEditor()
+
+
+def draw_initialize(method, obj):
+    if imgui.button("Populate `initialize` request"):
+        JSON_RPC_REQUEST_WINDOW.rpc_kind_n = 0
+        JSON_RPC_REQUEST_WINDOW.rpc_method = "initialize"
+        JSON_RPC_REQUEST_WINDOW.rpc_params = json.dumps(CONFIG.model_dump(), indent=2)
+
+        imgui.set_window_focus_labeled("JSON RPC Request Window")
+
+    imgui.input_int("Process ID", CONFIG.process_id, flags=imgui.INPUT_TEXT_READ_ONLY)
+    _, CONFIG.root_uri = imgui.input_text("Root URI", CONFIG.root_uri, 400)
+    _, CONFIG.kantra_uri = imgui.input_text("Kantra URI", CONFIG.kantra_uri, 400)
+    _, CONFIG.kai_backend_url = imgui.input_text(
+        "Kai Backend URL", CONFIG.kai_backend_url, 400
+    )
+    _, CONFIG.model_provider.provider = imgui.input_text(
+        "Model Provider", CONFIG.model_provider.provider, 400
+    )
+    _, self.model_args = imgui.input_text("Model Args", self.model_args, 400)
+
+
+# CONFIGURATION_EDITOR = ConfigurationEditor(
+#     requests=[
+#         ConfigurationEditorFunction(
+#             method="initialize",
+#             cls=KaiRpcApplicationConfig,
+
+#     ]
+# )
+
+CONFIGURATION_EDITOR = ConfigurationEditorOld()
 
 json_rpc_responses = []
 rpc_subprocess_stderr_log = []
