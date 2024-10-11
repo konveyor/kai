@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import List, Optional
 
@@ -47,6 +47,21 @@ class Task:
 
     def __hash__(self):
         return hash(tuple(sorted(self.__dict__.items())))
+
+    def __str__(self):
+        def truncate(value, max_length=30):
+            return (value[:max_length] + "...") if len(value) > max_length else value
+
+        class_name = self.__class__.__name__
+        field_strings = []
+        for _field in fields(self):
+            value = getattr(self, _field.name)
+            truncated_value = truncate(str(value))
+            field_strings.append(f'{_field.name}="{truncated_value}"')
+
+        return f"{class_name}<" + ", ".join(field_strings) + ">"
+
+    __repr__ = __str__
 
 
 @dataclass(eq=False, kw_only=True)
