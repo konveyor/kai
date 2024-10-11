@@ -76,9 +76,5 @@ func main() {
 
 	codec := codec.NewCodec(codec.Connection{Input: os.Stdin, Output: os.Stdout}, l)
 	l.Info("Starting Server")
-	err = server.ServeRequest(codec)
-	// If we can not start the server it is reasonable to panic and get the full error info
-	if err != nil {
-		panic(err)
-	}
+	server.ServeCodec(codec)
 }
