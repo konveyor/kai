@@ -75,7 +75,7 @@ class AnlayzerRPCEndpoint(JsonRpcEndpoint):
 
     def recv_response(self):
         with self.read_lock:
-            jsonrpc_res = self.stdout.buffer.read().decode("utf-8")
+            jsonrpc_res = self.stdout.buffer.readline().decode("utf-8")
             if jsonrpc_res:
                 log.debug(f"read data from stdout {repr(jsonrpc_res)}")
                 try:
