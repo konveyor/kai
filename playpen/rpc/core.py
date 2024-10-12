@@ -1,11 +1,9 @@
 import threading
 from typing import Any, Callable, Literal, Optional, overload
 
-from playpen.rpc.callbacks import (
-    JsonRpcCallback,
-    JsonRpcNotifyCallable,
-    JsonRpcRequestCallable,
-)
+from pydantic import BaseModel
+
+from playpen.rpc.callbacks import JsonRpcCallable, JsonRpcCallback
 from playpen.rpc.models import (
     JsonRpcError,
     JsonRpcErrorCode,
@@ -40,86 +38,48 @@ class JsonRpcApplication:
         self.request_callbacks = request_callbacks
         self.notify_callbacks = notify_callbacks
 
-    def handle_request(
-        self, msg: JsonRpcRequest, server: "JsonRpcServer"
-    ) -> tuple[JsonRpcResult | None, JsonRpcError | None] | None:
-        log.log(TRACE, "Handling request: %s", msg)
+    def handle_request(self, request: JsonRpcRequest, server: "JsonRpcServer") -> None:
+        log.log(TRACE, "Handling request: %s", request)
 
-        if msg.id is not None:
-            log.log(TRACE, "Request is a bona fide request")
-            # bona fide request
-            if msg.method not in self.request_callbacks:
-                return None, JsonRpcError(
-                    code=JsonRpcErrorCode.MethodNotFound,
-                    message=f"Method not found: {msg.method}",
+        if request.id is not None:
+            log.log(TRACE, "Request is a request")
+
+            if request.method not in self.request_callbacks:
+                server.send_response(
+                    error=JsonRpcError(
+                        code=JsonRpcErrorCode.MethodNotFound,
+                        message=f"Method not found: {request.method}",
+                    ),
+                    id=request.id,
                 )
+                return
 
-            log.log(TRACE, "Calling method: %s", msg.method)
+            log.log(TRACE, "Calling method: %s", request.method)
 
-            result = self.request_callbacks[msg.method](
-                params=msg.params, server=server, app=self
+            self.request_callbacks[request.method](
+                request=request, server=server, app=self
             )
-
-            err = JsonRpcError(
-                code=JsonRpcErrorCode.InternalError,
-                message="Method did not return a tuple[JsonRpcResult | None, JsonRpcError | None]",
-            )
-
-            if not isinstance(result, tuple) or len(result) != 2:
-                return None, err
-            # NOTE: If we ever narrow down JsonRpcResult from Any, we should
-            # re-enable this check.
-            if not isinstance(result[0], (type(None), JsonRpcResult)):
-                return None, err
-            if not isinstance(result[1], (type(None), JsonRpcError)):
-                return None, err
-
-            return result
 
         else:
             log.log(TRACE, "Request is a notification")
 
-            # notification
-            if msg.method not in self.notify_callbacks:
-                log.error(f"Notify method not found: {msg.method}")
-                return None
+            if request.method not in self.notify_callbacks:
+                log.error(f"Notify method not found: {request.method}")
+                return
 
-            log.log(TRACE, "Calling method: %s", msg.method)
+            log.log(TRACE, "Calling method: %s", request.method)
 
-            result = self.notify_callbacks[msg.method](
-                params=msg.params, server=server, app=self
+            self.notify_callbacks[request.method](
+                request=request, server=server, app=self
             )
 
-            if result is not None:
-                return None, JsonRpcError(
-                    code=JsonRpcErrorCode.InternalError,
-                    message="Notification did not return None",
-                )
-
-            return None
-
     @overload
     def add(
         self,
-        func: JsonRpcRequestCallable,
+        func: JsonRpcCallable,
         *,
-        kind: Literal["request"] = "request",
+        kind: Literal["request", "notify"] = ...,
         method: str | None = ...,
-        params_model: type[JsonRpcResult] | None = ...,
-        include_server: bool = ...,
-        include_app: bool = ...,
-    ) -> JsonRpcCallback: ...
-
-    @overload
-    def add(
-        self,
-        func: JsonRpcNotifyCallable,
-        *,
-        kind: Literal["notify"] = "notify",
-        method: str | None = ...,
-        params_model: type[JsonRpcResult] | None = ...,
-        include_server: bool = ...,
-        include_app: bool = ...,
     ) -> JsonRpcCallback: ...
 
     @overload
@@ -127,39 +87,17 @@ class JsonRpcApplication:
         self,
         func: None = ...,
         *,
-        kind: Literal["request"] = "request",
+        kind: Literal["request", "notify"] = ...,
         method: str | None = ...,
-        params_model: type[JsonRpcResult] | None = ...,
-        include_server: bool = ...,
-        include_app: bool = ...,
-    ) -> Callable[[JsonRpcRequestCallable], JsonRpcCallback]: ...
-
-    @overload
-    def add(
-        self,
-        func: None = ...,
-        *,
-        kind: Literal["notify"] = "notify",
-        method: str | None = ...,
-        params_model: type[JsonRpcResult] | None = ...,
-        include_server: bool = ...,
-        include_app: bool = ...,
-    ) -> Callable[[JsonRpcNotifyCallable], JsonRpcCallback]: ...
+    ) -> Callable[[JsonRpcCallable], JsonRpcCallback]: ...
 
     def add(
         self,
-        func: JsonRpcRequestCallable | JsonRpcNotifyCallable | None = None,
+        func: JsonRpcCallable | None = None,
         *,
         kind: Literal["request", "notify"] = "request",
         method: str | None = None,
-        params_model: type[JsonRpcResult] | None = None,
-        include_server: bool = False,
-        include_app: bool = True,
-    ) -> (
-        JsonRpcCallback
-        | Callable[[JsonRpcRequestCallable], JsonRpcCallback]
-        | Callable[[JsonRpcNotifyCallable], JsonRpcCallback]
-    ):
+    ) -> JsonRpcCallback | Callable[[JsonRpcCallable], JsonRpcCallback]:
         if method is None:
             raise ValueError("Method name must be provided")
 
@@ -169,15 +107,12 @@ class JsonRpcApplication:
             callbacks = self.notify_callbacks
 
         def decorator(
-            func: JsonRpcRequestCallable | JsonRpcNotifyCallable,
+            func: JsonRpcCallable,
         ) -> JsonRpcCallback:
             callback = JsonRpcCallback(
                 func=func,
-                include_server=include_server,
-                include_app=include_app,
                 kind=kind,
                 method=method,
-                params_model=params_model,
             )
             callbacks[method] = callback
 
@@ -191,12 +126,9 @@ class JsonRpcApplication:
     @overload
     def add_notify(
         self,
-        func: JsonRpcNotifyCallable,
+        func: JsonRpcCallable,
         *,
         method: str | None = ...,
-        params_model: type[JsonRpcResult] | None = ...,
-        include_server: bool = ...,
-        include_app: bool = ...,
     ) -> JsonRpcCallback: ...
 
     @overload
@@ -205,38 +137,26 @@ class JsonRpcApplication:
         func: None = ...,
         *,
         method: str | None = ...,
-        params_model: type[JsonRpcResult] | None = ...,
-        include_server: bool = ...,
-        include_app: bool = ...,
-    ) -> Callable[[JsonRpcNotifyCallable], JsonRpcCallback]: ...
+    ) -> Callable[[JsonRpcCallable], JsonRpcCallback]: ...
 
     def add_notify(
         self,
-        func: JsonRpcNotifyCallable | None = None,
+        func: JsonRpcCallable | None = None,
         *,
         method: str | None = None,
-        params_model: type[JsonRpcResult] | None = None,
-        include_server: bool = False,
-        include_app: bool = True,
-    ) -> JsonRpcCallback | Callable[[JsonRpcNotifyCallable], JsonRpcCallback]:
+    ) -> JsonRpcCallback | Callable[[JsonRpcCallable], JsonRpcCallback]:
         return self.add(
             func=func,
             kind="notify",
             method=method,
-            params_model=params_model,
-            include_server=include_server,
-            include_app=include_app,
         )
 
     @overload
     def add_request(
         self,
-        func: JsonRpcRequestCallable,
+        func: JsonRpcCallable,
         *,
         method: str | None = ...,
-        params_model: type[JsonRpcResult] | None = ...,
-        include_server: bool = ...,
-        include_app: bool = ...,
     ) -> JsonRpcCallback: ...
 
     @overload
@@ -245,27 +165,18 @@ class JsonRpcApplication:
         func: None = ...,
         *,
         method: str | None = ...,
-        params_model: type[JsonRpcResult] | None = ...,
-        include_server: bool = ...,
-        include_app: bool = ...,
-    ) -> Callable[[JsonRpcRequestCallable], JsonRpcCallback]: ...
+    ) -> Callable[[JsonRpcCallable], JsonRpcCallback]: ...
 
     def add_request(
         self,
-        func: JsonRpcRequestCallable | None = None,
+        func: JsonRpcCallable | None = None,
         *,
         method: str | None = None,
-        params_model: type[JsonRpcResult] | None = None,
-        include_server: bool = False,
-        include_app: bool = True,
-    ) -> JsonRpcCallback | Callable[[JsonRpcRequestCallable], JsonRpcCallback]:
+    ) -> JsonRpcCallback | Callable[[JsonRpcCallable], JsonRpcCallback]:
         return self.add(
             func=func,
             kind="request",
             method=method,
-            params_model=params_model,
-            include_server=include_server,
-            include_app=include_app,
         )
 
     def generate_docs(self) -> str:
@@ -302,6 +213,7 @@ class JsonRpcServer(threading.Thread):
         self.response_dict: dict[JsonRpcId, JsonRpcResponse] = {}
         self.next_id = 0
         self.request_timeout = request_timeout
+        self.outstanding_requests: set[JsonRpcId] = set()
 
         self.shutdown_flag = False
 
@@ -323,14 +235,20 @@ class JsonRpcServer(threading.Thread):
 
             elif isinstance(msg, JsonRpcRequest):
                 log.log(TRACE, "Received request: %s", msg)
-                if (tmp := self.app.handle_request(msg, self)) is not None:
-                    result, error = tmp
-                    sending_response = JsonRpcResponse(
-                        result=result, error=error, id=msg.id
+                # TODO: Make multithreaded?
+                if msg.id is not None:
+                    self.outstanding_requests.add(msg.id)
+
+                self.app.handle_request(msg, self)
+
+                if msg.id is not None and msg.id in self.outstanding_requests:
+                    self.send_response(
+                        id=msg.id,
+                        error=JsonRpcError(
+                            code=JsonRpcErrorCode.InternalError,
+                            message="No response sent",
+                        ),
                     )
-                    log.log(TRACE, "Sending response: %s", sending_response)
-                    self.jsonrpc_stream.send(sending_response)
-                    continue
 
             elif isinstance(msg, JsonRpcResponse):
                 self.response_dict[msg.id] = msg
@@ -345,8 +263,11 @@ class JsonRpcServer(threading.Thread):
         self.jsonrpc_stream.close()
 
     def send_request(
-        self, method: str, params: dict[str, Any]
+        self, method: str, params: BaseModel | dict[str, Any] | None
     ) -> JsonRpcResponse | JsonRpcError | None:
+        if isinstance(params, BaseModel):
+            params = params.model_dump()
+
         log.log(TRACE, "Sending request: %s", method)
         current_id = self.next_id
         self.next_id += 1
@@ -373,5 +294,33 @@ class JsonRpcServer(threading.Thread):
         self.event_dict.pop(current_id)
         return self.response_dict.pop(current_id)
 
-    def send_notification(self, method: str, params: dict[str, Any]) -> None:
+    def send_notification(
+        self,
+        method: str,
+        params: dict[str, Any] | None,
+    ) -> None:
+        if isinstance(params, BaseModel):
+            params = params.model_dump()
+
         self.jsonrpc_stream.send(JsonRpcRequest(method=method, params=params))
+
+    def send_response(
+        self,
+        *,
+        response: Optional[JsonRpcResponse] = None,
+        result: Optional[JsonRpcResult] = None,
+        error: Optional[JsonRpcError] = None,
+        id: JsonRpcId = None,
+    ) -> None:
+        if response is None:
+            response = JsonRpcResponse(result=result, error=error, id=id)
+
+        if response.id is not None:
+            if response.id not in self.outstanding_requests:
+                log.error(
+                    f"Request ID {response.id} not found in outstanding requests\nTried sending: {response}"
+                )
+                return
+            self.outstanding_requests.remove(response.id)
+
+        self.jsonrpc_stream.send(response)

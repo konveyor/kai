@@ -3,21 +3,13 @@ import functools
 import logging
 import os
 import subprocess  # trunk-ignore(bandit/B404)
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Optional
-from unittest.mock import MagicMock
-
-from langchain_core.language_models.chat_models import BaseChatModel
+from typing import Any, Callable, Optional
 
 from playpen.repo_level_awareness.agent.api import AgentResult
-from playpen.repo_level_awareness.agent.reflection_agent import (
-    ReflectionAgent,
-    ReflectionTask,
-)
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -27,10 +19,8 @@ handler.setFormatter(formatter)
 log.addHandler(handler)
 
 
-class SpawningResult(ABC):
-    @abstractmethod
-    def to_reflection_task(self) -> ReflectionTask:
-        pass
+# Narrow down this type, could be task, or errors or what have you
+SpawningResult = Any
 
 
 # NOTE: I'd like to use GitPython, but using custom a work-tree and git-dir with
@@ -44,7 +34,6 @@ class RepoContextSnapshot:
     parent: Optional["RepoContextSnapshot"] = None
     children: list["RepoContextSnapshot"] = field(default_factory=list)
 
-    # Narrow down this type, could be task, or errors or what have you
     spawning_result: Optional[SpawningResult] = None
 
     @functools.cached_property
@@ -72,6 +61,22 @@ class RepoContextSnapshot:
             return [self.spawning_result]
 
         return self.parent.parent_spawning_results + [self.spawning_result]
+
+    @functools.cached_property
+    def lineage(self) -> list["RepoContextSnapshot"]:
+        """
+        Returns the lineage of the current snapshot, starting from the initial
+        commit. In order from oldest to newest.
+        """
+        lineage: list[RepoContextSnapshot] = [self]
+        parent = self.parent
+        while parent is not None:
+            lineage.append(parent)
+            parent = parent.parent
+
+        lineage.reverse()
+
+        return lineage
 
     def git(self, args: list[str], popen_kwargs: dict[str, Any] | None = None):
         """
@@ -108,7 +113,9 @@ class RepoContextSnapshot:
         return proc.returncode, stdout, stderr
 
     @staticmethod
-    def initialize(work_tree: Path) -> "RepoContextSnapshot":
+    def initialize(
+        work_tree: Path, msg: str = "Initial commit"
+    ) -> "RepoContextSnapshot":
         """
         Creates a new git repo in the given work_tree, and returns a
         GitVFSSnapshot.
@@ -133,7 +140,7 @@ class RepoContextSnapshot:
         with open(git_dir / "info" / "exclude", "a") as f:
             f.write(f"/{str(kai_dir.name)}\n")
 
-        tmp_snapshot = tmp_snapshot.commit("Initial commit")
+        tmp_snapshot = tmp_snapshot.commit(msg)
 
         return RepoContextSnapshot(
             work_tree=work_tree,
@@ -186,14 +193,34 @@ class RepoContextSnapshot:
         """
         return self.git(["reset", "--hard", self.git_sha])
 
+    def diff(self, other: "RepoContextSnapshot") -> tuple[int, str, str]:
+        """
+        Returns the diff between the current snapshot and another snapshot.
+        """
+        return self.git(["diff", other.git_sha, self.git_sha])
+
+
+RepoContextManagerPreCommitHook = Callable[
+    [str | None, SpawningResult | None], tuple[str | None, SpawningResult | None]
+]
+
 
 class RepoContextManager:
-    def __init__(self, project_root: Path, llm: BaseChatModel):
+    def __init__(
+        self,
+        project_root: Path,
+        pre_commit_hooks: list[RepoContextManagerPreCommitHook] | None = None,
+    ):
+        if pre_commit_hooks is None:
+            pre_commit_hooks = []
+
         self.project_root = project_root
+        self.pre_commit_hooks = pre_commit_hooks
+
         self.snapshot = RepoContextSnapshot.initialize(project_root)
         self.first_snapshot = self.snapshot
 
-        self.reflection_agent = ReflectionAgent(llm=llm, iterations=1, retries=3)
+        # self.reflection_agent = ReflectionAgent(llm=llm, iterations=1, retries=3)
 
     def commit(
         self, msg: str | None = None, spawning_result: SpawningResult | None = None
@@ -209,11 +236,15 @@ class RepoContextManager:
                 spawning_result.to_reflection_task()
             )
 
-        new_spawning_result = union_the_result_and_the_errors(
-            reflection_result.encountered_errors, spawning_result
-        )
+        self.snapshot = self.snapshot.commit(msg, spawning_result)
 
-        self.snapshot = self.snapshot.commit(msg, new_spawning_result)
+        # AgentResult(encountered_errors=[], modified_files=None)
+        # if spawning_result is not None and isinstance(spawning_result, SpawningResult):
+        #     self.reflection_agent.execute(None, spawning_result.to_reflection_task())
+
+        # new_spawning_result = union_the_result_and_the_errors(
+        #     reflection_result.encountered_errors, spawning_result
+        # )
 
     def reset(self, snapshot: Optional[RepoContextSnapshot] = None):
         """
@@ -235,12 +266,19 @@ class RepoContextManager:
 
         self.reset(self.snapshot.parent)
 
-    def reset_to_first(self):
+    def reset_to_first(self) -> None:
         """
         Resets the repository to the initial commit.
         """
         while self.snapshot.parent is not None:
             self.reset_to_parent()
+
+    def get_lineage(self) -> list[RepoContextSnapshot]:
+        """
+        Returns the lineage of the current snapshot, starting from the initial
+        commit. The current snapshot is the first element in the list.
+        """
+        return self.snapshot.lineage
 
 
 # FIXME: remove this function, only there for the little demo below so the
@@ -270,7 +308,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    manager = RepoContextManager(args.project_root, llm=MagicMock())
+    manager = RepoContextManager(args.project_root)
     first_snapshot = manager.snapshot
 
     class Command(StrEnum):

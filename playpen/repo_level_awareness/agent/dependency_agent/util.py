@@ -1,7 +1,7 @@
 # trunk-ignore-begin(ruff/E402)
 import sys
 
-sys.modules["_elementtree"] = None
+sys.modules["_elementtree"] = None  # type: ignore[assignment]
 
 import os
 import xml.etree.ElementTree as ET  # trunk-ignore(bandit/B405)

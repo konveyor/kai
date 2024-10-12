@@ -67,5 +67,5 @@ class CamelCaseBaseModel(BaseModel):
         ),
     )
 
-    def model_dump(self, **kwargs) -> dict[str, Any]:
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         return super().model_dump(by_alias=True, **kwargs)

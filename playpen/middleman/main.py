@@ -20,6 +20,7 @@ def main() -> None:
     add_arguments(parser)
     _args = parser.parse_args()
 
+    log.setLevel(TRACE)
     log.info("Starting Kai RPC Server")
     log.log(TRACE, "Trace log level enabled")
 

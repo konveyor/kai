@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, Self, Set, Union
+from typing import Any, Self
 
 import tree_sitter as ts
 
@@ -19,14 +19,14 @@ class JAnnotation(DiffableSummary):
             return self.name == o.name and self.params == o.params
         return False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = {"name": self.name}
         if self.params:
             d["parameters"] = self.params
         return d
 
-    def diff(self, o: Self) -> Dict[str, Any]:
-        diff = {}
+    def diff(self, o: Self) -> dict[str, Any]:
+        diff: dict[str, Any] = {}
         if self == o:
             return diff
         if self.params != o.params:
@@ -55,8 +55,8 @@ class JVariable(DiffableSummary):
             )
         return False
 
-    def to_dict(self) -> Dict[str, Any]:
-        d = {
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {
             "name": self.name,
             "type": self.typ,
         }
@@ -64,7 +64,7 @@ class JVariable(DiffableSummary):
             d["annotations"] = list(self.annotations)
         return d
 
-    def diff(self, o: Self) -> Dict[str, Any]:
+    def diff(self, o: Self) -> dict[str, Any]:
         diff = {}
         if self.typ != o.typ:
             diff["type"] = {
@@ -98,8 +98,8 @@ class JMethod(DiffableSummary):
             )
         return False
 
-    def to_dict(self) -> Dict[str, Any]:
-        d = {"name": self.name}
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {"name": self.name}
         if self.parameters:
             d["parameters"] = self.parameters
         if self.return_type:
@@ -110,8 +110,8 @@ class JMethod(DiffableSummary):
             d["annotations"] = list(self.annotations)
         return d
 
-    def diff(self, o: Self) -> Dict[str, Any]:
-        diff = {}
+    def diff(self, o: Self) -> dict[str, Any]:
+        diff: dict[str, Any] = {}
         if self == o:
             return diff
         diff["name"] = self.name
@@ -148,7 +148,7 @@ class JClass(DiffableSummary):
     fields: DiffableDict
     methods: DiffableDict
     annotations: DiffableDict
-    interfaces: Set[str] = field(default_factory=set)
+    interfaces: set[str] = field(default_factory=set)
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -165,8 +165,8 @@ class JClass(DiffableSummary):
             )
         return False
 
-    def to_dict(self) -> Dict[str, Any]:
-        d = {"name": self.name}
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {"name": self.name}
         if self.super_class:
             d["super_class"] = self.super_class
         if self.interfaces:
@@ -179,8 +179,8 @@ class JClass(DiffableSummary):
             d["methods"] = self.methods.to_dict()
         return d
 
-    def diff(self, o: Self) -> Dict[str, Any]:
-        diff = {"name": self.name}
+    def diff(self, o: Self) -> dict[str, Any]:
+        diff: dict[str, Any] = {"name": self.name}
         if self.super_class != o.super_class:
             diff["super_class"] = {
                 "old": self.super_class,
@@ -209,18 +209,18 @@ class JClass(DiffableSummary):
 @dataclass
 class JFile(DiffableSummary):
     classes: DiffableDict
-    imports: Set[str] = field(default_factory=set)
+    imports: set[str] = field(default_factory=set)
 
-    def to_dict(self) -> Dict[str, Any]:
-        d = {}
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {}
         if self.classes:
             d["classes"] = self.classes.to_dict()
         if self.imports:
             d["imports"] = list(self.imports)
         return d
 
-    def diff(self, o: Self) -> Dict[str, Any]:
-        diff = {}
+    def diff(self, o: Self) -> dict[str, Any]:
+        diff: dict[str, Any] = {}
         if self.imports != o.imports:
             diff["imports"] = {
                 "old": list(self.imports),
@@ -236,10 +236,10 @@ class JFile(DiffableSummary):
 def _extract_java_info(root: ts.Node) -> DiffableSummary:
     cursor = root.walk()
 
-    def traverse(node: ts.Node) -> Union[DiffableDict, JVariable, JMethod, JClass]:
+    def traverse(node: ts.Node) -> DiffableSummary:
         match node.type:
             case "modifiers":
-                annotations = DiffableDict()
+                annotations = DiffableDict[str, JAnnotation]()
                 for child in node.children:
                     match child.type:
                         case "marker_annotation" | "annotation":
@@ -248,17 +248,27 @@ def _extract_java_info(root: ts.Node) -> DiffableSummary:
                             for annotation_child in child.children:
                                 match annotation_child.type:
                                     case "identifier":
+                                        if annotation_child.text is None:
+                                            raise ValueError(
+                                                "Annotation identifier has no text"
+                                            )
+
                                         annotation_name = annotation_child.text.decode(
                                             "utf-8"
                                         )
                                     case "annotation_argument_list":
+                                        if annotation_child.text is None:
+                                            raise ValueError(
+                                                "Annotation argument list has no text"
+                                            )
+
                                         params = (
                                             annotation_child.text.decode("utf-8")
                                             .replace("\\n", "", -1)
                                             .replace("\\t", "", -1)
                                         )
                             annotation = JAnnotation(annotation_name, params)
-                            annotations[hash(annotation)] = annotation
+                            annotations[str(hash(annotation))] = annotation
                 return annotations
             case "field_declaration":
                 name = ""
@@ -267,11 +277,19 @@ def _extract_java_info(root: ts.Node) -> DiffableSummary:
                 for field_child in node.children:
                     match field_child.type:
                         case "type_identifier" | "generic_type":
+                            if field_child.text is None:
+                                raise ValueError("Field type has no text")
+
                             type = field_child.text.decode("utf-8")
+
                         case "variable_declarator":
                             for var_child in field_child.children:
+                                if var_child.text is None:
+                                    raise ValueError("Variable declarator has no text")
+
                                 if var_child.type == "identifier":
                                     name = var_child.text.decode("utf-8")
+
                         case "modifiers":
                             field_child_info = traverse(field_child)
                             if isinstance(field_child_info, DiffableDict):
@@ -285,14 +303,26 @@ def _extract_java_info(root: ts.Node) -> DiffableSummary:
                 for mt_child in node.children:
                     match mt_child.type:
                         case "identifier":
+                            if mt_child.text is None:
+                                raise ValueError("Method identifier has no text")
+
                             name = mt_child.text.decode("utf-8")
+
                         case "modifiers":
                             anns = traverse(mt_child)
                             if isinstance(anns, DiffableDict):
                                 annotations = anns
+
                         case "formal_parameters":
+                            if mt_child.text is None:
+                                raise ValueError("Method parameters have no text")
+
                             params = mt_child.text.decode("utf-8")
+
                         case "block":
+                            if mt_child.text is None:
+                                raise ValueError("Method block has no text")
+
                             body = (
                                 mt_child.text.decode("utf-8")
                                 .strip()
@@ -306,9 +336,10 @@ def _extract_java_info(root: ts.Node) -> DiffableSummary:
                 name = ""
                 fields = DiffableDict[str, JVariable]()
                 methods = DiffableDict[str, JMethod]()
-                interfaces: Set[str] = set()
+                interfaces: set[str] = set()
                 super_class: str = ""
                 annotations = DiffableDict[str, JAnnotation]()
+
                 for class_child in node.children:
                     match class_child.type:
                         case "modifiers":
@@ -316,17 +347,22 @@ def _extract_java_info(root: ts.Node) -> DiffableSummary:
                             if isinstance(mods, DiffableDict):
                                 annotations = mods
                         case "identifier":
+                            if class_child.text is None:
+                                raise ValueError("Class identifier has no text")
+
                             name = class_child.text.decode("utf-8")
                         case "superclass":
+                            if class_child.text is None:
+                                raise ValueError("Superclass has no text")
+
                             super_class = class_child.text.decode("utf-8")
                         case "super_interfaces":
-                            interfaces = set(
-                                [
-                                    i.text.decode("utf-8")
-                                    for i in class_child.children
-                                    if i.type != ","
-                                ]
-                            )
+                            interfaces = set()
+
+                            for i in class_child.children:
+                                if i.type != "," and i.text is not None:
+                                    interfaces.add(i.text.decode("utf-8"))
+
                         case "class_body":
                             for cb_child in class_child.children:
                                 match cb_child.type:
@@ -336,11 +372,11 @@ def _extract_java_info(root: ts.Node) -> DiffableSummary:
                                             case cb_info if isinstance(
                                                 cb_info, JVariable
                                             ):
-                                                fields[hash(cb_info)] = cb_info
+                                                fields[str(hash(cb_info))] = cb_info
                                             case cb_info if isinstance(
                                                 cb_info, JMethod
                                             ):
-                                                methods[hash(cb_info)] = cb_info
+                                                methods[str(hash(cb_info))] = cb_info
                 return JClass(
                     name=name,
                     fields=fields,
@@ -350,11 +386,14 @@ def _extract_java_info(root: ts.Node) -> DiffableSummary:
                     super_class=super_class,
                 )
 
-        classes = DiffableDict()
+        classes = DiffableDict[str, DiffableSummary]()
         imports = set()
         for child in node.children:
             match child.type:
                 case "import_declaration":
+                    if child.text is None:
+                        raise ValueError("Import declaration has no text")
+
                     imports.add(
                         child.text.decode("utf-8")
                         .replace("import ", "", -1)
@@ -365,5 +404,8 @@ def _extract_java_info(root: ts.Node) -> DiffableSummary:
                     if isinstance(cb_info, JClass):
                         classes[cb_info.name] = cb_info
         return JFile(classes=classes, imports=imports)
+
+    if cursor.node is None:
+        return DiffableDict()
 
     return traverse(cursor.node)

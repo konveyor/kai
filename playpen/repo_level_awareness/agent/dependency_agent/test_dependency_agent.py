@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET  # trunk-ignore(bandit/B405)
 
 # Forcing the reload after changing and re-importing will allow us
 # to pass the test.
-sys.modules["_elementtree"] = None
+sys.modules["_elementtree"] = None  # type: ignore[assignment]
 importlib.reload(ET)
 
 import os
@@ -153,7 +153,7 @@ Added the `io.quarkus:quarkus-spring-cache` dependency to the `pom.xml` file and
         @dataclass
         class TestCase:
             code: str
-            expected: FQDNResponse
+            expected: FQDNResponse | None
 
         testCases = [
             TestCase(

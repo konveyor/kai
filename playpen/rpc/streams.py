@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from io import BufferedReader, BufferedWriter
 from typing import Any, Optional
 
+from pydantic import BaseModel
+
 from playpen.rpc.models import (
     JsonRpcError,
     JsonRpcErrorCode,
@@ -175,8 +177,13 @@ class BareJsonStream(JsonRpcStream):
             log_msg = msg.model_copy()
             if log_msg.params is None:
                 log_msg.params = {}
-            if "message" in log_msg.params:
-                log_msg.params["message"] = "<omitted>"
+            elif isinstance(log_msg.params, dict):
+                if "message" in log_msg.params:
+                    log_msg.params["message"] = "<omitted>"
+            elif isinstance(log_msg.params, BaseModel):
+                if hasattr(log_msg.params, "message"):
+                    log_msg.params.message = "<omitted>"
+
             log.log(TRACE, f"send: {log_msg.model_dump_json()}")
 
         with self.send_lock:

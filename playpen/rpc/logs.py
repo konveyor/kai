@@ -39,7 +39,10 @@ class JsonRpcLoggingHandler(logging.Handler):
                 "message": record.getMessage(),
             }
 
-            self.server.send_notification(self.method, params)
+            self.server.send_notification(
+                method=self.method,
+                params=params,
+            )
         except Exception:
             print("Failed to log message", file=sys.stderr)
             self.handleError(record)

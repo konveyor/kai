@@ -4,12 +4,12 @@
 # so that we can hook into the parser and add attributes to the element.
 import sys
 
-sys.modules["_elementtree"] = None
+sys.modules["_elementtree"] = None  # type: ignore[assignment]
 
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast
 
 from langchain.prompts.chat import HumanMessagePromptTemplate
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -51,9 +51,9 @@ class _action:
 
 @dataclass
 class MavenDependencyResult(AgentResult):
-    final_answer: str
-    fqdn_response: FQDNResponse
-    find_in_pom: FindInPomResponse
+    final_answer: str | None
+    fqdn_response: FQDNResponse | None
+    find_in_pom: FindInPomResponse | None
 
 
 @dataclass
@@ -102,16 +102,16 @@ You are an excellent java developer focused on updating dependencies in a maven 
    Arguments:
    - artifact_id: str - The alias name of the symbol to find the definition for.
    - group_id: str - The path to the file where the alias is used.
-   - version: Optinal[str] - The line number where the alias is used.
+   - version: Optical[str] - The line number where the alias is used.
    Action:
    ```python
-   result = search_fqdn.run(artificat_id="commons-collections4", group_id="org.apache.commons", version="4.5.0-M2")
+   result = search_fqdn.run(artifact_id="commons-collections4", group_id="org.apache.commons", version="4.5.0-M2")
    print(result)
    ```
 
 ### Important Notes:
 1 We must always use an exact version from the search for Fully Qualified Domain Name of the dependency that we want to update
-3. search_fqdn: use this tool to get the fully qualified domain name of a dependecy. This includes the artificatId, groupId and the version.
+3. search_fqdn: use this tool to get the fully qualified domain name of a dependency. This includes the artifactId, groupId and the version.
 
 Use this tool to get all references to a symbol in the codebase. This will help you understand how the symbol is used in the codebase. For example, if you want to know where a function is called, you can use this tool.
 
@@ -120,9 +120,9 @@ Use this tool to get all references to a symbol in the codebase. This will help 
 Thought: replace com.google.guava/guava with org.apache.commons/commons-collections4 to the latest version.
 
 
-Thought:  I have the groupId and the artificatId for the collections4 library, but I don't have the latest version.
+Thought:  I have the groupId and the artifactId for the collections4 library, but I don't have the latest version.
 Action: ```python
-result = search_fqdn.run(artificat_id="commons-collections4", group_id="org.apache.commons")
+result = search_fqdn.run(artifact_id="commons-collections4", group_id="org.apache.commons")
 ```
 Observation: We now have the fqdn for the commons-collections4 dependency
 
@@ -134,10 +134,11 @@ Observation: we now have the start and end line of the in the pom file to be upd
 
 Thought: Now that I have the latest version information and the current start_line and end_line I need to replace the dependency
 Action: ```python
-  xml =  f"<dependency><groupId>{result.groupjId}</groupId><artifactId>{result.artifactId}</artifactId><version>{result.version}</version></dependency>"
-   result = editor._run(relative_file_path="pom.xml", start_line=start_line, end_line=end_line, patch=xml)
-   print(result)
-Observation: The pom.xml file is now updatedd setting the xml at start line with the new dependency to the end line
+xml =  f"<dependency><groupId>{result.groupId}</groupId><artifactId>{result.artifactId}</artifactId><version>{result.version}</version></dependency>"
+result = editor._run(relative_file_path="pom.xml", start_line=start_line, end_line=end_line, patch=xml)
+print(result)
+```
+Observation: The pom.xml file is now updated setting the xml at start line with the new dependency to the end line
 
 Final Answer:
 Updated the guava to the commons-collections4 dependency
@@ -179,7 +180,7 @@ Message:{message}
         self.child_agent = FQDNDependencySelectorAgent(llm=llm)
         self.agent_methods.update({"find_in_pom._run": find_in_pom(project_base)})
 
-    def execute(self, ask: AgentRequest) -> MavenDependencyResult:
+    def execute(self, ask: AgentRequest) -> AgentResult:
         if not isinstance(ask, MavenDependencyRequest):
             return AgentResult(encountered_errors=[], modified_files=[])
 
@@ -205,10 +206,10 @@ Message:{message}
             fix_gen_response = self.__llm.invoke(msg)
             llm_response = self.parse_llm_response(fix_gen_response.content)
             # Break out of the while loop, if we don't have a final answer then we need to retry
-            if not self.__should_continue(llm_response):
+            if llm_response is None or not llm_response.final_answer:
                 break
 
-            # We do not believe that we should not conintue now we have to continue after running the code that is asked to be run.
+            # We do not believe that we should not continue now we have to continue after running the code that is asked to be run.
             # The only exception to this rule, is when we actually update the file, that should be handled by the caller.
             # This happens sometimes that the LLM will stop and wait for more information.
 
@@ -228,8 +229,8 @@ Message:{message}
         if not maven_search:
             for a in llm_response.actions:
                 if "search_fqdn.run" in a.code:
-                    m = self.agent_methods.get("search_fqdn.run")
                     logger.debug("running search for FQDN")
+                    m = self.agent_methods.get("search_fqdn.run", lambda x: None)
                     result = m(a.code)
                     if not result or isinstance(result, list):
                         logger.info("Need to call sub-agent for selecting FQDN")
@@ -252,7 +253,7 @@ Message:{message}
                 if "find_in_pom._run" in a.code:
                     logger.debug("running find in pom")
                     m = self.agent_methods.get("find_in_pom._run")
-                    find_pom_lines = m(a.code)
+                    find_pom_lines = cast(FindInPomResponse, m(a.code))
 
         # We are going to give back the response, The caller should be responsible for running the code generated by the AI.
         # If we have not take the actions step wise, in the LLM, we need to run all but editor here
@@ -347,8 +348,3 @@ Message:{message}
                 else:
                     observation_str = line.strip()
         return _llm_response(actions, final_answer)
-
-    def __should_continue(self, llm_response: Optional[_llm_response]) -> bool:
-        if not llm_response or not llm_response.final_answer:
-            return True
-        return False

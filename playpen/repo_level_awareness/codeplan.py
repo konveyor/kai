@@ -363,7 +363,7 @@ class TaskManager:
                 "Task %s exceeded max retries and added to ignored tasks.", task
             )
 
-    def stop(self):
+    def stop(self) -> None:
         logger.info("Stopping TaskManager.")
         for a in self.agents:
             if hasattr(a, "stop"):

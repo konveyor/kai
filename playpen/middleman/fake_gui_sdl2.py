@@ -1,22 +1,55 @@
 import ctypes
 import json
 import os
-import queue
-import subprocess
+import subprocess  # trunk-ignore(bandit/B404)
 import sys
 import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from io import BufferedReader, BufferedWriter
 from pathlib import Path
-from typing import Any, Callable
+from typing import IO, Any, Callable, cast
 from urllib.parse import urlparse
 
 import imgui
 import OpenGL.GL as gl
 import yaml
 from imgui.integrations.sdl2 import SDL2Renderer
-from pydantic import BaseModel
-from sdl2 import *
+from sdl2 import (
+    SDL_GL_ACCELERATED_VISUAL,
+    SDL_GL_CONTEXT_FLAGS,
+    SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG,
+    SDL_GL_CONTEXT_MAJOR_VERSION,
+    SDL_GL_CONTEXT_MINOR_VERSION,
+    SDL_GL_CONTEXT_PROFILE_CORE,
+    SDL_GL_CONTEXT_PROFILE_MASK,
+    SDL_GL_DEPTH_SIZE,
+    SDL_GL_DOUBLEBUFFER,
+    SDL_GL_MULTISAMPLEBUFFERS,
+    SDL_GL_MULTISAMPLESAMPLES,
+    SDL_GL_STENCIL_SIZE,
+    SDL_HINT_MAC_CTRL_CLICK_EMULATE_RIGHT_CLICK,
+    SDL_HINT_VIDEO_HIGHDPI_DISABLED,
+    SDL_INIT_EVERYTHING,
+    SDL_QUIT,
+    SDL_WINDOW_OPENGL,
+    SDL_WINDOW_RESIZABLE,
+    SDL_WINDOWPOS_CENTERED,
+    SDL_CreateWindow,
+    SDL_DestroyWindow,
+    SDL_Event,
+    SDL_GetError,
+    SDL_GL_CreateContext,
+    SDL_GL_DeleteContext,
+    SDL_GL_MakeCurrent,
+    SDL_GL_SetAttribute,
+    SDL_GL_SetSwapInterval,
+    SDL_GL_SwapWindow,
+    SDL_Init,
+    SDL_PollEvent,
+    SDL_Quit,
+    SDL_SetHint,
+)
 
 from kai.models.kai_config import KaiConfigModels
 from kai.models.report import Report
@@ -26,12 +59,14 @@ from kai.routes.get_incident_solutions_for_file import (
     PostGetIncidentSolutionsForFileParams,
 )
 from playpen.middleman.server import (
+    GitVFSUpdateParams,
     KaiRpcApplicationConfig,
     get_codeplan_agent_solution,
     initialize,
 )
 from playpen.rpc.callbacks import JsonRpcCallback
-from playpen.rpc.core import JsonRpcServer
+from playpen.rpc.core import JsonRpcApplication, JsonRpcServer
+from playpen.rpc.models import JsonRpcId
 from playpen.rpc.streams import BareJsonStream
 
 THIS_FILE_PATH = Path(os.path.abspath(__file__)).resolve()
@@ -63,6 +98,7 @@ CONFIG = KaiRpcApplicationConfig(
         },
     ),
     kai_backend_url="http://localhost:8080",
+    log_level="TRACE",
 )
 
 
@@ -109,12 +145,17 @@ class ConfigurationEditorOld(Drawable):
 
 
 class ConfigurationEditorFunction:
-    def __init__(self, method: str, cls: type[BaseModel], *, obj: dict = None):
+    def __init__(self, method: str, cls: dict[str, Any] | None, *, obj: dict = None):
         self.method = method
         self.cls = cls
         self.obj = obj or {}
         self.gui_obj = {}
-        self.schema = cls.model_json_schema()
+        if cls is None:
+            self.schema = {}
+        elif cls is dict:
+            self.schema = {"type": "object", "properties": {}, "required": []}
+        else:
+            self.schema = cls.model_json_schema()
 
 
 @dataclass
@@ -624,6 +665,8 @@ class SubprocessInspector(Drawable):
     def __init__(self):
         super().__init__()
 
+        self.scroll_to_bottom = False
+
     def _draw(self):
         _, self.show = imgui.begin("Subprocess Manager", closable=True)
 
@@ -642,9 +685,46 @@ class SubprocessInspector(Drawable):
             flags=imgui.WINDOW_ALWAYS_VERTICAL_SCROLLBAR
             | imgui.WINDOW_HORIZONTAL_SCROLLING_BAR,
         )
+
+        if self.scroll_to_bottom:
+            self.scroll_to_bottom = False
+
         for log_line in rpc_subprocess_stderr_log:
             imgui.text(log_line)
         imgui.end_child()
+
+        imgui.end()
+
+
+rpc_application: JsonRpcApplication = JsonRpcApplication()
+
+GIT_VFS_UPDATE_PARAMS: GitVFSUpdateParams = None
+
+
+@rpc_application.add_notify(method="gitVFSUpdate")
+def handle_git_vfs_update(
+    app: JsonRpcApplication,
+    server: JsonRpcServer,
+    id: JsonRpcId,
+    params: GitVFSUpdateParams,
+) -> None:
+    global GIT_VFS_UPDATE_PARAMS
+
+    GIT_VFS_UPDATE_PARAMS = params
+
+
+class GitVFSInspector(Drawable):
+    def __init__(self):
+        super().__init__()
+
+    def _draw(self):
+        _, self.show = imgui.begin("Git VFS Inspector", closable=True)
+
+        if GIT_VFS_UPDATE_PARAMS is None:
+            imgui.text("No gitVFSUpdate notification received.")
+        else:
+            imgui.text("gitVFSUpdate notification received.")
+            imgui.text(yaml.dump(GIT_VFS_UPDATE_PARAMS.model_dump()))
 
         imgui.end()
 
@@ -656,6 +736,7 @@ FILE_LOADER = FileLoader()
 JSON_RPC_REQUEST_WINDOW = JsonRpcRequestWindow()
 REQUEST_RESPONSE_INSPECTOR = RequestResponseInspector()
 SUBPROCESS_INSPECTOR = SubprocessInspector()
+GIT_VFS_INSPECTOR = GitVFSInspector()
 
 CONFIGURATION_EDITOR = ConfigurationEditor(
     requests=[
@@ -679,20 +760,25 @@ def start_server(command):
     global rpc_subprocess_stderr_log
     global rpc_server
 
+    # trunk-ignore-begin(bandit/B603)
     rpc_subprocess = subprocess.Popen(
         command,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
+    # trunk-ignore-end(bandit/B603)
+
     rpc_subprocess_stderr_log.append("Subprocess started.")
 
     def read_stderr():
         global rpc_subprocess_stderr_log
+
         while True:
-            stderr_line = rpc_subprocess.stderr.readline()
+            stderr_line = cast(IO[bytes], rpc_subprocess.stderr).readline()
             if stderr_line:
                 rpc_subprocess_stderr_log.append(stderr_line.decode("utf-8").strip())
+                SUBPROCESS_INSPECTOR.scroll_to_bottom = True
             else:
                 break
 
@@ -700,10 +786,11 @@ def start_server(command):
 
     rpc_server = JsonRpcServer(
         json_rpc_stream=BareJsonStream(
-            rpc_subprocess.stdout,
-            rpc_subprocess.stdin,
+            cast(BufferedReader, rpc_subprocess.stdout),
+            cast(BufferedWriter, rpc_subprocess.stdin),
         ),
         request_timeout=None,
+        app=rpc_application,
     )
     rpc_server.start()
 
@@ -751,7 +838,7 @@ def submit_json_rpc_request(kind, method, params):
                 {"kind": kind, "request": table_request, "response": None}
             )
 
-            response = rpc_server.send_notification(method, params_dict)
+            response = None
         else:
             raise ValueError(f"Invalid RPC kind: {kind}")
 
@@ -801,6 +888,9 @@ def main():
             clicked, CONFIGURATION_EDITOR.show = imgui.menu_item(
                 "Configuration Editor", selected=CONFIGURATION_EDITOR.show
             )
+            clicked, GIT_VFS_INSPECTOR.show = imgui.menu_item(
+                "Git VFS Inspector", selected=GIT_VFS_INSPECTOR.show
+            )
             imgui.end_menu()
 
         imgui.end_main_menu_bar()
@@ -811,6 +901,7 @@ def main():
         REQUEST_RESPONSE_INSPECTOR.draw()
         SUBPROCESS_INSPECTOR.draw()
         CONFIGURATION_EDITOR.draw()
+        GIT_VFS_INSPECTOR.draw()
 
         gl.glClearColor(0, 0, 0, 1)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)

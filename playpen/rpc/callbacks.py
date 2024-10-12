@@ -1,17 +1,13 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, Any, Callable, Literal, Optional, cast
+import inspect
+from typing import TYPE_CHECKING, Any, Callable, Literal
 
 from pydantic import BaseModel, ConfigDict, validate_call
 
-from playpen.rpc.models import (
-    JsonRpcError,
-    JsonRpcErrorCode,
-    JsonRpcRequestResult,
-    JsonRpcResult,
-)
-from playpen.rpc.util import get_logger
+from playpen.rpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcRequest
+from playpen.rpc.util import TRACE, get_logger
 
 if TYPE_CHECKING:
     from playpen.rpc.core import JsonRpcApplication, JsonRpcServer
@@ -19,8 +15,8 @@ if TYPE_CHECKING:
 
 log = get_logger("jsonrpc")
 
-JsonRpcRequestCallable = Callable[..., JsonRpcRequestResult]
-JsonRpcNotifyCallable = Callable[..., None]
+# JsonRpcCallable = Callable[[JsonRpcApplication, JsonRpcServer, JsonRpcId, JsonRpcRequestParams], None]
+JsonRpcCallable = Callable[..., None]
 
 
 class JsonRpcCallback:
@@ -34,22 +30,11 @@ class JsonRpcCallback:
 
     def __init__(
         self,
-        func: JsonRpcRequestCallable | JsonRpcNotifyCallable,
-        include_server: bool,
-        include_app: bool,
+        func: JsonRpcCallable,
         kind: Literal["request", "notify"],
         method: str,
-        params_model: type[JsonRpcResult] | None = None,
     ):
-        """
-        If params_model is not supplied, the schema will be generated from the
-        function arguments.
-        """
-
         self.func = func
-        self.params_model = params_model
-        self.include_server = include_server
-        self.include_app = include_app
         self.kind = kind
         self.method = method
 
@@ -62,45 +47,55 @@ class JsonRpcCallback:
 
         self.validate_func_args = validate_func_args
 
-        # TODO: Generate docs
-        # See https://github.com/konveyor/kai/blob/d7727a8113f185ee393d368a924da7c9deedd45b/playpen/rpc_server/rpc.py#L354
+        sig = inspect.signature(func)
+        self.params_model: type[dict] | type[BaseModel] | None = [(p.annotation) for p in sig.parameters.values()][3]  # type: ignore[type-arg]
 
     def __call__(
         self,
-        params: dict[Any, Any] | None,
-        server: Optional[JsonRpcServer],
-        app: Optional[JsonRpcApplication],
-    ) -> tuple[JsonRpcResult | None, JsonRpcError | None] | None:
-        if params is None:
-            params = {}
+        app: JsonRpcApplication,
+        server: JsonRpcServer,
+        request: JsonRpcRequest,
+    ) -> None:
+        try:
+            log.log(TRACE, f"{self.func.__name__} called with {request}")
+            log.log(
+                TRACE,
+                f"{[(p.annotation) for p in inspect.signature(self.func).parameters.values()]}",
+            )
 
-        kwargs = {}
+            validated_params: BaseModel | dict[str, Any] | None
 
-        if self.params_model is None:
-            kwargs = params.copy()
-        elif self.params_model is dict:
-            kwargs["params"] = params
-        else:
-            try:
-                kwargs["params"] = cast(
-                    type[BaseModel], self.params_model
-                ).model_validate(params)
-            except Exception as e:
-                return None, JsonRpcError(
-                    code=JsonRpcErrorCode.InvalidParams,
-                    message=f"Invalid parameters: {e}",
+            if request.params is None:
+                if self.params_model is not None:
+                    raise ValueError("Expected params to be present")
+                else:
+                    validated_params = None
+            elif isinstance(request.params, dict):
+                if self.params_model is None:
+                    raise ValueError("Expected params to be None")
+                elif self.params_model is dict:
+                    validated_params = request.params
+                elif issubclass(self.params_model, BaseModel):
+                    validated_params = self.params_model.model_validate(request.params)
+                else:
+                    raise ValueError(
+                        f"params_model should be dict | BaseModel | None, got {self.params_model}"
+                    )
+            else:
+                raise ValueError(
+                    f"Expected params to be a dict or None, got {type(request.params)}"
                 )
 
-        if self.include_server:
-            kwargs["server"] = server
-        if self.include_app:
-            kwargs["app"] = app
+            log.log(TRACE, f"Validated params: {validated_params}")
+            self.validate_func_args(app, server, request.id, validated_params)
 
-        try:
-            self.validate_func_args(**kwargs)
-            return self.func(**kwargs)
+            log.log(TRACE, f"Calling function: {self.func.__name__}")
+            self.func(app, server, request.id, validated_params)
         except Exception as e:
-            return None, JsonRpcError(
-                code=JsonRpcErrorCode.InvalidParams,
-                message=f"Invalid parameters: {e}",
+            server.send_response(
+                id=request.id,
+                error=JsonRpcError(
+                    code=JsonRpcErrorCode.InternalError,
+                    message=str(e),
+                ),
             )

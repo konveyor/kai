@@ -2,12 +2,11 @@ import logging
 import sys
 import traceback
 from pathlib import Path
-from typing import Any, Optional, cast
+from typing import Optional, cast
 from urllib.parse import urlparse
 
 import requests
-from pydantic import AliasChoices, AliasGenerator, BaseModel, ConfigDict
-from pydantic.alias_generators import to_camel
+from pydantic import BaseModel
 
 from kai.models.kai_config import KaiConfigModels
 from kai.routes.get_incident_solutions_for_file import (
@@ -15,6 +14,7 @@ from kai.routes.get_incident_solutions_for_file import (
 )
 from kai.service.kai_application.kai_application import UpdatedFileContent
 from kai.service.llm_interfacing.model_provider import ModelProvider
+from playpen.repo_level_awareness.agent.reflection_agent import ReflectionAgent
 from playpen.repo_level_awareness.api import RpcClientConfig, TaskResult
 from playpen.repo_level_awareness.codeplan import TaskManager
 from playpen.repo_level_awareness.task_runner.analyzer_lsp.task_runner import (
@@ -23,19 +23,14 @@ from playpen.repo_level_awareness.task_runner.analyzer_lsp.task_runner import (
 from playpen.repo_level_awareness.task_runner.analyzer_lsp.validator import (
     AnalyzerLSPStep,
 )
-from playpen.repo_level_awareness.task_runner.compiler.compiler_task_runner import (
-    MavenCompilerTaskRunner,
+from playpen.repo_level_awareness.vfs.git_vfs import (
+    RepoContextManager,
+    RepoContextSnapshot,
 )
-from playpen.repo_level_awareness.task_runner.compiler.maven_validator import (
-    MavenCompileStep,
-)
-from playpen.repo_level_awareness.vfs.git_vfs import RepoContextManager
 from playpen.rpc.core import JsonRpcApplication, JsonRpcServer
 from playpen.rpc.logs import JsonRpcLoggingHandler
-from playpen.rpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcRequestResult
+from playpen.rpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcId
 from playpen.rpc.util import DEFAULT_FORMATTER, TRACE, CamelCaseBaseModel
-
-log = logging.getLogger(__name__)
 
 
 class KaiRpcApplicationConfig(CamelCaseBaseModel):
@@ -70,36 +65,47 @@ ERROR_NOT_INITIALIZED = JsonRpcError(
 )
 
 
-@app.add_request(method="echo", params_model=dict)
-def echo(app: KaiRpcApplication, params: dict) -> JsonRpcRequestResult:
-    return params, None
+@app.add_request(method="echo")
+def echo(
+    app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict
+) -> None:
+    server.send_response(id=id, result=params)
 
 
-@app.add_request(method="shutdown", include_server=True)
-def shutdown(app: KaiRpcApplication, server: JsonRpcServer) -> tuple[dict, None]:
+@app.add_request(method="shutdown")
+def shutdown(
+    app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict
+) -> None:
     server.shutdown_flag = True
 
-    return {}, None
+    server.send_response(id=id, result={})
 
 
-@app.add_request(method="exit", include_server=True)
-def exit(app: KaiRpcApplication, server: JsonRpcServer) -> JsonRpcRequestResult:
+@app.add_request(method="exit")
+def exit(
+    app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict
+) -> None:
     server.shutdown_flag = True
 
-    return {}, None
+    server.send_response(id=id, result={})
 
 
-@app.add_request(
-    method="initialize", params_model=KaiRpcApplicationConfig, include_server=True
-)
+@app.add_request(method="initialize")
 def initialize(
-    app: KaiRpcApplication, params: KaiRpcApplicationConfig, server: JsonRpcServer
-) -> JsonRpcRequestResult:
+    app: KaiRpcApplication,
+    server: JsonRpcServer,
+    id: JsonRpcId,
+    params: KaiRpcApplicationConfig,
+) -> None:
     if app.initialized:
-        return {}, JsonRpcError(
-            code=JsonRpcErrorCode.ServerErrorStart,
-            message="Server already initialized",
+        server.send_response(
+            id=id,
+            error=JsonRpcError(
+                code=JsonRpcErrorCode.ServerErrorStart,
+                message="Server already initialized",
+            ),
         )
+        return
 
     try:
         app.config = params
@@ -131,36 +137,54 @@ def initialize(
         app.log.info(f"Initialized with config: {app.config}")
 
     except Exception as e:
-        return {}, JsonRpcError(
-            code=JsonRpcErrorCode.InvalidParams,
-            message=str(e),
+        server.send_response(
+            id=id,
+            error=JsonRpcError(
+                code=JsonRpcErrorCode.InternalError,
+                message=str(e),
+            ),
         )
+        return
 
     app.initialized = True
 
-    return {}, None
+    server.send_response(id=id, result={})
 
 
-@app.add_request(method="setConfig", params_model=dict, include_server=True)
+@app.add_request(method="setConfig")
 def set_config(
-    app: KaiRpcApplication, params: dict, server: JsonRpcServer
-) -> JsonRpcRequestResult:
+    app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict
+) -> None:
     if not app.initialized:
-        return {}, ERROR_NOT_INITIALIZED
+        server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
+        return
+    app.config = cast(KaiRpcApplicationConfig, app.config)
 
     # Basically reset everything
     app.initialized = False
-    return cast(JsonRpcRequestResult, initialize(app=app, params=params, server=server))
+    try:
+        initialize.func(app, server, id, KaiRpcApplicationConfig.model_validate(params))
+    except Exception as e:
+        server.send_response(
+            id=id,
+            error=JsonRpcError(
+                code=JsonRpcErrorCode.InternalError,
+                message=str(e),
+            ),
+        )
 
 
-@app.add_request(
-    method="getRAGSolution", params_model=PostGetIncidentSolutionsForFileParams
-)
+@app.add_request(method="getRAGSolution")
 def get_rag_solution(
-    app: KaiRpcApplication, params: PostGetIncidentSolutionsForFileParams
-) -> JsonRpcRequestResult:
+    app: KaiRpcApplication,
+    server: JsonRpcServer,
+    id: JsonRpcId,
+    params: PostGetIncidentSolutionsForFileParams,
+) -> None:
     if not app.initialized:
-        return {}, ERROR_NOT_INITIALIZED
+        server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
+        return
+    app.config = cast(KaiRpcApplicationConfig, app.config)
 
     # NOTE: This is not at all what we should be doing
     try:
@@ -169,15 +193,19 @@ def get_rag_solution(
         result = requests.post(
             f"{app.config.kai_backend_url}/get_incident_solutions_for_file",
             json=params_dict,
+            timeout=1024,
         )
         app.log.info(f"get_rag_solution result: {result}")
         app.log.info(f"get_rag_solution result.json(): {result.json()}")
 
-        return dict(result.json()), None
+        server.send_response(id=id, result=dict(result.json()))
     except Exception:
-        return {}, JsonRpcError(
-            code=JsonRpcErrorCode.InternalError,
-            message=str(traceback.format_exc()),
+        server.send_response(
+            id=id,
+            error=JsonRpcError(
+                code=JsonRpcErrorCode.InternalError,
+                message=str(traceback.format_exc()),
+            ),
         )
 
 
@@ -188,34 +216,70 @@ class GetCodeplanAgentSolutionParams(BaseModel):
     replacing_file_path: Path
 
 
-@app.add_request(
-    method="getCodeplanAgentSolution", params_model=GetCodeplanAgentSolutionParams
-)
+class GitVFSUpdateParams(BaseModel):
+    work_tree: Path  # project root
+    git_dir: Path
+    git_sha: str
+    diff: str
+
+    children: list["GitVFSUpdateParams"]
+
+    @classmethod
+    def from_snapshot(cls, snapshot: RepoContextSnapshot) -> "GitVFSUpdateParams":
+        return cls(
+            work_tree=snapshot.work_tree,
+            git_dir=snapshot.git_dir,
+            git_sha=snapshot.git_sha,
+            diff=snapshot.diff(snapshot.parent)[1] if snapshot.parent else "",
+            children=[cls.from_snapshot(c) for c in snapshot.children],
+        )
+
+    # spawning_result: Optional[SpawningResult] = None
+
+
+@app.add_request(method="getCodeplanAgentSolution")
 def get_codeplan_agent_solution(
-    app: KaiRpcApplication, params: GetCodeplanAgentSolutionParams
-) -> JsonRpcRequestResult:
+    app: KaiRpcApplication,
+    server: JsonRpcServer,
+    id: JsonRpcId,
+    params: GetCodeplanAgentSolutionParams,
+) -> None:
+    app.log.info(f"get_codeplan_agent_solution: {params}")
     if not app.initialized:
-        return {}, ERROR_NOT_INITIALIZED
+        server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
+        return
+
+    app.config = cast(KaiRpcApplicationConfig, app.config)
 
     try:
         model_provider = ModelProvider(app.config.model_provider)
     except Exception as e:
-        return {}, JsonRpcError(
-            code=JsonRpcErrorCode.InternalError,
-            message=str(e),
+        server.send_response(
+            id=id,
+            error=JsonRpcError(
+                code=JsonRpcErrorCode.InternalError,
+                message=str(e),
+            ),
         )
+        return
+
+    # NOTE(JonahSussman): I don't think the reflection agent should be used in
+    # the RCM, I Feel like it should be just like another agent, but that
+    # produces tasks with a high priority
+    ReflectionAgent(llm=model_provider.llm, iterations=1, retries=3)
 
     rcm = RepoContextManager(
         project_root=Path(urlparse(app.config.root_uri).path),
-        llm=model_provider.llm,
     )
 
     replaced_file_content = open(params.replacing_file_path).read()
-    # overwrite the file content with the replaced file content
     with open(params.file_path, "w") as f:
         f.write(replaced_file_content)
 
     rcm.commit("Replaced file content")
+    server.send_notification(
+        "gitVFSUpdate", GitVFSUpdateParams.from_snapshot(rcm.first_snapshot)
+    )
 
     updated_file_content = UpdatedFileContent(
         updated_file=replaced_file_content,
@@ -241,21 +305,29 @@ def get_codeplan_agent_solution(
         rcm=rcm,
         updated_file_content=updated_file_content,
         validators=[
-            MavenCompileStep(task_manager_config),
-            # AnalyzerLSPStep(task_manager_config),
+            # MavenCompileStep(task_manager_config),
+            AnalyzerLSPStep(task_manager_config),
         ],
         agents=[
-            # AnalyzerTaskRunner(model_provider.llm),
-            MavenCompilerTaskRunner(model_provider.llm),
+            AnalyzerTaskRunner(model_provider.llm),
+            # MavenCompilerTaskRunner(model_provider.llm),
         ],
     )
 
     result: TaskResult
     for task in task_manager.get_next_task():
+        app.log.debug(f"Executing task {task.__class__.__name__}")
+
         result = task_manager.execute_task(task)
+        app.log.debug(f"Task {task.__class__.__name__} result: {result}")
+
         task_manager.supply_result(result)
 
+        app.log.debug(f"Executed task {task.__class__.__name__}")
         rcm.commit(f"Executed task {task.__class__.__name__}")
+        server.send_notification(
+            "gitVFSUpdate", GitVFSUpdateParams.from_snapshot(rcm.first_snapshot)
+        )
 
     task_manager.stop()
 
@@ -265,8 +337,11 @@ def get_codeplan_agent_solution(
 
     rcm.reset_to_first()
 
-    return {
-        "encountered_errors": [str(e) for e in result.encountered_errors],
-        "modified_files": [str(f) for f in result.modified_files],
-        "diff": diff,
-    }, None
+    server.send_response(
+        id=id,
+        result={
+            "encountered_errors": [str(e) for e in result.encountered_errors],
+            "modified_files": [str(f) for f in result.modified_files],
+            "diff": diff,
+        },
+    )

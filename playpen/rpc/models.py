@@ -20,7 +20,7 @@ JsonRpcId = Optional[str | int]
 
 # NOTE: dict must come before BaseModel in the union, otherwise Pydantic breaks
 # when calling model_validate on JsonRpcResponse.
-JsonRpcResult = dict | BaseModel  # type: ignore[misc]
+JsonRpcResult = dict | BaseModel  # type: ignore[type-arg]
 
 
 class JsonRpcError(BaseModel):
@@ -39,8 +39,8 @@ class JsonRpcResponse(BaseModel):
 class JsonRpcRequest(BaseModel):
     jsonrpc: str = "2.0"
     method: str
-    params: Optional[dict[Any, Any]] = None
+    params: Optional[dict[str, Any]] = None
     id: JsonRpcId = None
 
 
-JsonRpcRequestResult = tuple[JsonRpcResult | None, JsonRpcError | None]
+# JsonRpcRequestResult = tuple[JsonRpcResult | None, JsonRpcError | None]
