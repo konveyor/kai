@@ -25,7 +25,7 @@ type Analyzer struct {
 	ruleSets        []engine.RuleSet
 }
 
-func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, lspServerPath, bundles string, ruleFiles []string, log logr.Logger) (*Analyzer, error) {
+func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, lspServerPath, bundles, depOpenSourceLabelsFile string, ruleFiles []string, log logr.Logger) (*Analyzer, error) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	eng := engine.CreateRuleEngine(ctx,
 		10,
@@ -37,7 +37,7 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 	)
 
 	// this function already init's the java provider
-	jProvider, err := java.NewInternalProviderClient(ctx, log, contextLines, location, lspServerPath, bundles)
+	jProvider, err := java.NewInternalProviderClient(ctx, log, contextLines, location, lspServerPath, bundles, depOpenSourceLabelsFile)
 	if err != nil {
 		cancelFunc()
 		return nil, err
