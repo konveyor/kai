@@ -235,7 +235,6 @@ class JsonRpcServer(threading.Thread):
 
             elif isinstance(msg, JsonRpcRequest):
                 log.log(TRACE, "Received request: %s", msg)
-                # TODO: Make multithreaded?
                 if msg.id is not None:
                     self.outstanding_requests.add(msg.id)
 

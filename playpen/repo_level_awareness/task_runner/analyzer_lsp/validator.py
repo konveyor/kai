@@ -41,7 +41,7 @@ class AnalyzerLSPStep(ValidationStep):
                 "-lspServerPath",
                 config.analyzer_lsp_path,
                 "-bundles",
-                config.analyzer_java_bundle,
+                config.analyzer_java_bundle_path,
                 "-log-file",
                 "./kai-analyzer.log",
             ],

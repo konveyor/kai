@@ -48,7 +48,9 @@ class JsonRpcCallback:
         self.validate_func_args = validate_func_args
 
         sig = inspect.signature(func)
-        self.params_model: type[dict] | type[BaseModel] | None = [(p.annotation) for p in sig.parameters.values()][3]  # type: ignore[type-arg]
+        self.params_model: type[dict[str, Any]] | type[BaseModel] | None = [
+            (p.annotation) for p in sig.parameters.values()
+        ][3]
 
     def __call__(
         self,

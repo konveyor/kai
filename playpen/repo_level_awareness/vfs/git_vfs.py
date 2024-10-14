@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from playpen.repo_level_awareness.agent.api import AgentResult
+from playpen.repo_level_awareness.agent.reflection_agent import ReflectionAgent
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -113,13 +114,14 @@ class RepoContextSnapshot:
         return proc.returncode, stdout, stderr
 
     @staticmethod
-    def initialize(
-        work_tree: Path, msg: str = "Initial commit"
-    ) -> "RepoContextSnapshot":
+    def initialize(work_tree: Path, msg: str | None = None) -> "RepoContextSnapshot":
         """
         Creates a new git repo in the given work_tree, and returns a
         GitVFSSnapshot.
         """
+        if msg is None:
+            msg = "Initial commit"
+
         work_tree = work_tree.resolve()
         kai_dir = work_tree / ".kai"
         kai_dir.mkdir(exist_ok=True)
@@ -200,36 +202,25 @@ class RepoContextSnapshot:
         return self.git(["diff", other.git_sha, self.git_sha])
 
 
-RepoContextManagerPreCommitHook = Callable[
-    [str | None, SpawningResult | None], tuple[str | None, SpawningResult | None]
-]
-
-
-# FIXME(JonahSussman): Put back the reflection agent stuff
 class RepoContextManager:
     def __init__(
         self,
         project_root: Path,
-        pre_commit_hooks: list[RepoContextManagerPreCommitHook] | None = None,
-        # llm: Any = None,
+        reflection_agent: ReflectionAgent,
+        initial_msg: str | None = None,
     ):
-        if pre_commit_hooks is None:
-            pre_commit_hooks = []
-
         self.project_root = project_root
-        self.pre_commit_hooks = pre_commit_hooks
-
-        self.snapshot = RepoContextSnapshot.initialize(project_root)
+        self.snapshot = RepoContextSnapshot.initialize(project_root, initial_msg)
         self.first_snapshot = self.snapshot
-
-        # self.reflection_agent = ReflectionAgent(llm=llm, iterations=1, retries=3)
+        self.reflection_agent = reflection_agent
 
     def commit(
         self, msg: str | None = None, spawning_result: SpawningResult | None = None
-    ):
+    ) -> bool:
         """
         Commits the current state of the repository and updates the snapshot.
-        Also runs the reflection agent validate the repository state.
+        Also runs the reflection agent validate the repository state. Returns
+        True if the commit was successful, False otherwise.
         """
 
         reflection_result = AgentResult(encountered_errors=[], modified_files=None)
@@ -238,15 +229,13 @@ class RepoContextManager:
                 spawning_result.to_reflection_task()
             )
 
-        self.snapshot = self.snapshot.commit(msg, spawning_result)
+        new_spawning_result = union_the_result_and_the_errors(
+            reflection_result.encountered_errors, spawning_result
+        )
 
-        # AgentResult(encountered_errors=[], modified_files=None)
-        # if spawning_result is not None and isinstance(spawning_result, SpawningResult):
-        #     self.reflection_agent.execute(None, spawning_result.to_reflection_task())
+        self.snapshot = self.snapshot.commit(msg, new_spawning_result)
 
-        # new_spawning_result = union_the_result_and_the_errors(
-        #     reflection_result.encountered_errors, spawning_result
-        # )
+        return True
 
     def reset(self, snapshot: Optional[RepoContextSnapshot] = None):
         """

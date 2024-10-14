@@ -2,27 +2,32 @@ import logging
 import sys
 import traceback
 from pathlib import Path
-from typing import Optional, cast
+from typing import Any, Optional, cast
 from urllib.parse import urlparse
 
 import requests
 from pydantic import BaseModel
 
 from kai.models.kai_config import KaiConfigModels
-from kai.models.report_types import ExtendedIncident
-from kai.routes.get_incident_solutions_for_file import (
-    PostGetIncidentSolutionsForFileParams,
-)
-from kai.service.kai_application.kai_application import UpdatedFileContent
+from kai.models.report_types import ExtendedIncident, Incident, RuleSet, Violation
 from kai.service.llm_interfacing.model_provider import ModelProvider
 from playpen.repo_level_awareness.agent.reflection_agent import ReflectionAgent
-from playpen.repo_level_awareness.api import RpcClientConfig, TaskResult
+from playpen.repo_level_awareness.api import RpcClientConfig, Task, TaskResult
 from playpen.repo_level_awareness.codeplan import TaskManager
+from playpen.repo_level_awareness.task_runner.analyzer_lsp.api import (
+    AnalyzerRuleViolation,
+)
 from playpen.repo_level_awareness.task_runner.analyzer_lsp.task_runner import (
     AnalyzerTaskRunner,
 )
 from playpen.repo_level_awareness.task_runner.analyzer_lsp.validator import (
     AnalyzerLSPStep,
+)
+from playpen.repo_level_awareness.task_runner.compiler.compiler_task_runner import (
+    MavenCompilerTaskRunner,
+)
+from playpen.repo_level_awareness.task_runner.compiler.maven_validator import (
+    MavenCompileStep,
 )
 from playpen.repo_level_awareness.vfs.git_vfs import (
     RepoContextManager,
@@ -38,7 +43,7 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
     process_id: Optional[int]
 
     root_path: Path
-    analyzer_lsp_path: Path  # Shouldn't we still have this
+    analyzer_lsp_path: Path
     analyzer_lsp_rpc_path: Path
     model_provider: KaiConfigModels
     kai_backend_url: str
@@ -68,14 +73,14 @@ ERROR_NOT_INITIALIZED = JsonRpcError(
 
 @app.add_request(method="echo")
 def echo(
-    app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict
+    app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
     server.send_response(id=id, result=params)
 
 
 @app.add_request(method="shutdown")
 def shutdown(
-    app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict
+    app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
     server.shutdown_flag = True
 
@@ -84,7 +89,7 @@ def shutdown(
 
 @app.add_request(method="exit")
 def exit(
-    app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict
+    app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
     server.shutdown_flag = True
 
@@ -158,7 +163,7 @@ def initialize(
 
 @app.add_request(method="setConfig")
 def set_config(
-    app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict
+    app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
     if not app.initialized:
         server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
@@ -179,48 +184,44 @@ def set_config(
         )
 
 
-@app.add_request(method="getRAGSolution")
-def get_rag_solution(
-    app: KaiRpcApplication,
-    server: JsonRpcServer,
-    id: JsonRpcId,
-    params: PostGetIncidentSolutionsForFileParams,
-) -> None:
-    if not app.initialized:
-        server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
-        return
-    app.config = cast(KaiRpcApplicationConfig, app.config)
+# @app.add_request(method="getRAGSolution")
+# def get_rag_solution(
+#     app: KaiRpcApplication,
+#     server: JsonRpcServer,
+#     id: JsonRpcId,
+#     params: PostGetIncidentSolutionsForFileParams,
+# ) -> None:
+#     if not app.initialized:
+#         server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
+#         return
+#     app.config = cast(KaiRpcApplicationConfig, app.config)
 
-    # NOTE: This is not at all what we should be doing
-    try:
-        app.log.info(f"get_rag_solution: {params}")
-        params_dict = params.model_dump()
-        result = requests.post(
-            f"{app.config.kai_backend_url}/get_incident_solutions_for_file",
-            json=params_dict,
-            timeout=1024,
-        )
-        app.log.info(f"get_rag_solution result: {result}")
-        app.log.info(f"get_rag_solution result.json(): {result.json()}")
+#     # NOTE: This is not at all what we should be doing
+#     try:
+#         app.log.info(f"get_rag_solution: {params}")
+#         params_dict = params.model_dump()
+#         result = requests.post(
+#             f"{app.config.kai_backend_url}/get_incident_solutions_for_file",
+#             json=params_dict,
+#             timeout=1024,
+#         )
+#         app.log.info(f"get_rag_solution result: {result}")
+#         app.log.info(f"get_rag_solution result.json(): {result.json()}")
 
-        server.send_response(id=id, result=dict(result.json()))
-    except Exception:
-        server.send_response(
-            id=id,
-            error=JsonRpcError(
-                code=JsonRpcErrorCode.InternalError,
-                message=str(traceback.format_exc()),
-            ),
-        )
+#         server.send_response(id=id, result=dict(result.json()))
+#     except Exception:
+#         server.send_response(
+#             id=id,
+#             error=JsonRpcError(
+#                 code=JsonRpcErrorCode.InternalError,
+#                 message=str(traceback.format_exc()),
+#             ),
+#         )
 
 
 class GetCodeplanAgentSolutionParams(BaseModel):
     file_path: Path
-
     incidents: list[ExtendedIncident]
-
-    # For demo only
-    replacing_file_path: Path
 
 
 class GitVFSUpdateParams(BaseModel):
@@ -274,38 +275,46 @@ def get_codeplan_agent_solution(
         )
         return
 
-    # NOTE(JonahSussman): I don't think the reflection agent should be used in
-    # the RCM, I Feel like it should be just like another agent, but that
-    # produces tasks with a high priority
-    ReflectionAgent(llm=model_provider.llm, iterations=1, retries=3)
+    # Data for AnalyzerRuleViolation should probably take an ExtendedIncident
+    seed_tasks: list[Task] = []
+
+    for incident in params.incidents:
+        seed_tasks.append(
+            AnalyzerRuleViolation(
+                file=urlparse(incident.uri).path,
+                line=incident.line_number,
+                column=-1,  # Not contained within report?
+                message=incident.message,
+                priority=0,
+                incident=Incident(**incident.model_dump()),
+                violation=Violation(
+                    description=incident.violation_description or "",
+                ),
+                ruleset=RuleSet(
+                    name=incident.ruleset_name,
+                    description=incident.ruleset_description or "",
+                ),
+            )
+        )
 
     rcm = RepoContextManager(
         project_root=app.config.root_path,
+        reflection_agent=ReflectionAgent(
+            llm=model_provider.llm, iterations=1, retries=3
+        ),
     )
 
-    replaced_file_content = open(params.replacing_file_path).read()
-    with open(params.file_path, "w") as f:
-        f.write(replaced_file_content)
-
-    rcm.commit("Replaced file content")
     server.send_notification(
-        "gitVFSUpdate", GitVFSUpdateParams.from_snapshot(rcm.first_snapshot)
+        "gitVFSUpdate",
+        GitVFSUpdateParams.from_snapshot(rcm.first_snapshot).model_dump(),
     )
 
-    updated_file_content = UpdatedFileContent(
-        updated_file=replaced_file_content,
-        total_reasoning=[],
-        used_prompts=[],
-        model_id=model_provider.model_id,
-        additional_information=[],
-        llm_results=None,
-    )
-
-    # TODO: It'd be nice to unify these config classes
     task_manager_config = RpcClientConfig(
         repo_directory=app.config.root_path,
         analyzer_lsp_server_binary=app.config.analyzer_lsp_rpc_path,
         rules_directory=app.config.analyzer_lsp_rpc_path / "rules",
+        analyzer_lsp_path=app.config.analyzer_lsp_path,
+        analyzer_java_bundle_path=app.config.analyzer_lsp_path / "java_bundle",  # ?
         label_selector=None,
         incident_selector=None,
         included_paths=None,
@@ -314,22 +323,23 @@ def get_codeplan_agent_solution(
     task_manager = TaskManager(
         config=task_manager_config,
         rcm=rcm,
-        updated_file_content=updated_file_content,
+        seed_tasks=seed_tasks,
         validators=[
-            # MavenCompileStep(task_manager_config),
+            MavenCompileStep(task_manager_config),
             AnalyzerLSPStep(task_manager_config),
         ],
         agents=[
             AnalyzerTaskRunner(model_provider.llm),
-            # MavenCompilerTaskRunner(model_provider.llm),
+            MavenCompilerTaskRunner(model_provider.llm),
         ],
     )
 
     result: TaskResult
-    for task in task_manager.get_next_task():
+    for task in task_manager.get_next_task(0):
         app.log.debug(f"Executing task {task.__class__.__name__}")
 
         result = task_manager.execute_task(task)
+
         app.log.debug(f"Task {task.__class__.__name__} result: {result}")
 
         task_manager.supply_result(result)
@@ -337,7 +347,8 @@ def get_codeplan_agent_solution(
         app.log.debug(f"Executed task {task.__class__.__name__}")
         rcm.commit(f"Executed task {task.__class__.__name__}")
         server.send_notification(
-            "gitVFSUpdate", GitVFSUpdateParams.from_snapshot(rcm.first_snapshot)
+            "gitVFSUpdate",
+            GitVFSUpdateParams.from_snapshot(rcm.first_snapshot).model_dump(),
         )
 
     task_manager.stop()

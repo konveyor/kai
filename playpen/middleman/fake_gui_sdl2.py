@@ -68,9 +68,6 @@ from kai.models.kai_config import KaiConfigModels
 from kai.models.report import Report
 from kai.models.report_types import ExtendedIncident
 from kai.models.util import remove_known_prefixes
-from kai.routes.get_incident_solutions_for_file import (
-    PostGetIncidentSolutionsForFileParams,
-)
 from playpen.middleman.server import (
     GetCodeplanAgentSolutionParams,
     GitVFSUpdateParams,
@@ -158,22 +155,25 @@ class ConfigurationEditor(Drawable):
 
         for field_name in fields:
             field = fields[field_name]
-            self.draw_field(
-                params,
+            result = self.draw_field(
+                getattr(params, field_name),
                 extra,
                 field_name,
                 # field,
                 field_annotation=field.annotation,
             )
+            setattr(params, field_name, result)
 
     def draw_field(
         self,
-        params: BaseModel,
+        obj: Any,
         extra: dict[str, Any],
         field_name: str,
         # field: FieldInfo,
         field_annotation: Any,
-    ) -> None:
+    ) -> Any:
+        # print(f"Drawing field: {field_name} ({field_annotation})")
+
         if get_origin(field_annotation) is Union:
             args = get_args(field_annotation)
             combo_items_key = field_name + "_combo_items"
@@ -184,11 +184,7 @@ class ConfigurationEditor(Drawable):
 
             if combo_current_key not in extra:
                 selected_index = next(
-                    (
-                        i
-                        for i, arg in enumerate(args)
-                        if arg == getattr(params, field_name).__class__
-                    ),
+                    (i for i, arg in enumerate(args) if arg == obj.__class__),
                     -1,
                 )
                 extra[combo_current_key] = selected_index
@@ -199,48 +195,49 @@ class ConfigurationEditor(Drawable):
                 items=extra[combo_items_key],
             )
 
-            self.draw_field(
-                params,
+            return self.draw_field(
+                obj,
                 extra,
                 field_name,
                 field_annotation=args[extra[combo_current_key]],
             )
+
         elif field_annotation is None or field_annotation is NoneType:
-            setattr(params, field_name, None)
-        elif field_annotation is str:
-            _, result = imgui.input_text(
-                field_name, str(getattr(params, field_name)), 400
-            )
-            setattr(params, field_name, result)
-        elif field_annotation is Path:
-            _, result = imgui.input_text(
-                field_name, str(getattr(params, field_name)), 400
-            )
-            setattr(params, field_name, result)
+            return None
+
+        elif field_annotation is str or field_annotation is Path:
+            _, result = imgui.input_text(field_name, str(obj), 400)
+
+            return result
+
         elif field_annotation is int:
-            attr = getattr(params, field_name)
-            if not isinstance(attr, int):
-                attr = 0
+            if not isinstance(obj, int):
+                obj = 0
 
-            _, result = imgui.input_int(field_name, attr)
-            setattr(params, field_name, result)
+            _, result = imgui.input_int(field_name, obj)
+
+            return result
+
         elif field_annotation is float:
-            attr = getattr(params, field_name)
-            if not isinstance(attr, float):
-                attr = 0.0
+            if not isinstance(obj, float):
+                obj = 0.0
 
-            _, result = imgui.input_float(field_name, attr)
-            setattr(params, field_name, result)
+            _, result = imgui.input_float(field_name, obj)
+
+            return result
+
         elif field_annotation is bool:
-            _, result = imgui.checkbox(field_name, bool(getattr(params, field_name)))
-            setattr(params, field_name, result)
-        elif field_annotation is dict:
+            _, result = imgui.checkbox(field_name, bool(obj))
+
+            return result
+
+        elif get_origin(field_annotation) is dict:
             dict_key = field_name + "_dict"
             if dict_key not in extra:
                 extra[dict_key] = "{}"
 
             try:
-                extra[dict_key] = json.dumps(getattr(params, field_name))
+                extra[dict_key] = json.dumps(obj)
             except Exception:
                 pass
 
@@ -250,25 +247,105 @@ class ConfigurationEditor(Drawable):
             )
 
             try:
-                setattr(params, field_name, json.loads(extra[dict_key]))
+                return json.loads(extra[dict_key])
             except Exception as e:
-                setattr(params, field_name, e)
+                return str(e)
+
+        elif get_origin(field_annotation) is list:
+            args = get_args(field_annotation)
+            cls = str if len(args) == 0 else args[0]
+
+            list_len_key = field_name + "_list_len"
+
+            if not isinstance(obj, list):
+                obj = []
+
+            if list_len_key not in extra:
+                extra[list_len_key] = len(obj)
+
+            _, extra[list_len_key] = imgui.input_int(
+                f"{field_name} length", extra[list_len_key]
+            )
+
+            if extra[list_len_key] < 0:
+                extra[list_len_key] = 0
+
+            if extra[list_len_key] > len(obj):
+                if issubclass(cls, BaseModel):
+                    obj.extend(
+                        [
+                            cls.model_construct({})
+                            for _ in range(extra[list_len_key] - len(obj))
+                        ]
+                    )
+                else:
+                    obj.extend([cls() for _ in range(extra[list_len_key] - len(obj))])
+            elif extra[list_len_key] < len(obj):
+                obj = obj[: extra[list_len_key]]
+
+            print(cls)
+            print(obj)
+
+            for i, elem in enumerate(obj):
+                if f"field_name.{i}" not in extra:
+                    extra[f"{field_name}.{i}"] = {}
+
+                imgui.text(f"{field_name}.{i}")
+
+                imgui.indent()
+
+                obj[i] = self.draw_field(
+                    elem,
+                    extra[f"{field_name}.{i}"],
+                    f"{field_name}.{i}",
+                    field_annotation=cls,
+                )
+
+                imgui.unindent()
+
+            print(obj)
+
+            return obj
 
         elif issubclass(field_annotation, BaseModel):
             imgui.text(field_name)
 
             imgui.indent()
 
-            for sub_field_name in field_annotation.model_fields:
-                sub_field = field_annotation.model_fields[sub_field_name]
-                self.draw_field(
-                    getattr(params, field_name),
-                    extra,
+            obj = cast(BaseModel, obj)
+
+            for sub_field_name in obj.__class__.model_fields:
+                if sub_field_name not in extra:
+                    extra[sub_field_name] = {}
+
+                # sub_field = field_annotation.model_fields[sub_field_name]
+                sub_field = obj.__class__.model_fields[sub_field_name]
+
+                if not hasattr(obj, sub_field_name):
+                    print(
+                        f"Creating {sub_field_name} {sub_field.annotation} for {field_name} on {obj}"
+                    )
+                    if sub_field.annotation is None:
+                        setattr(obj, sub_field_name, None)
+                    elif issubclass(sub_field.annotation, BaseModel):
+                        # try:
+                        setattr(obj, sub_field_name, sub_field.annotation())
+                    else:
+                        setattr(obj, sub_field_name, sub_field.annotation())
+
+                result = self.draw_field(
+                    getattr(obj, sub_field_name),
+                    extra[sub_field_name],
                     sub_field_name,
                     field_annotation=sub_field.annotation,
                 )
 
+                setattr(obj, sub_field_name, result)
+
             imgui.unindent()
+
+            return obj
+
         else:
             imgui.text(f"Unknown type. {field_name}: {field_annotation}")
 
@@ -332,20 +409,20 @@ class SourceEditor(Drawable):
 
                 if imgui.begin_popup(f"context_menu_{line_number}"):
                     if imgui.begin_menu("Populate..."):
-                        if imgui.selectable("getRAGSolution")[0]:
-                            JSON_RPC_REQUEST_WINDOW.rpc_kind_n = 0
-                            JSON_RPC_REQUEST_WINDOW.rpc_method = "getRAGSolution"
-                            JSON_RPC_REQUEST_WINDOW.rpc_params = json.dumps(
-                                PostGetIncidentSolutionsForFileParams(
-                                    file_name=str(self.file_path),
-                                    file_contents=self.editor_content,
-                                    application_name="coolstore",
-                                    incidents=[incident],
-                                ).model_dump(),
-                                indent=2,
-                            )
+                        # if imgui.selectable("getRAGSolution")[0]:
+                        #     JSON_RPC_REQUEST_WINDOW.rpc_kind_n = 0
+                        #     JSON_RPC_REQUEST_WINDOW.rpc_method = "getRAGSolution"
+                        #     JSON_RPC_REQUEST_WINDOW.rpc_params = json.dumps(
+                        #         PostGetIncidentSolutionsForFileParams(
+                        #             file_name=str(self.file_path),
+                        #             file_contents=self.editor_content,
+                        #             application_name="coolstore",
+                        #             incidents=[incident],
+                        #         ).model_dump(),
+                        #         indent=2,
+                        #     )
 
-                            imgui.set_window_focus_labeled("JSON RPC Request Window")
+                        #     imgui.set_window_focus_labeled("JSON RPC Request Window")
 
                         if imgui.selectable("getCodeplanAgentSolution")[0]:
                             JSON_RPC_REQUEST_WINDOW.rpc_kind_n = 0
@@ -575,7 +652,7 @@ class SubprocessInspector(Drawable):
 
         if rpc_subprocess is None:
             if imgui.button("Start"):
-                start_server(["python", rpc_script_path])
+                start_server(["python", str(rpc_script_path)])
         else:
             if imgui.button("Stop"):
                 stop_server()
@@ -605,7 +682,7 @@ class SubprocessInspector(Drawable):
 
 rpc_application: JsonRpcApplication = JsonRpcApplication()
 
-GIT_VFS_UPDATE_PARAMS: GitVFSUpdateParams = None
+GIT_VFS_UPDATE_PARAMS: GitVFSUpdateParams | None = None
 
 
 @rpc_application.add_notify(method="gitVFSUpdate")
@@ -654,9 +731,7 @@ CONFIGURATION_EDITOR = ConfigurationEditor(
                 file_path=Path(
                     "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/example/coolstore/src/main/java/com/redhat/coolstore/model/InventoryEntity.java"
                 ),
-                replacing_file_path=Path(
-                    "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/notebooks/compilation_agent/testing_field_type_change_errors/CatalogItemEntity.java"
-                ),
+                incidents=[],
             ),
         ),
     ]
@@ -664,12 +739,12 @@ CONFIGURATION_EDITOR = ConfigurationEditor(
 
 # CONFIGURATION_EDITOR = ConfigurationEditorOld()
 
-json_rpc_responses = []
+json_rpc_responses: list[dict[str, Any]] = []
 rpc_subprocess_stderr_log = []
 rpc_subprocess = None
 
 rpc_script_path = Path(os.path.dirname(os.path.realpath(__file__))) / "main.py"
-rpc_server: JsonRpcServer = None
+rpc_server: JsonRpcServer | None = None
 
 
 def start_server(command: list[str]) -> None:
@@ -717,12 +792,14 @@ def stop_server() -> None:
     global rpc_server
     global rpc_subprocess_stderr_log
 
-    if rpc_subprocess:
+    if rpc_subprocess is not None:
         rpc_subprocess.terminate()
         rpc_subprocess = None
         rpc_subprocess_stderr_log.append("Subprocess terminated.")
 
+    if rpc_server is not None:
         rpc_server.stop()
+        rpc_server = None
 
 
 def submit_json_rpc_request(kind: str, method: str, params: Any) -> None:
@@ -732,6 +809,10 @@ def submit_json_rpc_request(kind: str, method: str, params: Any) -> None:
         params_dict = json.loads(params)
     except json.JSONDecodeError as e:
         print(f"Invalid JSON: {e}")
+        return
+
+    if rpc_server is None:
+        print("RPC server is not running.")
         return
 
     def asyncly_send_request() -> None:

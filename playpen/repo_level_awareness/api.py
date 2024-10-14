@@ -10,7 +10,7 @@ class RpcClientConfig:
     analyzer_lsp_server_binary: Path
     rules_directory: Path
     analyzer_lsp_path: Path
-    analyzer_java_bundle: Path
+    analyzer_java_bundle_path: Path
     label_selector: Optional[str]
     incident_selector: Optional[str]
     included_paths: Optional[list[str]]
@@ -95,7 +95,7 @@ class TaskResult:
 @dataclass
 class ValidationResult:
     passed: bool
-    errors: Sequence[ValidationError]  # Use Sequence for covariance of types
+    errors: list[ValidationError]
 
 
 class ValidationStep(ABC):
