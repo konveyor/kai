@@ -152,6 +152,7 @@ If you have any additional details or steps that need to be performed, put it he
 
         return TaskResult(modified_files=[], encountered_errors=[])
 
+    # TODO (SHAWN): write unit test for this
     def parse_llm_response(self, message: BaseMessage) -> AnalyzerLLMResponse:
         """Private method that will be used to parse the contents and get the results"""
 
@@ -171,8 +172,9 @@ If you have any additional details or steps that need to be performed, put it he
                 in_java_file = True
                 in_reasoning = False
                 continue
-            if line.strip() == "## Additional Infomation (optional)":
+            if "## Additional Information" in line.strip():
                 in_reasoning = False
+                in_java_file = False
                 in_additional_details = True
                 continue
             if in_java_file:

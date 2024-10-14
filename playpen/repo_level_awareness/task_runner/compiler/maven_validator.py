@@ -28,6 +28,7 @@ class MavenCompileStep(ValidationStep):
 class MavenCompilerError(ValidationError):
     details: List[str] = field(default_factory=list)
     parse_lines: Optional[str] = None
+    priority = 1
 
     @classmethod
     def from_match(cls, match, details):
@@ -52,11 +53,12 @@ class MavenCompilerError(ValidationError):
 class SymbolNotFoundError(MavenCompilerError):
     missing_symbol: Optional[str] = None
     symbol_location: Optional[str] = None
+    priority: int = 2
 
 
 @dataclass(eq=False)
 class PackageDoesNotExistError(MavenCompilerError):
-    priority: int = 3
+    priority: int = 1
     missing_package: Optional[str] = None
 
 

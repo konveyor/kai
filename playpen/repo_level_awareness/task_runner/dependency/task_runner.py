@@ -58,6 +58,7 @@ class DependencyTaskRunner(TaskRunner):
             msg = f"Maven Compiler Error:\n{task.message}"
 
         maven_dep_response = self._agent.execute(MavenDependencyRequest(task.file, msg))
+        logger.info("got mvn dep response: %r", maven_dep_response)
 
         if not maven_dep_response.final_answer:
             logger.info(
