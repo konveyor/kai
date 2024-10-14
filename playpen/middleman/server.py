@@ -9,6 +9,7 @@ import requests
 from pydantic import BaseModel
 
 from kai.models.kai_config import KaiConfigModels
+from kai.models.report_types import ExtendedIncident
 from kai.routes.get_incident_solutions_for_file import (
     PostGetIncidentSolutionsForFileParams,
 )
@@ -216,6 +217,8 @@ def get_rag_solution(
 class GetCodeplanAgentSolutionParams(BaseModel):
     file_path: Path
 
+    incidents: list[ExtendedIncident]
+
     # For demo only
     replacing_file_path: Path
 
@@ -248,6 +251,10 @@ def get_codeplan_agent_solution(
     id: JsonRpcId,
     params: GetCodeplanAgentSolutionParams,
 ) -> None:
+    # create a set of AnalyzerRuleViolations
+    # seed the task manager with these violations
+    # get the task with priority 0 and do the whole thingy
+
     app.log.info(f"get_codeplan_agent_solution: {params}")
     if not app.initialized:
         server.send_response(id=id, error=ERROR_NOT_INITIALIZED)

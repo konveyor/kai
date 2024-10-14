@@ -205,11 +205,13 @@ RepoContextManagerPreCommitHook = Callable[
 ]
 
 
+# FIXME(JonahSussman): Put back the reflection agent stuff
 class RepoContextManager:
     def __init__(
         self,
         project_root: Path,
         pre_commit_hooks: list[RepoContextManagerPreCommitHook] | None = None,
+        # llm: Any = None,
     ):
         if pre_commit_hooks is None:
             pre_commit_hooks = []

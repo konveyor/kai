@@ -1,3 +1,13 @@
+"""
+NOTE(JonahSussman): This is probably some of the ugliest code that I have ever
+written in my entire life. I am so sorry.
+
+The main goal with this code is to create a fake GUI that can be used to
+interact with the RPC server. This is useful for testing purposes, as it allows
+us to rapidly iterate on the RPC server without needing to interface with the
+IDE.
+"""
+
 import ctypes
 import json
 import os
@@ -12,13 +22,13 @@ from types import NoneType
 from typing import IO, Any, Callable, Union, cast, get_args, get_origin
 from urllib.parse import urlparse
 
-import imgui
-import OpenGL.GL as gl
+import imgui  # type: ignore[import-untyped]
+import OpenGL.GL as gl  # type: ignore[import-untyped]
 import yaml
-from imgui.integrations.sdl2 import SDL2Renderer
+from imgui.integrations.sdl2 import SDL2Renderer  # type: ignore[import-untyped]
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
-from sdl2 import (
+from sdl2 import (  # type: ignore[import-untyped]
     SDL_GL_ACCELERATED_VISUAL,
     SDL_GL_CONTEXT_FLAGS,
     SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG,
@@ -93,9 +103,8 @@ class Drawable(ABC):
 CONFIG = KaiRpcApplicationConfig(
     process_id=os.getpid(),
     root_path=KAI_DIR / "example/coolstore",
-    kantra_uri=KAI_DIR / "kantra",
     analyzer_lsp_path=KAI_DIR / "analyzer-lsp",
-    analyzer_lsp_rpc_path="/",
+    analyzer_lsp_rpc_path=KAI_DIR / "analyzer-lsp",
     model_provider=KaiConfigModels(
         provider="ChatIBMGenAI",
         args={
@@ -105,93 +114,6 @@ CONFIG = KaiRpcApplicationConfig(
     kai_backend_url="http://localhost:8080",
     log_level="TRACE",
 )
-
-
-class ConfigurationEditorOld(Drawable):
-    def __init__(self) -> None:
-        super().__init__()
-
-    @property
-    def model_args(self):
-        return json.dumps(CONFIG.model_provider.args)
-
-    @model_args.setter
-    def model_args(self, value):
-        CONFIG.model_provider.args = json.loads(value)
-
-    def _draw(self) -> None:
-        _, self.show = imgui.begin("Configuration Editor", closable=True)
-
-        imgui.text("Configuration Editor")
-
-        imgui.input_int(
-            "Process ID", CONFIG.process_id, flags=imgui.INPUT_TEXT_READ_ONLY
-        )
-        _, CONFIG.root_path = imgui.input_text("Root URI", CONFIG.root_path, 400)
-        _, CONFIG.kantra_uri = imgui.input_text("Kantra URI", CONFIG.kantra_uri, 400)
-        _, CONFIG.kai_backend_url = imgui.input_text(
-            "Kai Backend URL", CONFIG.kai_backend_url, 400
-        )
-        _, CONFIG.model_provider.provider = imgui.input_text(
-            "Model Provider", CONFIG.model_provider.provider, 400
-        )
-        _, self.model_args = imgui.input_text("Model Args", self.model_args, 400)
-
-        if imgui.button("Populate `initialize` request"):
-            JSON_RPC_REQUEST_WINDOW.rpc_kind_n = 0
-            JSON_RPC_REQUEST_WINDOW.rpc_method = "initialize"
-            JSON_RPC_REQUEST_WINDOW.rpc_params = json.dumps(
-                CONFIG.model_dump(), indent=2
-            )
-
-            imgui.set_window_focus_labeled("JSON RPC Request Window")
-
-        imgui.end()
-
-
-# class ConfigurationEditorFunction:
-#     def __init__(
-#         self, method: str, cls: dict[str, Any] | None, *, obj: dict = None
-#     ) -> None:
-#         self.method = method
-#         self.cls = cls
-#         self.obj = obj or {}
-#         self.gui_obj = {}
-#         if cls is None:
-#             self.schema = {}
-#         elif cls is dict:
-#             self.schema = {"type": "object", "properties": {}, "required": []}
-#         else:
-#             self.schema = cls.model_json_schema()
-
-
-# @dataclass
-# class Combo:
-#     items: list[str]
-#     selected: int
-#     objs: list[Any]
-
-
-# def deep_copy_with_filter(obj: dict, remove: Callable[[Any, Any], bool]) -> dict:
-#     result = {}
-#     for key, value in obj.items():
-#         while isinstance(value, Combo):
-#             value = value.objs[value.selected]
-
-#         # FIXME: Work with lists
-#         if not remove(key, value):
-#             if isinstance(value, dict):
-#                 result[key] = deep_copy_with_filter(value, remove)
-#             else:
-#                 result[key] = value
-#     return result
-
-
-# class MyEncoder(json.JSONEncoder):
-#     def default(self, obj):
-#         if isinstance(obj, Path):
-#             return str(obj)
-#         return super().default(obj)
 
 
 class ConfigurationEditor(Drawable):
@@ -206,11 +128,6 @@ class ConfigurationEditor(Drawable):
         _, self.show = imgui.begin("Configuration Editor", closable=True)
 
         if imgui.begin_tab_bar("ConfigurationEditorTabBar"):
-            # if imgui.begin_tab_item("Old config editor").selected:
-            #     # self.draw_old_config_editor()
-            #     imgui.text("Old config editor")
-            #     imgui.end_tab_item()
-
             for method in self.params:
                 if imgui.begin_tab_item(method).selected:
                     self.draw_tab(method)
@@ -220,38 +137,7 @@ class ConfigurationEditor(Drawable):
 
         imgui.end()
 
-    @property
-    def model_args(self):
-        return json.dumps(CONFIG.model_provider.args)
-
-    @model_args.setter
-    def model_args(self, value):
-        CONFIG.model_provider.args = json.loads(value)
-
-    def draw_old_config_editor(self) -> None:
-        imgui.input_int(
-            "Process ID", CONFIG.process_id, flags=imgui.INPUT_TEXT_READ_ONLY
-        )
-        _, CONFIG.root_path = imgui.input_text("Root URI", CONFIG.root_path, 400)
-        _, CONFIG.kantra_uri = imgui.input_text("Kantra URI", CONFIG.kantra_uri, 400)
-        _, CONFIG.kai_backend_url = imgui.input_text(
-            "Kai Backend URL", CONFIG.kai_backend_url, 400
-        )
-        _, CONFIG.model_provider.provider = imgui.input_text(
-            "Model Provider", CONFIG.model_provider.provider, 400
-        )
-        _, self.model_args = imgui.input_text("Model Args", self.model_args, 400)
-
-        if imgui.button("Populate `initialize` request"):
-            JSON_RPC_REQUEST_WINDOW.rpc_kind_n = 0
-            JSON_RPC_REQUEST_WINDOW.rpc_method = "initialize"
-            JSON_RPC_REQUEST_WINDOW.rpc_params = json.dumps(
-                CONFIG.model_dump(), indent=2
-            )
-
-            imgui.set_window_focus_labeled("JSON RPC Request Window")
-
-    def draw_tab(self, method: str):
+    def draw_tab(self, method: str) -> None:
         params, extra = self.params[method]
         fields = params.model_fields
 
@@ -386,95 +272,6 @@ class ConfigurationEditor(Drawable):
         else:
             imgui.text(f"Unknown type. {field_name}: {field_annotation}")
 
-    def draw_jsonschema(
-        self, schema: dict[str, Any], gui_obj: Any, defs: dict[str, Any]
-    ):
-        # assuming only one restriction
-        if schema.get("type") == "string":
-            if not isinstance(gui_obj, str):
-                gui_obj = str(gui_obj)
-            _, gui_obj = imgui.input_text(
-                schema.get("title", "string"), str(gui_obj), 400
-            )
-
-            return gui_obj
-        elif schema.get("type") == "integer" or schema.get("type") == "number":
-            if gui_obj is None:
-                gui_obj = 0
-            elif not isinstance(gui_obj, int):
-                gui_obj = int(gui_obj)
-            _, gui_obj = imgui.input_int(schema.get("title", "integer"), int(gui_obj))
-
-            return gui_obj
-        elif schema.get("type") == "boolean":
-            _, gui_obj = imgui.checkbox(schema.get("title", "boolean"), bool(gui_obj))
-
-            return gui_obj
-        elif schema.get("type") == "null":
-            # imgui.text("null")
-
-            return None
-        elif schema.get("type") == "array":
-            _, obj_str = imgui.input_text(
-                schema.get("title", "array"), str(gui_obj), 400
-            )
-
-            try:
-                gui_obj = json.loads(obj_str)
-            except json.JSONDecodeError:
-                gui_obj = obj_str
-
-            return gui_obj
-        elif schema.get("type") == "object":
-            imgui.indent()
-            if not isinstance(gui_obj, dict):
-                gui_obj = {}
-
-            for property in schema.get("properties", {}):
-                prop_schema = schema["properties"][property]
-                prop_default = prop_schema.get("default", None)
-                gui_obj[property] = gui_obj.get(property, prop_default)
-                gui_obj[property] = self.draw_jsonschema(
-                    prop_schema, gui_obj[property], defs
-                )
-            imgui.unindent()
-            return gui_obj
-        elif schema.get("anyOf"):
-            if not isinstance(gui_obj, Combo):
-                items = [
-                    e.get("title", e.get("type", f"anyOf {idx}"))
-                    for idx, e in enumerate(schema["anyOf"])
-                ]
-                gui_obj = Combo(
-                    items=items, selected=0, objs=[None] * len(schema["anyOf"])
-                )
-
-            _, gui_obj.selected = imgui.combo(
-                schema.get("title", "anyOf"),
-                gui_obj.selected,
-                gui_obj.items,
-            )
-
-            gui_obj.objs[gui_obj.selected] = self.draw_jsonschema(
-                schema["anyOf"][gui_obj.selected], gui_obj.objs[gui_obj.selected], defs
-            )
-
-            return gui_obj
-        elif ref := schema.get("$ref"):
-            ref = ref.split("/")[-1]
-            return self.draw_jsonschema(defs[ref], gui_obj, defs)
-        else:
-            _, obj_str = imgui.input_text(
-                schema.get("title", "unknown") + " (!)", str(gui_obj), 400
-            )
-
-            try:
-                gui_obj = json.loads(obj_str)
-            except json.JSONDecodeError:
-                gui_obj = obj_str
-
-            return gui_obj
-
 
 class SourceEditor(Drawable):
     def __init__(self) -> None:
@@ -486,11 +283,11 @@ class SourceEditor(Drawable):
         )
         self.report_path = "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/example/analysis/coolstore/output.yaml"
 
-        self.relative_filename_path: Path = None
-        self.file_path: Path = None
+        self.relative_filename_path: Path | None = None
+        self.file_path: Path | None = None
 
         self.editor_content = ""
-        self.report: Report = None
+        self.report: Report | None = None
         self.incidents: dict[int, ExtendedIncident] = {}
 
     def _draw(self) -> None:
@@ -612,11 +409,14 @@ class FileLoader(Drawable):
 
         imgui.end()
 
-    def load_file(self):
+    def load_file(self) -> str:
+        if SOURCE_EDITOR.file_path is None:
+            return ""
+
         with open(SOURCE_EDITOR.file_path, "r") as file:
             return file.read()
 
-    def load_analysis_report(self):
+    def load_analysis_report(self) -> dict[Any, Any]:
         report = Report.load_report_from_file(SOURCE_EDITOR.report_path)
         result = {}
 
@@ -666,7 +466,7 @@ class JsonRpcRequestWindow(Drawable):
         self.rpc_params = ""
 
     @property
-    def rpc_kind(self):
+    def rpc_kind(self) -> str:
         return self.rpc_kind_items[self.rpc_kind_n]
 
     def _draw(self) -> None:
@@ -690,7 +490,7 @@ class RequestResponseInspector(Drawable):
     def __init__(self) -> None:
         super().__init__()
 
-        self.selected_indices = dict()
+        self.selected_indices: dict[Any, Any] = {}
 
     def _draw(self) -> None:
         _, self.show = imgui.begin("Request/Response Inspector", closable=True)
@@ -872,7 +672,7 @@ rpc_script_path = Path(os.path.dirname(os.path.realpath(__file__))) / "main.py"
 rpc_server: JsonRpcServer = None
 
 
-def start_server(command) -> None:
+def start_server(command: list[str]) -> None:
     global rpc_subprocess
     global rpc_subprocess_stderr_log
     global rpc_server
@@ -925,7 +725,7 @@ def stop_server() -> None:
         rpc_server.stop()
 
 
-def submit_json_rpc_request(kind, method, params) -> None:
+def submit_json_rpc_request(kind: str, method: str, params: Any) -> None:
     global rpc_server
 
     try:
@@ -959,7 +759,12 @@ def submit_json_rpc_request(kind, method, params) -> None:
         else:
             raise ValueError(f"Invalid RPC kind: {kind}")
 
-        json_rpc_responses[idx]["response"] = response.model_dump(exclude="jsonrpc")
+        if response is None:
+            json_rpc_responses[idx]["response"] = {"note": "Response is None"}
+        else:
+            json_rpc_responses[idx]["response"] = response.model_dump(
+                exclude={"jsonrpc"}
+            )
 
     threading.Thread(target=asyncly_send_request).start()
 
@@ -1033,7 +838,7 @@ def main() -> None:
     SDL_Quit()
 
 
-def impl_pysdl2_init():
+def impl_pysdl2_init() -> tuple[int, Any]:
     width, height = 1280, 720
     window_name = "Fake GUI for RPC Server"
 
