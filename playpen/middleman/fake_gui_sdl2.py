@@ -75,22 +75,23 @@ KAI_DIR = THIS_DIR_PATH.parent.parent
 
 
 class Drawable(ABC):
-    def __init__(self, *, show: bool = True):
+    def __init__(self, *, show: bool = True) -> None:
         self.show = show
 
-    def draw(self):
+    def draw(self) -> None:
         if self.show:
             self._draw()
 
     @abstractmethod
-    def _draw(self): ...
+    def _draw(self) -> None: ...
 
 
 CONFIG = KaiRpcApplicationConfig(
     process_id=os.getpid(),
-    root_uri=f"file://{KAI_DIR / 'example/coolstore'}",
-    kantra_uri=f"file://{KAI_DIR / 'kantra'}",
-    analyzer_lsp_uri=f"file://{KAI_DIR / 'analyzer-lsp'}",
+    root_path=KAI_DIR / "example/coolstore",
+    kantra_uri=KAI_DIR / "kantra",
+    analyzer_lsp_path=KAI_DIR / "analyzer-lsp",
+    analyzer_lsp_rpc_path="/",
     model_provider=KaiConfigModels(
         provider="ChatIBMGenAI",
         args={
@@ -103,7 +104,7 @@ CONFIG = KaiRpcApplicationConfig(
 
 
 class ConfigurationEditorOld(Drawable):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     @property
@@ -114,7 +115,7 @@ class ConfigurationEditorOld(Drawable):
     def model_args(self, value):
         CONFIG.model_provider.args = json.loads(value)
 
-    def _draw(self):
+    def _draw(self) -> None:
         _, self.show = imgui.begin("Configuration Editor", closable=True)
 
         imgui.text("Configuration Editor")
@@ -122,7 +123,7 @@ class ConfigurationEditorOld(Drawable):
         imgui.input_int(
             "Process ID", CONFIG.process_id, flags=imgui.INPUT_TEXT_READ_ONLY
         )
-        _, CONFIG.root_uri = imgui.input_text("Root URI", CONFIG.root_uri, 400)
+        _, CONFIG.root_path = imgui.input_text("Root URI", CONFIG.root_path, 400)
         _, CONFIG.kantra_uri = imgui.input_text("Kantra URI", CONFIG.kantra_uri, 400)
         _, CONFIG.kai_backend_url = imgui.input_text(
             "Kai Backend URL", CONFIG.kai_backend_url, 400
@@ -145,7 +146,9 @@ class ConfigurationEditorOld(Drawable):
 
 
 class ConfigurationEditorFunction:
-    def __init__(self, method: str, cls: dict[str, Any] | None, *, obj: dict = None):
+    def __init__(
+        self, method: str, cls: dict[str, Any] | None, *, obj: dict = None
+    ) -> None:
         self.method = method
         self.cls = cls
         self.obj = obj or {}
@@ -188,7 +191,9 @@ class MyEncoder(json.JSONEncoder):
 
 
 class ConfigurationEditor(Drawable):
-    def __init__(self, requests: list[ConfigurationEditorFunction | JsonRpcCallback]):
+    def __init__(
+        self, requests: list[ConfigurationEditorFunction | JsonRpcCallback]
+    ) -> None:
         super().__init__()
 
         self.requests: dict[str, ConfigurationEditorFunction] = {}
@@ -200,7 +205,7 @@ class ConfigurationEditor(Drawable):
             else:
                 self.requests[request.method] = request
 
-    def _draw(self):
+    def _draw(self) -> None:
         _, self.show = imgui.begin("Configuration Editor", closable=True)
 
         if imgui.begin_tab_bar("ConfigurationEditorTabBar"):
@@ -225,11 +230,11 @@ class ConfigurationEditor(Drawable):
     def model_args(self, value):
         CONFIG.model_provider.args = json.loads(value)
 
-    def draw_old_config_editor(self):
+    def draw_old_config_editor(self) -> None:
         imgui.input_int(
             "Process ID", CONFIG.process_id, flags=imgui.INPUT_TEXT_READ_ONLY
         )
-        _, CONFIG.root_uri = imgui.input_text("Root URI", CONFIG.root_uri, 400)
+        _, CONFIG.root_path = imgui.input_text("Root URI", CONFIG.root_path, 400)
         _, CONFIG.kantra_uri = imgui.input_text("Kantra URI", CONFIG.kantra_uri, 400)
         _, CONFIG.kai_backend_url = imgui.input_text(
             "Kai Backend URL", CONFIG.kai_backend_url, 400
@@ -376,7 +381,7 @@ class ConfigurationEditor(Drawable):
 
 
 class SourceEditor(Drawable):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.application_path = "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/example/coolstore"
@@ -392,7 +397,7 @@ class SourceEditor(Drawable):
         self.report: Report = None
         self.incidents: dict[int, ExtendedIncident] = {}
 
-    def _draw(self):
+    def _draw(self) -> None:
 
         window_name = "Source Code Editor"
         if self.file_path:
@@ -475,11 +480,11 @@ class SourceEditor(Drawable):
 
 
 class FileLoader(Drawable):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.show = False
 
-    def _draw(self):
+    def _draw(self) -> None:
         if not self.show:
             return
 
@@ -556,7 +561,7 @@ class FileLoader(Drawable):
 
 
 class JsonRpcRequestWindow(Drawable):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.rpc_kind_items = ["Request", "Notification"]
@@ -568,7 +573,7 @@ class JsonRpcRequestWindow(Drawable):
     def rpc_kind(self):
         return self.rpc_kind_items[self.rpc_kind_n]
 
-    def _draw(self):
+    def _draw(self) -> None:
         _, self.show = imgui.begin("JSON RPC Request Window", closable=True)
 
         _, self.rpc_kind_n = imgui.combo(
@@ -586,12 +591,12 @@ class JsonRpcRequestWindow(Drawable):
 
 
 class RequestResponseInspector(Drawable):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.selected_indices = dict()
 
-    def _draw(self):
+    def _draw(self) -> None:
         _, self.show = imgui.begin("Request/Response Inspector", closable=True)
 
         if imgui.begin_tab_bar("RequestsTabBar"):
@@ -662,12 +667,12 @@ class RequestResponseInspector(Drawable):
 
 
 class SubprocessInspector(Drawable):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.scroll_to_bottom = False
 
-    def _draw(self):
+    def _draw(self) -> None:
         _, self.show = imgui.begin("Subprocess Manager", closable=True)
 
         if rpc_subprocess is None:
@@ -714,10 +719,10 @@ def handle_git_vfs_update(
 
 
 class GitVFSInspector(Drawable):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
-    def _draw(self):
+    def _draw(self) -> None:
         _, self.show = imgui.begin("Git VFS Inspector", closable=True)
 
         if GIT_VFS_UPDATE_PARAMS is None:
@@ -755,7 +760,7 @@ rpc_script_path = Path(os.path.dirname(os.path.realpath(__file__))) / "main.py"
 rpc_server: JsonRpcServer = None
 
 
-def start_server(command):
+def start_server(command) -> None:
     global rpc_subprocess
     global rpc_subprocess_stderr_log
     global rpc_server
@@ -771,7 +776,7 @@ def start_server(command):
 
     rpc_subprocess_stderr_log.append("Subprocess started.")
 
-    def read_stderr():
+    def read_stderr() -> None:
         global rpc_subprocess_stderr_log
 
         while True:
@@ -795,7 +800,7 @@ def start_server(command):
     rpc_server.start()
 
 
-def stop_server():
+def stop_server() -> None:
     global rpc_subprocess
     global rpc_server
     global rpc_subprocess_stderr_log
@@ -808,7 +813,7 @@ def stop_server():
         rpc_server.stop()
 
 
-def submit_json_rpc_request(kind, method, params):
+def submit_json_rpc_request(kind, method, params) -> None:
     global rpc_server
 
     try:
@@ -817,7 +822,7 @@ def submit_json_rpc_request(kind, method, params):
         print(f"Invalid JSON: {e}")
         return
 
-    def asyncly_send_request():
+    def asyncly_send_request() -> None:
         table_request = {
             "method": method,
             "params": params_dict,
@@ -848,7 +853,7 @@ def submit_json_rpc_request(kind, method, params):
 
 
 # Main loop
-def main():
+def main() -> None:
     window, gl_context = impl_pysdl2_init()
 
     imgui.create_context()

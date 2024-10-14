@@ -36,16 +36,16 @@ from playpen.rpc.util import DEFAULT_FORMATTER, TRACE, CamelCaseBaseModel
 class KaiRpcApplicationConfig(CamelCaseBaseModel):
     process_id: Optional[int]
 
-    root_uri: str
-    kantra_uri: str
-    analyzer_lsp_uri: str
+    root_path: Path
+    analyzer_lsp_path: Path  # Shouldn't we still have this
+    analyzer_lsp_rpc_path: Path
     model_provider: KaiConfigModels
     kai_backend_url: str
 
     log_level: str = "INFO"
     stderr_log_level: str = "TRACE"
     file_log_level: Optional[str] = None
-    log_dir_uri: Optional[str] = None
+    log_dir_path: Optional[Path] = None
 
 
 class KaiRpcApplication(JsonRpcApplication):
@@ -110,6 +110,10 @@ def initialize(
     try:
         app.config = params
 
+        app.config.root_path = app.config.root_path.resolve()
+        app.config.analyzer_lsp_rpc_path = app.config.analyzer_lsp_rpc_path.resolve()
+        app.config.log_dir_path = app.config.log_dir_path.resolve()
+
         app.log.setLevel(TRACE)
         app.log.handlers.clear()
         app.log.filters.clear()
@@ -124,9 +128,8 @@ def initialize(
         notify_handler.setFormatter(DEFAULT_FORMATTER)
         app.log.addHandler(notify_handler)
 
-        if app.config.file_log_level and app.config.log_dir_uri:
-            log_dir = Path(app.config.log_dir_uri)  # FIXME: urlparse?
-            log_file = log_dir / "kai_rpc.log"
+        if app.config.file_log_level and app.config.log_dir_path:
+            log_file = app.config.log_dir_path / "kai_rpc.log"
             log_file.parent.mkdir(parents=True, exist_ok=True)
 
             file_handler = logging.FileHandler(log_file)
@@ -148,7 +151,7 @@ def initialize(
 
     app.initialized = True
 
-    server.send_response(id=id, result={})
+    server.send_response(id=id, result=app.config.model_dump())
 
 
 @app.add_request(method="setConfig")
@@ -269,7 +272,7 @@ def get_codeplan_agent_solution(
     ReflectionAgent(llm=model_provider.llm, iterations=1, retries=3)
 
     rcm = RepoContextManager(
-        project_root=Path(urlparse(app.config.root_uri).path),
+        project_root=Path(urlparse(app.config.root_path).path),
     )
 
     replaced_file_content = open(params.replacing_file_path).read()
@@ -292,9 +295,9 @@ def get_codeplan_agent_solution(
 
     # TODO: It'd be nice to unify these config classes
     task_manager_config = RpcClientConfig(
-        repo_directory=Path(urlparse(app.config.root_uri).path),
-        analyzer_lsp_server_binary=Path(urlparse(app.config.analyzer_lsp_uri).path),
-        rules_directory=Path(urlparse(app.config.analyzer_lsp_uri).path) / "rules",
+        repo_directory=app.config.root_path,
+        analyzer_lsp_server_binary=app.config.analyzer_lsp_rpc_path,
+        rules_directory=app.config.analyzer_lsp_rpc_path / "rules",
         label_selector=None,
         incident_selector=None,
         included_paths=None,

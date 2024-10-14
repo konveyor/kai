@@ -51,9 +51,9 @@ class _action:
 
 @dataclass
 class MavenDependencyResult(AgentResult):
-    final_answer: str | None
-    fqdn_response: FQDNResponse | None
-    find_in_pom: FindInPomResponse | None
+    final_answer: Optional[str]
+    fqdn_response: Optional[FQDNResponse]
+    find_in_pom: Optional[FindInPomResponse]
 
 
 @dataclass
@@ -102,7 +102,7 @@ You are an excellent java developer focused on updating dependencies in a maven 
    Arguments:
    - artifact_id: str - The alias name of the symbol to find the definition for.
    - group_id: str - The path to the file where the alias is used.
-   - version: Optical[str] - The line number where the alias is used.
+   - version: Optional[str] - The line number where the alias is used.
    Action:
    ```python
    result = search_fqdn.run(artifact_id="commons-collections4", group_id="org.apache.commons", version="4.5.0-M2")
