@@ -8,13 +8,16 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from io import BufferedReader, BufferedWriter
 from pathlib import Path
-from typing import IO, Any, Callable, cast
+from types import NoneType
+from typing import IO, Any, Callable, Union, cast, get_args, get_origin
 from urllib.parse import urlparse
 
 import imgui
 import OpenGL.GL as gl
 import yaml
 from imgui.integrations.sdl2 import SDL2Renderer
+from pydantic import BaseModel
+from pydantic.fields import FieldInfo
 from sdl2 import (
     SDL_GL_ACCELERATED_VISUAL,
     SDL_GL_CONTEXT_FLAGS,
@@ -59,6 +62,7 @@ from kai.routes.get_incident_solutions_for_file import (
     PostGetIncidentSolutionsForFileParams,
 )
 from playpen.middleman.server import (
+    GetCodeplanAgentSolutionParams,
     GitVFSUpdateParams,
     KaiRpcApplicationConfig,
     get_codeplan_agent_solution,
@@ -145,77 +149,71 @@ class ConfigurationEditorOld(Drawable):
         imgui.end()
 
 
-class ConfigurationEditorFunction:
-    def __init__(
-        self, method: str, cls: dict[str, Any] | None, *, obj: dict = None
-    ) -> None:
-        self.method = method
-        self.cls = cls
-        self.obj = obj or {}
-        self.gui_obj = {}
-        if cls is None:
-            self.schema = {}
-        elif cls is dict:
-            self.schema = {"type": "object", "properties": {}, "required": []}
-        else:
-            self.schema = cls.model_json_schema()
+# class ConfigurationEditorFunction:
+#     def __init__(
+#         self, method: str, cls: dict[str, Any] | None, *, obj: dict = None
+#     ) -> None:
+#         self.method = method
+#         self.cls = cls
+#         self.obj = obj or {}
+#         self.gui_obj = {}
+#         if cls is None:
+#             self.schema = {}
+#         elif cls is dict:
+#             self.schema = {"type": "object", "properties": {}, "required": []}
+#         else:
+#             self.schema = cls.model_json_schema()
 
 
-@dataclass
-class Combo:
-    items: list[str]
-    selected: int
-    objs: list[Any]
+# @dataclass
+# class Combo:
+#     items: list[str]
+#     selected: int
+#     objs: list[Any]
 
 
-def deep_copy_with_filter(obj: dict, remove: Callable[[Any, Any], bool]) -> dict:
-    result = {}
-    for key, value in obj.items():
-        while isinstance(value, Combo):
-            value = value.objs[value.selected]
+# def deep_copy_with_filter(obj: dict, remove: Callable[[Any, Any], bool]) -> dict:
+#     result = {}
+#     for key, value in obj.items():
+#         while isinstance(value, Combo):
+#             value = value.objs[value.selected]
 
-        # FIXME: Work with lists
-        if not remove(key, value):
-            if isinstance(value, dict):
-                result[key] = deep_copy_with_filter(value, remove)
-            else:
-                result[key] = value
-    return result
+#         # FIXME: Work with lists
+#         if not remove(key, value):
+#             if isinstance(value, dict):
+#                 result[key] = deep_copy_with_filter(value, remove)
+#             else:
+#                 result[key] = value
+#     return result
 
 
-class MyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Path):
-            return str(obj)
-        return super().default(obj)
+# class MyEncoder(json.JSONEncoder):
+#     def default(self, obj):
+#         if isinstance(obj, Path):
+#             return str(obj)
+#         return super().default(obj)
 
 
 class ConfigurationEditor(Drawable):
-    def __init__(
-        self, requests: list[ConfigurationEditorFunction | JsonRpcCallback]
-    ) -> None:
+    def __init__(self, params: list[tuple[str, BaseModel]]) -> None:
         super().__init__()
 
-        self.requests: dict[str, ConfigurationEditorFunction] = {}
-        for request in requests:
-            if isinstance(request, JsonRpcCallback):
-                self.requests[request.method] = ConfigurationEditorFunction(
-                    request.method, request.params_model
-                )
-            else:
-                self.requests[request.method] = request
+        self.params: dict[str, tuple[BaseModel, dict[str, Any]]] = {}
+        for method, the_params in params:
+            self.params[method] = (the_params, json.loads(the_params.model_dump_json()))
 
     def _draw(self) -> None:
         _, self.show = imgui.begin("Configuration Editor", closable=True)
 
         if imgui.begin_tab_bar("ConfigurationEditorTabBar"):
-            if imgui.begin_tab_item("Old config editor").selected:
-                self.draw_old_config_editor()
-                imgui.end_tab_item()
+            # if imgui.begin_tab_item("Old config editor").selected:
+            #     # self.draw_old_config_editor()
+            #     imgui.text("Old config editor")
+            #     imgui.end_tab_item()
 
-            for method in self.requests:
+            for method in self.params:
                 if imgui.begin_tab_item(method).selected:
-                    self.draw_from_request(self.requests[method])
+                    self.draw_tab(method)
                     imgui.end_tab_item()
 
             imgui.end_tab_bar()
@@ -253,42 +251,140 @@ class ConfigurationEditor(Drawable):
 
             imgui.set_window_focus_labeled("JSON RPC Request Window")
 
-    def draw_from_request(self, request: ConfigurationEditorFunction):
-        if imgui.button(f"Populate `{request.method}` request"):
+    def draw_tab(self, method: str):
+        params, extra = self.params[method]
+        fields = params.model_fields
+
+        if imgui.button(f"Populate `{method}` request"):
             JSON_RPC_REQUEST_WINDOW.rpc_kind_n = 0
-            JSON_RPC_REQUEST_WINDOW.rpc_method = request.method
+            JSON_RPC_REQUEST_WINDOW.rpc_method = method
 
             try:
-                request.obj = deep_copy_with_filter(
-                    request.gui_obj,
-                    lambda k, v: k.startswith("__gui_"),
-                )
-                JSON_RPC_REQUEST_WINDOW.rpc_params = json.dumps(
-                    request.cls.model_validate(request.obj).model_dump(),
+                JSON_RPC_REQUEST_WINDOW.rpc_params = params.__class__.model_validate(
+                    params.model_dump()
+                ).model_dump_json(
                     indent=2,
-                    cls=MyEncoder,
                 )
             except Exception as e:
                 JSON_RPC_REQUEST_WINDOW.rpc_params = f"Error parsing JSON: {e}"
 
             imgui.set_window_focus_labeled("JSON RPC Request Window")
 
-        self.draw_jsonschema(
-            request.schema, request.gui_obj, request.schema.get("$defs", {})
-        )
+        for field_name in fields:
+            field = fields[field_name]
+            self.draw_field(
+                params,
+                extra,
+                field_name,
+                # field,
+                field_annotation=field.annotation,
+            )
 
-        imgui.separator()
-        imgui.text("Schema:")
-        imgui.begin_child(
-            f"Schema {request.method}",
-            border=True,
-            flags=imgui.WINDOW_ALWAYS_VERTICAL_SCROLLBAR
-            | imgui.WINDOW_HORIZONTAL_SCROLLING_BAR,
-        )
-        lines = yaml.dump(request.schema).split("\n")
-        for line in lines:
-            imgui.text(line)
-        imgui.end_child()
+    def draw_field(
+        self,
+        params: BaseModel,
+        extra: dict[str, Any],
+        field_name: str,
+        # field: FieldInfo,
+        field_annotation: Any,
+    ) -> None:
+        if get_origin(field_annotation) is Union:
+            args = get_args(field_annotation)
+            combo_items_key = field_name + "_combo_items"
+            combo_current_key = field_name + "_combo_current"
+
+            if combo_items_key not in extra:
+                extra[combo_items_key] = [arg.__name__ for arg in args]
+
+            if combo_current_key not in extra:
+                selected_index = next(
+                    (
+                        i
+                        for i, arg in enumerate(args)
+                        if arg == getattr(params, field_name).__class__
+                    ),
+                    -1,
+                )
+                extra[combo_current_key] = selected_index
+
+            _, extra[combo_current_key] = imgui.combo(
+                label=field_name + " type",
+                current=extra[combo_current_key],
+                items=extra[combo_items_key],
+            )
+
+            self.draw_field(
+                params,
+                extra,
+                field_name,
+                field_annotation=args[extra[combo_current_key]],
+            )
+        elif field_annotation is None or field_annotation is NoneType:
+            setattr(params, field_name, None)
+        elif field_annotation is str:
+            _, result = imgui.input_text(
+                field_name, str(getattr(params, field_name)), 400
+            )
+            setattr(params, field_name, result)
+        elif field_annotation is Path:
+            _, result = imgui.input_text(
+                field_name, str(getattr(params, field_name)), 400
+            )
+            setattr(params, field_name, result)
+        elif field_annotation is int:
+            attr = getattr(params, field_name)
+            if not isinstance(attr, int):
+                attr = 0
+
+            _, result = imgui.input_int(field_name, attr)
+            setattr(params, field_name, result)
+        elif field_annotation is float:
+            attr = getattr(params, field_name)
+            if not isinstance(attr, float):
+                attr = 0.0
+
+            _, result = imgui.input_float(field_name, attr)
+            setattr(params, field_name, result)
+        elif field_annotation is bool:
+            _, result = imgui.checkbox(field_name, bool(getattr(params, field_name)))
+            setattr(params, field_name, result)
+        elif field_annotation is dict:
+            dict_key = field_name + "_dict"
+            if dict_key not in extra:
+                extra[dict_key] = "{}"
+
+            try:
+                extra[dict_key] = json.dumps(getattr(params, field_name))
+            except Exception:
+                pass
+
+            imgui.text(field_name)
+            _, extra[dict_key] = imgui.input_text_multiline(
+                field_name, extra[dict_key], 4096 * 16
+            )
+
+            try:
+                setattr(params, field_name, json.loads(extra[dict_key]))
+            except Exception as e:
+                setattr(params, field_name, e)
+
+        elif issubclass(field_annotation, BaseModel):
+            imgui.text(field_name)
+
+            imgui.indent()
+
+            for sub_field_name in field_annotation.model_fields:
+                sub_field = field_annotation.model_fields[sub_field_name]
+                self.draw_field(
+                    getattr(params, field_name),
+                    extra,
+                    sub_field_name,
+                    field_annotation=sub_field.annotation,
+                )
+
+            imgui.unindent()
+        else:
+            imgui.text(f"Unknown type. {field_name}: {field_annotation}")
 
     def draw_jsonschema(
         self, schema: dict[str, Any], gui_obj: Any, defs: dict[str, Any]
@@ -673,6 +769,8 @@ class SubprocessInspector(Drawable):
         self.scroll_to_bottom = False
 
     def _draw(self) -> None:
+        global rpc_subprocess_stderr_log
+
         _, self.show = imgui.begin("Subprocess Manager", closable=True)
 
         if rpc_subprocess is None:
@@ -681,6 +779,10 @@ class SubprocessInspector(Drawable):
         else:
             if imgui.button("Stop"):
                 stop_server()
+
+        imgui.same_line()
+        if imgui.button("Clear log"):
+            rpc_subprocess_stderr_log.clear()
 
         imgui.text("Subprocess stderr log:")
 
@@ -744,9 +846,19 @@ SUBPROCESS_INSPECTOR = SubprocessInspector()
 GIT_VFS_INSPECTOR = GitVFSInspector()
 
 CONFIGURATION_EDITOR = ConfigurationEditor(
-    requests=[
-        initialize,
-        get_codeplan_agent_solution,
+    params=[
+        ("initialize", CONFIG),
+        (
+            "getCodeplanAgentSolution",
+            GetCodeplanAgentSolutionParams(
+                file_path=Path(
+                    "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/example/coolstore/src/main/java/com/redhat/coolstore/model/InventoryEntity.java"
+                ),
+                replacing_file_path=Path(
+                    "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/notebooks/compilation_agent/testing_field_type_change_errors/CatalogItemEntity.java"
+                ),
+            ),
+        ),
     ]
 )
 

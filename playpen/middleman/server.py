@@ -112,7 +112,8 @@ def initialize(
 
         app.config.root_path = app.config.root_path.resolve()
         app.config.analyzer_lsp_rpc_path = app.config.analyzer_lsp_rpc_path.resolve()
-        app.config.log_dir_path = app.config.log_dir_path.resolve()
+        if app.config.log_dir_path:
+            app.config.log_dir_path = app.config.log_dir_path.resolve()
 
         app.log.setLevel(TRACE)
         app.log.handlers.clear()
@@ -144,7 +145,7 @@ def initialize(
             id=id,
             error=JsonRpcError(
                 code=JsonRpcErrorCode.InternalError,
-                message=str(e),
+                message=str(traceback.format_exc()),
             ),
         )
         return
@@ -272,7 +273,7 @@ def get_codeplan_agent_solution(
     ReflectionAgent(llm=model_provider.llm, iterations=1, retries=3)
 
     rcm = RepoContextManager(
-        project_root=Path(urlparse(app.config.root_path).path),
+        project_root=app.config.root_path,
     )
 
     replaced_file_content = open(params.replacing_file_path).read()
