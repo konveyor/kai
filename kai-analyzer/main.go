@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/rpc"
 	"os"
+	"os/exec"
 
 	"github.com/go-logr/logr"
 	"github.com/konveyor/kai-analyzer/pkg/codec"
@@ -54,7 +55,20 @@ func main() {
 	}
 
 	l := logr.FromSlogHandler(logger)
-	l.Info("Starting Analyzer", "source-dir", *sourceDirectory, "rules-dir", *rulesDirectory)
+
+	// Check if Java exists on the PATH
+	if err := exec.Command("java", "-version").Run(); err != nil {
+		panic("Java is not installed or not on the PATH")
+	}
+	l.Info("Java is installed")
+
+	// Check if Maven exists on the PATH
+	if err := exec.Command("mvn", "-version").Run(); err != nil {
+		panic("Maven is not installed or not on the PATH")
+	}
+	l.Info("Maven is installed")
+
+	l.Info("Starting Analyzer", "source-dir", *sourceDirectory, "rules-dir", *rulesDirectory, "lspServerPath", *lspServerPath, "bundles", *bundles)
 	// We need to start up the JSON RPC server and start listening for messages
 	analyzerService, err := service.NewAnalyzer(
 		10000, 10, 10,
@@ -76,9 +90,5 @@ func main() {
 
 	codec := codec.NewCodec(codec.Connection{Input: os.Stdin, Output: os.Stdout}, l)
 	l.Info("Starting Server")
-	err = server.ServeRequest(codec)
-	// If we can not start the server it is reasonable to panic and get the full error info
-	if err != nil {
-		panic(err)
-	}
+	server.ServeCodec(codec)
 }
