@@ -162,7 +162,7 @@ class TaskManager:
     def execute_task(self, task: Task) -> TaskResult:
         logger.info("Executing task: %s", task)
         agent = self.get_agent_for_task(task)
-        logger.debug("Agent selected for task: %s", agent)
+        logger.info("Agent selected for task: %s", agent)
         result = agent.execute_task(self.rcm, task)
         logger.debug("Task execution result: %s", result)
         return result
@@ -300,7 +300,10 @@ class TaskManager:
             logger.debug("Task %s processed successfully.", task)
 
         new_child_tasks = unprocessed_new_tasks - tasks_in_stacks
-        for child_task in sorted(list(new_child_tasks)):
+        # We want the higher priority things at the end of the list, so when we append and pop we get the highest priority
+        for child_task in sorted(
+            list(new_child_tasks), key=lambda x: x.priority, reverse=True
+        ):
             child_task.parent = task
             child_task.depth = task.depth + 1
             child_task.priority = task.priority

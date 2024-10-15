@@ -11,7 +11,12 @@ from playpen.repo_level_awareness.agent.reflection_agent import ReflectionTask
 from playpen.repo_level_awareness.api import Task, TaskResult
 from playpen.repo_level_awareness.task_runner.api import TaskRunner
 from playpen.repo_level_awareness.task_runner.compiler.maven_validator import (
+    AccessControlError,
+    AnnotationError,
     MavenCompilerError,
+    OtherError,
+    SyntaxError,
+    TypeMismatchError,
 )
 from playpen.repo_level_awareness.vfs.git_vfs import RepoContextManager, SpawningResult
 
@@ -44,6 +49,14 @@ class MavenCompilerTaskRunner(TaskRunner):
     For a given file it will asking LLM's for the changes that are needed for the at whole file
     returning the results.
     """
+
+    handled_type = (
+        SyntaxError,
+        TypeMismatchError,
+        AnnotationError,
+        AccessControlError,
+        OtherError,
+    )
 
     system_message = SystemMessage(
         content="""
@@ -94,7 +107,7 @@ class MavenCompilerTaskRunner(TaskRunner):
 
     def can_handle_task(self, task: Task) -> bool:
         """Will determine if the task if a MavenCompilerError, and if we can handle these issues."""
-        return isinstance(task, MavenCompilerError)
+        return isinstance(task, self.handled_type)
 
     def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
         """This will be responsible for getting the full file from LLM and updating the file on disk"""

@@ -62,7 +62,6 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 	parser := parser.RuleParser{
 		ProviderNameToClient: providers,
 		Log:                  log.WithName("parser"),
-		NoDependencyRules:    true,
 	}
 
 	ruleSets := []engine.RuleSet{}
