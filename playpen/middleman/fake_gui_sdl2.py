@@ -15,6 +15,7 @@ import subprocess  # trunk-ignore(bandit/B404)
 import sys
 import threading
 from abc import ABC, abstractmethod
+from enum import Enum
 from io import BufferedReader, BufferedWriter
 from pathlib import Path
 from types import NoneType
@@ -64,12 +65,13 @@ from sdl2 import (  # type: ignore[import-untyped]
 
 from kai.models.kai_config import KaiConfigModels
 from kai.models.report import Report
-from kai.models.report_types import ExtendedIncident
+from kai.models.report_types import Category, ExtendedIncident
 from kai.models.util import remove_known_prefixes
 from playpen.middleman.server import (
     GetCodeplanAgentSolutionParams,
     GitVFSUpdateParams,
     KaiRpcApplicationConfig,
+    TestRCMParams,
 )
 from playpen.rpc.core import JsonRpcApplication, JsonRpcServer
 from playpen.rpc.models import JsonRpcId
@@ -123,8 +125,16 @@ class Drawable(ABC):
 CONFIG = KaiRpcApplicationConfig(
     process_id=os.getpid(),
     root_path=KAI_DIR / "example/coolstore",
-    analyzer_lsp_path=KAI_DIR / "analyzer-lsp",
+    analyzer_lsp_lsp_path=Path(
+        "/home/jonah/.vscode/extensions/redhat.java-1.35.1-linux-x64/server/bin/jdtls"
+    ),
     analyzer_lsp_rpc_path=KAI_DIR / "analyzer-lsp",
+    analyzer_lsp_rules_path=Path(
+        "/home/jonah/Projects/github.com/konveyor/rulesets/default/generated"
+    ),
+    analyzer_lsp_java_bundle_path=Path(
+        "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/notebooks/kai-analyzer-code-plan/java-bundle/java-analyzer-bundle.core-1.0.0-SNAPSHOT.jar"
+    ),
     model_provider=KaiConfigModels(
         provider="ChatIBMGenAI",
         args={
@@ -224,9 +234,35 @@ class ConfigurationEditor(Drawable):
             return self.draw_list(obj, extra, full_name, cls)
         elif issubclass(cls, BaseModel):
             return self.draw_base_model(obj, extra, full_name, cls)
+        elif issubclass(cls, Enum):
+            return self.draw_enum(obj, extra, full_name, cls)
         else:
             imgui.text(f"{full_name}: {cls} (unknown)")
             return obj, extra
+
+    def draw_enum(
+        self, obj: Enum | Any, extra: dict[str, Any], full_name: str, cls: type[Enum]
+    ) -> tuple[Enum, dict[str, Any]]:
+        name = full_name.split(".")[-1]
+
+        ENUM_ITEMS_KEY = f"{full_name}.enum_items"
+        ENUM_CURRENT_KEY = f"{full_name}.enum_current"
+
+        if ENUM_ITEMS_KEY not in extra:
+            extra[ENUM_ITEMS_KEY] = [item.name for item in cls]
+        if ENUM_CURRENT_KEY not in extra:
+            extra[ENUM_CURRENT_KEY] = next(
+                (i for i, item in enumerate(cls) if item == obj),
+                0,
+            )
+
+        _, extra[ENUM_CURRENT_KEY] = imgui.combo(
+            label=f"{name}##{full_name}",
+            current=extra[ENUM_CURRENT_KEY],
+            items=extra[ENUM_ITEMS_KEY],
+        )
+
+        return cls[extra[ENUM_ITEMS_KEY][extra[ENUM_CURRENT_KEY]]], extra
 
     def draw_union(
         self, obj: Any, extra: dict[str, Any], full_name: str, cls: type
@@ -383,7 +419,7 @@ class SourceEditor(Drawable):
 
         self.application_path = "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/example/coolstore"
         self.relative_filename = (
-            "/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java"
+            "/src/main/java/com/redhat/coolstore/service/ShippingService.java"
         )
         self.report_path = "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/example/analysis/coolstore/output.yaml"
 
@@ -452,11 +488,17 @@ class SourceEditor(Drawable):
                         #     imgui.set_window_focus_labeled("JSON RPC Request Window")
 
                         if imgui.selectable("getCodeplanAgentSolution")[0]:
+                            send_incident = incident.model_copy(deep=True)
+                            send_incident.uri = send_incident.uri.replace(
+                                "/opt/input/source/",
+                                "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/example/coolstore/",
+                            )
+
                             CONFIGURATION_EDITOR.set_params(
                                 "getCodeplanAgentSolution",
                                 GetCodeplanAgentSolutionParams(
-                                    file_path=self.file_path,
-                                    incidents=[incident],
+                                    file_path=self.file_path or Path("/"),
+                                    incidents=[send_incident],
                                 ),
                             )
 
@@ -526,7 +568,7 @@ class FileLoader(Drawable):
 
                     file_path = Path(remove_known_prefixes(urlparse(incident.uri).path))
                     if file_path != SOURCE_EDITOR.relative_filename_path:
-                        print(f"{SOURCE_EDITOR.relative_filename} != {file_path}")
+                        # print(f"{SOURCE_EDITOR.relative_filename} != {file_path}")
                         continue
 
                     result[incident.line_number] = ExtendedIncident(
@@ -750,9 +792,44 @@ CONFIGURATION_EDITOR = ConfigurationEditor(
             "getCodeplanAgentSolution",
             GetCodeplanAgentSolutionParams(
                 file_path=Path(
-                    "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/example/coolstore/src/main/java/com/redhat/coolstore/model/InventoryEntity.java"
+                    "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/example/coolstore/src/main/java/com/redhat/coolstore/service/ShippingService.java"
                 ),
-                incidents=[],
+                incidents=[
+                    ExtendedIncident(
+                        uri="file:///home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/example/coolstore/src/main/java/com/redhat/coolstore/service/ShippingService.java",
+                        message='Remote EJBs are not supported in Quarkus, and therefore its use must be removed and replaced with REST functionality. In order to do this:\n 1. Replace the `@Remote` annotation on the class with a `@jakarta.ws.rs.Path("<endpoint>")` annotation. An endpoint must be added to the annotation in place of `<endpoint>` to specify the actual path to the REST service.\n 2. Remove `@Stateless` annotations if present. Given that REST services are stateless by nature, it makes it unnecessary.\n 3. For every public method on the EJB being converted, do the following:\n - In case the method has no input parameters, annotate the method with `@jakarta.ws.rs.GET`; otherwise annotate it with `@jakarta.ws.rs.POST` instead.\n - Annotate the method with `@jakarta.ws.rs.Path("<endpoint>")` and give it a proper endpoint path. As a rule of thumb, the method name can be used as endpoint, for instance:\n ```\n @Path("/increment")\n public void increment() \n ```\n - Add `@jakarta.ws.rs.QueryParam("<param-name>")` to any method parameters if needed, where `<param-name>` is a name for the parameter.',
+                        code_snip=" 2  \n 3  import java.math.BigDecimal;\n 4  import java.math.RoundingMode;\n 5  \n 6  import javax.ejb.Remote;\n 7  import javax.ejb.Stateless;\n 8  \n 9  import com.redhat.coolstore.model.ShoppingCart;\n10  \n11  @Stateless\n12  @Remote\n13  public class ShippingService implements ShippingServiceRemote {\n14  \n15      @Override\n16      public double calculateShipping(ShoppingCart sc) {\n17  \n18          if (sc != null) {\n19  \n20              if (sc.getCartItemTotal() >= 0 && sc.getCartItemTotal() < 25) {\n21  \n22                  return 2.99;",
+                        line_number=12,
+                        variables={
+                            "file": "file:///private/var/folders/vt/5bfp7vyd1h79_7k5ygr0fttr0000gn/T/tmpthgg63up/coolstore/src/main/java/com/redhat/coolstore/service/ShippingService.java",
+                            "kind": "Class",
+                            "name": "Stateless",
+                            "package": "com.redhat.coolstore.service",
+                        },
+                        ruleset_name="quarkus/springboot",
+                        ruleset_description="This ruleset gives hints to migrate from Springboot devtools to Quarkus",
+                        violation_name="remote-ejb-to-quarkus-00000",
+                        violation_description="Remote EJBs are not supported in Quarkus",
+                        violation_category=Category.MANDATORY,
+                        violation_labels=[
+                            "konveyor.io/source=java-ee",
+                            "konveyor.io/source=jakarta-ee",
+                            "konveyor.io/target=quarkus",
+                        ],
+                    )
+                ],
+            ),
+        ),
+        (
+            "testRCM",
+            TestRCMParams(
+                rcm_root=Path(
+                    "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/"
+                ),
+                file_path=Path(
+                    "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/test_file.py"
+                ),
+                new_content="print('Hello, world!')",
             ),
         ),
     ]

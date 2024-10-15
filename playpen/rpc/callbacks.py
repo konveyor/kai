@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 import inspect
+import traceback
 from typing import TYPE_CHECKING, Any, Callable, Literal
 
 from pydantic import BaseModel, ConfigDict, validate_call
@@ -93,11 +94,11 @@ class JsonRpcCallback:
 
             log.log(TRACE, f"Calling function: {self.func.__name__}")
             self.func(app, server, request.id, validated_params)
-        except Exception as e:
+        except Exception:
             server.send_response(
                 id=request.id,
                 error=JsonRpcError(
                     code=JsonRpcErrorCode.InternalError,
-                    message=str(e),
+                    message=traceback.format_exc(),
                 ),
             )

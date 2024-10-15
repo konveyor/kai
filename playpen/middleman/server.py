@@ -1,8 +1,10 @@
 import logging
 import sys
+import threading
 import traceback
 from pathlib import Path
 from typing import Any, Optional, cast
+from unittest.mock import MagicMock
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
@@ -10,6 +12,9 @@ from pydantic import BaseModel
 from kai.models.kai_config import KaiConfigModels
 from kai.models.report_types import ExtendedIncident, Incident, RuleSet, Violation
 from kai.service.llm_interfacing.model_provider import ModelProvider
+from playpen.repo_level_awareness.agent.dependency_agent.dependency_agent import (
+    MavenDependencyAgent,
+)
 from playpen.repo_level_awareness.agent.reflection_agent import ReflectionAgent
 from playpen.repo_level_awareness.api import RpcClientConfig, Task, TaskResult
 from playpen.repo_level_awareness.codeplan import TaskManager
@@ -28,6 +33,9 @@ from playpen.repo_level_awareness.task_runner.compiler.compiler_task_runner impo
 from playpen.repo_level_awareness.task_runner.compiler.maven_validator import (
     MavenCompileStep,
 )
+from playpen.repo_level_awareness.task_runner.dependency.task_runner import (
+    DependencyTaskRunner,
+)
 from playpen.repo_level_awareness.vfs.git_vfs import (
     RepoContextManager,
     RepoContextSnapshot,
@@ -42,8 +50,6 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
     process_id: Optional[int]
 
     root_path: Path
-    analyzer_lsp_path: Path
-    analyzer_lsp_rpc_path: Path
     model_provider: KaiConfigModels
     kai_backend_url: str
 
@@ -51,6 +57,11 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
     stderr_log_level: str = "TRACE"
     file_log_level: Optional[str] = None
     log_dir_path: Optional[Path] = None
+
+    analyzer_lsp_lsp_path: Path
+    analyzer_lsp_rpc_path: Path
+    analyzer_lsp_rules_path: Path
+    analyzer_lsp_java_bundle_path: Path
 
 
 class KaiRpcApplication(JsonRpcApplication):
@@ -224,24 +235,76 @@ class GetCodeplanAgentSolutionParams(BaseModel):
 
 
 class GitVFSUpdateParams(BaseModel):
-    work_tree: Path  # project root
-    git_dir: Path
+    work_tree: str  # project root
+    git_dir: str
     git_sha: str
     diff: str
+    msg: str
+    spawning_result: Optional[str]
 
     children: list["GitVFSUpdateParams"]
 
     @classmethod
     def from_snapshot(cls, snapshot: RepoContextSnapshot) -> "GitVFSUpdateParams":
+        if snapshot.parent:
+            diff_result = snapshot.diff(snapshot.parent)
+            diff = diff_result[1] + diff_result[2]
+        else:
+            diff = ""
+
+        try:
+            spawning_result = repr(snapshot.spawning_result)
+        except Exception:
+            spawning_result = ""
+
         return cls(
-            work_tree=snapshot.work_tree,
-            git_dir=snapshot.git_dir,
+            work_tree=str(snapshot.work_tree),
+            git_dir=str(snapshot.git_dir),
             git_sha=snapshot.git_sha,
-            diff=snapshot.diff(snapshot.parent)[1] if snapshot.parent else "",
+            diff=diff,
+            msg=snapshot.msg,
             children=[cls.from_snapshot(c) for c in snapshot.children],
+            spawning_result=spawning_result,
         )
 
     # spawning_result: Optional[SpawningResult] = None
+
+
+class TestRCMParams(BaseModel):
+    rcm_root: Path
+    file_path: Path
+    new_content: str
+
+
+@app.add_request(method="testRCM")
+def test_rcm(
+    app: KaiRpcApplication,
+    server: JsonRpcServer,
+    id: JsonRpcId,
+    params: TestRCMParams,
+) -> None:
+    rcm = RepoContextManager(
+        project_root=params.rcm_root,
+        reflection_agent=ReflectionAgent(
+            llm=MagicMock(),
+        ),
+    )
+
+    with open(params.file_path, "w") as f:
+        f.write(params.new_content)
+
+    rcm.commit("testRCM")
+
+    diff = rcm.snapshot.diff(rcm.first_snapshot)
+
+    rcm.reset_to_first()
+
+    server.send_response(
+        id=id,
+        result={
+            "diff": diff[1] + diff[2],
+        },
+    )
 
 
 @app.add_request(method="getCodeplanAgentSolution")
@@ -288,6 +351,8 @@ def get_codeplan_agent_solution(
                 incident=Incident(**incident.model_dump()),
                 violation=Violation(
                     description=incident.violation_description or "",
+                    category=incident.violation_category,
+                    labels=incident.violation_labels,
                 ),
                 ruleset=RuleSet(
                     name=incident.ruleset_name,
@@ -311,10 +376,10 @@ def get_codeplan_agent_solution(
     task_manager_config = RpcClientConfig(
         repo_directory=app.config.root_path,
         analyzer_lsp_server_binary=app.config.analyzer_lsp_rpc_path,
-        rules_directory=app.config.analyzer_lsp_rpc_path / "rules",
-        analyzer_lsp_path=app.config.analyzer_lsp_path,
-        analyzer_java_bundle_path=app.config.analyzer_lsp_path / "java_bundle",  # ?
-        label_selector=None,
+        rules_directory=app.config.analyzer_lsp_rules_path,
+        analyzer_lsp_path=app.config.analyzer_lsp_lsp_path,
+        analyzer_java_bundle_path=app.config.analyzer_lsp_java_bundle_path,
+        label_selector="konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee",
         incident_selector=None,
         included_paths=None,
     )
@@ -330,12 +395,19 @@ def get_codeplan_agent_solution(
         agents=[
             AnalyzerTaskRunner(model_provider.llm),
             MavenCompilerTaskRunner(model_provider.llm),
+            DependencyTaskRunner(
+                MavenDependencyAgent(model_provider.llm, app.config.root_path)
+            ),
         ],
     )
 
+    flag = False
     result: TaskResult
     for task in task_manager.get_next_task(0):
-        app.log.debug(f"Executing task {task.__class__.__name__}")
+        if flag:
+            break
+
+        app.log.debug(f"Executing task {task.__class__.__name__}: {task}")
 
         result = task_manager.execute_task(task)
 
@@ -345,16 +417,18 @@ def get_codeplan_agent_solution(
 
         app.log.debug(f"Executed task {task.__class__.__name__}")
         rcm.commit(f"Executed task {task.__class__.__name__}")
+
         server.send_notification(
             "gitVFSUpdate",
             GitVFSUpdateParams.from_snapshot(rcm.first_snapshot).model_dump(),
         )
 
-    task_manager.stop()
+        flag = True
 
-    diff = rcm.snapshot.git(
-        ["diff", f"{rcm.snapshot.git_sha}", f"{rcm.first_snapshot.git_sha}"]
-    )[1]
+    # FIXME: This is a hack to stop the task_manager as it's hanging trying to stop everything
+    threading.Thread(target=task_manager.stop).start()
+
+    diff = rcm.snapshot.diff(rcm.first_snapshot)
 
     rcm.reset_to_first()
 
@@ -363,6 +437,6 @@ def get_codeplan_agent_solution(
         result={
             "encountered_errors": [str(e) for e in result.encountered_errors],
             "modified_files": [str(f) for f in result.modified_files],
-            "diff": diff,
+            "diff": diff[1] + diff[2],
         },
     )

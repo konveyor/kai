@@ -3,6 +3,7 @@ import functools
 import logging
 import os
 import subprocess  # trunk-ignore(bandit/B404)
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import StrEnum
@@ -11,6 +12,10 @@ from typing import Any, Optional
 
 from playpen.repo_level_awareness.agent.api import AgentResult
 from playpen.repo_level_awareness.agent.reflection_agent import ReflectionAgent
+from playpen.repo_level_awareness.agent.reflection_agent import (
+    ReflectionAgent,
+    ReflectionTask,
+)
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -20,8 +25,10 @@ handler.setFormatter(formatter)
 log.addHandler(handler)
 
 
-# Narrow down this type, could be task, or errors or what have you
-SpawningResult = Any
+class SpawningResult(ABC):
+    @abstractmethod
+    def to_reflection_task(self) -> ReflectionTask:
+        pass
 
 
 # NOTE: I'd like to use GitPython, but using custom a work-tree and git-dir with
@@ -219,8 +226,7 @@ class RepoContextManager:
     ) -> bool:
         """
         Commits the current state of the repository and updates the snapshot.
-        Also runs the reflection agent validate the repository state. Returns
-        True if the commit was successful, False otherwise.
+        Also runs the reflection agent validate the repository state.
         """
 
         reflection_result = AgentResult(encountered_errors=[], modified_files=None)
@@ -229,9 +235,9 @@ class RepoContextManager:
                 spawning_result.to_reflection_task()
             )
 
-        # union_the_result_and_the_errors(
-        #     reflection_result.encountered_errors, spawning_result
-        # )
+        new_spawning_result = union_the_result_and_the_errors(
+            reflection_result.encountered_errors, spawning_result
+        )
 
         self.snapshot = self.snapshot.commit(msg, new_spawning_result)
 
@@ -275,7 +281,7 @@ class RepoContextManager:
 # FIXME: remove this function, only there for the little demo below so the
 # pseudo code works
 def union_the_result_and_the_errors(*args, **kwargs):
-    pass
+    return args[0]
 
 
 if __name__ == "__main__":

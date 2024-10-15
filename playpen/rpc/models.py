@@ -32,7 +32,7 @@ class JsonRpcError(BaseModel):
 class JsonRpcResponse(BaseModel):
     jsonrpc: str = "2.0"
     result: Optional[JsonRpcResult] = None
-    error: Optional[JsonRpcError] = None
+    error: Optional[JsonRpcError | str] = None
     id: JsonRpcId = None
 
 

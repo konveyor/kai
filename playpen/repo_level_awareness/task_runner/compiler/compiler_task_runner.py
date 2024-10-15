@@ -139,7 +139,7 @@ class MavenCompilerTaskRunner(TaskRunner):
         with open(task.file, "w") as f:
             f.write(resp.java_file)
 
-        rcm.commit("compiler", resp)
+        rcm.commit(f"MavenCompilerTaskRunner changed file {str(task.file)}", resp)
 
         return TaskResult(modified_files=[Path(task.file)], encountered_errors=[])
 

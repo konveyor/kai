@@ -1,12 +1,16 @@
 import logging
 import subprocess  # trunk-ignore(bandit/B404)
 import threading
-from typing import IO, Any
+from io import BufferedReader, BufferedWriter
+from typing import IO, Any, cast
 from urllib.parse import urlparse
+
+from pydantic import BaseModel
 
 from kai.models.report import Report
 from playpen.repo_level_awareness.api import (
     RpcClientConfig,
+    ValidationError,
     ValidationResult,
     ValidationStep,
 )
@@ -15,6 +19,7 @@ from playpen.repo_level_awareness.task_runner.analyzer_lsp.api import (
     AnalyzerRuleViolation,
 )
 from playpen.rpc.core import JsonRpcServer
+from playpen.rpc.models import JsonRpcError
 from playpen.rpc.streams import BareJsonStream
 
 logging.basicConfig(level=logging.INFO)
@@ -57,7 +62,10 @@ class AnalyzerLSPStep(ValidationStep):
         self.stderr_logging_thread.start()
 
         self.rpc = JsonRpcServer(
-            json_rpc_stream=BareJsonStream(rpc_server.stdout, rpc_server.stdin),
+            json_rpc_stream=BareJsonStream(
+                cast(BufferedReader, rpc_server.stdout),
+                cast(BufferedWriter, rpc_server.stdin),
+            ),
             request_timeout=60,
         )
         self.rpc.start()
@@ -66,12 +74,33 @@ class AnalyzerLSPStep(ValidationStep):
 
     def run(self) -> ValidationResult:
         analyzer_output = self.__run_analyzer_lsp()
-        errors = self.__parse_analyzer_lsp_output(analyzer_output)
-        return ValidationResult(passed=not errors, errors=errors)
 
-    def __run_analyzer_lsp(self) -> list[AnalyzerRuleViolation]:
+        # TODO: Possibly add messages to the results
+        ERR = ValidationResult(
+            passed=False,
+            errors=[
+                ValidationError(
+                    file="", line=-1, column=-1, message="Analyzer LSP failed"
+                )
+            ],
+        )
+        if analyzer_output is None:
+            return ERR
+        elif isinstance(analyzer_output, JsonRpcError):
+            return ERR
+        elif analyzer_output.result is None:
+            return ERR
+        elif isinstance(analyzer_output.result, BaseModel):
+            analyzer_output.result = analyzer_output.result.model_dump()
+
+        errors = self.__parse_analyzer_lsp_output(analyzer_output.result)
+        return ValidationResult(
+            passed=not errors, errors=cast(list[ValidationError], errors)
+        )
+
+    def __run_analyzer_lsp(self):
         request_params = {
-            "label_selector": "konveyor.io/target=quarkus konveyor.io/target=jakarta-ee ",
+            "label_selector": "konveyor.io/target=quarkus konveyor.io/target=jakarta-ee",
             "included_paths": [],
             "incident_selector": "",
         }
@@ -111,7 +140,7 @@ class AnalyzerLSPStep(ValidationStep):
                         class_to_use(
                             file=urlparse(i.uri).path,
                             line=i.line_number,
-                            column=None,
+                            column=-1,
                             message=i.message,
                             incident=i,
                             violation=vio,
