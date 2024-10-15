@@ -15,19 +15,17 @@ import subprocess  # trunk-ignore(bandit/B404)
 import sys
 import threading
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from io import BufferedReader, BufferedWriter
 from pathlib import Path
 from types import NoneType
-from typing import IO, Any, Callable, Union, cast, get_args, get_origin
+from typing import IO, Any, TypeVar, Union, cast, get_args, get_origin
 from urllib.parse import urlparse
 
 import imgui  # type: ignore[import-untyped]
 import OpenGL.GL as gl  # type: ignore[import-untyped]
 import yaml
 from imgui.integrations.sdl2 import SDL2Renderer  # type: ignore[import-untyped]
-from pydantic import BaseModel
-from pydantic.fields import FieldInfo
+from pydantic import BaseModel, ValidationError
 from sdl2 import (  # type: ignore[import-untyped]
     SDL_GL_ACCELERATED_VISUAL,
     SDL_GL_CONTEXT_FLAGS,
@@ -72,13 +70,38 @@ from playpen.middleman.server import (
     GetCodeplanAgentSolutionParams,
     GitVFSUpdateParams,
     KaiRpcApplicationConfig,
-    get_codeplan_agent_solution,
-    initialize,
 )
-from playpen.rpc.callbacks import JsonRpcCallback
 from playpen.rpc.core import JsonRpcApplication, JsonRpcServer
 from playpen.rpc.models import JsonRpcId
 from playpen.rpc.streams import BareJsonStream
+
+BaseModelT = TypeVar("BaseModelT", bound=BaseModel)
+
+
+def try_construct_base_model(cls: type[BaseModelT]) -> BaseModelT:
+    inp: dict[Any, Any] = {}
+
+    def set_field(d: dict[Any, Any], loc: tuple[int | str, ...], value: Any) -> None:
+        if len(loc) == 1:
+            d[loc[0]] = value
+        else:
+            d[loc[0]] = {}
+            set_field(d[loc[0]], loc[1:], value)
+
+    while True:
+        try:
+            obj = cls.model_validate(inp)
+            return obj
+        except ValidationError as validation_error:
+            for err in validation_error.errors():
+                if err["type"] == "missing":
+                    set_field(inp, err["loc"], None)
+                elif err["type"] == "string_type":
+                    set_field(inp, err["loc"], "")
+                else:
+                    print(err)
+                    exit(1)
+
 
 THIS_FILE_PATH = Path(os.path.abspath(__file__)).resolve()
 THIS_DIR_PATH = THIS_FILE_PATH.parent
@@ -114,18 +137,28 @@ CONFIG = KaiRpcApplicationConfig(
 
 
 class ConfigurationEditor(Drawable):
-    def __init__(self, params: list[tuple[str, BaseModel]]) -> None:
+    def __init__(self, method_and_params: list[tuple[str, BaseModel]]) -> None:
         super().__init__()
 
-        self.params: dict[str, tuple[BaseModel, dict[str, Any]]] = {}
-        for method, the_params in params:
-            self.params[method] = (the_params, json.loads(the_params.model_dump_json()))
+        self.model_and_extra: dict[str, tuple[BaseModel, dict[str, Any]]] = {}
+        for method, params in method_and_params:
+            self.model_and_extra[method] = (params, {})
+
+        print(self.model_and_extra)
+
+    def set_params(
+        self, method: str, params: BaseModel, extra: dict[str, Any] | None = None
+    ) -> None:
+        if extra is None:
+            extra = {}
+
+        self.model_and_extra[method] = (params, extra)
 
     def _draw(self) -> None:
         _, self.show = imgui.begin("Configuration Editor", closable=True)
 
         if imgui.begin_tab_bar("ConfigurationEditorTabBar"):
-            for method in self.params:
+            for method in self.model_and_extra:
                 if imgui.begin_tab_item(method).selected:
                     self.draw_tab(method)
                     imgui.end_tab_item()
@@ -135,16 +168,15 @@ class ConfigurationEditor(Drawable):
         imgui.end()
 
     def draw_tab(self, method: str) -> None:
-        params, extra = self.params[method]
-        fields = params.model_fields
+        model, extra = self.model_and_extra[method]
 
         if imgui.button(f"Populate `{method}` request"):
             JSON_RPC_REQUEST_WINDOW.rpc_kind_n = 0
             JSON_RPC_REQUEST_WINDOW.rpc_method = method
 
             try:
-                JSON_RPC_REQUEST_WINDOW.rpc_params = params.__class__.model_validate(
-                    params.model_dump()
+                JSON_RPC_REQUEST_WINDOW.rpc_params = model.__class__.model_validate(
+                    model.model_dump()
                 ).model_dump_json(
                     indent=2,
                 )
@@ -153,201 +185,196 @@ class ConfigurationEditor(Drawable):
 
             imgui.set_window_focus_labeled("JSON RPC Request Window")
 
-        for field_name in fields:
-            field = fields[field_name]
-            result = self.draw_field(
-                getattr(params, field_name),
-                extra,
-                field_name,
-                # field,
-                field_annotation=field.annotation,
-            )
-            setattr(params, field_name, result)
+        imgui.separator()
 
-    def draw_field(
+        model, extra = self.draw_obj(
+            model,
+            extra,
+            model.__class__.__name__,
+            model.__class__,
+        )
+
+    def draw_obj(
+        self, obj: Any, extra: dict[str, Any], full_name: str, cls: type
+    ) -> tuple[Any, dict[str, Any]]:
+        """
+        obj is what it is, cls is what it should be
+        """
+        origin, _args = get_origin(cls), get_args(cls)
+        name = full_name.split(".")[-1]
+
+        if origin is Union:
+            return self.draw_union(obj, extra, full_name, cls)
+
+        # Built-in types
+        elif cls is None or cls is NoneType:
+            return None, extra
+        elif cls is str or cls is Path:
+            return imgui.input_text(f"{name}##{full_name}", str(obj), 400)[1], extra
+        elif cls is int:
+            return imgui.input_int(f"{name}##{full_name}", obj)[1], extra
+        elif cls is float:
+            return imgui.input_float(f"{name}##{full_name}", obj)[1], extra
+        elif cls is bool:
+            return imgui.checkbox(f"{name}##{full_name}", obj)[1], extra
+
+        elif origin is dict or cls is dict:
+            return self.draw_dict(obj, extra, full_name, cls)
+        elif origin is list or cls is list:
+            return self.draw_list(obj, extra, full_name, cls)
+        elif issubclass(cls, BaseModel):
+            return self.draw_base_model(obj, extra, full_name, cls)
+        else:
+            imgui.text(f"{full_name}: {cls} (unknown)")
+            return obj, extra
+
+    def draw_union(
+        self, obj: Any, extra: dict[str, Any], full_name: str, cls: type
+    ) -> tuple[Any, dict[str, Any]]:
+        args = get_args(cls)
+        name = full_name.split(".")[-1]
+
+        UNION_ITEMS_KEY = f"{full_name}.union_items"
+        UNION_CURRENT_KEY = f"{full_name}.union_current"
+
+        if UNION_ITEMS_KEY not in extra:
+            extra[UNION_ITEMS_KEY] = [arg.__name__ for arg in args]
+        if UNION_CURRENT_KEY not in extra:
+            extra[UNION_CURRENT_KEY] = next(
+                (i for i, arg in enumerate(args) if arg == obj.__class__),
+                -1,
+            )
+
+        _, extra[UNION_CURRENT_KEY] = imgui.combo(
+            label=f"{name}'s type##{full_name}",
+            current=extra[UNION_CURRENT_KEY],
+            items=extra[UNION_ITEMS_KEY],
+        )
+
+        return self.draw_obj(
+            obj,
+            extra,
+            full_name,
+            args[extra[UNION_CURRENT_KEY]],
+        )
+
+    def draw_base_model(
         self,
-        obj: Any,
+        obj: BaseModel | Any,
         extra: dict[str, Any],
-        field_name: str,
-        # field: FieldInfo,
-        field_annotation: Any,
-    ) -> Any:
-        # print(f"Drawing field: {field_name} ({field_annotation})")
+        full_name: str,
+        cls: type[BaseModel],
+    ) -> tuple[BaseModel, dict[str, Any]]:
+        if not isinstance(obj, cls):
+            obj = try_construct_base_model(cls)
 
-        if get_origin(field_annotation) is Union:
-            args = get_args(field_annotation)
-            combo_items_key = field_name + "_combo_items"
-            combo_current_key = field_name + "_combo_current"
+        imgui.text(full_name)
 
-            if combo_items_key not in extra:
-                extra[combo_items_key] = [arg.__name__ for arg in args]
+        imgui.indent()
 
-            if combo_current_key not in extra:
-                selected_index = next(
-                    (i for i, arg in enumerate(args) if arg == obj.__class__),
-                    -1,
-                )
-                extra[combo_current_key] = selected_index
+        # Why is this necessary?
+        if not isinstance(obj.__pydantic_fields_set__, set):
+            obj.__pydantic_fields_set__ = set()
 
-            _, extra[combo_current_key] = imgui.combo(
-                label=field_name + " type",
-                current=extra[combo_current_key],
-                items=extra[combo_items_key],
+        for field_name, field in cls.model_fields.items():
+            field_full_name = f"{full_name}.{field_name}"
+            if field_full_name not in extra:
+                extra[field_full_name] = {}
+
+            result, extra[field_full_name] = self.draw_obj(
+                getattr(obj, field_name),
+                extra[field_full_name],
+                field_full_name,
+                field.annotation if field.annotation is not None else NoneType,
             )
 
-            return self.draw_field(
-                obj,
-                extra,
-                field_name,
-                field_annotation=args[extra[combo_current_key]],
-            )
+            setattr(obj, field_name, result)
 
-        elif field_annotation is None or field_annotation is NoneType:
-            return None
+        imgui.unindent()
 
-        elif field_annotation is str or field_annotation is Path:
-            _, result = imgui.input_text(field_name, str(obj), 400)
+        return obj, extra
 
-            return result
+    def draw_dict(
+        self,
+        obj: dict[Any, Any] | Any,
+        extra: dict[str, Any],
+        full_name: str,
+        cls: type[dict[Any, Any]],
+    ) -> tuple[dict[Any, Any] | Exception, dict[str, Any]]:
+        if not isinstance(obj, dict):
+            obj = {}
 
-        elif field_annotation is int:
-            if not isinstance(obj, int):
-                obj = 0
+        name = full_name.split(".")[-1]
 
-            _, result = imgui.input_int(field_name, obj)
-
-            return result
-
-        elif field_annotation is float:
-            if not isinstance(obj, float):
-                obj = 0.0
-
-            _, result = imgui.input_float(field_name, obj)
-
-            return result
-
-        elif field_annotation is bool:
-            _, result = imgui.checkbox(field_name, bool(obj))
-
-            return result
-
-        elif get_origin(field_annotation) is dict:
-            dict_key = field_name + "_dict"
-            if dict_key not in extra:
-                extra[dict_key] = "{}"
-
+        DICT_KEY = f"{full_name}.dict"
+        if DICT_KEY not in extra:
             try:
-                extra[dict_key] = json.dumps(obj)
+                extra[DICT_KEY] = json.dumps(obj, indent=2)
             except Exception:
-                pass
+                extra[DICT_KEY] = "{}"
 
-            imgui.text(field_name)
-            _, extra[dict_key] = imgui.input_text_multiline(
-                field_name, extra[dict_key], 4096 * 16
-            )
+        _, extra[DICT_KEY] = imgui.input_text_multiline(
+            f"{name}##{full_name}",
+            extra[DICT_KEY],
+            4096 * 16,
+        )
 
-            try:
-                return json.loads(extra[dict_key])
-            except Exception as e:
-                return str(e)
+        try:
+            return json.loads(extra[DICT_KEY]), extra
+        except Exception as e:
+            return e, extra
 
-        elif get_origin(field_annotation) is list:
-            args = get_args(field_annotation)
-            cls = str if len(args) == 0 else args[0]
+    def draw_list(
+        self,
+        obj: list[Any] | Any,
+        extra: dict[str, Any],
+        full_name: str,
+        cls: type[list[Any]],
+    ) -> tuple[list[Any], dict[str, Any]]:
+        args = get_args(cls)
+        list_cls = str if len(args) == 0 else args[0]
 
-            list_len_key = field_name + "_list_len"
+        if not isinstance(obj, list):
+            obj = []
 
-            if not isinstance(obj, list):
-                obj = []
+        name = full_name.split(".")[-1]
 
-            if list_len_key not in extra:
-                extra[list_len_key] = len(obj)
+        LEN_KEY = f"{full_name}.len"
+        if LEN_KEY not in extra:
+            extra[LEN_KEY] = len(obj)
 
-            _, extra[list_len_key] = imgui.input_int(
-                f"{field_name} length", extra[list_len_key]
-            )
+        _, extra[LEN_KEY] = imgui.input_int(
+            f"{name} length##{full_name}", extra[LEN_KEY]
+        )
 
-            if extra[list_len_key] < 0:
-                extra[list_len_key] = 0
+        if extra[LEN_KEY] < 0:
+            extra[LEN_KEY] = 0
 
-            if extra[list_len_key] > len(obj):
-                if issubclass(cls, BaseModel):
-                    obj.extend(
-                        [
-                            cls.model_construct({})
-                            for _ in range(extra[list_len_key] - len(obj))
-                        ]
-                    )
-                else:
-                    obj.extend([cls() for _ in range(extra[list_len_key] - len(obj))])
-            elif extra[list_len_key] < len(obj):
-                obj = obj[: extra[list_len_key]]
+        if extra[LEN_KEY] > len(obj):
+            obj.extend([None for _ in range(extra[LEN_KEY] - len(obj))])
+        elif extra[LEN_KEY] < len(obj):
+            obj = obj[: extra[LEN_KEY]]
 
-            print(cls)
-            print(obj)
+        for i in range(len(obj)):
+            ITEM_FULL_NAME_KEY = f"{full_name}.{i}"
+            if ITEM_FULL_NAME_KEY not in extra:
+                extra[ITEM_FULL_NAME_KEY] = {}
 
-            for i, elem in enumerate(obj):
-                if f"field_name.{i}" not in extra:
-                    extra[f"{field_name}.{i}"] = {}
-
-                imgui.text(f"{field_name}.{i}")
-
+            if not issubclass(list_cls, BaseModel):
+                imgui.text(f"{name}.{i}")
                 imgui.indent()
 
-                obj[i] = self.draw_field(
-                    elem,
-                    extra[f"{field_name}.{i}"],
-                    f"{field_name}.{i}",
-                    field_annotation=cls,
-                )
+            obj[i], extra[ITEM_FULL_NAME_KEY] = self.draw_obj(
+                obj[i],
+                extra[ITEM_FULL_NAME_KEY],
+                ITEM_FULL_NAME_KEY,
+                list_cls,
+            )
 
+            if not issubclass(list_cls, BaseModel):
                 imgui.unindent()
 
-            print(obj)
-
-            return obj
-
-        elif issubclass(field_annotation, BaseModel):
-            imgui.text(field_name)
-
-            imgui.indent()
-
-            obj = cast(BaseModel, obj)
-
-            for sub_field_name in obj.__class__.model_fields:
-                if sub_field_name not in extra:
-                    extra[sub_field_name] = {}
-
-                # sub_field = field_annotation.model_fields[sub_field_name]
-                sub_field = obj.__class__.model_fields[sub_field_name]
-
-                if not hasattr(obj, sub_field_name):
-                    print(
-                        f"Creating {sub_field_name} {sub_field.annotation} for {field_name} on {obj}"
-                    )
-                    if sub_field.annotation is None:
-                        setattr(obj, sub_field_name, None)
-                    elif issubclass(sub_field.annotation, BaseModel):
-                        # try:
-                        setattr(obj, sub_field_name, sub_field.annotation())
-                    else:
-                        setattr(obj, sub_field_name, sub_field.annotation())
-
-                result = self.draw_field(
-                    getattr(obj, sub_field_name),
-                    extra[sub_field_name],
-                    sub_field_name,
-                    field_annotation=sub_field.annotation,
-                )
-
-                setattr(obj, sub_field_name, result)
-
-            imgui.unindent()
-
-            return obj
-
-        else:
-            imgui.text(f"Unknown type. {field_name}: {field_annotation}")
+        return obj, extra
 
 
 class SourceEditor(Drawable):
@@ -425,21 +452,15 @@ class SourceEditor(Drawable):
                         #     imgui.set_window_focus_labeled("JSON RPC Request Window")
 
                         if imgui.selectable("getCodeplanAgentSolution")[0]:
-                            JSON_RPC_REQUEST_WINDOW.rpc_kind_n = 0
-                            JSON_RPC_REQUEST_WINDOW.rpc_method = (
-                                "getCodeplanAgentSolution"
-                            )
-                            JSON_RPC_REQUEST_WINDOW.rpc_params = json.dumps(
-                                {
-                                    "file_name": str(self.file_path),
-                                    "file_contents": self.editor_content,
-                                    "application_name": "coolstore",
-                                    "incidents": [incident.model_dump()],
-                                },
-                                indent=2,
+                            CONFIGURATION_EDITOR.set_params(
+                                "getCodeplanAgentSolution",
+                                GetCodeplanAgentSolutionParams(
+                                    file_path=self.file_path,
+                                    incidents=[incident],
+                                ),
                             )
 
-                            imgui.set_window_focus_labeled("JSON RPC Request Window")
+                            imgui.set_window_focus_labeled("Configuration Editor")
 
                         imgui.end_menu()
                     imgui.end_popup()
@@ -723,7 +744,7 @@ SUBPROCESS_INSPECTOR = SubprocessInspector()
 GIT_VFS_INSPECTOR = GitVFSInspector()
 
 CONFIGURATION_EDITOR = ConfigurationEditor(
-    params=[
+    method_and_params=[
         ("initialize", CONFIG),
         (
             "getCodeplanAgentSolution",

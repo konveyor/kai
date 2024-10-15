@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any, Optional, cast
 from urllib.parse import urlparse
 
-import requests
 from pydantic import BaseModel
 
 from kai.models.kai_config import KaiConfigModels
@@ -146,7 +145,7 @@ def initialize(
 
         app.log.info(f"Initialized with config: {app.config}")
 
-    except Exception as e:
+    except Exception:
         server.send_response(
             id=id,
             error=JsonRpcError(

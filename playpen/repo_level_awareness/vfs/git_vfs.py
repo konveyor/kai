@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 from playpen.repo_level_awareness.agent.api import AgentResult
 from playpen.repo_level_awareness.agent.reflection_agent import ReflectionAgent
@@ -229,9 +229,9 @@ class RepoContextManager:
                 spawning_result.to_reflection_task()
             )
 
-        new_spawning_result = union_the_result_and_the_errors(
-            reflection_result.encountered_errors, spawning_result
-        )
+        # union_the_result_and_the_errors(
+        #     reflection_result.encountered_errors, spawning_result
+        # )
 
         self.snapshot = self.snapshot.commit(msg, new_spawning_result)
 
