@@ -205,7 +205,7 @@ class RepoContextManager:
         reflection_result = AgentResult(encountered_errors=[], modified_files=None)
         if spawning_result is not None and isinstance(spawning_result, SpawningResult):
             reflection_result = self.reflection_agent.execute(
-                None, spawning_result.to_reflection_task()
+                spawning_result.to_reflection_task()
             )
 
         new_spawning_result = union_the_result_and_the_errors(
