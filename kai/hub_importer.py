@@ -6,7 +6,7 @@ import os
 import pprint
 import tempfile
 import time
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
 import dateutil.parser
 import requests
@@ -211,10 +211,12 @@ def poll_api(
     timeout: int = 60,
     verify: bool = True,
     initial_last_analysis: int = 0,
+    post_process_limit: int = 5,
+    poll_condition: Callable = lambda: True,
 ):
     last_analysis = initial_last_analysis
 
-    while True:
+    while poll_condition():
         new_last_analysis = import_from_api(
             incident_store, konveyor_hub_url, last_analysis, timeout, verify
         )
@@ -230,7 +232,7 @@ def poll_api(
         post_proc_start = time.time()
         # generate solutions for some incidents
         KAI_LOG.info("Running post_process to generate solutions")
-        incident_store.post_process(limit=5)
+        incident_store.post_process(limit=post_process_limit)
         post_proc_duration = int(time.time() - post_proc_start)
         if new_last_analysis == last_analysis and post_proc_duration < interval:
             KAI_LOG.info(f"Sleeping for {interval-post_proc_duration} seconds.")
