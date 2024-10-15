@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Any, Optional
 
 from playpen.repo_level_awareness.agent.api import AgentResult
-from playpen.repo_level_awareness.agent.reflection_agent import ReflectionAgent
 from playpen.repo_level_awareness.agent.reflection_agent import (
     ReflectionAgent,
     ReflectionTask,

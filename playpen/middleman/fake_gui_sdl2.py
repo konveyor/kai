@@ -801,7 +801,7 @@ CONFIGURATION_EDITOR = ConfigurationEditor(
                         code_snip=" 2  \n 3  import java.math.BigDecimal;\n 4  import java.math.RoundingMode;\n 5  \n 6  import javax.ejb.Remote;\n 7  import javax.ejb.Stateless;\n 8  \n 9  import com.redhat.coolstore.model.ShoppingCart;\n10  \n11  @Stateless\n12  @Remote\n13  public class ShippingService implements ShippingServiceRemote {\n14  \n15      @Override\n16      public double calculateShipping(ShoppingCart sc) {\n17  \n18          if (sc != null) {\n19  \n20              if (sc.getCartItemTotal() >= 0 && sc.getCartItemTotal() < 25) {\n21  \n22                  return 2.99;",
                         line_number=12,
                         variables={
-                            "file": "file:///private/var/folders/vt/5bfp7vyd1h79_7k5ygr0fttr0000gn/T/tmpthgg63up/coolstore/src/main/java/com/redhat/coolstore/service/ShippingService.java",
+                            "file": "file:///home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/example/coolstore/src/main/java/com/redhat/coolstore/service/ShippingService.java",
                             "kind": "Class",
                             "name": "Stateless",
                             "package": "com.redhat.coolstore.service",
@@ -956,7 +956,7 @@ def main() -> None:
     impl = SDL2Renderer(window)
     imgui_io = imgui.get_io()
     imgui_io.fonts.add_font_default()
-    imgui_io.font_global_scale = 1
+    imgui_io.font_global_scale = 1.3
     imgui.style_colors_dark()
 
     event = SDL_Event()

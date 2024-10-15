@@ -70,7 +70,7 @@ class ModelProvider:
                         "decoding_method": DecodingMethod.SAMPLE,
                         # NOTE: probably have to do some more clever stuff regarding
                         # config. max_new_tokens and such varies between models
-                        "max_new_tokens": 2000,
+                        "max_new_tokens": 4096,
                         "min_new_tokens": 10,
                         "temperature": 0.05,
                         "top_k": 20,

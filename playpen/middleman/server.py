@@ -106,6 +106,8 @@ def exit(
     server.send_response(id=id, result={})
 
 
+# NOTE(shawn-hurley): would it ever make sense to have the server
+# "re-initialized" or would you just shutdown and restart the process?
 @app.add_request(method="initialize")
 def initialize(
     app: KaiRpcApplication,
@@ -171,6 +173,8 @@ def initialize(
     server.send_response(id=id, result=app.config.model_dump())
 
 
+# NOTE(shawn-hurley): I would just as soon make this another initialize call
+# rather than a separate endpoint. but open to others feedback.
 @app.add_request(method="setConfig")
 def set_config(
     app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
