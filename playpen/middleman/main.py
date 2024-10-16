@@ -3,8 +3,10 @@ import sys
 from io import BufferedReader, BufferedWriter
 from typing import cast
 
-from playpen.rpc_server.rpc import TRACE, BareJsonStream, JsonRpcServer, get_logger
-from playpen.rpc_server.server import app
+from playpen.middleman.server import app
+from playpen.rpc.core import JsonRpcServer
+from playpen.rpc.streams import BareJsonStream
+from playpen.rpc.util import TRACE, get_logger
 
 log = get_logger("jsonrpc")
 
@@ -18,6 +20,7 @@ def main() -> None:
     add_arguments(parser)
     _args = parser.parse_args()
 
+    log.setLevel(TRACE)
     log.info("Starting Kai RPC Server")
     log.log(TRACE, "Trace log level enabled")
 

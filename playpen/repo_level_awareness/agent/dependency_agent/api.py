@@ -1,7 +1,7 @@
 # trunk-ignore-begin(ruff/E402)
 import sys
 
-sys.modules["_elementtree"] = None
+sys.modules["_elementtree"] = None  # type: ignore[assignment]
 import json
 
 # trunk-ignore(bandit/B405)

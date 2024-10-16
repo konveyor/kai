@@ -2,11 +2,13 @@ import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional, cast
 
 from jinja2 import Template
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from pygments import lexers
+from pygments.lexer import LexerMeta
 from pygments.util import ClassNotFound
 
 from playpen.repo_level_awareness.api import Task, TaskResult
@@ -106,11 +108,11 @@ If you have any additional details or steps that need to be performed, put it he
 
     def refine_task(self, errors: list[str]) -> None:
         """We currently do not refine the tasks"""
-        return super().refine_task(errors)
+        raise NotImplementedError("We currently do not refine the tasks")
 
     def can_handle_error(self, errors: list[str]) -> bool:
         """We currently do not know if we can handle errors"""
-        return super().can_handle_error(errors)
+        raise NotImplementedError("We currently do not know if we can handle errors")
 
     def can_handle_task(self, task: Task) -> bool:
         """Will determine if the task if a MavenCompilerError, and if we can handle these issues."""
@@ -147,7 +149,7 @@ If you have any additional details or steps that need to be performed, put it he
             with open(task.file, "w") as f:
                 f.write(resp.java_file)
 
-            rcm.commit("compiler", resp)
+            rcm.commit(f"AnalyzerTaskRunner changed file {str(task.file)}", resp)
             return TaskResult(modified_files=[Path(file_name)], encountered_errors=[])
 
         return TaskResult(modified_files=[], encountered_errors=[])
@@ -156,7 +158,7 @@ If you have any additional details or steps that need to be performed, put it he
     def parse_llm_response(self, message: BaseMessage) -> AnalyzerLLMResponse:
         """Private method that will be used to parse the contents and get the results"""
 
-        lines_of_output = message.content.splitlines()
+        lines_of_output = cast(str, message.content).splitlines()
 
         in_java_file = False
         in_reasoning = False
@@ -192,13 +194,13 @@ If you have any additional details or steps that need to be performed, put it he
         )
 
 
-def guess_language(code: str, filename: str = None) -> str:
+def guess_language(code: str, filename: Optional[str] = None) -> str:
     try:
-        if filename:
+        if filename is not None:
             lexer = lexers.guess_lexer_for_filename(filename, code)
             logger.debug(f"{filename} classified as {lexer.aliases[0]}")
         else:
-            lexer = lexers.guess_lexer(code)
+            lexer = cast(LexerMeta, lexers.guess_lexer(code))
             logger.debug(f"Code content classified as {lexer.aliases[0]}\n{code}")
         return lexer.aliases[0]
     except ClassNotFound:

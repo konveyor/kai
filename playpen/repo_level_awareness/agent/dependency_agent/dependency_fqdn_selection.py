@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Optional
 
 from jinja2 import Template
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class FQDNDependencySelectorRequest(AgentRequest):
     msg: str
     code: str
-    query: List[str]
+    query: list[str]
     times: int
 
 
@@ -109,9 +109,9 @@ Searched dependencies:
         )
 
     def parse_llm_response(
-        self, content: str | List[str] | Dict
+        self, content: str | list[str] | dict
     ) -> Optional[__llm_response]:
-        if isinstance(content, Dict) or isinstance(content, List):
+        if isinstance(content, dict) or isinstance(content, list):
             return None
 
         in_reasoning = False
