@@ -13,7 +13,7 @@ type InternalProviderClient struct {
 	provider.ServiceClient
 }
 
-func NewInternalProviderClient(ctx context.Context, log logr.Logger, contextLines int, location string, lspServerPath string, bundles string) (provider.InternalProviderClient, error) {
+func NewInternalProviderClient(ctx context.Context, log logr.Logger, contextLines int, location, lspServerPath, bundles, depOpenSourceLabelsFile string) (provider.InternalProviderClient, error) {
 	// Create JavaProvider From external provider
 	p := extjava.NewJavaProvider(log, "java", contextLines)
 	log.Info("logger", "v", p)
@@ -21,9 +21,10 @@ func NewInternalProviderClient(ctx context.Context, log logr.Logger, contextLine
 	svcClient, _, err := p.Init(ctx, log, provider.InitConfig{
 		Location: location,
 		ProviderSpecificConfig: map[string]interface{}{
-			"lspServerName": "java",
-			"bundles":       bundles,
-			"lspServerPath": lspServerPath,
+			"lspServerName":           "java",
+			"bundles":                 bundles,
+			"lspServerPath":           lspServerPath,
+			"depOpenSourceLabelsFile": depOpenSourceLabelsFile,
 		},
 		Proxy:        &provider.Proxy{},
 		AnalysisMode: "source-only",
