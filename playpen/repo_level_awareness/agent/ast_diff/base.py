@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
-from typing import Any, Dict, Self
+from typing import Any, Self
+
+from typing_extensions import TypeVar
 
 
 class DiffableSummary(ABC):
@@ -9,28 +10,32 @@ class DiffableSummary(ABC):
     """
 
     @abstractmethod
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Returns a dict representation of info
 
         Returns:
-            Dict[str, Any]: Structured info about this file
+            dict[str, Any]: Structured info about this file
         """
         pass
 
     @abstractmethod
-    def diff(self, o: Self) -> Dict[str, Any]:
+    def diff(self, o: Self) -> dict[str, Any]:
         """Computes diff between current info and another version of same type of info
 
         Args:
             o (Self): Another version of same type of info
 
         Returns:
-            Dict[str, Any]: Structured diff
+            dict[str, Any]: Structured diff
         """
         pass
 
 
-class DiffableDict(Dict[str, DiffableSummary], DiffableSummary):
+KT = TypeVar("KT")
+KV = TypeVar("KV", bound=DiffableSummary)
+
+
+class DiffableDict(dict[KT, KV], DiffableSummary):
     """A dict that's also a diffable, used to store nested tokens"""
 
     def __eq__(self, o: object) -> bool:
@@ -43,13 +48,13 @@ class DiffableDict(Dict[str, DiffableSummary], DiffableSummary):
             return True
         return False
 
-    def __iter__(self) -> Iterator[str]:
-        return iter([v.to_dict() for _, v in self.items()])
+    # def __iter__(self) -> Iterator[str]:
+    #     return iter([v.to_dict() for _, v in self.items()])
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {k: v.to_dict() for k, v in self.items()}
+    def to_dict(self) -> dict[str, Any]:
+        return {str(k): v.to_dict() for k, v in self.items()}
 
-    def diff(self, o: Self) -> Dict[str, Any]:
+    def diff(self, o: Self) -> dict[str, Any]:
         diff = {}
         added = [o[key].to_dict() for key in set(o.keys()) - set(self.keys())]
         if added:

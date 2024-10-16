@@ -1,5 +1,4 @@
 import unittest
-from typing import List
 
 # Import classes from your codebase
 from playpen.repo_level_awareness.api import (
@@ -15,7 +14,7 @@ from playpen.repo_level_awareness.codeplan import TaskManager
 
 class MockValidationStep(ValidationStep):
     def __init__(
-        self, config: RpcClientConfig, error_sequences: List[List[ValidationError]]
+        self, config: RpcClientConfig, error_sequences: list[list[ValidationError]]
     ):
         super().__init__(config)
         self.error_sequences = error_sequences

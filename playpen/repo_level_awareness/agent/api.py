@@ -10,11 +10,15 @@ class AgentRequest:
 
 @dataclass
 class AgentResult:
-    encountered_errors: list[str]
-    modified_files: list[Path]
+    encountered_errors: list[str] | None
+    modified_files: list[Path] | None
 
 
 class Agent(ABC):
     @abstractmethod
     def execute(self, ask: AgentRequest) -> AgentResult:
-        pass
+        """
+        If the agent cannot handle the request, it should return an AgentResult
+        with None values.
+        """
+        ...

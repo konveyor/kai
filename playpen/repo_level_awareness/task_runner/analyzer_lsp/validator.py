@@ -1,12 +1,16 @@
 import logging
 import subprocess  # trunk-ignore(bandit/B404)
-from typing import Dict, List
+import threading
+from io import BufferedReader, BufferedWriter
+from typing import IO, Any, cast
 from urllib.parse import urlparse
 
+from pydantic import BaseModel
+
 from kai.models.report import Report
-from playpen.client import anlalyzer_rpc as analyzer_rpc
 from playpen.repo_level_awareness.api import (
     RpcClientConfig,
+    ValidationError,
     ValidationResult,
     ValidationStep,
 )
@@ -14,61 +18,93 @@ from playpen.repo_level_awareness.task_runner.analyzer_lsp.api import (
     AnalyzerDependencyRuleViolation,
     AnalyzerRuleViolation,
 )
+from playpen.rpc.core import JsonRpcServer
+from playpen.rpc.models import JsonRpcError
+from playpen.rpc.streams import BareJsonStream
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class AnlayzerLSPStep(ValidationStep):
+def log_stderr(stderr: IO[bytes]) -> None:
+    for line in iter(stderr.readline, b""):
+        logger.info(line.decode("utf-8"))
 
-    rpc: analyzer_rpc.AnalyzerRpcServer
 
-    def __init__(self, RpcClientConfig: RpcClientConfig) -> None:
+class AnalyzerLSPStep(ValidationStep):
+    def __init__(self, config: RpcClientConfig) -> None:
         """This will start and analyzer-lsp jsonrpc server"""
 
         # trunk-ignore-begin(bandit/B603)
         rpc_server = subprocess.Popen(
             [
-                RpcClientConfig.analyzer_lsp_server_binary,
+                config.analyzer_lsp_server_binary,
                 "-source-directory",
-                RpcClientConfig.repo_directory,
+                config.repo_directory,
                 "-rules-directory",
-                RpcClientConfig.rules_directory,
+                config.rules_directory,
                 "-lspServerPath",
-                RpcClientConfig.analyzer_lsp_path,
+                config.analyzer_lsp_path,
                 "-bundles",
-                RpcClientConfig.analyzer_java_bundle,
+                config.analyzer_java_bundle_path,
                 "-log-file",
                 "./kai-analyzer.log",
             ],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            text=True,
+            stderr=subprocess.PIPE,
         )
         # trunk-ignore-end(bandit/B603)
 
-        self.rpc = analyzer_rpc.AnalyzerRpcServer(
-            json_rpc_endpoint=analyzer_rpc.AnlayzerRPCEndpoint(
-                rpc_server.stdin, rpc_server.stdout
+        self.stderr_logging_thread = threading.Thread(
+            target=log_stderr, args=(rpc_server.stderr,)
+        )
+        self.stderr_logging_thread.start()
+
+        self.rpc = JsonRpcServer(
+            json_rpc_stream=BareJsonStream(
+                cast(BufferedReader, rpc_server.stdout),
+                cast(BufferedWriter, rpc_server.stdin),
             ),
-            timeout=180,
+            request_timeout=60,
         )
         self.rpc.start()
 
-        super().__init__(RpcClientConfig)
+        super().__init__(config)
 
     def run(self) -> ValidationResult:
         analyzer_output = self.__run_analyzer_lsp()
-        errors = self.__parse_analyzer_lsp_output(analyzer_output)
-        return ValidationResult(passed=not errors, errors=errors)
 
-    def __run_analyzer_lsp(self) -> List[AnalyzerRuleViolation]:
+        # TODO: Possibly add messages to the results
+        ERR = ValidationResult(
+            passed=False,
+            errors=[
+                ValidationError(
+                    file="", line=-1, column=-1, message="Analyzer LSP failed"
+                )
+            ],
+        )
+        if analyzer_output is None:
+            return ERR
+        elif isinstance(analyzer_output, JsonRpcError):
+            return ERR
+        elif analyzer_output.result is None:
+            return ERR
+        elif isinstance(analyzer_output.result, BaseModel):
+            analyzer_output.result = analyzer_output.result.model_dump()
 
+        errors = self.__parse_analyzer_lsp_output(analyzer_output.result)
+        return ValidationResult(
+            passed=not errors, errors=cast(list[ValidationError], errors)
+        )
+
+    def __run_analyzer_lsp(self):
         request_params = {
-            "label_selector": "konveyor.io/target=quarkus konveyor.io/target=jakarta-ee ",
+            "label_selector": "konveyor.io/target=quarkus konveyor.io/target=jakarta-ee",
             "included_paths": [],
             "incident_selector": "",
         }
+
         if self.config.label_selector is not None:
             request_params["label_selector"] = self.config.label_selector
 
@@ -78,14 +114,14 @@ class AnlayzerLSPStep(ValidationStep):
         if self.config.incident_selector is not None:
             request_params["incident_selector"] = self.config.incident_selector
 
-        return self.rpc.call_method(
+        return self.rpc.send_request(
             "analysis_engine.Analyze",
-            kwargs=request_params,
+            params=request_params,
         )
 
     def __parse_analyzer_lsp_output(
-        self, analyzer_output: Dict[str, any]
-    ) -> List[AnalyzerRuleViolation]:
+        self, analyzer_output: dict[str, Any]
+    ) -> list[AnalyzerRuleViolation]:
         rulesets = analyzer_output.get("Rulesets")
 
         if not rulesets or not isinstance(rulesets, list):
@@ -93,7 +129,7 @@ class AnlayzerLSPStep(ValidationStep):
 
         r = Report.load_report_from_object(rulesets, "analysis_run_task_runner")
 
-        validation_errors: List[AnalyzerRuleViolation] = []
+        validation_errors: list[AnalyzerRuleViolation] = []
         for _k, v in r.rulesets.items():
             for _vk, vio in v.violations.items():
                 for i in vio.incidents:
@@ -104,7 +140,7 @@ class AnlayzerLSPStep(ValidationStep):
                         class_to_use(
                             file=urlparse(i.uri).path,
                             line=i.line_number,
-                            column=None,
+                            column=-1,
                             message=i.message,
                             incident=i,
                             violation=vio,
@@ -115,4 +151,5 @@ class AnlayzerLSPStep(ValidationStep):
         return validation_errors
 
     def stop(self):
+        self.stderr_logging_thread.join()
         self.rpc.stop()
