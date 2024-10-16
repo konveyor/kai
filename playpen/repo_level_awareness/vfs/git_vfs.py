@@ -9,9 +9,6 @@ from datetime import datetime, timezone
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, Optional
-from unittest.mock import MagicMock
-
-from langchain_core.language_models.chat_models import BaseChatModel
 
 from playpen.repo_level_awareness.agent.api import AgentResult
 from playpen.repo_level_awareness.agent.reflection_agent import (
@@ -44,7 +41,6 @@ class RepoContextSnapshot:
     parent: Optional["RepoContextSnapshot"] = None
     children: list["RepoContextSnapshot"] = field(default_factory=list)
 
-    # Narrow down this type, could be task, or errors or what have you
     spawning_result: Optional[SpawningResult] = None
 
     @functools.cached_property
@@ -72,6 +68,22 @@ class RepoContextSnapshot:
             return [self.spawning_result]
 
         return self.parent.parent_spawning_results + [self.spawning_result]
+
+    @functools.cached_property
+    def lineage(self) -> list["RepoContextSnapshot"]:
+        """
+        Returns the lineage of the current snapshot, starting from the initial
+        commit. In order from oldest to newest.
+        """
+        lineage: list[RepoContextSnapshot] = [self]
+        parent = self.parent
+        while parent is not None:
+            lineage.append(parent)
+            parent = parent.parent
+
+        lineage.reverse()
+
+        return lineage
 
     def git(self, args: list[str], popen_kwargs: dict[str, Any] | None = None):
         """
@@ -108,11 +120,14 @@ class RepoContextSnapshot:
         return proc.returncode, stdout, stderr
 
     @staticmethod
-    def initialize(work_tree: Path) -> "RepoContextSnapshot":
+    def initialize(work_tree: Path, msg: str | None = None) -> "RepoContextSnapshot":
         """
         Creates a new git repo in the given work_tree, and returns a
         GitVFSSnapshot.
         """
+        if msg is None:
+            msg = "Initial commit"
+
         work_tree = work_tree.resolve()
         kai_dir = work_tree / ".kai"
         kai_dir.mkdir(exist_ok=True)
@@ -133,7 +148,7 @@ class RepoContextSnapshot:
         with open(git_dir / "info" / "exclude", "a") as f:
             f.write(f"/{str(kai_dir.name)}\n")
 
-        tmp_snapshot = tmp_snapshot.commit("Initial commit")
+        tmp_snapshot = tmp_snapshot.commit(msg)
 
         return RepoContextSnapshot(
             work_tree=work_tree,
@@ -186,17 +201,28 @@ class RepoContextSnapshot:
         """
         return self.git(["reset", "--hard", self.git_sha])
 
+    def diff(self, other: "RepoContextSnapshot") -> tuple[int, str, str]:
+        """
+        Returns the diff between the current snapshot and another snapshot.
+        """
+        return self.git(["diff", other.git_sha, self.git_sha])
+
 
 class RepoContextManager:
-    def __init__(self, project_root: Path, llm: BaseChatModel):
+    def __init__(
+        self,
+        project_root: Path,
+        reflection_agent: ReflectionAgent,
+        initial_msg: str | None = None,
+    ):
         self.project_root = project_root
-        self.snapshot = RepoContextSnapshot.initialize(project_root)
-
-        self.reflection_agent = ReflectionAgent(llm=llm, iterations=1, retries=3)
+        self.snapshot = RepoContextSnapshot.initialize(project_root, initial_msg)
+        self.first_snapshot = self.snapshot
+        self.reflection_agent = reflection_agent
 
     def commit(
         self, msg: str | None = None, spawning_result: SpawningResult | None = None
-    ):
+    ) -> bool:
         """
         Commits the current state of the repository and updates the snapshot.
         Also runs the reflection agent validate the repository state.
@@ -213,6 +239,8 @@ class RepoContextManager:
         )
 
         self.snapshot = self.snapshot.commit(msg, new_spawning_result)
+
+        return True
 
     def reset(self, snapshot: Optional[RepoContextSnapshot] = None):
         """
@@ -234,11 +262,25 @@ class RepoContextManager:
 
         self.reset(self.snapshot.parent)
 
+    def reset_to_first(self) -> None:
+        """
+        Resets the repository to the initial commit.
+        """
+        while self.snapshot.parent is not None:
+            self.reset_to_parent()
+
+    def get_lineage(self) -> list[RepoContextSnapshot]:
+        """
+        Returns the lineage of the current snapshot, starting from the initial
+        commit. The current snapshot is the first element in the list.
+        """
+        return self.snapshot.lineage
+
 
 # FIXME: remove this function, only there for the little demo below so the
 # pseudo code works
 def union_the_result_and_the_errors(*args, **kwargs):
-    pass
+    return args[0]
 
 
 if __name__ == "__main__":
@@ -262,7 +304,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    manager = RepoContextManager(args.project_root, llm=MagicMock())
+    manager = RepoContextManager(args.project_root)
     first_snapshot = manager.snapshot
 
     class Command(StrEnum):

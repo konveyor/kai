@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, fields
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 
 @dataclass
@@ -10,10 +10,10 @@ class RpcClientConfig:
     analyzer_lsp_server_binary: Path
     rules_directory: Path
     analyzer_lsp_path: Path
-    analyzer_java_bundle: Path
+    analyzer_java_bundle_path: Path
     label_selector: Optional[str]
     incident_selector: Optional[str]
-    included_paths: Optional[List[str]]
+    included_paths: Optional[list[str]]
 
 
 @dataclass(eq=False, kw_only=True)
@@ -21,7 +21,7 @@ class Task:
     priority: int = 10
     depth: int = 0
     parent: Optional["Task"] = None
-    children: List["Task"] = field(default_factory=list, compare=False)
+    children: list["Task"] = field(default_factory=list, compare=False)
     retry_count: int = 0
     max_retries: int = 3
     creation_order: int = field(init=False)

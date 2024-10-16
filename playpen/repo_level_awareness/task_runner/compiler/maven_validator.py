@@ -4,7 +4,7 @@ import logging
 import re
 import subprocess  # trunk-ignore(bandit/B404)
 from dataclasses import dataclass, field
-from typing import List, Optional, Type
+from typing import Optional, Type
 
 from playpen.repo_level_awareness.api import (
     ValidationError,
@@ -26,7 +26,7 @@ class MavenCompileStep(ValidationStep):
 
 @dataclass(eq=False)
 class MavenCompilerError(ValidationError):
-    details: List[str] = field(default_factory=list)
+    details: list[str] = field(default_factory=list)
     parse_lines: Optional[str] = None
     priority = 1
 
@@ -136,15 +136,15 @@ def classify_error(message: str) -> Type[MavenCompilerError]:
         return OtherError
 
 
-def parse_maven_output(output: str) -> List[MavenCompilerError]:
+def parse_maven_output(output: str) -> list[MavenCompilerError]:
     """
     Parses the Maven output and returns a list of MavenCompilerError instances.
     """
-    errors: List[MavenCompilerError] = []
+    errors: list[MavenCompilerError] = []
     lines = output.splitlines()
     in_compilation_error_section = False
     error_pattern = re.compile(r"\[ERROR\] (.+?):\[(\d+),(\d+)\] (.+)")
-    current_error: Optional[MavenCompilerError] = None
+    current_error: MavenCompilerError
 
     acc = []
     for i, line in enumerate(lines):
@@ -168,6 +168,7 @@ def parse_maven_output(output: str) -> List[MavenCompilerError]:
                 acc.append(line)
                 error_class = classify_error(match.group(4))
                 current_error = error_class.from_match(match, [])
+
                 # Look ahead for details
                 details = []
                 j = i + 1
@@ -176,6 +177,7 @@ def parse_maven_output(output: str) -> List[MavenCompilerError]:
                     detail_line = lines[j].replace("[ERROR] ", "", -1).strip()
                     details.append(detail_line)
                     j += 1
+
                 current_error.details.extend(details)
                 # Extract additional information based on error type
                 if isinstance(current_error, SymbolNotFoundError):
@@ -208,6 +210,7 @@ def parse_maven_output(output: str) -> List[MavenCompilerError]:
                     current_error.inaccessible_class = current_error.message.split(
                         "cannot access"
                     )[-1].strip()
+
                 current_error.parse_lines = "\n".join(acc)
                 errors.append(current_error)
                 acc = []

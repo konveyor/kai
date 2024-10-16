@@ -1,7 +1,6 @@
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
 
 from jinja2 import Template
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -28,10 +27,10 @@ logger = logging.getLogger(__name__)
 class MavenCompilerLLMResponse(SpawningResult):
     reasoning: str
     java_file: str
-    addional_information: str
+    additional_information: str
     file_path: str = ""
     input_file: str = ""
-    input_errors: List[str] = field(default_factory=list)
+    input_errors: list[str] = field(default_factory=list)
 
     def to_reflection_task(self) -> ReflectionTask:
         return ReflectionTask(
@@ -44,7 +43,7 @@ class MavenCompilerLLMResponse(SpawningResult):
 
 
 class MavenCompilerTaskRunner(TaskRunner):
-    """This agent is reponsible for taking a set of maven compiler issues and solving.
+    """This agent is responsible for taking a set of maven compiler issues and solving.
 
     For a given file it will asking LLM's for the changes that are needed for the at whole file
     returning the results.
@@ -66,7 +65,7 @@ class MavenCompilerTaskRunner(TaskRunner):
 
     You must reason through the required changes and rewrite the Java file to make it compile. 
 
-    You will then provide an step-by-step explaination of the changes required tso that someone could recreate it in a similar situation. 
+    You will then provide an step-by-step explanation of the changes required tso that someone could recreate it in a similar situation.
     """
     )
 
@@ -80,7 +79,7 @@ class MavenCompilerTaskRunner(TaskRunner):
     {{src_file_contents}}
 
 
-    # Ouput Instructions 
+    # Output Instructions
     Structure your output in Markdown format such as:
 
     ## Updated Java File
@@ -89,8 +88,8 @@ class MavenCompilerTaskRunner(TaskRunner):
     ## Reasoning 
     Write the step by step reasoning in this markdown section. If you are unsure of a step or reasoning, clearly state you are unsure and why. 
 
-    ## Additional Infomation (optional)
-    If you have additional details or steps that need to be perfomed, put it here. Say I have completed the changes when you are done explaining the reasoning[/INST]
+    ## Additional Information (optional)
+    If you have additional details or steps that need to be performed, put it here. Say I have completed the changes when you are done explaining the reasoning[/INST]
     """
     )
 
@@ -127,11 +126,11 @@ class MavenCompilerTaskRunner(TaskRunner):
             src_file_contents=src_file_contents, compile_errors=compile_errors
         )
 
-        aimessage = self.__llm.invoke(
+        ai_message = self.__llm.invoke(
             [self.system_message, HumanMessage(content=content)]
         )
 
-        resp = self.parse_llm_response(aimessage)
+        resp = self.parse_llm_response(ai_message)
         resp.file_path = task.file
         resp.input_file = src_file_contents
         resp.input_errors = [task.message]
@@ -140,7 +139,7 @@ class MavenCompilerTaskRunner(TaskRunner):
         with open(task.file, "w") as f:
             f.write(resp.java_file)
 
-        rcm.commit("compiler", resp)
+        rcm.commit(f"MavenCompilerTaskRunner changed file {str(task.file)}", resp)
 
         return TaskResult(modified_files=[Path(task.file)], encountered_errors=[])
 
@@ -163,7 +162,7 @@ class MavenCompilerTaskRunner(TaskRunner):
                 in_java_file = False
                 in_reasoning = True
                 continue
-            if line.strip() == "## Additional Infomation (optional)":
+            if line.strip() == "## Additional Information (optional)":
                 in_reasoning = False
                 in_additional_details = True
                 continue
@@ -178,5 +177,5 @@ class MavenCompilerTaskRunner(TaskRunner):
         return MavenCompilerLLMResponse(
             reasoning=reasoning,
             java_file=java_file,
-            addional_information=additional_details,
+            additional_information=additional_details,
         )
