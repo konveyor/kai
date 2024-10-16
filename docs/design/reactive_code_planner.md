@@ -72,7 +72,15 @@ Based on the result, the task manager continues processing or raises new tasks f
 
 ## API Overview for External Tools
 
-The **Code Planning Loop API** provides a simple yet powerful interface for interacting with the system. External tools such as IDEs can use this API to seed tasks, retrieve tasks by priority, and monitor task progress. Here are the key components:
+### Integration Flow for IDEs
+
+The Code Planning Loop API provides a simple yet powerful interface for interacting with the system. External tools such as IDEs can use this API to seed tasks, retrieve tasks by priority, and monitor task progress. Here are the key components:
+
+A typical flow for IDE integration would be as follows:
+
+1. **Task Seeding**: The IDE requests a task to be processed, which is added as a high-priority task.
+2. **Task Processing**: The task is processed, and any new issues detected are added as children until all related tasks are fully resolved.&#x20;
+3. **Full Diff Evaluation**: Once all tasks are resolved, the set of changes is sent back to the IDE for evaluation, providing a complete understanding of the modifications made.
 
 ### 1. **Task Seeding**
 
@@ -94,7 +102,7 @@ The **RepositoryContextManager** ensures all changes are tracked in a git-based 
 
 Planned enhancements to the Code Planning Loop include:
 
-- **JSON-RPC Based Driver**: A JSON-RPC based driver for all functionality, providing an API that allows the IDE to drive all behavior.&#x20;
+- **JSON-RPC Based Driver**: A JSON-RPC based driver for all functionality, providing an API that allows the IDE to drive all behavior.
 
 - **User-Accessible Rollbacks**: The ability for users to roll back changes via the git-based VFS middleware.
 
