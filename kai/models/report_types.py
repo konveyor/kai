@@ -58,8 +58,11 @@ class ExtendedIncident(Incident):
 
     ruleset_name: str
     ruleset_description: Optional[str] = None
+
     violation_name: str
     violation_description: Optional[str] = None
+    violation_category: Category = Category.POTENTIAL
+    violation_labels: list[str] = []
 
 
 class Link(BaseModel):

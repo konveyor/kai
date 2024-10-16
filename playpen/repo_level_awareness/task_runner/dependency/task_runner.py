@@ -101,7 +101,9 @@ class DependencyTaskRunner(TaskRunner):
             ET.indent(tree, "\t", 0)
             pretty_xml = ET.tostring(root, encoding="UTF-8", default_namespace="")
             p.write(pretty_xml.decode("utf-8"))
-            rcm.commit("dependnecy", maven_dep_response)
+            rcm.commit(
+                f"DependencyTaskRunner changed file {str(pom)}", maven_dep_response
+            )
 
         return TaskResult(modified_files=[Path(pom)], encountered_errors=[])
 

@@ -14,8 +14,10 @@ from types import SimpleNamespace
 from typing import IO, cast
 
 from kai.models.kai_config import KaiConfigModels
-from playpen.rpc_server.rpc import BareJsonStream, JsonRpcServer, get_logger
-from playpen.rpc_server.server import KaiRpcApplication
+from playpen.middleman.server import KaiRpcApplication
+from playpen.rpc.core import JsonRpcServer
+from playpen.rpc.streams import BareJsonStream
+from playpen.rpc.util import get_logger
 
 log = get_logger("jsonrpc")
 
