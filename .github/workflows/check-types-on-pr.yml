@@ -1,16 +1,15 @@
-name: Test Code on PR
+name: Check Types on PR
 
 on: [pull_request]
 
 jobs:
   test-code-on-pr:
-    name: Test Code on PR Runner
+    name: Check Types on PR Runner
     runs-on: ${{ matrix.os }}
 
     strategy:
       matrix:
-        # os: [ubuntu-latest, windows-latest, macos-latest]
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         
         python-version: ["3.12"]
         
@@ -21,9 +20,6 @@ jobs:
         # Exclude no combinations for now
         # exclude: []
 
-    env:
-      COVERAGE_REPORT_DIR: coverage-report-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.architecture }}
-    
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -39,16 +35,7 @@ jobs:
           pip install -e .[dev]
       - name: Set up prerequisites
         run: |
-          cd example
-          ./fetch.sh
-          cd ..
           git config --global user.email "tester@example.com"
           git config --global user.name "Tester"
-      - name: Test with unittest and generate coverage report
-        run: ./run_tests.sh
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.COVERAGE_REPORT_DIR }}
-          path: ${{ env.COVERAGE_REPORT_DIR }}
-        if: ${{ always() }}
+      - name: Check types with mypy
+        run: ./run_mypy.sh

@@ -6,7 +6,7 @@ if [ ! -f "reset_coolstore.sh" ]; then
 	exit 1
 fi
 
-pushd coolstore || exit
+cd coolstore || exit
 
 printf "\033[34mHard resetting the coolstore repository to main\033[0m\n"
 printf "\033[34m$ git reset --hard main\033[0m\n"
@@ -20,4 +20,4 @@ printf "\033[34mSetting HEAD to main\033[0m\n"
 printf "\033[34m$ git checkout main\033[0m\n"
 git checkout main
 
-popd || exit
+cd ..
