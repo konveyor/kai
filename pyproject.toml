@@ -47,10 +47,6 @@ dependencies = [
   "boto3==1.34.157",                                                          # Allows Amazon Bedrock to work
   "pylspclient==0.1.2",                                                       # used for talking to RPC clients over stdin/stdout
 
-  # --- Testing dependencies ---
-  "coverage==7.6.0",
-  "ipdb==0.13.13",
-
   # --- For notebook development ---
   "jupyter==1.0.0",
   "jupyterlab-quarto==0.3.5",
@@ -76,7 +72,9 @@ license = { file = "LICENSE" }
 
 [project.optional-dependencies]
 dev = [
+  # --- Testing dependencies ---
   "coverage==7.6.0",
+  "ipdb==0.13.13",
   "mypy[mypyc]",
   "types-PyYAML",
   "types-python-dateutil",
@@ -96,6 +94,7 @@ namespaces = true
 [tool.mypy]
 plugins = ["pydantic.mypy"]
 
+<<<<<<< HEAD
 follow_imports = "silent"
 warn_redundant_casts = true
 warn_unused_ignores = true
@@ -111,4 +110,28 @@ exclude = ['test_.*\.py$']
 [tool.pydantic-mypy]
 init_forbid_extra = true
 init_typed = true
+=======
+strict = true
+
+# follow_imports = "silent"
+exclude = ['test_.*\.py$']
+
+[tool.pydantic-mypy]
+# The Pydantic mypy plugin adds an __init__ method with a signature like def
+# __init__(self, field_1: Any, field_2: Any, **kwargs: Any): in order to avoid
+# type errors when initializing models with types that don't match the field
+# annotations. For example Model(date='2024-01-01') would raise a type error
+# without this Any signature, but Pydantic has the ability to parse the string
+# '2024-01-01' into a datetime.date type.
+
+# With init_forbid_extra = True, the **kwargs are removed from the generated
+# __init__ signature. With init_typed = True, the Any types for fields are
+# replaced with their actual type hints.
+init_forbid_extra = true
+init_typed = true
+
+# If the warn_required_dynamic_aliases plugin setting is set to True, you'll get
+# a mypy error any time you use a dynamically-determined alias or alias
+# generator on a model with Config.populate_by_name=False
+>>>>>>> 3031866 (:ghost: Move out of playpen and add mypy type checking Github action (#430))
 warn_required_dynamic_aliases = true

@@ -1,0 +1,41 @@
+name: Check Types on PR
+
+on: [pull_request]
+
+jobs:
+  test-code-on-pr:
+    name: Check Types on PR Runner
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        
+        python-version: ["3.12"]
+        
+        # Github actions only supports x64 architecture for now, arm64 is in a
+        # private beta.
+        architecture: ["x64"]
+        
+        # Exclude no combinations for now
+        # exclude: []
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: ${{ matrix.architecture }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel pip-tools
+          pip install -e .[dev]
+      - name: Set up prerequisites
+        run: |
+          git config --global user.email "tester@example.com"
+          git config --global user.name "Tester"
+      - name: Check types with mypy
+        run: ./run_mypy.sh
