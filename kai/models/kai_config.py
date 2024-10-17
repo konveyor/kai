@@ -222,6 +222,9 @@ class KaiConfig(BaseSettings):
     demo_mode: bool = False
     trace_enabled: bool = False
 
+    # Tiktoken configurations
+    token_estimation_encoding_base: str = "gpt-4o"
+
     # Gunicorn settings
     gunicorn_workers: int = 8
     gunicorn_timeout: int = 3600
