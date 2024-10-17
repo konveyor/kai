@@ -98,6 +98,12 @@ class ValidationResult:
     errors: list[ValidationError]
 
 
+class ValidationException(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
 class ValidationStep(ABC):
     def __init__(self, RpcClientConfig: RpcClientConfig) -> None:
         self.config = RpcClientConfig

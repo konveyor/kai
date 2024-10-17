@@ -128,7 +128,7 @@ CONFIG = KaiRpcApplicationConfig(
     analyzer_lsp_lsp_path=Path(
         "/home/jonah/.vscode/extensions/redhat.java-1.35.1-linux-x64/server/bin/jdtls"
     ),
-    analyzer_lsp_rpc_path=KAI_DIR / "analyzer-lsp",
+    analyzer_lsp_rpc_path=KAI_DIR / "kai-analyzer" / "kai-analyzer",
     analyzer_lsp_rules_path=Path(
         "/home/jonah/Projects/github.com/konveyor/rulesets/default/generated"
     ),
@@ -136,9 +136,9 @@ CONFIG = KaiRpcApplicationConfig(
         "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/notebooks/kai-analyzer-code-plan/java-bundle/java-analyzer-bundle.core-1.0.0-SNAPSHOT.jar"
     ),
     model_provider=KaiConfigModels(
-        provider="ChatIBMGenAI",
+        provider="ChatOpenAI",
         args={
-            "model_id": "meta-llama/llama-3-70b-instruct",
+            "model": "gpt-4",
         },
     ),
     kai_backend_url="http://localhost:8080",
