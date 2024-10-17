@@ -194,17 +194,28 @@ class BareJsonStream(JsonRpcStream):
         try:
             msg, idx = self.decoder.raw_decode(self.buffer)
             self.buffer = self.buffer[idx:]
+            self.buffer = self.buffer.lstrip()
 
             log.log(TRACE, "recv msg: %s", msg)
-            log.log(TRACE, "recv buffer: %s", self.buffer)
 
             if "method" in msg:
+                log.log(
+                    TRACE, "BareJsonStream.get_from_buffer returning JsonRpcRequest"
+                )
                 return JsonRpcRequest.model_validate(msg)
             else:
+                log.log(
+                    TRACE, "BareJsonStream.get_from_buffer returning JsonRpcRequest"
+                )
                 return JsonRpcResponse.model_validate(msg)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            log.log(
+                TRACE,
+                f"BareJsonStream.get_from_buffer returning None due to JSONDecodeError: {e}",
+            )
             return None
         except Exception as e:
+            log.log(TRACE, f"BareJsonStream.get_from_buffer returning Error: {e}")
             return JsonRpcError(
                 code=JsonRpcErrorCode.ParseError,
                 message=f"Invalid JSON: {e}",
@@ -218,10 +229,12 @@ class BareJsonStream(JsonRpcStream):
 
             while chunk := self.recv_file.read1(self.chunk_size):
                 self.buffer += chunk.decode("utf-8")
-                log.log(TRACE, "recv buffer: %s", self.buffer)
+                log.log(TRACE, "recv chunk: %s", chunk)
 
                 result = self.get_from_buffer()
                 if result is not None:
+                    log.log(TRACE, "recv result: %s", result)
+                    log.log(TRACE, "recv buffer: %s", self.buffer)
                     return result
 
         return None

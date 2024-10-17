@@ -65,6 +65,7 @@ class JsonRpcApplication:
 
             if request.method not in self.notify_callbacks:
                 log.error(f"Notify method not found: {request.method}")
+                log.error(f"Notify methods: {self.notify_callbacks.keys()}")
                 return
 
             log.log(TRACE, "Calling method: %s", request.method)
@@ -224,6 +225,7 @@ class JsonRpcServer(threading.Thread):
         log.debug("Server thread started")
 
         while not self.shutdown_flag:
+            log.debug("Waiting for message")
             msg = self.jsonrpc_stream.recv()
             if msg is None:
                 log.info("Server quit")
