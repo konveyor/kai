@@ -398,10 +398,10 @@ def get_codeplan_agent_solution(
         ],
     )
 
-    flag = False
+    num_loops = 0
     result: TaskResult
     for task in task_manager.get_next_task(0):
-        if flag:
+        if num_loops == 2:
             break
 
         app.log.debug(f"Executing task {task.__class__.__name__}: {task}")
@@ -420,7 +420,7 @@ def get_codeplan_agent_solution(
             GitVFSUpdateParams.from_snapshot(rcm.first_snapshot).model_dump(),
         )
 
-        flag = True
+        num_loops += 1
 
     # FIXME: This is a hack to stop the task_manager as it's hanging trying to stop everything
     threading.Thread(target=task_manager.stop).start()

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Ensure that the script is being executed in the kai/example directory
-if [ ! -f "reset_coolstore.sh" ]; then
+if [ ! -f "dangerously_reset_coolstore.sh" ]; then
 	echo "Please execute this script from the kai/example directory"
 	exit 1
 fi
