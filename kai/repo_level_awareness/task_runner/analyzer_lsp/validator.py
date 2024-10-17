@@ -14,6 +14,7 @@ from kai.models.report import Report
 from kai.repo_level_awareness.api import (
     RpcClientConfig,
     ValidationError,
+    ValidationException,
     ValidationResult,
     ValidationStep,
 )
@@ -66,17 +67,19 @@ class AnalyzerLSPStep(ValidationStep):
                 cast(BufferedReader, rpc_server.stdout),
                 cast(BufferedWriter, rpc_server.stdin),
             ),
-            request_timeout=60,
+            request_timeout=4 * 60,
         )
         self.rpc.start()
 
         super().__init__(config)
 
     def run(self) -> ValidationResult:
+        logger.debug("Running analyzer-lsp")
+
         analyzer_output = self.__run_analyzer_lsp()
 
         # TODO: Possibly add messages to the results
-        ERR = ValidationResult(
+        ValidationResult(
             passed=False,
             errors=[
                 ValidationError(
@@ -85,13 +88,20 @@ class AnalyzerLSPStep(ValidationStep):
             ],
         )
         if analyzer_output is None:
-            return ERR
+            raise ValidationException(message="Analyzer LSP failed to return a result")
         elif isinstance(analyzer_output, JsonRpcError):
-            return ERR
+            raise ValidationException(
+                message=f"Analyzer output is a JsonRpcError. Error: {analyzer_output}"
+            )
         elif analyzer_output.result is None:
-            return ERR
+            raise ValidationException(message="Analyzer lsp's output is None")
         elif isinstance(analyzer_output.result, BaseModel):
+            logger.debug("analyzer_output.result is a BaseModel, dumping it")
             analyzer_output.result = analyzer_output.result.model_dump()
+            logger.debug(analyzer_output.result)
+        else:
+            logger.debug("analyzer_output.result is not a BaseModel")
+            logger.debug(analyzer_output.result)
 
         errors = self.__parse_analyzer_lsp_output(analyzer_output.result)
         return ValidationResult(
@@ -114,14 +124,19 @@ class AnalyzerLSPStep(ValidationStep):
         if self.config.incident_selector is not None:
             request_params["incident_selector"] = self.config.incident_selector
 
+        logger.debug("Sending request to analyzer-lsp")
+        logger.debug("Request params: %s", request_params)
+
         return self.rpc.send_request(
             "analysis_engine.Analyze",
-            params=request_params,
+            params=[request_params],
         )
 
     def __parse_analyzer_lsp_output(
         self, analyzer_output: dict[str, Any]
     ) -> list[AnalyzerRuleViolation]:
+        logger.debug("Parsing analyzer-lsp output")
+
         rulesets = analyzer_output.get("Rulesets")
 
         if not rulesets or not isinstance(rulesets, list):

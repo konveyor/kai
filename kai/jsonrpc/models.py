@@ -39,7 +39,7 @@ class JsonRpcResponse(BaseModel):
 class JsonRpcRequest(BaseModel):
     jsonrpc: str = "2.0"
     method: str
-    params: Optional[dict[str, Any]] = None
+    params: Optional[dict[str, Any] | list[Any]] = None
     id: JsonRpcId = None
 
 
