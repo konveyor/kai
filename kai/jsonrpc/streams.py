@@ -195,8 +195,8 @@ class BareJsonStream(JsonRpcStream):
             msg, idx = self.decoder.raw_decode(self.buffer)
             self.buffer = self.buffer[idx:]
 
-            # log.log(TRACE, "recv msg: %s", msg)
-            # log.log(TRACE, "recv buffer: %s", self.buffer)
+            log.log(TRACE, "recv msg: %s", msg)
+            log.log(TRACE, "recv buffer: %s", self.buffer)
 
             if "method" in msg:
                 return JsonRpcRequest.model_validate(msg)
@@ -218,7 +218,7 @@ class BareJsonStream(JsonRpcStream):
 
             while chunk := self.recv_file.read1(self.chunk_size):
                 self.buffer += chunk.decode("utf-8")
-                # log.log(TRACE, "recv buffer: %s", self.buffer)
+                log.log(TRACE, "recv buffer: %s", self.buffer)
 
                 result = self.get_from_buffer()
                 if result is not None:
