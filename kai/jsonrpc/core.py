@@ -262,7 +262,7 @@ class JsonRpcServer(threading.Thread):
         self.jsonrpc_stream.close()
 
     def send_request(
-        self, method: str, params: BaseModel | dict[str, Any] | None
+        self, method: str, params: BaseModel | dict[str, Any] | list[Any] | None
     ) -> JsonRpcResponse | JsonRpcError | None:
         if isinstance(params, BaseModel):
             params = params.model_dump()

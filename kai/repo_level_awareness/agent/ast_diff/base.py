@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Self
+from typing import Any, Iterator, Self
 
 from typing_extensions import TypeVar
 
@@ -48,8 +48,8 @@ class DiffableDict(dict[KT, KV], DiffableSummary):
             return True
         return False
 
-    # def __iter__(self) -> Iterator[str]:
-    #     return iter([v.to_dict() for _, v in self.items()])
+    def __iter__(self) -> Iterator[str]:
+        return iter([v.to_dict() for _, v in self.items()])
 
     def to_dict(self) -> dict[str, Any]:
         return {str(k): v.to_dict() for k, v in self.items()}
