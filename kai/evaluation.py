@@ -62,11 +62,11 @@ def load_single_benchmark_example(full_example_path: str) -> BenchmarkExample:
         raise ValueError(f"Expected directory, got {full_example_path}")
 
     example_name = os.path.basename(full_example_path)
-    original_file: str = None
-    expected_file: str = None
-    incidents: list[ExtendedIncident] = None
-    report: Report = None
-    application: Application = None
+    original_file: str | None = None
+    expected_file: str | None = None
+    incidents: list[ExtendedIncident] | None = None
+    report: Report | None = None
+    application: Application | None = None
 
     for file_path in os.listdir(full_example_path):
         full_file_path = os.path.join(full_example_path, file_path)
