@@ -28,14 +28,17 @@ class Task:
 
     _creation_counter = 0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.creation_order = Task._creation_counter
         Task._creation_counter += 1
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, Task) and self.__dict__ == other.__dict__
 
-    def __lt__(self, other):
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, Task):
+            raise ValueError(f"Cannot compare Task with {type(other)}")
+
         # Lower priority number means higher priority
         # For same priority, higher depth means process children first (DFS)
         # For same priority and depth, rely on creation order just to make it deterministic
@@ -45,11 +48,11 @@ class Task:
             other.creation_order,
         )
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(tuple(sorted(self.__dict__.items())))
 
-    def __str__(self):
-        def truncate(value, max_length=30):
+    def __str__(self) -> str:
+        def truncate(value: str, max_length: int = 30) -> str:
             return (value[:max_length] + "...") if len(value) > max_length else value
 
         class_name = self.__class__.__name__
@@ -72,7 +75,7 @@ class ValidationError(Task):
     message: str
     priority: int = 5
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, self.__class__)
             and self.file == other.file
@@ -81,7 +84,7 @@ class ValidationError(Task):
             and self.message == other.message
         )
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.file, self.line, self.column, self.message))
 
 
@@ -99,7 +102,7 @@ class ValidationResult:
 
 
 class ValidationException(Exception):
-    def __init__(self, message):
+    def __init__(self, message: str) -> None:
         self.message = message
         super().__init__(self.message)
 

@@ -1,5 +1,7 @@
 # These prefixes are sometimes in front of the paths, strip them.
 # Also strip leading slashes since os.path.join can't join two absolute paths
+from typing import Any
+
 KNOWN_PREFIXES = (
     "/opt/input/source/",
     # trunk-ignore(bandit/B108)
@@ -26,7 +28,7 @@ def remove_known_prefixes(path: str) -> str:
     return path
 
 
-def filter_incident_vars(incident_vars: dict):
+def filter_incident_vars(incident_vars: dict[str, Any]) -> dict[str, Any]:
     for v in FILTERED_INCIDENT_VARS:
         incident_vars.pop(v, None)
     return incident_vars

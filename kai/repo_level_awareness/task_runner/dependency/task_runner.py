@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 class DependencyTaskResponse:
     reasoning: str
     java_file: str
-    addional_information: str
+    additional_information: str
 
 
 class DependencyTaskRunner(TaskRunner):
@@ -53,6 +53,13 @@ class DependencyTaskRunner(TaskRunner):
         return isinstance(task, self.handled_type)
 
     def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
+        if not isinstance(
+            task,
+            (DependencyTaskResponse, SymbolNotFoundError, PackageDoesNotExistError),
+        ):
+            logger.error("Unexpected task type %r", task)
+            return TaskResult(encountered_errors=[], modified_files=[])
+
         msg = task.message
         if isinstance(task, PackageDoesNotExistError):
             msg = f"Maven Compiler Error:\n{task.message}"
@@ -113,4 +120,4 @@ class DependencyTaskRunner(TaskRunner):
         pass
 
     def can_handle_error(self, errors: list[str]) -> bool:
-        pass
+        return False

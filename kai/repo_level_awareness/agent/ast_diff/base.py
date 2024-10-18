@@ -48,7 +48,7 @@ class DiffableDict(dict[KT, KV], DiffableSummary):
             return True
         return False
 
-    def __iter__(self) -> Iterator[str]:
+    def __iter__(self) -> Iterator[dict[str, Any]]:
         return iter([v.to_dict() for _, v in self.items()])
 
     def to_dict(self) -> dict[str, Any]:

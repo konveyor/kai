@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from time import localtime, strftime
-from typing import Any
+from typing import Any, Callable
 
 from langchain.schema.messages import BaseMessage
 from pydantic import BaseModel
@@ -12,8 +12,8 @@ from kai.kai_logging import process_log_dir_replacements
 log = logging.getLogger(__name__)
 
 
-def enabled_check(func):
-    def wrapper(obj, *args, **kwargs):
+def enabled_check(func: Callable[..., Any]) -> Callable[..., Any]:
+    def wrapper(obj: KaiTrace, *args: Any, **kwargs: Any) -> Any:
         if obj.enabled:
             return func(obj, *args, **kwargs)
         else:
@@ -63,13 +63,13 @@ class KaiTrace:
         )
 
     @enabled_check
-    def start(self, start: float):
+    def start(self, start: float) -> None:
         self.time_start = start
         self.trace_dir = os.path.join(self.trace_dir, f"{self.time_start}")
 
     # Capture timing info of the request completing
     @enabled_check
-    def end(self, end: float):
+    def end(self, end: float) -> None:
         self.time_end = end
         end_file_path = os.path.join(self.trace_dir, "timing")
         os.makedirs(os.path.dirname(end_file_path), exist_ok=True)
@@ -80,7 +80,7 @@ class KaiTrace:
             f.write(entry)
 
     @enabled_check
-    def params(self, params: Any):
+    def params(self, params: Any) -> None:
         params_file_path = os.path.join(self.trace_dir, "params.json")
         os.makedirs(os.path.dirname(params_file_path), exist_ok=True)
         with open(params_file_path, "w") as f:
@@ -103,7 +103,9 @@ class KaiTrace:
     ##############
 
     @enabled_check
-    def prompt(self, current_batch_count: int, prompt: str, pb_vars: dict):
+    def prompt(
+        self, current_batch_count: int, prompt: str, pb_vars: dict[str, Any]
+    ) -> None:
         prompt_file_path = os.path.join(
             self.trace_dir, f"{current_batch_count}", "prompt"
         )
@@ -130,7 +132,7 @@ class KaiTrace:
     @enabled_check
     def llm_result(
         self, current_batch_count: int, retry_count: int, result: BaseMessage
-    ):
+    ) -> None:
         result_file_path = os.path.join(
             self.trace_dir, f"{current_batch_count}", f"{retry_count}", "llm_result"
         )
@@ -145,7 +147,7 @@ class KaiTrace:
         retry_count: int,
         exception: Exception,
         traceback: str,
-    ):
+    ) -> None:
         # We may call this trace of exception data prior to entering the batched incident / llm_retry loop
         # therefore we will adjust the dir/file path as needed
         exception_file_path_dir = self.trace_dir

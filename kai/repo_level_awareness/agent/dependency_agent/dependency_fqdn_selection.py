@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 from jinja2 import Template
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -109,7 +109,7 @@ Searched dependencies:
         )
 
     def parse_llm_response(
-        self, content: str | list[str] | dict
+        self, content: str | list[str] | dict[str, Any]
     ) -> Optional[__llm_response]:
         if isinstance(content, dict) or isinstance(content, list):
             return None

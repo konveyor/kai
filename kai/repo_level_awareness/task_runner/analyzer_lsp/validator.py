@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from pydantic import BaseModel
 
 from kai.jsonrpc.core import JsonRpcServer
-from kai.jsonrpc.models import JsonRpcError
+from kai.jsonrpc.models import JsonRpcError, JsonRpcResponse
 from kai.jsonrpc.streams import BareJsonStream
 from kai.models.report import Report
 from kai.repo_level_awareness.api import (
@@ -108,7 +108,7 @@ class AnalyzerLSPStep(ValidationStep):
             passed=not errors, errors=cast(list[ValidationError], errors)
         )
 
-    def __run_analyzer_lsp(self):
+    def __run_analyzer_lsp(self) -> JsonRpcResponse | JsonRpcError | None:
         request_params = {
             "label_selector": "konveyor.io/target=quarkus konveyor.io/target=jakarta-ee",
             "included_paths": [],
@@ -165,6 +165,6 @@ class AnalyzerLSPStep(ValidationStep):
 
         return validation_errors
 
-    def stop(self):
+    def stop(self) -> None:
         self.stderr_logging_thread.join()
         self.rpc.stop()

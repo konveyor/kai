@@ -1,8 +1,8 @@
 import json
 import os
 import re
-from dataclasses import dataclass
-from typing import Any, Dict, Set
+from dataclasses import dataclass, field
+from typing import Any
 
 import tree_sitter as ts
 import tree_sitter_java as tsj
@@ -29,7 +29,7 @@ class ReflectionTask(AgentRequest):
     # reasoning produced by previous agent
     reasoning: str = ""
     # a list of issues originally identified in the file
-    issues: Set[str] = ""
+    issues: set[str] = field(default_factory=set)
     # a keyword describing target technology to act as a hint to agent
     target_technology: str = "Quarkus"
 
@@ -231,8 +231,8 @@ Here's the input information:
         return AgentResult(encountered_errors=[], modified_files=modified_files)
 
     def _get_diff(
-        self, original_content: str, updated_content: str, language=Language
-    ) -> Dict[str, Any]:
+        self, original_content: str, updated_content: str, language: Language
+    ) -> dict[str, Any]:
         parser = ts.Parser(ts.Language(tsj.language()))
         original_file_summary = extract_ast_info(
             parser.parse(original_content.encode("utf-8")), language=language
@@ -252,7 +252,7 @@ Here's the input information:
             diff = updated_file_summary.to_dict()
         return diff
 
-    def _parse_llm_response(self, content=str) -> str:
+    def _parse_llm_response(self, content: str) -> str:
         match_updated_file = re.search(
             r"[##|\*\*] [U|u]pdated [F|f]ile\s+.*?```\w+\n([\s\S]*?)```",
             content,
@@ -262,7 +262,7 @@ Here's the input information:
             return None
         return match_updated_file.group(1).strip()
 
-    def _out(self, to: str, frm: str, msg: str):
+    def _out(self, to: str, frm: str, msg: str) -> None:
         if not self._silent:
             print(f"{'*'*10}({frm} -> {to})\n\n{msg}\n")
 

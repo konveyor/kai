@@ -3,7 +3,7 @@ from __future__ import annotations
 import functools
 import inspect
 import traceback
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Callable, Literal, get_origin
 
 from pydantic import BaseModel, ConfigDict, validate_call
 
@@ -50,7 +50,7 @@ class JsonRpcCallback:
 
         sig = inspect.signature(func)
         self.params_model: type[dict[str, Any]] | type[BaseModel] | None = [
-            (p.annotation) for p in sig.parameters.values()
+            get_origin(p.annotation) for p in sig.parameters.values()
         ][3]
 
     def __call__(

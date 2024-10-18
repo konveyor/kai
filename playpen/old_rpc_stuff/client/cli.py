@@ -32,7 +32,7 @@ import traceback
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 
 from kai.constants import PATH_KAI
-from kai.kai_logging import initLogging
+from kai.kai_logging import init_logging
 from kai.kai_trace import KaiTrace
 from kai.models.file_solution import parse_file_solution_content
 from kai.models.kai_config import KaiConfig
@@ -314,7 +314,7 @@ def process_files_seq(
 def main():
     args = get_cli_args()
     config = get_config(args.config)
-    initLogging(
+    init_logging(
         config.log_level.upper(),
         config.file_log_level.upper(),
         config.log_dir,

@@ -6,8 +6,8 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from kai.kai_logging import (
-    initLogging,
-    initLoggingFromConfig,
+    init_logging,
+    init_logging_from_config,
     process_log_dir_replacements,
     setup_console_handler,
     setup_file_handler,
@@ -71,7 +71,7 @@ class TestLoggingSetup(unittest.TestCase):
         handler_instance.setFormatter.assert_called_once()
 
     def test_init_logging(self):
-        initLogging(
+        init_logging(
             self.console_log_level,
             self.file_log_level,
             self.test_log_dir,
@@ -95,7 +95,7 @@ class TestLoggingSetup(unittest.TestCase):
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         mock_getcwd.return_value = base_dir
         expected_log_dir = os.path.join(base_dir, "logs")
-        initLoggingFromConfig(self.config)
+        init_logging_from_config(self.config)
 
         mock_makedirs.assert_called_once_with(expected_log_dir, exist_ok=True)
 
