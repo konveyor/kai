@@ -23,13 +23,13 @@ from kai.repo_level_awareness.task_runner.analyzer_lsp.api import (
     AnalyzerRuleViolation,
 )
 
-logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def log_stderr(stderr: IO[bytes]) -> None:
     for line in iter(stderr.readline, b""):
-        logger.info(line.decode("utf-8"))
+        logger.info("analyzer_lsp rpc: " + line.decode("utf-8"))
 
 
 class AnalyzerLSPStep(ValidationStep):
