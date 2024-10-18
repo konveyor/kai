@@ -77,7 +77,7 @@ def __get_app_variables(path: str, app_name: str) -> dict[str, Any] | None:
 
     # Load contents of app.yaml
     with open(app_yaml_path, "r") as app_yaml_file:
-        app_data: dict = yaml.safe_load(app_yaml_file)
+        app_data: dict[str, Any] = yaml.safe_load(app_yaml_file)
 
     return app_data
 
@@ -392,7 +392,7 @@ class IncidentStore:
         self,
         ruleset_name: str,
         violation_name: str,
-        incident_variables: dict,
+        incident_variables: dict[str, Any],
         incident_snip: Optional[str] = None,
     ) -> list[Solution]:
         """

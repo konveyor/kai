@@ -83,7 +83,7 @@ def get_maven_query_from_code(code: str) -> str:
     return get_maven_query(**kwargs)
 
 
-def find_in_pom(path: Path) -> Callable:
+def find_in_pom(path: Path) -> Callable[[str], FindInPomResponse]:
     ## Open XML file
     ## parse XML, find the dependency node if we have group and artifact we will return start_line and end_line for the full node
     ## If we don't have group and artifact, but we have dependencies, then we will find the start of the dependecies node. start_line and end_line will be the same. The start of the dependencies.

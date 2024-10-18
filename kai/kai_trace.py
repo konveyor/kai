@@ -103,7 +103,9 @@ class KaiTrace:
     ##############
 
     @enabled_check
-    def prompt(self, current_batch_count: int, prompt: str, pb_vars: dict) -> None:
+    def prompt(
+        self, current_batch_count: int, prompt: str, pb_vars: dict[str, Any]
+    ) -> None:
         prompt_file_path = os.path.join(
             self.trace_dir, f"{current_batch_count}", "prompt"
         )

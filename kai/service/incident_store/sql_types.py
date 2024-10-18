@@ -21,7 +21,7 @@ from kai.models import report_types
 from kai.service.solution_handling.solution_types import Solution
 
 
-class SQLSolutionType(TypeDecorator):
+class SQLSolutionType(TypeDecorator):  # type: ignore[type-arg]
     impl = VARCHAR
     cache_ok = False
 
@@ -157,7 +157,7 @@ class SQLIncident(SQLBase):
         ForeignKey("accepted_solutions.solution_id")
     )
 
-    __table_args__: tuple = (
+    __table_args__: tuple = (  # type: ignore[type-arg]
         ForeignKeyConstraint(
             [violation_name, ruleset_name],
             [SQLViolation.violation_name, SQLViolation.ruleset_name],

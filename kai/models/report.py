@@ -4,8 +4,9 @@ import logging
 import os
 import pathlib
 import shutil
+from collections.abc import KeysView
 from io import StringIO, TextIOWrapper
-from typing import TYPE_CHECKING, Any, Iterator
+from typing import Any, Iterator
 from urllib.parse import urlparse
 
 import yaml
@@ -13,14 +14,13 @@ import yaml
 from kai.models.report_types import ExtendedIncident, Incident, RuleSet
 from kai.models.util import remove_known_prefixes
 
-if TYPE_CHECKING:
-    from _collections_abc import dict_keys
-
 KAI_LOG = logging.getLogger(__name__)
 
 
 class Report:
-    def __init__(self, report_data: dict | list[dict], report_id: str):
+    def __init__(
+        self, report_data: dict[str, Any] | list[dict[str, Any]], report_id: str
+    ) -> None:
         self.workaround_counter_for_missing_ruleset_name = 0
         self.report_id = report_id
         self.rulesets: dict[str, RuleSet] = {}
@@ -40,7 +40,7 @@ class Report:
     def __getitem__(self, key: str) -> RuleSet:
         return self.rulesets[key]
 
-    def keys(self) -> dict_keys[str, RuleSet]:
+    def keys(self) -> KeysView[str]:
         return self.rulesets.keys()
 
     def __iter__(self) -> Iterator[str]:
@@ -58,7 +58,7 @@ class Report:
     @classmethod
     def load_report_from_file(cls, file_name: str | pathlib.Path) -> "Report":
         with open(file_name, "r") as f:
-            report: dict = yaml.safe_load(f)
+            report: dict[str, Any] = yaml.safe_load(f)
         report_data = report
 
         # report_id is the hash of the json.dumps of the report_data

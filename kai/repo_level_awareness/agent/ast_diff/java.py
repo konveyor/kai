@@ -41,7 +41,7 @@ class JAnnotation(DiffableSummary):
 class JVariable(DiffableSummary):
     name: str
     typ: str
-    annotations: DiffableDict
+    annotations: DiffableDict[str, DiffableSummary]
 
     def __hash__(self) -> int:
         return hash(f"{self.name}{self.typ}")
@@ -79,7 +79,7 @@ class JVariable(DiffableSummary):
 @dataclass
 class JMethod(DiffableSummary):
     name: str
-    annotations: DiffableDict
+    annotations: DiffableDict[str, DiffableSummary]
     parameters: str = ""
     return_type: str = ""
     body: str = ""
@@ -145,9 +145,9 @@ class JMethod(DiffableSummary):
 class JClass(DiffableSummary):
     name: str
     super_class: str
-    fields: DiffableDict
-    methods: DiffableDict
-    annotations: DiffableDict
+    fields: DiffableDict[str, DiffableSummary]
+    methods: DiffableDict[str, DiffableSummary]
+    annotations: DiffableDict[str, DiffableSummary]
     interfaces: set[str] = field(default_factory=set)
 
     def __hash__(self) -> int:
@@ -208,7 +208,7 @@ class JClass(DiffableSummary):
 
 @dataclass
 class JFile(DiffableSummary):
-    classes: DiffableDict
+    classes: DiffableDict[str, DiffableSummary]
     imports: set[str] = field(default_factory=set)
 
     def to_dict(self) -> dict[str, Any]:

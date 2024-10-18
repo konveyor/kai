@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import tree_sitter as ts
@@ -29,7 +29,7 @@ class ReflectionTask(AgentRequest):
     # reasoning produced by previous agent
     reasoning: str = ""
     # a list of issues originally identified in the file
-    issues: set[str] = {""}
+    issues: set[str] = field(default_factory=set)
     # a keyword describing target technology to act as a hint to agent
     target_technology: str = "Quarkus"
 

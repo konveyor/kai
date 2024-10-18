@@ -104,8 +104,8 @@ class LLMResult:
         self,
         path_to_output: str,
         model_name: str = "",
-        limit_to_rulesets: list | None = None,
-        limit_to_violations: list | None = None,
+        limit_to_rulesets: list[str] | None = None,
+        limit_to_violations: list[str] | None = None,
     ) -> None:
         if self.report is None:
             raise Exception("No report to process.  Please parse a report first")
