@@ -16,7 +16,6 @@ from kai.repo_level_awareness.task_runner.analyzer_lsp.api import AnalyzerRuleVi
 from kai.repo_level_awareness.task_runner.api import TaskRunner
 from kai.repo_level_awareness.vfs.git_vfs import RepoContextManager
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
