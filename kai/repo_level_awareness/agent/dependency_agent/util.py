@@ -6,7 +6,7 @@ sys.modules["_elementtree"] = None  # type: ignore[assignment]
 import os
 import xml.etree.ElementTree as ET  # trunk-ignore(bandit/B405)
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 import requests
 
@@ -52,7 +52,7 @@ def search_fqdn(code: str) -> Optional[FQDNResponse] | list[FQDNResponse]:
     return search_fqdn_query(query)
 
 
-def get_maven_query(**kwargs) -> str:
+def get_maven_query(**kwargs: Any) -> str:
     query = []
     if "artifact_id" in kwargs:
         query.append("a:" + kwargs["artifact_id"])

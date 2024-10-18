@@ -124,7 +124,7 @@ DEFAULT_EXAMPLES_PATH = os.path.join(PATH_BENCHMARKS, "examples")
 
 
 def load_benchmark_examples(
-    examples_path=DEFAULT_EXAMPLES_PATH,
+    examples_path: str = DEFAULT_EXAMPLES_PATH,
 ) -> dict[str, BenchmarkExample]:
     """
     Return a dict of benchmark examples, where the key is the example name. The
@@ -258,7 +258,9 @@ def evaluate(
     return overall_results
 
 
-def print_nicely_formatted_comparison(results: dict[tuple[str, str], BenchmarkResult]):
+def print_nicely_formatted_comparison(
+    results: dict[tuple[str, str], BenchmarkResult]
+) -> None:
     print(f'{"Example Name"}\t{"Config Name"}\t{"Benchmark Result"}')
 
     for (example_name, config_name), benchmark_result in results.items():
@@ -269,7 +271,7 @@ def judge_result(expected_file: str, actual_file: str) -> float:
     return levenshtein_distance(expected_file, actual_file)
 
 
-def levenshtein_distance(s1, s2) -> float:
+def levenshtein_distance(s1: str, s2: str) -> float:
     if len(s1) > len(s2):
         s1, s2 = s2, s1
 
@@ -288,7 +290,7 @@ def levenshtein_distance(s1, s2) -> float:
     return float(distances[-1])
 
 
-def compare_from_cli():
+def compare_from_cli() -> None:
     parser = argparse.ArgumentParser(description="Compare different Kai configs")
 
     parser.add_argument("--configs", nargs="*", help="List of configs to process")

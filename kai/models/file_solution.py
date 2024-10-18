@@ -1,5 +1,6 @@
 import logging
 import re
+from typing import Any
 
 from pydantic import BaseModel
 from pygments import lexers
@@ -30,7 +31,7 @@ def guess_language(code: str, filename: str = None) -> str:
         return "unknown"
 
 
-def separate_sections(document):
+def separate_sections(document: str) -> dict[str, Any]:
     section_titles = ["## Reasoning", "## Updated File", "## Additional Information"]
     # Find the start index of each section by looking for the section titles, filter out not found (-1) indices
     indices = {

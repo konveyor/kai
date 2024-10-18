@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from aiohttp import web
 from aiohttp.web_request import Request
@@ -9,9 +10,9 @@ KAI_LOG = logging.getLogger(__name__)
 
 
 @to_route("post", "/health_check")
-async def post_health_check(request: Request):
+async def post_health_check(request: Request) -> web.Response:
     KAI_LOG.debug(f"health_check recv'd: {request}")
 
-    request_json: dict = await request.json()
+    request_json: dict[str, Any] = await request.json()
 
     return web.json_response({"status": "OK!", "recv'd": request_json})

@@ -5,12 +5,16 @@ import os
 import pathlib
 import shutil
 from io import StringIO, TextIOWrapper
+from typing import TYPE_CHECKING, Any, Iterator
 from urllib.parse import urlparse
 
 import yaml
 
 from kai.models.report_types import ExtendedIncident, Incident, RuleSet
 from kai.models.util import remove_known_prefixes
+
+if TYPE_CHECKING:
+    from _collections_abc import dict_keys
 
 KAI_LOG = logging.getLogger(__name__)
 
@@ -27,30 +31,32 @@ class Report:
             for ruleset in report_data:
                 self.add_ruleset(ruleset)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.rulesets)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> RuleSet:
         return self.rulesets[key]
 
-    def keys(self):
+    def keys(self) -> dict_keys[str, RuleSet]:
         return self.rulesets.keys()
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return iter(self.rulesets)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.rulesets)
 
     @classmethod
-    def load_report_from_object(cls, report_data: dict | list[dict], report_id: str):
+    def load_report_from_object(
+        cls, report_data: dict[str, Any] | list[dict[str, Any]], report_id: str
+    ) -> "Report":
         return cls(report_data=report_data, report_id=report_id)
 
     @classmethod
-    def load_report_from_file(cls, file_name: str | pathlib.Path):
+    def load_report_from_file(cls, file_name: str | pathlib.Path) -> "Report":
         with open(file_name, "r") as f:
             report: dict = yaml.safe_load(f)
         report_data = report
@@ -63,7 +69,7 @@ class Report:
             ).hexdigest(),
         )
 
-    def add_ruleset(self, ruleset_dict: dict):
+    def add_ruleset(self, ruleset_dict: dict[str, Any]) -> None:
         if "name" not in ruleset_dict:
             ruleset_dict["name"] = (
                 f"Unnamed ruleset {self.workaround_counter_for_missing_ruleset_name}"
@@ -112,7 +118,7 @@ class Report:
 
         return impacted_files
 
-    def write_markdown(self, output_dir: str):
+    def write_markdown(self, output_dir: str) -> None:
         # We will create a single directory per source app where each ruleset
         # with data is in its own file
         try:
@@ -141,7 +147,7 @@ class Report:
     # TODO: Migrate to a jinja template
     def _write_markdown_snippet(
         self, ruleset_name: str, ruleset: RuleSet, f: TextIOWrapper
-    ):
+    ) -> None:
         f.write(f"# {ruleset_name}\n")
         f.write("## Description\n")
         f.write(f"{ruleset.description}\n")
@@ -187,7 +193,7 @@ class Report:
                         f.write(f"{incident.code_snip}\n")
                         f.write("```\n")
 
-    def get_violation_snippet(self, ruleset_name: str, violation_name: str):
+    def get_violation_snippet(self, ruleset_name: str, violation_name: str) -> None:
         ruleset = self.rulesets[ruleset_name]
         # violation = ruleset.violations[violation_name]
 
