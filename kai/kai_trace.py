@@ -128,7 +128,7 @@ class KaiTrace:
             f.write(json.dumps(data, indent=4))
 
     @enabled_check
-    def llm_result(
+    def llm_result_with_codeblocks(
         self, current_batch_count: int, retry_count: int, result: BaseMessage
     ):
         result_file_path = os.path.join(
@@ -136,10 +136,24 @@ class KaiTrace:
         )
         os.makedirs(os.path.dirname(result_file_path), exist_ok=True)
         with open(result_file_path, "w") as f:
-            f.write(result.pretty_repr())
+            f.write(str(result))
 
     @enabled_check
-    def response_metadata(
+    def llm_result_without_codeblocks(
+        self, current_batch_count: int, retry_count: int, result: BaseMessage
+    ):
+        result_file_path = os.path.join(
+            self.trace_dir,
+            f"{current_batch_count}",
+            f"{retry_count}",
+            "llm_result_without_codeblocks",
+        )
+        os.makedirs(os.path.dirname(result_file_path), exist_ok=True)
+        with open(result_file_path, "w") as f:
+            f.write(str(result))
+
+    @enabled_check
+    def response_metadata_for_response_with_codeblocks(
         self, current_batch_count: int, retry_count: int, response_metadata: dict
     ):
         response_metadata_file_path = os.path.join(
@@ -147,6 +161,20 @@ class KaiTrace:
             f"{current_batch_count}",
             f"{retry_count}",
             "response_metadata.json",
+        )
+        os.makedirs(os.path.dirname(response_metadata_file_path), exist_ok=True)
+        with open(response_metadata_file_path, "w") as f:
+            f.write(json.dumps(response_metadata, indent=4, default=str))
+
+    @enabled_check
+    def response_metadata_for_response_without_codeblocks(
+        self, current_batch_count: int, retry_count: int, response_metadata: dict
+    ):
+        response_metadata_file_path = os.path.join(
+            self.trace_dir,
+            f"{current_batch_count}",
+            f"{retry_count}",
+            "response_metadata_without_codeblocks.json",
         )
         os.makedirs(os.path.dirname(response_metadata_file_path), exist_ok=True)
         with open(response_metadata_file_path, "w") as f:
