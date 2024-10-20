@@ -129,24 +129,35 @@ class KaiTrace:
 
     @enabled_check
     def llm_result(
-        self, current_batch_count: int, retry_count: int, result: BaseMessage
+        self,
+        current_batch_count: int,
+        retry_count: int,
+        result: BaseMessage,
+        output_filename: str,
     ):
         result_file_path = os.path.join(
-            self.trace_dir, f"{current_batch_count}", f"{retry_count}", "llm_result"
+            self.trace_dir,
+            f"{current_batch_count}",
+            f"{retry_count}",
+            f"{output_filename}",
         )
         os.makedirs(os.path.dirname(result_file_path), exist_ok=True)
         with open(result_file_path, "w") as f:
-            f.write(result.pretty_repr())
+            f.write(str(result))
 
     @enabled_check
     def response_metadata(
-        self, current_batch_count: int, retry_count: int, response_metadata: dict
+        self,
+        current_batch_count: int,
+        retry_count: int,
+        response_metadata: dict,
+        output_filename: str,
     ):
         response_metadata_file_path = os.path.join(
             self.trace_dir,
             f"{current_batch_count}",
             f"{retry_count}",
-            "response_metadata.json",
+            f"{output_filename}",
         )
         os.makedirs(os.path.dirname(response_metadata_file_path), exist_ok=True)
         with open(response_metadata_file_path, "w") as f:

@@ -105,6 +105,176 @@ class TestKaiApplication(unittest.TestCase):
     @patch("kai.service.kai_application.kai_application.get_prompt")
     @patch("kai.service.kai_application.kai_application.playback_if_demo_mode")
     @patch("kai.service.kai_application.kai_application.parse_file_solution_content")
+    def test_ensuring_complete_codeblocks_with_two_llm_calls(
+        self,
+        mock_parse_file_solution_content,
+        mock_playback_if_demo_mode,
+        mock_get_prompt,
+        mock_batch_incidents,
+        mock_guess_language,
+        mock_updated_file_content,
+    ):
+
+        self.app.model_provider.llm = self.mock_model_provider
+
+        mock_response_with_codeblocks = MagicMock()
+        mock_response_with_codeblocks.return_value = "```print('Hello, world!')```"
+
+        mock_response_without_codeblocks = MagicMock()
+        mock_response_without_codeblocks.return_value = "print('Hello, world!')"
+
+        mock_response_metadata_with_codeblocks = MagicMock()
+        mock_response_metadata_with_codeblocks.return_value = 10
+
+        mock_response_metadata_without_codeblocks = MagicMock()
+        mock_response_metadata_without_codeblocks.return_value = 10
+
+        mock_parse_file_solution_content.side_effect = [
+            MagicMock(updated_file=""),
+            MagicMock(updated_file="print('Hello, world!')"),
+        ]
+
+        mock_guess_language.return_value = "python"
+        mock_batch_incidents.return_value = [(None, [MagicMock()])]
+        mock_get_prompt.return_value = "mock_prompt"
+
+        file_name = "test.py"
+        file_contents = 'print("Hello, world!")'
+        application_name = "test_app"
+        incidents = [
+            ExtendedIncident(
+                uri="uri",
+                message="message",
+                ruleset_name="ruleset_name",
+                violation_name="violation_name",
+            )
+        ]
+        result = self.app.get_incident_solutions_for_file(
+            file_name, file_contents, application_name, incidents
+        )
+
+        self.assertEqual(mock_parse_file_solution_content.call_count, 2)
+        self.assertIn("print('Hello, world!')", result.updated_file)
+        self.assertEqual(self.app.model_provider.llm.invoke.call_count, 2)
+
+    @patch(
+        "kai.service.kai_application.kai_application.UpdatedFileContent",
+        wraps=UpdatedFileContent.model_construct,
+    )
+    @patch("kai.service.kai_application.kai_application.guess_language")
+    @patch("kai.service.kai_application.kai_application.batch_incidents")
+    @patch("kai.service.kai_application.kai_application.get_prompt")
+    @patch("kai.service.kai_application.kai_application.playback_if_demo_mode")
+    @patch("kai.service.kai_application.kai_application.parse_file_solution_content")
+    def test_ensuring_complete_codeblocks_with_one_llm_call(
+        self,
+        mock_parse_file_solution_content,
+        mock_playback_if_demo_mode,
+        mock_get_prompt,
+        mock_batch_incidents,
+        mock_guess_language,
+        mock_updated_file_content,
+    ):
+
+        self.app.model_provider.llm = self.mock_model_provider
+
+        mock_response_with_codeblocks = MagicMock()
+        mock_response_with_codeblocks.return_value = "```print('Hello, world!')```"
+
+        mock_response_metadata_with_codeblocks = MagicMock()
+        mock_response_metadata_with_codeblocks.return_value = 10
+
+        mock_parse_file_solution_content.side_effect = [
+            MagicMock(updated_file="print('Hello, world!')")
+        ]
+
+        mock_guess_language.return_value = "python"
+        mock_batch_incidents.return_value = [(None, [MagicMock()])]
+        mock_get_prompt.return_value = "mock_prompt"
+
+        file_name = "test.py"
+        file_contents = 'print("Hello, world!")'
+        application_name = "test_app"
+        incidents = [
+            ExtendedIncident(
+                uri="uri",
+                message="message",
+                ruleset_name="ruleset_name",
+                violation_name="violation_name",
+            )
+        ]
+        result = self.app.get_incident_solutions_for_file(
+            file_name, file_contents, application_name, incidents
+        )
+
+        self.assertEqual(mock_parse_file_solution_content.call_count, 1)
+        self.assertIn("print('Hello, world!')", result.updated_file)
+        self.assertEqual(self.app.model_provider.llm.invoke.call_count, 1)
+
+    @patch(
+        "kai.service.kai_application.kai_application.UpdatedFileContent",
+        wraps=UpdatedFileContent.model_construct,
+    )
+    @patch("kai.service.kai_application.kai_application.guess_language")
+    @patch("kai.service.kai_application.kai_application.batch_incidents")
+    @patch("kai.service.kai_application.kai_application.get_prompt")
+    @patch("kai.service.kai_application.kai_application.playback_if_demo_mode")
+    @patch("kai.service.kai_application.kai_application.parse_file_solution_content")
+    def test_no_codeblocks_with_two_llm_calls(
+        self,
+        mock_parse_file_solution_content,
+        mock_playback_if_demo_mode,
+        mock_get_prompt,
+        mock_batch_incidents,
+        mock_guess_language,
+        mock_updated_file_content,
+    ):
+
+        self.app.model_provider.llm = self.mock_model_provider
+
+        mock_first_response_without_codeblocks = MagicMock()
+        mock_first_response_without_codeblocks.return_value = "print('Hello, world!')"
+
+        mock_second_response_without_codeblocks = MagicMock()
+        mock_second_response_without_codeblocks.return_value = "print('Hello, world!')"
+
+        mock_parse_file_solution_content.side_effect = [
+            MagicMock(updated_file=""),
+            MagicMock(updated_file=""),
+        ]
+
+        mock_guess_language.return_value = "python"
+        mock_batch_incidents.return_value = [(None, [MagicMock()])]
+        mock_get_prompt.return_value = "mock_prompt"
+
+        file_name = "test.py"
+        file_contents = 'print("Hello, world!")'
+        application_name = "test_app"
+        incidents = [
+            ExtendedIncident(
+                uri="uri",
+                message="message",
+                ruleset_name="ruleset_name",
+                violation_name="violation_name",
+            )
+        ]
+
+        with self.assertRaises(web.HTTPInternalServerError):
+            self.app.get_incident_solutions_for_file(
+                file_name, file_contents, application_name, incidents
+            )
+        self.assertEqual(mock_parse_file_solution_content.call_count, 2)
+        self.assertEqual(self.app.model_provider.llm.invoke.call_count, 2)
+
+    @patch(
+        "kai.service.kai_application.kai_application.UpdatedFileContent",
+        wraps=UpdatedFileContent.model_construct,
+    )
+    @patch("kai.service.kai_application.kai_application.guess_language")
+    @patch("kai.service.kai_application.kai_application.batch_incidents")
+    @patch("kai.service.kai_application.kai_application.get_prompt")
+    @patch("kai.service.kai_application.kai_application.playback_if_demo_mode")
+    @patch("kai.service.kai_application.kai_application.parse_file_solution_content")
     def test_get_incident_solutions_for_file_with_llm_failure(
         self,
         mock_parse_file_solution_content,
