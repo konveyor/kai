@@ -211,11 +211,18 @@ class TaskManager:
         return validation_tasks
 
     def get_next_task(
-        self, max_priority: Optional[int] = None
+        self,
+        max_priority: Optional[int] = None,
+        max_iterations: Optional[int] = None,
     ) -> Generator[Task, Any, None]:
         self.initialize_task_stacks()
+        iterations = 0
 
         while any(self.task_stacks.values()):
+            if max_iterations is not None and iterations >= max_iterations:
+                # kill the loop, no more iterations allowed
+                return
+            iterations += 1
             task = self.pop_task_from_highest_priority()
             if max_priority is not None and task.priority > max_priority:
                 # Put the task back and stop iteration
