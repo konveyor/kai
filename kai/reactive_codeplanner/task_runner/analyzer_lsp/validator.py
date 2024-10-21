@@ -35,7 +35,6 @@ def log_stderr(stderr: IO[bytes]) -> None:
 class AnalyzerLSPStep(ValidationStep):
     def __init__(self, config: RpcClientConfig) -> None:
         """This will start and analyzer-lsp jsonrpc server"""
-
         # trunk-ignore-begin(bandit/B603)
         rpc_server = subprocess.Popen(
             [
@@ -50,6 +49,8 @@ class AnalyzerLSPStep(ValidationStep):
                 config.analyzer_java_bundle_path,
                 "-log-file",
                 "./kai-analyzer.log",
+                "-depOpenSourceLabelsFile",
+                config.dep_open_source_labels_file,
             ],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
