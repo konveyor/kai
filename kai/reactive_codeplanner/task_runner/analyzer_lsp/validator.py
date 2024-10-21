@@ -1,4 +1,3 @@
-import logging
 import subprocess  # trunk-ignore(bandit/B404)
 import threading
 from io import BufferedReader, BufferedWriter
@@ -11,7 +10,13 @@ from kai.analyzer_types import Report
 from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcResponse
 from kai.jsonrpc.streams import BareJsonStream
+<<<<<<< HEAD:kai/reactive_codeplanner/task_runner/analyzer_lsp/validator.py
 from kai.reactive_codeplanner.task_manager.api import (
+=======
+from kai.logging.kai_logging import get_logger
+from kai.models.report import Report
+from kai.repo_level_awareness.api import (
+>>>>>>> d3841d2 (Forcing kai to use the logger):kai/repo_level_awareness/task_runner/analyzer_lsp/validator.py
     RpcClientConfig,
     ValidationError,
     ValidationException,
@@ -23,8 +28,7 @@ from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import (
     AnalyzerRuleViolation,
 )
 
-# logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def log_stderr(stderr: IO[bytes]) -> None:

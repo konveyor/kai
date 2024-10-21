@@ -1,24 +1,24 @@
 from __future__ import annotations
 
-import logging
+import logging as core_logging
 import sys
 from typing import TYPE_CHECKING
 
-from kai.jsonrpc.util import get_logger
+import kai.logging.kai_logging as logging
 
 if TYPE_CHECKING:
     from kai.jsonrpc.core import JsonRpcServer
 
-log = get_logger("jsonrpc")
+log = logging.get_logger("jsonrpc")
 
 
-class JsonRpcLoggingHandler(logging.Handler):
+class JsonRpcLoggingHandler(core_logging.Handler):
     def __init__(self, server: JsonRpcServer, method: str = "logMessage"):
-        logging.Handler.__init__(self)
+        core_logging.Handler.__init__(self)
         self.server = server
         self.method = method
 
-    def emit(self, record: logging.LogRecord) -> None:
+    def emit(self, record: core_logging.LogRecord) -> None:
         try:
             params = {
                 "name": record.name,

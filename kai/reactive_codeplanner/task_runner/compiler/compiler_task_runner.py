@@ -1,4 +1,3 @@
-import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -9,6 +8,7 @@ from kai.llm_interfacing.model_provider import ModelProvider
 from kai.reactive_codeplanner.agent.reflection_agent import ReflectionTask
 from kai.reactive_codeplanner.task_manager.api import Task, TaskResult
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
+from kai.logging.kai_logging import get_logger
 from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
     AccessControlError,
     AnnotationError,
@@ -19,8 +19,7 @@ from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
 )
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager, SpawningResult
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass

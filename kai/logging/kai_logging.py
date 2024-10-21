@@ -1,9 +1,55 @@
 import logging
 import os
+from typing import Self, override
 
 from kai.kai_config import KaiConfig
 
-parent_log = logging.getLogger("kai")
+TRACE = logging.DEBUG - 5
+
+
+class KaiLogger(logging.Logger):
+    configLogLevel: int
+
+    def __init__(self, name: str, configLogLevel: int) -> None:
+        super().__init__(name, configLogLevel)
+        self.configLogLevel = configLogLevel
+
+    @override
+    def getChild(self, suffix: str) -> Self:
+        log = super().getChild(suffix)
+        log.configLogLevel = self.configLogLevel
+        log.setLevel(self.configLogLevel)
+        return log
+
+    def setLevel(self, level: str | int) -> None:
+        if isinstance(level, int):
+            if level == self.configLogLevel:
+                return super().setLevel(level)
+            else:
+                self.debug("tried to set level not matching config")
+                return
+        if isinstance(level, str):
+            name_mapping = logging.getLevelNamesMapping()
+            name_mapping["TRACE"] = TRACE
+            if level in name_mapping and name_mapping[level] == self.configLogLevel:
+                return super().setLevel(level=self.configLogLevel)
+            else:
+                self.debug("tried to set level not matching config")
+                return
+
+
+log: KaiLogger | None = None
+
+
+def get_logger(childName: str) -> KaiLogger:
+    global log
+    if not log:
+        # Default to debug, can be overriden at start or program by setting kai_logger
+        log = KaiLogger("kai", logging.DEBUG)
+        log.configLogLevel = logging.DEBUG
+
+    return log.getChild(childName)
+
 
 # console_handler = logging.StreamHandler()
 formatter = logging.Formatter(
@@ -24,18 +70,15 @@ def process_log_dir_replacements(log_dir: str) -> str:
     return log_dir
 
 
-def setup_console_handler(
-    logger: logging.Logger, log_level: str | int = "INFO"
-) -> None:
+def setup_console_handler(logger: KaiLogger, log_level: str | int = "INFO") -> None:
     console_handler = logging.StreamHandler()
     console_handler.setLevel(log_level)
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
-    print(f"Console logging for '{parent_log.name}' is set to level '{log_level}'")
 
 
 def setup_file_handler(
-    logger: logging.Logger,
+    logger: KaiLogger,
     log_file_name: str,
     log_dir: str,
     log_level: str | int = "DEBUG",
@@ -64,14 +107,31 @@ def init_logging(
     log_dir: str,
     log_file: str = "kai_server.log",
 ) -> None:
-    setup_console_handler(parent_log, console_log_level)
-    setup_file_handler(parent_log, log_file, log_dir, file_log_level)
-    # Attempt to set the parent log level to
-    # most permissive and allow child loggers to control what is filtered or not
-    parent_log.setLevel("DEBUG")
+    global log
+    log = KaiLogger("kai", logging.DEBUG)
+    log.configLogLevel = logging.DEBUG
+
+    setup_console_handler(log, console_log_level)
+    setup_file_handler(log, log_file, log_dir, file_log_level)
 
 
-def init_logging_from_config(config: KaiConfig) -> None:
-    init_logging(
-        config.log_level.upper(), config.file_log_level.upper(), config.log_dir
-    )
+def initLoggingFromConfig(config: KaiConfig) -> None:
+    log_level: str | int = 0
+    if isinstance(config.log_level, str):
+        log_level = config.log_level.upper()
+    elif isinstance(config.log_level, int):
+        log_level = config.log_level
+    else:
+        # TODO: raise exception
+        log_level = logging.DEBUG
+
+    file_log_level: str | int = 0
+    if isinstance(config.file_log_level, str):
+        file_log_level = config.file_log_level.upper()
+    elif isinstance(config.file_log_level, int):
+        file_log_level = config.file_log_level
+    else:
+        # TODO: raise exception
+        file_log_level = logging.DEBUG
+
+    init_logging(log_level, file_log_level, config.log_dir)

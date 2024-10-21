@@ -10,13 +10,14 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Optional
 
+from kai.logging.kai_logging import get_logger
 from kai.reactive_codeplanner.agent.api import AgentResult
 from kai.reactive_codeplanner.agent.reflection_agent import (
     ReflectionAgent,
     ReflectionTask,
 )
 
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 log.setLevel(logging.INFO)
 formatter = logging.Formatter("[%(levelname)s] %(message)s")
 handler = logging.StreamHandler()

@@ -1,20 +1,19 @@
 #!/usr/bin/env python
 
-import logging
 import re
 import subprocess  # trunk-ignore(bandit/B404)
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, Sequence, Type
 
+from kai.logging.kai_logging import get_logger
 from kai.reactive_codeplanner.task_manager.api import (
     ValidationError,
     ValidationResult,
     ValidationStep,
 )
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class MavenCompileStep(ValidationStep):

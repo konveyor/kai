@@ -13,7 +13,7 @@ from kai.jsonrpc.models import (
     JsonRpcResult,
 )
 from kai.jsonrpc.streams import JsonRpcStream
-from kai.jsonrpc.util import TRACE, get_logger
+from kai.logging.kai_logging import TRACE, get_logger
 
 log = get_logger("jsonrpc")
 

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
 import os
 import pathlib
 import shutil
@@ -15,8 +14,9 @@ from urllib.parse import urlparse
 
 import yaml
 from pydantic import AliasChoices, BaseModel, Field, RootModel
+from kai.logging.kai_logging import get_logger
 
-KAI_LOG = logging.getLogger(__name__)
+KAI_LOG = get_logger(__name__)
 
 
 """

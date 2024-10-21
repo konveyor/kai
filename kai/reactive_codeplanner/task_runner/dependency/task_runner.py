@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET  # trunk-ignore(bandit/B405)
 from dataclasses import dataclass
 from pathlib import Path
 
+from kai.logging.kai_logging import get_logger
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
     MavenDependencyRequest,
@@ -27,8 +28,7 @@ from kai.reactive_codeplanner.xml_helpers import LineNumberingParser
 
 # trunk-ignore-end(ruff/E402)
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass

@@ -1,4 +1,3 @@
-import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,8 +15,9 @@ from kai.reactive_codeplanner.task_manager.api import Task, TaskResult
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import AnalyzerRuleViolation
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
+from kai.logging.kai_logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass

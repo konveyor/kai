@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
-import logging
 from pathlib import Path
 from typing import Any, Generator, Optional
 
 from pydantic import BaseModel, ConfigDict
 
+import kai.logging.kai_logging as logging
 from kai.reactive_codeplanner.task_manager.api import (
     RpcClientConfig,
     Task,
@@ -16,8 +16,7 @@ from kai.reactive_codeplanner.task_runner.api import TaskRunner
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.get_logger(__name__)
 
 
 class UpdatedFileContent(BaseModel):
