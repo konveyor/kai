@@ -252,11 +252,12 @@ class JsonRpcServer(threading.Thread):
                     )
 
             elif isinstance(msg, JsonRpcResponse):
-                self.response_dict[msg.id] = msg
-                cond = self.event_dict[msg.id]
-                cond.acquire()
-                cond.notify()
-                cond.release()
+                if msg.id is not None:
+                    self.response_dict[msg.id] = msg
+                    cond = self.event_dict[msg.id]
+                    cond.acquire()
+                    cond.notify()
+                    cond.release()
 
             else:
                 log.error(f"Unknown message type: {type(msg)}")
