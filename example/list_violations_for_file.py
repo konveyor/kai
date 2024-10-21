@@ -5,7 +5,7 @@ import sys
 # Ensure that we have 'kai' in our import path
 sys.path.append("../../kai")
 from kai import Report
-from kai.kai_logging import KAI_LOG
+from kai.logging.kai_logging import KAI_LOG
 
 APP_NAME = "coolstore"
 SAMPLE_APP_DIR = "./coolstore"

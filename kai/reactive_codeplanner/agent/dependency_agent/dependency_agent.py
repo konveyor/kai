@@ -257,8 +257,9 @@ Message:{message}
                                 times=0,
                             )
                         )
-                        logger.debug("result from dependent agent: %r", r)
                         maven_search = r.response
+                        if not r.response:
+                            logger.debug("unable to get response from sub-agent")
                     else:
                         maven_search = result
 

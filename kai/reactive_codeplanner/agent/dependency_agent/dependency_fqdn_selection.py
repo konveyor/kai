@@ -28,7 +28,7 @@ class FQDNDependencySelectorRequest(AgentRequest):
 
 @dataclass
 class FQDNDependencySelectorResult(AgentResult):
-    response: Optional[FQDNResponse]
+    response: FQDNResponse | list[FQDNResponse] | None
 
 
 class FQDNDependencySelectorAgent(Agent):
