@@ -151,7 +151,7 @@ class KaiConfigIncidentStore(BaseModel):
 
 class KaiConfigModels(BaseModel):
     provider: str
-    args: dict = Field(default_factory=dict)
+    args: dict[str, Any] = Field(default_factory=dict)
     template: Optional[str] = Field(default=None)
     llama_header: Optional[bool] = Field(default=None)
     llm_retries: int = 5
@@ -266,7 +266,7 @@ class KaiConfig(BaseSettings):
         )
 
     @staticmethod
-    def model_validate_filepath(filepath: str):
+    def model_validate_filepath(filepath: str) -> "KaiConfig":
         """
         Load a model config from a file and validate it.
 
@@ -274,7 +274,7 @@ class KaiConfig(BaseSettings):
         - TOML
         - YAML
         """
-        model_dict: dict
+        model_dict: dict[str, Any]
 
         _, file_ext = os.path.splitext(filepath)
 

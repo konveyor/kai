@@ -177,7 +177,7 @@ class SolutionProducerLLMLazy(SolutionProducer):
 
 def solution_producer_factory(
     kind: SolutionProducerKind, model_provider: ModelProvider
-):
+) -> SolutionProducer:
     # NOTE: Model provider is passed in as a parameter because it's required for
     # the llm stuff. I couldn't figure out a more elegant way of doing this.
     match kind:

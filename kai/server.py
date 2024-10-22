@@ -6,11 +6,12 @@ import argparse
 import logging
 import pprint
 from functools import cache
+from typing import Any
 
 from aiohttp import web
-from gunicorn.app.wsgiapp import WSGIApplication  # type: ignore
+from gunicorn.app.wsgiapp import WSGIApplication  # type: ignore[import-untyped]
 
-from kai.kai_logging import initLoggingFromConfig
+from kai.kai_logging import init_logging_from_config
 from kai.models.kai_config import KaiConfig
 from kai.routes import kai_routes
 from kai.service.incident_store.incident_store import IncidentStore
@@ -19,7 +20,7 @@ log = logging.getLogger(__name__)
 
 
 @cache
-def get_config():
+def get_config() -> KaiConfig:
     """
     Get the configuration for the server and parse command line arguments.
 
@@ -48,7 +49,7 @@ def app() -> web.Application:
 
     print(f"Config loaded: {pprint.pformat(config)}")
 
-    initLoggingFromConfig(config)
+    init_logging_from_config(config)
 
     webapp = web.Application()
 
@@ -60,18 +61,18 @@ def app() -> web.Application:
     return webapp
 
 
-class StandaloneApplication(WSGIApplication):
+class StandaloneApplication(WSGIApplication):  # type: ignore[misc]
     """
     This class is used to run the aiohttp app with gunicorn. While we could use
     the `gunicorn` command, this class allows us to call `server.py` directly.
     """
 
-    def __init__(self, app_uri, options=None):
+    def __init__(self, app_uri: str, options: dict[str, Any] | None = None) -> None:
         self.options = options or {}
         self.app_uri = app_uri
         super().__init__()
 
-    def load_config(self):
+    def load_config(self) -> None:
         config = {
             key: value
             for key, value in self.options.items()

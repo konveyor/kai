@@ -31,7 +31,9 @@ class MavenCompilerError(ValidationError):
     priority = 1
 
     @classmethod
-    def from_match(cls, match, details):
+    def from_match(
+        cls, match: re.Match[str], details: list[str]
+    ) -> "MavenCompilerError":
         """
         Factory method to create an instance from a regex match.
         """
@@ -88,7 +90,7 @@ class OtherError(MavenCompilerError):
     priority: int = 6
 
 
-def run_maven(source_directory=".") -> str:
+def run_maven(source_directory: str = ".") -> str:
     """
     Runs 'mvn compile' and returns the combined stdout and stderr output.
     """

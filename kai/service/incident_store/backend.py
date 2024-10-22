@@ -1,8 +1,16 @@
 import json
 from abc import ABC, abstractmethod
-from typing import cast
+from typing import Any, cast
 
-from sqlalchemy import and_, bindparam, create_engine, text
+from sqlalchemy import (
+    ColumnElement,
+    Engine,
+    TextClause,
+    and_,
+    bindparam,
+    create_engine,
+    text,
+)
 
 from kai.models.kai_config import (
     KaiConfigIncidentStoreArgs,
@@ -15,11 +23,12 @@ from kai.service.incident_store.sql_types import SQLIncident
 
 class IncidentStoreBackend(ABC):
     @abstractmethod
-    def create_engine(self):
+    def create_engine(self) -> Engine:
         pass
 
+    # FIXME(JonahSussman): Narrow this type down
     @abstractmethod
-    def json_exactly_equal(self, json_dict: dict):
+    def json_exactly_equal(self, json_dict: dict[str, Any]) -> Any:
         pass
 
 
@@ -27,7 +36,7 @@ class PSQLBackend(IncidentStoreBackend):
     def __init__(self, args: KaiConfigIncidentStorePostgreSQLArgs):
         self.args = args
 
-    def create_engine(self):
+    def create_engine(self) -> Engine:
         if self.args.connection_string:
             return create_engine(self.args.connection_string)
         else:
@@ -36,7 +45,7 @@ class PSQLBackend(IncidentStoreBackend):
                 client_encoding="utf8",
             )
 
-    def json_exactly_equal(self, json_dict: dict):
+    def json_exactly_equal(self, json_dict: dict[str, Any]) -> ColumnElement[bool]:
         return and_(
             SQLIncident.incident_variables.op("<@")(json_dict),
             SQLIncident.incident_variables.op("@>")(json_dict),
@@ -47,7 +56,7 @@ class SQLiteBackend(IncidentStoreBackend):
     def __init__(self, args: KaiConfigIncidentStoreSQLiteArgs):
         self.args = args
 
-    def create_engine(self):
+    def create_engine(self) -> Engine:
         if self.args.connection_string:
             return create_engine(self.args.connection_string)
         else:
@@ -56,7 +65,7 @@ class SQLiteBackend(IncidentStoreBackend):
                 client_encoding="utf8",
             )
 
-    def json_exactly_equal(self, json_dict: dict):
+    def json_exactly_equal(self, json_dict: dict[str, Any]) -> TextClause:
         return text(
             """
         (
@@ -74,7 +83,9 @@ class SQLiteBackend(IncidentStoreBackend):
         ).bindparams(bindparam("json_dict", json.dumps(json_dict)))
 
 
-def incident_store_backend_factory(args: KaiConfigIncidentStoreArgs):
+def incident_store_backend_factory(
+    args: KaiConfigIncidentStoreArgs,
+) -> IncidentStoreBackend:
     match args.provider:
         case KaiConfigIncidentStoreProvider.POSTGRESQL:
             args = cast(KaiConfigIncidentStorePostgreSQLArgs, args)

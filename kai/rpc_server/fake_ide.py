@@ -11,13 +11,17 @@ import time
 from io import BufferedReader, BufferedWriter
 from pathlib import Path
 from types import SimpleNamespace
-from typing import IO, cast
+from typing import IO, Any, cast
 
 from kai.jsonrpc.core import JsonRpcServer
+from kai.jsonrpc.models import JsonRpcId
 from kai.jsonrpc.streams import BareJsonStream
 from kai.jsonrpc.util import get_logger
 from kai.models.kai_config import KaiConfigModels
 from kai.rpc_server.server import KaiRpcApplication
+
+BLUE = "\033[94m"
+RESET = "\033[0m"
 
 log = get_logger("jsonrpc")
 
@@ -31,8 +35,10 @@ rpc_log = get_logger(
 app = KaiRpcApplication()
 
 
-@app.add_notify(method="logMessage", params_model=dict)
-def log_message(app: KaiRpcApplication, params: dict) -> None:
+@app.add_notify(method="logMessage")
+def log_message(
+    app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
+) -> None:
     hack = SimpleNamespace(**params)
     hack.getMessage = lambda: hack.message
     hack.exc_info = None
@@ -44,7 +50,7 @@ def log_message(app: KaiRpcApplication, params: dict) -> None:
 
 def log_stderr(stderr: IO[bytes]) -> None:
     for line in iter(stderr.readline, b""):
-        print(f"\033[91mrpc_err: {line.decode('utf-8')}\033[0m", end="")
+        print(f"{BLUE}rpc_err: {line.decode('utf-8')}{RESET}", end="")
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
@@ -53,7 +59,9 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
 def main() -> None:
     log.handlers[0].formatter = logging.Formatter(
-        fmt="\033[94mide_log: %(asctime)s - %(name)s - %(levelname)s - %(message)s\033[0m",
+        fmt=BLUE
+        + "ide_log: %(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        + RESET,
     )
 
     rpc_log.info("Starting Fake IDE client using Kai RPC Server")
