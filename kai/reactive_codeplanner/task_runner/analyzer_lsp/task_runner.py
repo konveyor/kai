@@ -11,7 +11,7 @@ from pygments import lexers
 from pygments.lexer import LexerMeta
 from pygments.util import ClassNotFound
 
-from kai.reactive_codeplanner.api import Task, TaskResult
+from kai.reactive_codeplanner.task_manager.api import Task, TaskResult
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import AnalyzerRuleViolation
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
