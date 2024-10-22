@@ -3,8 +3,7 @@ import datetime
 import logging
 import os
 from dataclasses import dataclass
-from functools import singledispatch
-from typing import Any, Optional
+from typing import Any, Optional, TypeVar
 from urllib.parse import unquote, urlparse
 
 import yaml
@@ -53,24 +52,14 @@ def deep_sort(obj: Any) -> Any:
     return obj
 
 
-@deep_sort.register(dict)
-def _(obj: dict) -> dict:
-    return {k: deep_sort(v) for k, v in sorted(obj.items())}
-
-
-@deep_sort.register(list)
-def _(obj: list) -> list:
-    return sorted(deep_sort(x) for x in obj)
-
-
-def __get_repo_path(app_name):
+def __get_repo_path(app_name: str) -> str:
     """
     Get the repo path
     """
     return os.path.join(PATH_LOCAL_REPO, app_name)
 
 
-def __get_app_variables(path: str, app_name: str):
+def __get_app_variables(path: str, app_name: str) -> dict[str, Any] | None:
     if not os.path.exists(path):
         KAI_LOG.error(
             f"Error: {app_name} does not exist in the analysis_reports directory."
@@ -86,13 +75,13 @@ def __get_app_variables(path: str, app_name: str):
 
     # Load contents of app.yaml
     with open(app_yaml_path, "r") as app_yaml_file:
-        app_data: dict = yaml.safe_load(app_yaml_file)
+        app_data: dict[str, Any] = yaml.safe_load(app_yaml_file)
 
     return app_data
 
 
 # NOTE: Once we integrate with Konveyor, this most likely will not be necessary
-def load_reports_from_directory(store: "IncidentStore", path: str):
+def load_reports_from_directory(store: "IncidentStore", path: str) -> None:
     basedir = os.path.dirname(os.path.realpath(__file__))
     parent_dir = os.path.dirname(basedir)
     folder_path = os.path.join(parent_dir, path)
@@ -384,13 +373,13 @@ class IncidentStore:
             len(categorized_incidents.solved),
         )
 
-    def create_tables(self):
+    def create_tables(self) -> None:
         """
         Create tables in the incident store.
         """
         SQLBase.metadata.create_all(self.engine)
 
-    def delete_store(self):
+    def delete_store(self) -> None:
         """
         Clears all data within the incident store. Non-reversible!
         """
@@ -401,7 +390,7 @@ class IncidentStore:
         self,
         ruleset_name: str,
         violation_name: str,
-        incident_variables: dict,
+        incident_variables: dict[str, Any],
         incident_snip: Optional[str] = None,
     ) -> list[Solution]:
         """
@@ -445,7 +434,7 @@ class IncidentStore:
                 result.append(accepted_solution.solution)
             return result
 
-    def post_process(self, limit=5):
+    def post_process(self, limit: int = 5) -> None:
         """Runs post_process function of producer for all applicable solutions
         It can take significant amount of time (~50-60 secs per solution) to run this for all solutions at once.
         A positive limit value will limit the number of solutions processed.
@@ -537,7 +526,7 @@ class IncidentStore:
         )
 
 
-def cmd(provider: Optional[str] = None):
+def cmd(provider: str = None) -> None:
     parser = argparse.ArgumentParser(description="Process some parameters.")
     parser.add_argument(
         "--config_filepath",
