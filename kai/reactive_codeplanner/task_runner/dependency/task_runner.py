@@ -12,7 +12,7 @@ from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
     MavenDependencyRequest,
 )
-from kai.reactive_codeplanner.api import Task, TaskResult
+from kai.reactive_codeplanner.task_manager.api import Task, TaskResult
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
 from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
     PackageDoesNotExistError,

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from kai.analyzer_types import Incident, RuleSet, Violation
-from kai.reactive_codeplanner.api import ValidationError
+from kai.reactive_codeplanner.task_manager.api import ValidationError
 
 
 @dataclass(eq=False, kw_only=True)

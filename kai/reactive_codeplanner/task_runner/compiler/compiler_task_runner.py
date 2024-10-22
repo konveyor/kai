@@ -7,7 +7,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
 from kai.reactive_codeplanner.agent.reflection_agent import ReflectionTask
-from kai.reactive_codeplanner.api import Task, TaskResult
+from kai.reactive_codeplanner.task_manager.api import Task, TaskResult
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
 from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
     AccessControlError,

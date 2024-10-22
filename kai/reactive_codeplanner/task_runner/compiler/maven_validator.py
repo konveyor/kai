@@ -6,7 +6,7 @@ import subprocess  # trunk-ignore(bandit/B404)
 from dataclasses import dataclass, field
 from typing import Optional, Type
 
-from kai.reactive_codeplanner.api import (
+from kai.reactive_codeplanner.task_manager.api import (
     ValidationError,
     ValidationResult,
     ValidationStep,

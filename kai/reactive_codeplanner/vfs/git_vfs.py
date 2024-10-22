@@ -214,7 +214,7 @@ class RepoContextManager:
     def __init__(
         self,
         project_root: Path,
-        reflection_agent: ReflectionAgent,
+        reflection_agent: Optional[ReflectionAgent]=None,
         initial_msg: str | None = None,
     ):
         self.project_root = project_root

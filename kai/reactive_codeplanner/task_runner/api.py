@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from kai.reactive_codeplanner.api import Task, TaskResult
+from kai.reactive_codeplanner.task_manager.api import Task, TaskResult
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
 
 

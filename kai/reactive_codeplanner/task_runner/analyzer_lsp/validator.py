@@ -11,7 +11,7 @@ from kai.analyzer_types import Report
 from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcResponse
 from kai.jsonrpc.streams import BareJsonStream
-from kai.reactive_codeplanner.api import (
+from kai.reactive_codeplanner.task_manager.api import (
     RpcClientConfig,
     ValidationError,
     ValidationException,

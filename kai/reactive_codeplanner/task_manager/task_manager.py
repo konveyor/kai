@@ -4,30 +4,16 @@ import logging
 from pathlib import Path
 from typing import Any, Generator, Optional
 
-from langchain_core.language_models.chat_models import BaseChatModel
 from pydantic import BaseModel, ConfigDict
 
-from kai.kai_config import KaiConfig
-from kai.reactive_codeplanner.api import (
+from kai.reactive_codeplanner.task_manager.api import (
     RpcClientConfig,
     Task,
     TaskResult,
     ValidationStep,
-    fuzzy_equals,
 )
-from kai.reactive_codeplanner.task_runner.analyzer_lsp.task_runner import (
-    AnalyzerTaskRunner,
-)
-from kai.reactive_codeplanner.task_runner.analyzer_lsp.validator import AnalyzerLSPStep
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
-from kai.reactive_codeplanner.task_runner.compiler.compiler_task_runner import (
-    MavenCompilerTaskRunner,
-)
-from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
-    MavenCompileStep,
-)
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
-from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -46,74 +32,6 @@ class UpdatedFileContent(BaseModel):
 
     # "model_" is a Pydantic protected namespace, so we must remove it
     model_config = ConfigDict(protected_namespaces=())
-
-
-def main() -> None:
-    import argparse
-
-    parser = argparse.ArgumentParser(
-        description="Run the CodePlan loop against a project"
-    )
-    parser.add_argument(
-        "source_directory",
-        help="The root directory of the project to be fixed",
-        type=Path,
-    )
-
-    parser.add_argument(
-        "rules_directory",
-        help="The root directory of the rules to use during analysis",
-        type=Path,
-    )
-
-    parser.add_argument(
-        "analyzer_lsp_server_binary",
-        help="The binary for running analyzer-lsp RPC server",
-        type=Path,
-    )
-
-    args = parser.parse_args()
-
-    config = RpcClientConfig(
-        args.source_directory,
-        args.analyzer_lsp_server_binary,
-        args.rules_directory,
-        None,
-        None,
-        None,
-    )
-
-    codeplan(config, None)
-
-
-def codeplan(config: RpcClientConfig, seed_tasks: list[Task]) -> None:
-    logger.info("Starting codeplan with configuration: %s", config)
-
-    kai_config = KaiConfig.model_validate_filepath("../../kai/config.toml")
-    modelProvider = ModelProvider(kai_config.models)
-
-    # TODO: (pgaikwad) needed for reflection agent
-    llm: BaseChatModel = None
-
-    task_manager = TaskManager(
-        config,
-        RepoContextManager(config.repo_directory, llm=llm),
-        seed_tasks,
-        validators=[MavenCompileStep(config), AnalyzerLSPStep(config)],
-        agents=[
-            AnalyzerTaskRunner(modelProvider.llm),
-            MavenCompilerTaskRunner(modelProvider.llm),
-        ],
-    )
-    logger.info("TaskManager initialized with validators and agents.")
-
-    for task in task_manager.get_next_task():
-        logger.info("Received next task: %s", task)
-        result = task_manager.execute_task(task)
-        logger.info("Executed task: %s, Result: %s", task, result)
-        task_manager.supply_result(result)
-    task_manager.stop()
-    logger.info("Codeplan execution completed.")
 
 
 class TaskManager:
@@ -354,7 +272,9 @@ class TaskManager:
         same = task2 == task1
         logger.debug("Task %s is same to prior task %s: %s", task1, task2, same)
         # TODO(fabianvf): Give tasks the ability to provide a specific fuzzy equals function?
-        similar = fuzzy_equals(task2, task1, offset=2)
+        similar = False
+        if hasattr(task1, "fuzzy_equals"):
+            similar = task1.fuzzy_equals(task2, offset=2)
         logger.debug("Task %s is similar to prior task %s: %s", task1, task2, similar)
         return same or similar
 
@@ -386,14 +306,3 @@ class TaskManager:
             if hasattr(v, "stop"):
                 v.stop()
                 logger.debug("Stopped validator: %s", v)
-
-
-if __name__ == "__main__":
-    try:
-        import ipdb  # type: ignore[import-untyped]
-
-        with ipdb.launch_ipdb_on_exception():
-            main()
-
-    except ImportError:
-        main()
