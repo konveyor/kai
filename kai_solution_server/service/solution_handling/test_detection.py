@@ -7,8 +7,8 @@ import yaml
 from sequoia_diff.models import Node
 
 from kai.constants import PATH_TEST_DATA
-from kai.service.incident_store.sql_types import SQLIncident
-from kai.service.solution_handling.detection import (
+from kai_solution_server.service.incident_store.sql_types import SQLIncident
+from kai_solution_server.service.solution_handling.detection import (
     SolutionDetectorContext,
     node_with_tightest_bounds,
     solution_detection_line_match,

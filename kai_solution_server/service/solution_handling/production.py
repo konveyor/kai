@@ -69,7 +69,7 @@ class SolutionProducerTextOnly(SolutionProducer):
             unquote(urlparse(incident.incident_uri).path)
         )
         file_path = os.path.join(
-            repo.working_tree_dir,
+            repo.working_dir,
             incident.application_path,
             local_file_path,
         )

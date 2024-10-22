@@ -3,13 +3,13 @@ from unittest.mock import MagicMock, patch
 
 from git import Repo
 
-from kai.service.incident_store.sql_types import SQLIncident
-from kai.service.llm_interfacing.model_provider import ModelProvider
-from kai.service.solution_handling.production import (
+from kai_solution_server.service.incident_store.sql_types import SQLIncident
+from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
+from kai_solution_server.service.solution_handling.production import (
     SolutionProducerLLMLazy,
     SolutionProducerTextOnly,
 )
-from kai.service.solution_handling.solution_types import Solution
+from kai_solution_server.service.solution_handling.solution_types import Solution
 
 
 def create_test_incident(**kwargs):
@@ -32,7 +32,7 @@ def create_test_incident(**kwargs):
 class TestSolutionProducerTextOnly(unittest.TestCase):
     def test_produce_one(self):
         # Arrange
-        repo = MagicMock(spec=Repo)
+        repo = MagicMock()
         repo.git.show.side_effect = ["original code", "updated code"]
         repo.git.diff.return_value = "diff"
 
@@ -74,7 +74,7 @@ class TestSolutionProducerTextOnly(unittest.TestCase):
 class TestSolutionProducerLLMLazy(unittest.TestCase):
     def test_produce_one(self):
         # Arrange
-        repo = MagicMock(spec=Repo)
+        repo = MagicMock()
         repo.git.show.side_effect = ["original code", "updated code"]
         repo.git.diff.return_value = "diff"
 
@@ -92,7 +92,7 @@ class TestSolutionProducerLLMLazy(unittest.TestCase):
         # Assert
         self.assertEqual(solution.llm_summary_generated, False)
 
-    @patch("kai.service.solution_handling.production.jinja2.Environment")
+    @patch("kai_solution_server.service.solution_handling.production.jinja2.Environment")
     def test_post_process_one(self, mock_jinja_env):
         # Arrange
         incident = create_test_incident()
