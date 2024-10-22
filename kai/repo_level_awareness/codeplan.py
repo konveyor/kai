@@ -211,11 +211,19 @@ class TaskManager:
         return validation_tasks
 
     def get_next_task(
-        self, max_priority: Optional[int] = None
+        self,
+        max_priority: Optional[int] = None,
+        max_iterations: Optional[int] = None,
+        max_depth: Optional[int] = None,
     ) -> Generator[Task, Any, None]:
         self.initialize_task_stacks()
+        iterations = 0
 
-        while any(self.task_stacks.values()):
+        while self.has_tasks_within_depth(max_depth):
+            if max_iterations is not None and iterations >= max_iterations:
+                # kill the loop, no more iterations allowed
+                return
+            iterations += 1
             task = self.pop_task_from_highest_priority()
             if max_priority is not None and task.priority > max_priority:
                 # Put the task back and stop iteration
@@ -236,6 +244,13 @@ class TaskManager:
         new_tasks = self.run_validators()
         for task in new_tasks:
             self.add_task_to_stack(task)
+
+    def has_tasks_within_depth(self, max_depth: Optional[int]) -> bool:
+        for task_stack in self.task_stacks.values():
+            for task in task_stack:
+                if max_depth is None or task.depth <= max_depth:
+                    return True
+        return False
 
     def add_task_to_stack(self, task: Task) -> None:
         for priority_level, task_stack in self.task_stacks.items():
@@ -302,9 +317,7 @@ class TaskManager:
 
         new_child_tasks = unprocessed_new_tasks - tasks_in_stacks
         # We want the higher priority things at the end of the list, so when we append and pop we get the highest priority
-        for child_task in sorted(
-            list(new_child_tasks), key=lambda x: x.priority, reverse=True
-        ):
+        for child_task in sorted(new_child_tasks):
             child_task.parent = task
             child_task.depth = task.depth + 1
             child_task.priority = task.priority
