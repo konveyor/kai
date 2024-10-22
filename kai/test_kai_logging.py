@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
+from kai.kai_config import KaiConfig, KaiConfigIncidentStore, KaiConfigModels
 from kai.kai_logging import (
     init_logging,
     init_logging_from_config,
@@ -12,7 +13,6 @@ from kai.kai_logging import (
     setup_console_handler,
     setup_file_handler,
 )
-from kai.models.kai_config import KaiConfig, KaiConfigIncidentStore, KaiConfigModels
 
 
 class TestLoggingSetup(unittest.TestCase):

@@ -2,8 +2,7 @@ import os
 import pprint
 import unittest
 
-from kai.models.report import Report
-from kai.models.report_types import ExtendedIncident
+from kai.analyzer_types import ExtendedIncident, Report
 
 
 class TestReports(unittest.TestCase):

@@ -11,8 +11,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from kai.constants import PATH_TEST_DATA
-from kai.hub_importer import poll_api
-from kai.models.kai_config import (
+from kai_solution_server.hub_importer import poll_api
+from kai.kai_config import (
     KaiConfig,
     KaiConfigIncidentStore,
     KaiConfigIncidentStoreSQLiteArgs,
@@ -20,9 +20,9 @@ from kai.models.kai_config import (
     SolutionDetectorKind,
     SolutionProducerKind,
 )
-from kai.server import app as kai_app
-from kai.service.incident_store.incident_store import IncidentStore
-from kai.service.incident_store.sql_types import (
+from kai_solution_server.main import app as kai_app
+from kai_solution_server.service.incident_store.incident_store import IncidentStore
+from kai_solution_server.service.incident_store.sql_types import (
     SQLAcceptedSolution,
     SQLApplication,
     SQLIncident,
