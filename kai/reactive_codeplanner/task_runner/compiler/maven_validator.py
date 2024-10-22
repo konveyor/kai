@@ -4,7 +4,8 @@ import logging
 import re
 import subprocess  # trunk-ignore(bandit/B404)
 from dataclasses import dataclass, field
-from typing import Optional, Type
+from typing import Optional, Type, Sequence
+from pathlib import Path
 
 from kai.reactive_codeplanner.task_manager.api import (
     ValidationError,
@@ -20,7 +21,7 @@ class MavenCompileStep(ValidationStep):
 
     def run(self) -> ValidationResult:
         maven_output = run_maven(self.config.repo_directory)
-        errors = parse_maven_output(maven_output)
+        errors: Sequence[ValidationError] = parse_maven_output(maven_output)
         return ValidationResult(passed=not errors, errors=errors)
 
 
@@ -90,7 +91,7 @@ class OtherError(MavenCompilerError):
     priority: int = 6
 
 
-def run_maven(source_directory: str = ".") -> str:
+def run_maven(source_directory: Path = Path(".")) -> str:
     """
     Runs 'mvn compile' and returns the combined stdout and stderr output.
     """
@@ -138,7 +139,7 @@ def classify_error(message: str) -> Type[MavenCompilerError]:
         return OtherError
 
 
-def parse_maven_output(output: str) -> list[MavenCompilerError]:
+def parse_maven_output(output: str) -> Sequence[MavenCompilerError]:
     """
     Parses the Maven output and returns a list of MavenCompilerError instances.
     """
@@ -231,9 +232,9 @@ if __name__ == "__main__":
         "source_directory", help="The directory where 'mvn compile' should be run."
     )
     args = parser.parse_args()
-    maven_output = run_maven(args.source_directory)
+    maven_output = run_maven(Path(args.source_directory))
 
-    results = {}
+    results: dict[str, list[MavenCompilerError]] = {}
     for error in parse_maven_output(maven_output):
         if not results.get(error.file):
             results[error.file] = [error]

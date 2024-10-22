@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, fields
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Sequence
 
 
 @dataclass
@@ -120,7 +120,7 @@ class TaskResult:
 @dataclass
 class ValidationResult:
     passed: bool
-    errors: list[ValidationError]
+    errors: Sequence[ValidationError]
 
 
 class ValidationException(Exception):
