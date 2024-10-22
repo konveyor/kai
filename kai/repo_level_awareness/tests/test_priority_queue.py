@@ -335,6 +335,69 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(toplevel, executed_tasks[-1])
         self.assertEqual(task_manager.task_stacks, {})
 
+    def test_max_depth_handling(self):
+        # Setup
+        # Validator returns a parent error, which reveals child errors, and so on
+        errorlevel0 = ValidationError(
+            file="test.py", line=0, column=0, message="ErrorLevel0"
+        )
+        errorlevel1 = ValidationError(
+            file="test.py", line=1, column=1, message="ErrorLevel1"
+        )
+        errorlevel2 = ValidationError(
+            file="test.py", line=2, column=2, message="ErrorLevel2"
+        )
+        errorlevel3 = ValidationError(
+            file="test.py", line=3, column=3, message="ErrorLevel3"
+        )
+        validator = MockValidationStep(
+            config=None,
+            error_sequences=[
+                [errorlevel0],  # First run
+                [errorlevel1],  # Second run
+                [errorlevel2],  # Third run
+                [
+                    errorlevel2
+                ],  # fourth run (re-initialization since we start the task queue again)
+                [errorlevel3],  # Fifth run
+                [],  # Fifth run, no errors
+            ],
+        )
+        task_manager = TaskManager(
+            config=None, rcm=None, validators=[validator], agents=[MockTaskRunner()]
+        )
+
+        executed_tasks = []
+
+        # Set max_depth to 1 (top-level children only)
+        max_depth = 1
+
+        for task in task_manager.get_next_task(max_depth=max_depth):
+            executed_tasks.append((task.depth, task.message))
+
+        # Expected tasks: only those with depth <= max_depth
+        expected_tasks = [
+            (0, "ErrorLevel0"),  # Depth 0
+            (1, "ErrorLevel1"),  # Depth 1
+        ]
+
+        self.assertEqual(executed_tasks, expected_tasks)
+
+        # Ensure that tasks beyond max_depth are marked as processed
+        task_depths = [depth for depth, _ in executed_tasks]
+        self.assertTrue(all(depth <= max_depth for depth in task_depths))
+
+        # Verify that tasks at depth greater than max_depth are not executed
+        self.assertNotIn((2, "ErrorLevel2"), executed_tasks)
+        self.assertNotIn((3, "ErrorLevel3"), executed_tasks)
+
+        max_depth = 10
+        for task in task_manager.get_next_task(max_depth=max_depth):
+            executed_tasks.append((task.depth, task.message))
+
+        self.assertIn((2, "ErrorLevel2"), executed_tasks)
+        self.assertIn((3, "ErrorLevel3"), executed_tasks)
+
 
 if __name__ == "__main__":
     unittest.main()
