@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 from genai import Client, Credentials
 from genai.extensions.langchain.chat_llm import LangChainChatInterface
@@ -20,8 +21,8 @@ class ModelProvider:
         self.llm_retry_delay: float = config.llm_retry_delay
 
         model_class: BaseChatModel
-        defaults: dict
-        model_args: dict
+        defaults: dict[str, Any]
+        model_args: dict[str, Any]
         model_id: str
         # Set the model class, model args, and model id based on the provider
         match config.provider:

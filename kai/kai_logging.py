@@ -24,7 +24,9 @@ def process_log_dir_replacements(log_dir: str) -> str:
     return log_dir
 
 
-def setup_console_handler(logger, log_level: str = "INFO"):
+def setup_console_handler(
+    logger: logging.Logger, log_level: str | int = "INFO"
+) -> None:
     console_handler = logging.StreamHandler()
     console_handler.setLevel(log_level)
     console_handler.setFormatter(formatter)
@@ -33,12 +35,12 @@ def setup_console_handler(logger, log_level: str = "INFO"):
 
 
 def setup_file_handler(
-    logger,
+    logger: logging.Logger,
     log_file_name: str,
     log_dir: str,
-    log_level: str = "DEBUG",
+    log_level: str | int = "DEBUG",
     silent: bool = False,
-):
+) -> None:
     # Ensure any needed log directories exist
     log_dir = process_log_dir_replacements(log_dir)
     log_file_path = os.path.join(log_dir, log_file_name)
@@ -56,7 +58,12 @@ def setup_file_handler(
         )
 
 
-def initLogging(console_log_level, file_log_level, log_dir, log_file="kai_server.log"):
+def init_logging(
+    console_log_level: str | int,
+    file_log_level: str | int,
+    log_dir: str,
+    log_file: str = "kai_server.log",
+) -> None:
     setup_console_handler(parent_log, console_log_level)
     setup_file_handler(parent_log, log_file, log_dir, file_log_level)
     # Attempt to set the parent log level to
@@ -64,5 +71,7 @@ def initLogging(console_log_level, file_log_level, log_dir, log_file="kai_server
     parent_log.setLevel("DEBUG")
 
 
-def initLoggingFromConfig(config: KaiConfig):
-    initLogging(config.log_level.upper(), config.file_log_level.upper(), config.log_dir)
+def init_logging_from_config(config: KaiConfig) -> None:
+    init_logging(
+        config.log_level.upper(), config.file_log_level.upper(), config.log_dir
+    )

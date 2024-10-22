@@ -85,7 +85,9 @@ class RepoContextSnapshot:
 
         return lineage
 
-    def git(self, args: list[str], popen_kwargs: dict[str, Any] | None = None):
+    def git(
+        self, args: list[str], popen_kwargs: dict[str, Any] | None = None
+    ) -> tuple[int | Any, str, str]:
         """
         Execute a git command with the given arguments. Returns a tuple of the
         return code, stdout, and stderr.
@@ -242,7 +244,7 @@ class RepoContextManager:
 
         return True
 
-    def reset(self, snapshot: Optional[RepoContextSnapshot] = None):
+    def reset(self, snapshot: Optional[RepoContextSnapshot] = None) -> None:
         """
         Resets the repository to the given snapshot. If no snapshot is provided,
         reset the repo to the current snapshot.
@@ -252,7 +254,7 @@ class RepoContextManager:
 
         self.snapshot.reset()
 
-    def reset_to_parent(self):
+    def reset_to_parent(self) -> None:
         """
         Resets the repository to the parent of the current snapshot. Throws an
         exception if the current snapshot is the initial commit.
@@ -279,7 +281,7 @@ class RepoContextManager:
 
 # FIXME: remove this function, only there for the little demo below so the
 # pseudo code works
-def union_the_result_and_the_errors(*args, **kwargs):
+def union_the_result_and_the_errors(*args: Any, **kwargs: Any) -> Any:
     return args[0]
 
 
@@ -290,7 +292,7 @@ if __name__ == "__main__":
 
     def dfs(
         snapshot: RepoContextSnapshot, current: RepoContextSnapshot, depth: int = 0
-    ):
+    ) -> None:
         if current is snapshot:
             print("  " * depth + "> " + f"{snapshot.git_sha[:6]}: {snapshot.msg}")
         else:

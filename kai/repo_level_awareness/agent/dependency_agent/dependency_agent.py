@@ -9,7 +9,7 @@ sys.modules["_elementtree"] = None  # type: ignore[assignment]
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, cast
+from typing import Any, Optional, cast
 
 from langchain.prompts.chat import HumanMessagePromptTemplate
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -267,7 +267,7 @@ Message:{message}
         )
 
     def parse_llm_response(
-        self, content: str | list[str] | dict
+        self, content: str | list[str] | dict[str, Any]
     ) -> Optional[_llm_response]:
         # We should not expect that the value is anything other than str for the type of
         # call that we know we are making

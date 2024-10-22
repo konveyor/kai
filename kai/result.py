@@ -2,12 +2,15 @@ __all__ = ["LLMResult"]
 
 import logging
 import os
+from pathlib import Path
+from typing import Any
 
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_community.chat_models import ChatOpenAI
 
 from kai.constants import PATH_TEMPLATES
+from kai.models.report_types import Incident
 
 from .models.report import Report
 from .scm import GitDiff
@@ -35,7 +38,9 @@ class LLMResult:
     applications which have been migrated.
     """
 
-    def __init__(self, source_dir, initial_branch, solved_branch):
+    def __init__(
+        self, source_dir: str, initial_branch: str, solved_branch: str
+    ) -> None:
         """We expect to have 1 directory that represents the example application and 2 branches
 
         - source_dir:       path to git repo for example
@@ -46,19 +51,19 @@ class LLMResult:
         self.example_initial_branch = initial_branch
         self.example_solved_branch = solved_branch
         self.path_to_report = None
-        self.report = None
+        self.report: dict[str, Any] | None = None
 
-    def parse_report(self, path_to_report):
+    def parse_report(self, path_to_report: str | Path) -> None:
         self.report = dict(Report.load_report_from_file(path_to_report))
 
-    def get_prompt_template(self):
+    def get_prompt_template(self) -> PromptTemplate:
         template_file = os.path.join(PATH_TEMPLATES, "template_02.txt")
         print(f"Loading template from {template_file}")
         with open(template_file, "r") as f:
             template = f.read()
         return PromptTemplate.from_template(template)
 
-    def _extract_diff(self, text: str):
+    def _extract_diff(self, text: str) -> str:
         try:
             _, after = text.split("```diff")
             return after.split("```")[0]
@@ -66,13 +71,15 @@ class LLMResult:
             print(f"Error: {e}")
             return "Error: Unable to extract diff"
 
-    def create_prompt(self, description, incidents, template):
+    def create_prompt(
+        self, description: str, incidents: list[Incident], template: str
+    ) -> None:
         # To form a prompt we need:
         template = self.get_prompt_template()
         print(f"{len(incidents)} incidents: {description}\n")
         print(f"template: {template}")
 
-    def _update_uri(self, uri):
+    def _update_uri(self, uri: str) -> str | None:
         KAI_LOG.debug(f"Updating uri {uri}")
         f = uri.replace("file:///tmp/source-code/", "")
         KAI_LOG.debug(f"Updated uri {f}")
@@ -80,14 +87,14 @@ class LLMResult:
         # Related to: https://github.com/konveyor/analyzer-lsp/issues/358
         return f if not f.startswith("target/") else None
 
-    def _ensure_output_dir_exists(self, output_dir):
+    def _ensure_output_dir_exists(self, output_dir: str) -> None:
         try:
             os.makedirs(output_dir, exist_ok=True)
         except OSError as error:
             print(f"Error creating directory {output_dir}: {error}")
             raise error
 
-    def _write_output(self, filename, content):
+    def _write_output(self, filename: str, content: str) -> None:
         with open(filename, "w") as f:
             # We want to start each run with a clean file
             f.truncate(0)
@@ -95,11 +102,11 @@ class LLMResult:
 
     def process(
         self,
-        path_to_output,
-        model_name="",
-        limit_to_rulesets=None,
-        limit_to_violations=None,
-    ):
+        path_to_output: str,
+        model_name: str = "",
+        limit_to_rulesets: list[str] | None = None,
+        limit_to_violations: list[str] | None = None,
+    ) -> None:
         if self.report is None:
             raise Exception("No report to process.  Please parse a report first")
 
