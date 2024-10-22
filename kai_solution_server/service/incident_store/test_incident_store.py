@@ -268,7 +268,6 @@ class TestIncidentStore(unittest.TestCase):
         solved_report = Report.load_report_from_file(
             test_data_path() / "solved/report.yaml"
         )
-
         with open(test_data_path() / "initial/app.yaml", "r") as f:
             initial_app_dict = yaml.safe_load(f.read())
 
