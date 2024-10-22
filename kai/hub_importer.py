@@ -6,7 +6,7 @@ import os
 import pprint
 import tempfile
 import time
-from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Callable, Iterator, Optional
 
 import dateutil.parser
 import requests
@@ -23,26 +23,26 @@ KAI_LOG = logging.getLogger(__name__)
 
 # BaseModel that also acts as a dict
 class KaiBaseModel(BaseModel):
-    def __contains__(self, item):
+    def __contains__(self, item: str) -> bool:
         return hasattr(self, item)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         if not hasattr(self, key):
             raise KeyError(f"Key '{key}' not found")
         return getattr(self, key)
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Any) -> None:
         if not isinstance(key, str):
             raise ValueError("Key must be a string")
         setattr(self, key, value)
 
-    def get(self, key, default=None):
+    def get(self, key: str, default: Any | None = None) -> Any | None:
         if key in self:
             return self[key]
         return default
 
 
-class Incident(KaiBaseModel):
+class Incident(KaiBaseModel):  # type: ignore[no-redef]
     id: int
     createUser: Optional[str] = None
     updateUser: Optional[str] = None
@@ -54,6 +54,7 @@ class Incident(KaiBaseModel):
     message: str
     codeSnip: str
     variables: dict[str, Any] = Field(..., alias="facts")
+<<<<<<< HEAD
 
     @model_validator(mode="before")
     @classmethod
@@ -62,6 +63,8 @@ class Incident(KaiBaseModel):
             if "file" in data and "uri" not in data:
                 data["uri"] = data["file"]
         return data
+=======
+>>>>>>> 8ebca33 (:ghost: Fix mypy types (#435))
 
 
 class Link(KaiBaseModel):
@@ -114,7 +117,7 @@ class Analysis(KaiBaseModel):
     commit: Optional[str] = None
 
 
-def main():
+def main() -> None:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("konveyor_hub_url", help="The URL for Konveyor Hub")
     arg_parser.add_argument(
@@ -205,9 +208,13 @@ Example: --loglevel debug (default: warning)""",
     )
 
 
+<<<<<<< HEAD
 def paginate_api(
     url: str, token: str, timeout: int = 60, verify: bool = True
 ) -> Iterator:
+=======
+def paginate_api(url: str, timeout: int = 60, verify: bool = True) -> Iterator[Any]:
+>>>>>>> 8ebca33 (:ghost: Fix mypy types (#435))
     previous_offset = None
     current_offset = 0
     while previous_offset != current_offset:
@@ -229,8 +236,8 @@ def poll_api(
     verify: bool = True,
     initial_last_analysis: int = 0,
     post_process_limit: int = 5,
-    poll_condition: Callable = lambda: True,
-):
+    poll_condition: Callable[[], bool] = lambda: True,
+) -> None:
     last_analysis = initial_last_analysis
 
     while poll_condition():
@@ -294,8 +301,16 @@ def import_from_api(
 
 
 def get_data_from_api(
+<<<<<<< HEAD
     url: str, token: str, params=None, timeout: int = 60, verify: bool = True
 ):
+=======
+    url: str,
+    params: dict[str, Any] | None = None,
+    timeout: int = 60,
+    verify: bool = True,
+) -> Any:
+>>>>>>> 8ebca33 (:ghost: Fix mypy types (#435))
     if not params:
         params = {}
     KAI_LOG.debug(f"Making request to {url} with {params=}")
@@ -314,9 +329,9 @@ def process_analyses(
     application_dir: str,
     request_timeout: int = 60,
     request_verify: bool = True,
-) -> List[Tuple[Application, Optional[Identity], Report]]:
+) -> list[tuple[Application, Optional[Identity], Report]]:
 
-    reports: List[Tuple[Application, Optional[Identity], Report]] = []
+    reports: list[tuple[Application, Optional[Identity], Report]] = []
     for analysis in analyses:
         KAI_LOG.info(
             f"Processing analysis {analysis.id} for application {analysis.application.id}"
@@ -350,8 +365,17 @@ def process_analyses(
             resp,
             application_dir,
         )
+
+        if analysis.commit is None:
+            # FIXME(JonahSussman): Figure out what to do if the commit is None.
+            # For now, just set it as any empty string and hope.
+            KAI_LOG.warning(
+                f"Analysis {analysis.id} has no commit. Setting to empty string."
+            )
+            analysis.commit = ""
+
         application.current_commit = analysis.commit
-        report_data = {}
+        report_data: dict[str, Any] = {}
         issues_url = f"{konveyor_hub_url}/analyses/{analysis.id}/issues"
         for raw_issue in paginate_api(
             issues_url, token, timeout=request_timeout, verify=request_verify
@@ -375,7 +399,7 @@ def process_analyses(
                     incident.file = incident.file.replace(prefix, "", -1)
                     incident.uri = incident.uri.replace(prefix, "", -1)
 
-                def remove_base_dir(x):
+                def remove_base_dir(x: str) -> str:
                     return x.split("/", 1)[1] if len(x.split("/", 1)) > 1 else x
 
                 incident.file = remove_base_dir(incident.file)
@@ -401,7 +425,13 @@ def process_analyses(
     return reports
 
 
-def clone_repo_at_commit(repo_url, branch, commit, destination_folder, identity=None):
+def clone_repo_at_commit(
+    repo_url: str,
+    branch: str,
+    commit: str,
+    destination_folder: str,
+    identity: Identity | None = None,
+) -> None:
     if identity:
         user = identity.get("user")
         password = identity.get("password")
@@ -430,7 +460,7 @@ def clone_repo_at_commit(repo_url, branch, commit, destination_folder, identity=
         KAI_LOG.error(f"An error occurred while checking out the commit: {e}")
 
 
-def parse_application_data(api_response, application_dir):
+def parse_application_data(api_response: Any, application_dir: str) -> Application:
     application_name = api_response.get("name", "")
     repo_uri_origin = (
         api_response["repository"]["url"]

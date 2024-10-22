@@ -28,7 +28,7 @@ def remove_known_prefixes(path: str) -> str:
     return path
 
 
-def filter_incident_vars(incident_vars: dict[str, Any]):
+def filter_incident_vars(incident_vars: dict[str, Any]) -> dict[str, Any]:
     for v in FILTERED_INCIDENT_VARS:
         incident_vars.pop(v, None)
     return incident_vars

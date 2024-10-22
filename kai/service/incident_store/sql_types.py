@@ -21,18 +21,22 @@ from kai.models import report_types
 from kai.service.solution_handling.solution_types import Solution
 
 
-class SQLSolutionType(TypeDecorator):
+class SQLSolutionType(TypeDecorator):  # type: ignore[type-arg]
     impl = VARCHAR
     cache_ok = False
 
-    def process_bind_param(self, value: Optional[Solution], dialect: Dialect):
+    def process_bind_param(
+        self, value: Optional[Solution], dialect: Dialect
+    ) -> str | None:
         # Into the db
         if value is None:
             return None
 
         return value.model_dump_json()
 
-    def process_result_value(self, value: Optional[Any], dialect: Dialect):
+    def process_result_value(
+        self, value: str | None, dialect: Dialect
+    ) -> Solution | None:
         # Out of the db
         if value is None:
             return None
@@ -43,7 +47,7 @@ class SQLSolutionType(TypeDecorator):
         return Solution.model_validate_json(value)
 
 
-def SQLEnum(enum_type: Type[Enum]):
+def SQLEnum(enum_type: Type[Enum]) -> Enum:
     """
     The default behavior of the Enum type in SQLAlchemy is to store the enum's name,
     but we want to store the enum's value. This class is a workaround for that.
@@ -55,7 +59,7 @@ def SQLEnum(enum_type: Type[Enum]):
     )
 
 
-SQLCategory: Type = SQLEnum(report_types.Category)
+SQLCategory: Enum = SQLEnum(report_types.Category)
 
 
 class SQLBase(DeclarativeBase):
@@ -156,7 +160,7 @@ class SQLIncident(SQLBase):
         ForeignKey("accepted_solutions.solution_id")
     )
 
-    __table_args__: tuple = (
+    __table_args__: tuple = (  # type: ignore[type-arg]
         ForeignKeyConstraint(
             [violation_name, ruleset_name],
             [SQLViolation.violation_name, SQLViolation.ruleset_name],

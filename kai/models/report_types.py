@@ -146,7 +146,7 @@ class AnalysisReport(RootModel[list[RuleSet]]):
     root: list[RuleSet] = Field(..., title="AnalysisReport")
 
 
-def generate_json_schema():
+def generate_json_schema() -> None:
     main_model_schema = AnalysisReport.model_json_schema()
 
     file_name = Path(os.path.dirname(__file__)) / "report_types.yaml"

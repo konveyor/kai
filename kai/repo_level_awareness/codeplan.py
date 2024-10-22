@@ -40,15 +40,15 @@ class UpdatedFileContent(BaseModel):
     used_prompts: list[str]
     model_id: str
     additional_information: list[str]
-    response_metadatas: list[dict]
+    response_metadatas: list[dict[str, Any]]
 
-    llm_results: Optional[list[str | list[str | dict]]]
+    llm_results: Optional[list[str | list[str | dict[str, Any]]]]
 
     # "model_" is a Pydantic protected namespace, so we must remove it
     model_config = ConfigDict(protected_namespaces=())
 
 
-def main():
+def main() -> None:
     import argparse
 
     parser = argparse.ArgumentParser(
@@ -82,10 +82,11 @@ def main():
         None,
         None,
     )
+
     codeplan(config, None)
 
 
-def codeplan(config: RpcClientConfig, seed_tasks: list[Task]):
+def codeplan(config: RpcClientConfig, seed_tasks: list[Task]) -> None:
     logger.info("Starting codeplan with configuration: %s", config)
 
     kai_config = KaiConfig.model_validate_filepath("../../kai/config.toml")
@@ -229,14 +230,14 @@ class TaskManager:
             yield task
             self.handle_new_tasks_after_processing(task)
 
-    def initialize_task_stacks(self):
+    def initialize_task_stacks(self) -> None:
         logger.info("Initializing task stacks.")
 
         new_tasks = self.run_validators()
         for task in new_tasks:
             self.add_task_to_stack(task)
 
-    def add_task_to_stack(self, task: Task):
+    def add_task_to_stack(self, task: Task) -> None:
         for priority_level, task_stack in self.task_stacks.items():
             if task in task_stack:
                 logger.debug(
@@ -264,7 +265,7 @@ class TaskManager:
             logger.debug("Priority %s stack is empty and removed.", highest_priority)
         return task
 
-    def handle_new_tasks_after_processing(self, task: Task):
+    def handle_new_tasks_after_processing(self, task: Task) -> None:
         logger.info("Handling new tasks after processing task: %s", task)
         self._validators_are_stale = True
         new_tasks = self.run_validators()
@@ -310,7 +311,7 @@ class TaskManager:
             task.children.append(child_task)
             self.add_task_to_stack(child_task)
 
-    def remove_task_from_stacks(self, task: Task):
+    def remove_task_from_stacks(self, task: Task) -> None:
         for priority_level in list(self.task_stacks.keys()):
             task_stack = self.task_stacks[priority_level]
             if task in task_stack:
@@ -344,7 +345,7 @@ class TaskManager:
         logger.debug("Task %s is similar to prior task %s: %s", task1, task2, similar)
         return same or similar
 
-    def handle_ignored_task(self, task: Task):
+    def handle_ignored_task(self, task: Task) -> None:
         logger.info("Handling ignored task: %s", task)
         task.retry_count += 1
         if task.retry_count < task.max_retries:
@@ -376,7 +377,7 @@ class TaskManager:
 
 if __name__ == "__main__":
     try:
-        import ipdb
+        import ipdb  # type: ignore[import-untyped]
 
         with ipdb.launch_ipdb_on_exception():
             main()
