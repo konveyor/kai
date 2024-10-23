@@ -16,7 +16,9 @@ if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
 
 PATH_GIT_ROOT = os.path.join(PATH_KAI, "..")
 
-PATH_DATA = os.path.join(PATH_KAI, "data")
+PATH_SOLUTION_SERVER_ROOT = os.path.join(PATH_GIT_ROOT, "kai_solution_server")
+
+PATH_DATA = os.path.join(PATH_SOLUTION_SERVER_ROOT, "data")
 
 PATH_BENCHMARKS = os.path.join(PATH_DATA, "benchmarks")
 PATH_MISC = os.path.join(PATH_DATA, "misc")

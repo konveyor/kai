@@ -1,7 +1,7 @@
 import logging
 import os
 
-from kai.models.kai_config import KaiConfig
+from kai.kai_config import KaiConfig
 
 parent_log = logging.getLogger("kai")
 
