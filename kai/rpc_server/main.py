@@ -8,7 +8,7 @@ from typing import cast
 import kai.logging.logging as logging
 from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.streams import BareJsonStream
-from kai.models.kai_config import KaiConfig
+from kai.kai_config import KaiConfig
 from kai.rpc_server.server import app
 
 DEFAULT_FORMATTER = core_logging.Formatter(
@@ -33,7 +33,7 @@ def main() -> None:
 
     if _args.config:
         config = KaiConfig.model_validate_filepath(_args.config)
-        logging.initLoggingFromConfig(config)
+        logging.init_logging_from_config(config)
 
     if logging.log:
         logging.log.info("Starting Kai RPC Server")

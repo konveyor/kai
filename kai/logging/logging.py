@@ -19,6 +19,7 @@ class KaiLogger(logging.Logger):
         log = super().getChild(suffix)
         log.configLogLevel = self.configLogLevel
         log.setLevel(self.configLogLevel)
+        log.handlers = self.handlers
         return log
 
     def setLevel(self, level: str | int) -> None:

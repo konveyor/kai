@@ -1,5 +1,3 @@
-# type: ignore
-# Ignore types I will fix this one later
 import json
 import os
 from time import localtime, strftime
@@ -14,7 +12,7 @@ log = get_logger(__name__)
 
 
 def enabled_check(func: Callable[..., Any]) -> Callable[..., Any]:
-    def wrapper(obj: KaiTrace, *args: Any, **kwargs: Any) -> Any:
+    def wrapper(obj: "KaiTrace", *args: Any, **kwargs: Any) -> Any:
         if obj.enabled:
             return func(obj, *args, **kwargs)
         else:
@@ -52,8 +50,8 @@ class KaiTrace:
         self.batch_mode = batch_mode
         self.application_name = application_name
         self.file_name = file_name
-        self.time_start = -1
-        self.time_end = -1
+        self.time_start = float(-1)
+        self.time_end = float(-1)
 
         # We use the same parent directory of logging for trace data
         log_dir = process_log_dir_replacements(self.log_dir)

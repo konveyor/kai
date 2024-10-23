@@ -256,6 +256,8 @@ Message:{message}
                                 times=0,
                             )
                         )
+                        if r.response is not None and isinstance(r.response, list):
+                            r.response = None
                         maven_search = r.response
                         if not r.response:
                             logger.debug("unable to get response from sub-agent")

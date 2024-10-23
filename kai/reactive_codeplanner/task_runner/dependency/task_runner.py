@@ -2,7 +2,6 @@
 import sys
 
 sys.modules["_elementtree"] = None  # type: ignore[assignment]
-import logging
 import os
 import xml.etree.ElementTree as ET  # trunk-ignore(bandit/B405)
 from dataclasses import dataclass

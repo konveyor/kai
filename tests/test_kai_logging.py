@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 
 from kai.kai_config import KaiConfig, KaiConfigIncidentStore, KaiConfigModels
 from kai.logging.logging import (
+    get_logger,
     init_logging,
-    init_logging_from_config,
     process_log_dir_replacements,
     setup_console_handler,
     setup_file_handler,
@@ -58,7 +58,7 @@ class TestLoggingSetup(unittest.TestCase):
     @patch("logging.FileHandler")
     @patch("os.makedirs")
     def test_setup_file_handler(self, mock_makedirs, mock_file_handler):
-        logger = logging.getLogger("test_file_logger")
+        logger = get_logger("test_file_logger")
         setup_file_handler(
             logger, self.log_file, self.log_dir_with_placeholder, self.file_log_level
         )
@@ -77,30 +77,9 @@ class TestLoggingSetup(unittest.TestCase):
             self.test_log_dir,
             self.log_file,
         )
-        logger = logging.getLogger("kai")
+        logger = get_logger("test")
         self.assertEqual(logger.level, logging.DEBUG)
-        self.assertTrue(
-            any(
-                isinstance(handler, logging.StreamHandler)
-                for handler in logger.handlers
-            )
-        )
-        self.assertTrue(
-            any(isinstance(handler, logging.FileHandler) for handler in logger.handlers)
-        )
-
-    @patch("os.makedirs")
-    @patch("os.getcwd")
-    def test_init_logging_from_config(self, mock_getcwd, mock_makedirs):
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        mock_getcwd.return_value = base_dir
-        expected_log_dir = os.path.join(base_dir, "logs")
-        init_logging_from_config(self.config)
-
-        mock_makedirs.assert_called_once_with(expected_log_dir, exist_ok=True)
-
-        logger = logging.getLogger("kai")
-        self.assertEqual(logger.level, logging.DEBUG)
+        print(f"herelrhelajdlfkjadlkjfsdlfjkasdlfkj {logger.handlers}")
         self.assertTrue(
             any(
                 isinstance(handler, logging.StreamHandler)

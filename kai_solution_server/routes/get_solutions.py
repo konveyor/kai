@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from aiohttp import web
 from aiohttp.web_request import Request

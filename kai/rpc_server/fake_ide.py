@@ -16,7 +16,6 @@ from typing import IO, Any, cast
 from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.models import JsonRpcId
 from kai.jsonrpc.streams import BareJsonStream
-from kai.jsonrpc.util import get_logger
 from kai.kai_config import KaiConfigModels
 from kai.logging.logging import get_logger
 from kai.rpc_server.server import KaiRpcApplication
@@ -26,12 +25,7 @@ RESET = "\033[0m"
 
 log = get_logger("jsonrpc")
 
-rpc_log = get_logger(
-    "rpc_subprocess",
-    formatter=logging.Formatter(
-        fmt="rpc_log: %(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    ),
-)
+rpc_log = get_logger("rpc_subprocess")
 
 app = KaiRpcApplication()
 

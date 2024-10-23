@@ -1,7 +1,7 @@
 # trunk-ignore-begin(ruff/E402)
 import importlib
 import sys
-import xml.etree.ElementTree as ET  # trunk-ignore(bandit/B405)
+import xml.etree.ElementTree as ET
 
 # Forcing the reload after changing and re-importing will allow us
 # to pass the test.
@@ -52,7 +52,7 @@ Final Answer:
 Updated the `maven-filtering` dependency to the latest version.
         """
 
-        agent = MavenDependencyAgent(None, 1)
+        agent = MavenDependencyAgent(None, Path(os.getcwd()), 1)
         result = agent.parse_llm_response(content)
         expected = _llm_response(
             actions=[
@@ -143,7 +143,7 @@ Added the `io.quarkus:quarkus-spring-cache` dependency to the `pom.xml` file and
             ),
         ]
 
-        MavenDependencyAgent(None, 1)
+        MavenDependencyAgent(None, Path(os.getcwd()), 1)
 
         for t in testCases:
             result = get_maven_query_from_code(t.code)
