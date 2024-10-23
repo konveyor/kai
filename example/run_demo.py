@@ -12,7 +12,7 @@ from typing import Generator, cast
 from pydantic import BaseModel
 
 # Ensure that we have 'kai' in our import path
-sys.path.append("../../kai")
+sys.path.append("../../")
 from kai.analyzer_types import ExtendedIncident, Report
 from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcResponse
@@ -144,8 +144,18 @@ def process_file(
         f"File #{count} of {num_impacted_files} - Processing {file_path} which has {len(incidents)} incidents."
     )
 
+<<<<<<< HEAD
     params = GetCodeplanAgentSolutionParams(
         file_path=file_path,
+=======
+    with open(f"{SAMPLE_APP_DIR}/{str(file_path)}", "r") as f:
+        file_contents = f.read()
+
+    params = PostGetSolutionsParams(
+        file_name=str(file_path),
+        file_contents=file_contents,
+        application_name=APP_NAME,
+>>>>>>> 2568e06 (using correct type)
         incidents=incidents,
         max_depth=1,
         max_iterations=1,
