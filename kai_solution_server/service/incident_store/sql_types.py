@@ -59,13 +59,14 @@ def SQLEnum(enum_type: Type[Enum]) -> Enum:
 SQLCategory: Enum = SQLEnum(report_types.Category)
 
 
+# ignoring types while waiting for: https://github.com/sqlalchemy/sqlalchemy/issues/6810
 class SQLBase(DeclarativeBase):
     type_annotation_map = {
         dict[str, Any]: JSON()
-        .with_variant(postgresql.JSONB(), "postgresql")
+        .with_variant(postgresql.JSONB(), "postgresql")  # type: ignore
         .with_variant(sqlite.JSON(), "sqlite"),
         list[str]: JSON()
-        .with_variant(postgresql.JSONB(), "postgresql")
+        .with_variant(postgresql.JSONB(), "postgresql")  # type: ignore
         .with_variant(sqlite.JSON(), "sqlite"),
         Solution: SQLSolutionType,
     }

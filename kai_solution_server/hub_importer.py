@@ -16,7 +16,10 @@ from pydantic import BaseModel, Field
 
 from kai.analyzer_types import Report
 from kai.kai_config import KaiConfig
-from kai_solution_server.service.incident_store import Application, IncidentStore
+from kai_solution_server.service.incident_store.incident_store import (
+    Application,
+    IncidentStore,
+)
 
 KAI_LOG = logging.getLogger(__name__)
 

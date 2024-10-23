@@ -2,7 +2,8 @@ import json
 import os
 import re
 from dataclasses import dataclass, field
-from typing import Any
+from pathlib import Path
+from typing import Any, Optional
 
 import tree_sitter as ts
 import tree_sitter_java as tsj
@@ -209,7 +210,9 @@ Here's the input information:
                 if updated_file_contents is None or fix_gen_response is None:
                     return AgentResult(encountered_errors=[], modified_files=[])
                 chat_fix_gen.append(AIMessage(content=fix_gen_response.content))
-                diff = self._get_diff(last_updated_file_contents, updated_file_contents)
+                diff = self._get_diff(
+                    last_updated_file_contents, updated_file_contents, language
+                )
                 if not diff:
                     return AgentResult(encountered_errors=[], modified_files=[])
                 last_updated_file_contents = updated_file_contents
@@ -224,15 +227,17 @@ Here's the input information:
 
         # commit the result here
         if last_updated_file_contents:
-            modified_files.append(reflection_task.file_path)
+            modified_files.append(Path(reflection_task.file_path))
             with open(reflection_task.file_path, "w+") as f:
                 f.write(last_updated_file_contents)
 
         return AgentResult(encountered_errors=[], modified_files=modified_files)
 
     def _get_diff(
-        self, original_content: str, updated_content: str, language: Language
+        self, original_content: str, updated_content: str, language: Language | None
     ) -> dict[str, Any]:
+        if not language:
+            return {}
         parser = ts.Parser(ts.Language(tsj.language()))
         original_file_summary = extract_ast_info(
             parser.parse(original_content.encode("utf-8")), language=language
@@ -252,7 +257,11 @@ Here's the input information:
             diff = updated_file_summary.to_dict()
         return diff
 
-    def _parse_llm_response(self, content: str) -> str:
+    def _parse_llm_response(
+        self, content: str | list[str | dict[Any, Any]]
+    ) -> Optional[str]:
+        if isinstance(content, list):
+            return None
         match_updated_file = re.search(
             r"[##|\*\*] [U|u]pdated [F|f]ile\s+.*?```\w+\n([\s\S]*?)```",
             content,
@@ -262,7 +271,7 @@ Here's the input information:
             return None
         return match_updated_file.group(1).strip()
 
-    def _out(self, to: str, frm: str, msg: str) -> None:
+    def _out(self, to: str, frm: str, msg: str | list[str | dict[Any, Any]]) -> None:
         if not self._silent:
             print(f"{'*'*10}({frm} -> {to})\n\n{msg}\n")
 

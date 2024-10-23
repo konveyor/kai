@@ -105,7 +105,7 @@ def find_in_pom(path: Path) -> Callable[[str], FindInPomResponse]:
         ## We know when it is just an add operation, that the LLM gives us just the word dependencies
         if "dependencies" in code_string:
             return FindInPomResponse(
-                dependencies._start_line_number, dependencies._start_line_number
+                dependencies._start_line_number, dependencies._start_line_number  # type: ignore[union-attr]
             )
 
         parts = code_string.split(",")
@@ -126,9 +126,9 @@ def find_in_pom(path: Path) -> Callable[[str], FindInPomResponse]:
                 if child.text == value:
                     found.append(True)
             if len(found) == 2:
-                return FindInPomResponse(dep._start_line_number, dep._end_line_number)
+                return FindInPomResponse(dep._start_line_number, dep._end_line_number)  # type: ignore[union-attr]
         return FindInPomResponse(
-            dependencies._start_line_number, dependencies._start_line_number
+            dependencies._start_line_number, dependencies._start_line_number  # type: ignore[union-attr]
         )
 
     return f

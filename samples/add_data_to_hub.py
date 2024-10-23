@@ -10,7 +10,7 @@ import urllib3
 import yaml
 from git import Repo
 
-from kai.hub_importer import Incident, Issue
+from kai_solution_server.hub_importer import Incident, Issue
 
 # Little hack so we can import from test directory
 try:

@@ -230,7 +230,8 @@ class Report:
             self.workaround_counter_for_missing_ruleset_name += 1
 
         ruleset = RuleSet.model_validate(ruleset_dict)
-        self.rulesets[ruleset.name] = ruleset
+        if ruleset.name:
+            self.rulesets[ruleset.name] = ruleset
 
     def get_impacted_files(self) -> dict[pathlib.Path, list[ExtendedIncident]]:
         impacted_files: dict[pathlib.Path, list[ExtendedIncident]] = {}
@@ -264,10 +265,11 @@ class Report:
                         }
                     )
 
-                    if impacted_files.get(file_path) is None:
-                        impacted_files[file_path] = []
+                    file_path_as_path = Path(file_path)
+                    if impacted_files.get(file_path_as_path) is None:
+                        impacted_files[file_path_as_path] = []
 
-                    impacted_files[file_path].append(current_entry)
+                    impacted_files[file_path_as_path].append(current_entry)
 
         return impacted_files
 

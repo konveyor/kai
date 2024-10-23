@@ -16,8 +16,13 @@ from kai.kai_config import (
     KaiConfigIncidentStoreSQLiteArgs,
     KaiConfigModels,
 )
-from kai_solution_server.service.incident_store.backend import incident_store_backend_factory
-from kai_solution_server.service.incident_store.incident_store import Application, IncidentStore
+from kai_solution_server.service.incident_store.backend import (
+    incident_store_backend_factory,
+)
+from kai_solution_server.service.incident_store.incident_store import (
+    Application,
+    IncidentStore,
+)
 from kai_solution_server.service.incident_store.sql_types import (
     SQLAcceptedSolution,
     SQLApplication,

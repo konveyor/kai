@@ -61,7 +61,7 @@ class JVariable(DiffableSummary):
             "type": self.typ,
         }
         if self.annotations:
-            d["annotations"] = list(self.annotations)
+            d["annotations"] = list(self.annotations.iter_values())
         return d
 
     def diff(self, o: Self) -> dict[str, Any]:
@@ -107,7 +107,7 @@ class JMethod(DiffableSummary):
         if self.body:
             d["body"] = self.body
         if self.annotations:
-            d["annotations"] = list(self.annotations)
+            d["annotations"] = list(self.annotations.iter_values())
         return d
 
     def diff(self, o: Self) -> dict[str, Any]:
@@ -137,7 +137,7 @@ class JMethod(DiffableSummary):
         if self.annotations != o.annotations:
             diff["annotations"] = self.annotations.diff(o.annotations)
         else:
-            diff["annotations"] = list(self.annotations)
+            diff["annotations"] = list(self.annotations.iter_values())
         return diff
 
 
@@ -172,7 +172,7 @@ class JClass(DiffableSummary):
         if self.interfaces:
             d["interfaces"] = list(self.interfaces)
         if self.annotations:
-            d["annotations"] = list(self.annotations)
+            d["annotations"] = list(self.annotations.iter_values())
         if self.fields:
             d["fields"] = self.fields.to_dict()
         if self.methods:
@@ -194,15 +194,15 @@ class JClass(DiffableSummary):
         if self.fields != o.fields:
             diff["fields"] = self.fields.diff(o.fields)
         else:
-            diff["fields"] = list(self.fields)
+            diff["fields"] = list(self.fields.iter_values())
         if self.methods != o.methods:
             diff["methods"] = self.methods.diff(o.methods)
         else:
-            diff["methods"] = list(self.methods)
+            diff["methods"] = list(self.methods.iter_values())
         if self.annotations != o.annotations:
             diff["annotations"] = self.annotations.diff(o.annotations)
         else:
-            diff["annotations"] = list(self.annotations)
+            diff["annotations"] = list(self.annotations.iter_values())
         return diff
 
 
@@ -229,11 +229,11 @@ class JFile(DiffableSummary):
         if self.classes != o.classes:
             diff["classes"] = self.classes.diff(o.classes)
         else:
-            diff["classes"] = list(self.classes)
+            diff["classes"] = list(self.classes.iter_values())
         return diff
 
 
-def _extract_java_info(root: ts.Node) -> DiffableSummary:
+def _extract_java_info(root: ts.Tree) -> DiffableSummary:
     cursor = root.walk()
 
     def traverse(node: ts.Node) -> DiffableSummary:

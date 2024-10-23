@@ -14,7 +14,9 @@ from kai_solution_server.service.solution_handling.solution_types import Solutio
 
 class TestSolutionConsumers(unittest.TestCase):
 
-    @patch("kai_solution_server.service.solution_handling.consumption.__create_jinja_env")
+    @patch(
+        "kai_solution_server.service.solution_handling.consumption.__create_jinja_env"
+    )
     def test_solution_consumer_diff_only(self, mock_create_jinja_env):
         mock_template = MagicMock()
         mock_template.render.return_value = "mocked render result"
@@ -29,7 +31,9 @@ class TestSolutionConsumers(unittest.TestCase):
         mock_template.render.assert_called_once_with(solution=solution)
         self.assertEqual(result, "mocked render result")
 
-    @patch("kai_solution_server.service.solution_handling.consumption.__create_jinja_env")
+    @patch(
+        "kai_solution_server.service.solution_handling.consumption.__create_jinja_env"
+    )
     def test_solution_consumer_before_and_after(self, mock_create_jinja_env):
         mock_template = MagicMock()
         mock_template.render.return_value = "mocked render result"
@@ -45,7 +49,9 @@ class TestSolutionConsumers(unittest.TestCase):
         mock_template.render.assert_called_once_with(solution=solution)
         self.assertEqual(result, "mocked render result")
 
-    @patch("kai_solution_server.service.solution_handling.consumption.__create_jinja_env")
+    @patch(
+        "kai_solution_server.service.solution_handling.consumption.__create_jinja_env"
+    )
     def test_solution_consumer_llm_summary(self, mock_create_jinja_env):
         mock_template = MagicMock()
         mock_template.render.return_value = "mocked render result"
@@ -70,7 +76,9 @@ class TestSolutionConsumers(unittest.TestCase):
         consumer = solution_consumer_factory("llm_summary")
         self.assertEqual(consumer, solution_consumer_llm_summary)
 
-    @patch("kai_solution_server.service.solution_handling.consumption.__create_jinja_env")
+    @patch(
+        "kai_solution_server.service.solution_handling.consumption.__create_jinja_env"
+    )
     def test_solution_consumer_factory_multiple_kinds(self, mock_create_jinja_env):
         mock_template = MagicMock()
         mock_template.render.return_value = "mocked render result"
@@ -130,7 +138,9 @@ class TestSolutionConsumers(unittest.TestCase):
         solution_consumer_diff_only(MagicMock(spec=Solution))
         mock_template.render.assert_called_once()
 
-    @patch("kai_solution_server.service.solution_handling.consumption.__create_jinja_env")
+    @patch(
+        "kai_solution_server.service.solution_handling.consumption.__create_jinja_env"
+    )
     def test_solution_consumer_renders_empty_string(self, mock_create_jinja_env):
         mock_template = MagicMock()
         mock_template.render.return_value = ""
@@ -144,7 +154,9 @@ class TestSolutionConsumers(unittest.TestCase):
         mock_template.render.assert_called_once_with(solution=solution)
         self.assertEqual(result, "")
 
-    @patch("kai_solution_server.service.solution_handling.consumption.__create_jinja_env")
+    @patch(
+        "kai_solution_server.service.solution_handling.consumption.__create_jinja_env"
+    )
     def test_solution_consumer_partial_success(self, mock_create_jinja_env):
         mock_template_diff = MagicMock()
         mock_template_diff.render.return_value = "diff render result"

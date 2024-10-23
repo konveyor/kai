@@ -7,7 +7,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
 from kai.reactive_codeplanner.agent.reflection_agent import ReflectionTask
-from kai.reactive_codeplanner.api import Task, TaskResult
+from kai.reactive_codeplanner.task_manager.api import Task, TaskResult
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
 from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
     AccessControlError,
@@ -35,7 +35,7 @@ class MavenCompilerLLMResponse(SpawningResult):
     def to_reflection_task(self) -> ReflectionTask:
         return ReflectionTask(
             file_path=self.file_path,
-            issues=self.input_errors,
+            issues=set(self.input_errors),
             reasoning=self.reasoning,
             updated_file=self.java_file,
             original_file=self.input_file,
@@ -98,11 +98,11 @@ class MavenCompilerTaskRunner(TaskRunner):
 
     def refine_task(self, errors: list[str]) -> None:
         """We currently do not refine the tasks"""
-        return super().refine_task(errors)
+        return None
 
     def can_handle_error(self, errors: list[str]) -> bool:
         """We currently do not know if we can handle errors"""
-        return super().can_handle_error(errors)
+        return False
 
     def can_handle_task(self, task: Task) -> bool:
         """Will determine if the task if a MavenCompilerError, and if we can handle these issues."""
@@ -145,6 +145,11 @@ class MavenCompilerTaskRunner(TaskRunner):
 
     def parse_llm_response(self, message: BaseMessage) -> MavenCompilerLLMResponse:
         """Private method that will be used to parse the contents and get the results"""
+
+        if isinstance(message.content, list):
+            return MavenCompilerLLMResponse(
+                reasoning="", java_file="", additional_information=""
+            )
 
         lines_of_output = message.content.splitlines()
 

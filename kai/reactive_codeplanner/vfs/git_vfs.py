@@ -26,7 +26,7 @@ log.addHandler(handler)
 
 class SpawningResult(ABC):
     @abstractmethod
-    def to_reflection_task(self) -> ReflectionTask:
+    def to_reflection_task(self) -> Optional[ReflectionTask]:
         pass
 
 
@@ -63,6 +63,9 @@ class RepoContextSnapshot:
         Returns a list of spawning results from the parent snapshots, including
         itself, in order from oldest to newest.
         """
+
+        if not self.spawning_result:
+            return []
 
         if self.parent is None:
             return [self.spawning_result]
@@ -214,7 +217,7 @@ class RepoContextManager:
     def __init__(
         self,
         project_root: Path,
-        reflection_agent: ReflectionAgent,
+        reflection_agent: Optional[ReflectionAgent] = None,
         initial_msg: str | None = None,
     ):
         self.project_root = project_root
@@ -231,10 +234,13 @@ class RepoContextManager:
         """
 
         reflection_result = AgentResult(encountered_errors=[], modified_files=None)
-        if spawning_result is not None and isinstance(spawning_result, SpawningResult):
-            reflection_result = self.reflection_agent.execute(
-                spawning_result.to_reflection_task()
-            )
+        if self.reflection_agent:
+            if spawning_result is not None and isinstance(
+                spawning_result, SpawningResult
+            ):
+                reflection_task = spawning_result.to_reflection_task()
+                if reflection_task:
+                    reflection_result = self.reflection_agent.execute(reflection_task)
 
         new_spawning_result = union_the_result_and_the_errors(
             reflection_result.encountered_errors, spawning_result

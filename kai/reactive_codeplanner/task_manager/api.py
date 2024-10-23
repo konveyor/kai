@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, fields
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Sequence
 
 
 @dataclass
@@ -87,6 +87,28 @@ class ValidationError(Task):
     def __hash__(self) -> int:
         return hash((self.file, self.line, self.column, self.message))
 
+    def fuzzy_equals(self, error2: Task, offset: int = 1) -> bool:
+        """
+        Determines if two ValidationError objects are likely the same error,
+        with a fuzzy comparison allowing for a line number offset.
+
+        Args:
+        - error1 (ValidationError): First error to compare.
+        - error2 (ValidationError): Second error to compare.
+        - offset (int): The allowed difference in line numbers for errors to still be considered the same.
+
+        Returns:
+        - bool: True if the errors are likely the same, False otherwise.
+        """
+        if isinstance(error2, ValidationError):
+            return (
+                self.file == error2.file
+                and abs(self.line - error2.line) <= offset
+                and self.column == error2.column
+                and self.message == error2.message
+            )
+        return False
+
 
 # FIXME: Might not need
 @dataclass
@@ -98,7 +120,7 @@ class TaskResult:
 @dataclass
 class ValidationResult:
     passed: bool
-    errors: list[ValidationError]
+    errors: Sequence[ValidationError]
 
 
 class ValidationException(Exception):
@@ -114,26 +136,3 @@ class ValidationStep(ABC):
     @abstractmethod
     def run(self) -> ValidationResult:
         pass
-
-
-def fuzzy_equals(
-    error1: ValidationError, error2: ValidationError, offset: int = 1
-) -> bool:
-    """
-    Determines if two ValidationError objects are likely the same error,
-    with a fuzzy comparison allowing for a line number offset.
-
-    Args:
-    - error1 (ValidationError): First error to compare.
-    - error2 (ValidationError): Second error to compare.
-    - offset (int): The allowed difference in line numbers for errors to still be considered the same.
-
-    Returns:
-    - bool: True if the errors are likely the same, False otherwise.
-    """
-    return (
-        error1.file == error2.file
-        and abs(error1.line - error2.line) <= offset
-        and error1.column == error2.column
-        and error1.message == error2.message
-    )

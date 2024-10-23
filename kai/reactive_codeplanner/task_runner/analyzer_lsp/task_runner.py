@@ -11,7 +11,8 @@ from pygments import lexers
 from pygments.lexer import LexerMeta
 from pygments.util import ClassNotFound
 
-from kai.reactive_codeplanner.api import Task, TaskResult
+from kai.reactive_codeplanner.agent.api import AgentResult
+from kai.reactive_codeplanner.task_manager.api import Task, TaskResult
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import AnalyzerRuleViolation
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class AnalyzerLLMResponse:
+class AnalyzerLLMResponse(AgentResult):
     reasoning: str
     java_file: str
     addional_information: str
@@ -146,7 +147,7 @@ If you have any additional details or steps that need to be performed, put it he
             with open(task.file, "w") as f:
                 f.write(resp.java_file)
 
-            rcm.commit(f"AnalyzerTaskRunner changed file {str(task.file)}", resp)
+            rcm.commit(f"AnalyzerTaskRunner changed file {str(task.file)}", None)
             return TaskResult(modified_files=[Path(file_name)], encountered_errors=[])
 
         return TaskResult(modified_files=[], encountered_errors=[])
@@ -185,6 +186,8 @@ If you have any additional details or steps that need to be performed, put it he
             if in_additional_details:
                 additional_details = "\n".join([additional_details, line])
         return AnalyzerLLMResponse(
+            encountered_errors=None,
+            modified_files=None,
             reasoning=reasoning,
             java_file=java_file,
             addional_information=additional_details,
