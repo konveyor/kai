@@ -7,7 +7,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 
 from kai.kai_config import KaiConfig
 from kai.reactive_codeplanner.task_manager.api import RpcClientConfig
-from kai.reactive_codeplanner.task_manager import TaskManager 
+from kai.reactive_codeplanner.task_manager.task_manager import TaskManager
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.task_runner import (
     AnalyzerTaskRunner,
 )
@@ -19,7 +19,7 @@ from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
     MavenCompileStep,
 )
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
-from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
+from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider #type: ignore
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

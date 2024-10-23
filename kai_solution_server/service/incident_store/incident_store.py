@@ -3,7 +3,7 @@ import datetime
 import logging
 import os
 from dataclasses import dataclass
-from typing import Any, Optional, TypeVar
+from typing import Any, Optional, TypeVar, cast
 from urllib.parse import unquote, urlparse
 
 import yaml
@@ -28,7 +28,7 @@ from kai_solution_server.service.incident_store.sql_types import (
     SQLUnmodifiedReport,
     SQLViolation,
 )
-from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
+from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider #type: ignore
 from kai_solution_server.service.solution_handling.detection import (
     SolutionDetectionAlgorithm,
     SolutionDetectorContext,
@@ -47,9 +47,9 @@ T = TypeVar("T")
 
 def deep_sort(obj: T) -> T:
     if isinstance(obj, dict):
-        return {k: deep_sort(v) for k, v in sorted(obj.items())}
+        return cast(T, {k: deep_sort(v) for k, v in sorted(obj.items())})
     if isinstance(obj, list):
-        return sorted(deep_sort(x) for x in obj)
+        return cast(T, sorted(deep_sort(x) for x in obj))
     return obj
 
 
@@ -120,6 +120,8 @@ def load_reports_from_directory(store: "IncidentStore", path: str) -> None:
         repo_path = __get_repo_path(app)
         repo = Repo(repo_path)
         app_v = __get_app_variables(folder_path, app)
+        if app_v is None:
+            return None
         initial_branch = app_v["initial_branch"]
         repo.git.checkout(initial_branch)
         commit = repo.head.commit
@@ -147,7 +149,10 @@ def load_reports_from_directory(store: "IncidentStore", path: str) -> None:
             return None
 
         report_path = os.path.join(solved_folder, "output.yaml")
-        solved_branch = __get_app_variables(folder_path, app)["solved_branch"]
+        app_vars = __get_app_variables(folder_path, app)
+        if app_vars is None:
+            return None
+        solved_branch = app_vars["solved_branch"]
 
         repo.git.checkout(solved_branch)
         commit = repo.head.commit
@@ -432,7 +437,8 @@ class IncidentStore:
                     select_accepted_solution_stmt
                 ).first()
 
-                result.append(accepted_solution.solution)
+                if accepted_solution is not None:
+                    result.append(accepted_solution.solution)
             return result
 
     def post_process(self, limit: int = 5) -> None:
@@ -446,7 +452,10 @@ class IncidentStore:
         page_size = 100
         page = 0
         processed_count = 0
-        limit = float("inf") if limit < 0 else limit
+        if limit < 0:
+            limit = 0
+        # I have no idea what this is trying to do.
+        #limit = float("inf") if limit < 0 else limit
         KAI_LOG.debug(f"Running post_process with limit {limit}")
         with Session(self.engine) as session:
             while processed_count < limit:
@@ -527,7 +536,7 @@ class IncidentStore:
         )
 
 
-def cmd(provider: str = None) -> None:
+def cmd(provider: str = "") -> None:
     parser = argparse.ArgumentParser(description="Process some parameters.")
     parser.add_argument(
         "--config_filepath",

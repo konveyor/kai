@@ -92,7 +92,7 @@ Searched dependencies:
         response = search_fqdn_query(new_query)
         logger.debug("got response: %r from searchign FQDN")
         ## only run this 5 times
-        if not response and ask.times < 5:
+        if (not response or isinstance(response, list)) and ask.times < 5:
             ## need to recursively call execute.
             query.append(new_query)
             return self.execute(
@@ -104,12 +104,14 @@ Searched dependencies:
                     times=ask.times + 1,
                 )
             )
+        if isinstance(response, list):
+            response = None
         return FQDNDependencySelectorResult(
             encountered_errors=None, modified_files=None, response=response
         )
 
     def parse_llm_response(
-        self, content: str | list[str] | dict[str, Any]
+        self, content: str | list[str | dict[Any, Any]]
     ) -> Optional[__llm_response]:
         if isinstance(content, dict) or isinstance(content, list):
             return None

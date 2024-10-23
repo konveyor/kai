@@ -26,7 +26,7 @@ class PostSubmitAcceptedSolution(BaseModel):
     pass
 
 
-@to_route("post", "/get_solutions")  # type: ignore[misc]
+@to_route("post", "/get_solutions") 
 async def post_get_solutions(request: Request) -> web.Response:
     KAI_LOG.debug(f"post_get_solutions recv'd: {request}")
 
@@ -43,6 +43,6 @@ async def post_get_solutions(request: Request) -> web.Response:
     )
 
 
-@to_route("post", "/submit_accepted_solution")  # type: ignore[misc]
+@to_route("post", "/submit_accepted_solution")
 async def submit_accepted_solution(request: Request) -> web.Response:
     raise NotImplementedError("submit_accepted_solution")

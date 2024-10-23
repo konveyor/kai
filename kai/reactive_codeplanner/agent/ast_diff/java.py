@@ -233,7 +233,7 @@ class JFile(DiffableSummary):
         return diff
 
 
-def _extract_java_info(root: ts.Node) -> DiffableSummary:
+def _extract_java_info(root: ts.Tree) -> DiffableSummary:
     cursor = root.walk()
 
     def traverse(node: ts.Node) -> DiffableSummary:

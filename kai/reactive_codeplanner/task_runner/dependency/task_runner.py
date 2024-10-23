@@ -1,7 +1,7 @@
 # trunk-ignore-begin(ruff/E402)
 import sys
 
-sys.modules["_elementtree"] = None
+sys.modules["_elementtree"] = None #type: ignore
 import logging
 import os
 import xml.etree.ElementTree as ET  # trunk-ignore(bandit/B405)
@@ -11,6 +11,7 @@ from pathlib import Path
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
     MavenDependencyRequest,
+    MavenDependencyResult,
 )
 from kai.reactive_codeplanner.task_manager.api import Task, TaskResult
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
@@ -67,6 +68,9 @@ class DependencyTaskRunner(TaskRunner):
         maven_dep_response = self._agent.execute(MavenDependencyRequest(task.file, msg))
         logger.info("got mvn dep response: %r", maven_dep_response)
 
+        if not isinstance(maven_dep_response, MavenDependencyResult):
+            return TaskResult(encountered_errors=[], modified_files=[])
+
         if not maven_dep_response.final_answer:
             logger.info(
                 "No final answer was given, we need to return with nothing modified. result: %r",
@@ -91,15 +95,19 @@ class DependencyTaskRunner(TaskRunner):
         root = tree.getroot()
         deps = root.find("{http://maven.apache.org/POM/4.0.0}dependencies")
 
+        if deps is None or not isinstance(deps, ET.Element):
+            return TaskResult(modified_files=[], encountered_errors=[])
+
         ## We always need to add the new dep
         deps.append(maven_dep_response.fqdn_response.to_xml_element())
+ 
 
-        if deps._start_line_number != maven_dep_response.find_in_pom.start_line:
+        if deps._start_line_number != maven_dep_response.find_in_pom.start_line: #type: ignore
             ## we know we need to remove this dep
             for dep in deps:
                 if (
-                    dep._start_line_number == maven_dep_response.find_in_pom.start_line
-                    and dep._end_line_number == maven_dep_response.find_in_pom.end_line
+                    dep._start_line_number == maven_dep_response.find_in_pom.start_line #type: ignore
+                    and dep._end_line_number == maven_dep_response.find_in_pom.end_line #type: ignore
                 ):
                     logger.debug("found dep %r and removing", dep)
                     deps.remove(dep)
@@ -109,7 +117,7 @@ class DependencyTaskRunner(TaskRunner):
             pretty_xml = ET.tostring(root, encoding="UTF-8", default_namespace="")
             p.write(pretty_xml.decode("utf-8"))
             rcm.commit(
-                f"DependencyTaskRunner changed file {str(pom)}", maven_dep_response
+                f"DependencyTaskRunner changed file {str(pom)}", maven_dep_response, 
             )
 
         return TaskResult(modified_files=[Path(pom)], encountered_errors=[])

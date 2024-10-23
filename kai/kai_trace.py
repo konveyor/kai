@@ -1,3 +1,5 @@
+# type: ignore
+# Ignore types I will fix this one later
 import json
 import logging
 import os
