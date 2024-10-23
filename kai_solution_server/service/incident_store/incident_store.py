@@ -28,8 +28,8 @@ from kai_solution_server.service.incident_store.sql_types import (
     SQLUnmodifiedReport,
     SQLViolation,
 )
-from kai_solution_server.service.llm_interfacing.model_provider import (
-    ModelProvider,  # type: ignore
+from kai_solution_server.service.llm_interfacing.model_provider import (  # type: ignore
+    ModelProvider,
 )
 from kai_solution_server.service.solution_handling.detection import (
     SolutionDetectionAlgorithm,

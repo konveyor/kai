@@ -117,7 +117,7 @@ class DependencyTaskRunner(TaskRunner):
             p.write(pretty_xml.decode("utf-8"))
             rcm.commit(
                 f"DependencyTaskRunner changed file {str(pom)}",
-                maven_dep_response,
+                None,
             )
 
         return TaskResult(modified_files=[Path(pom)], encountered_errors=[])

@@ -10,8 +10,8 @@ from kai.constants import PATH_TEMPLATES
 from kai.kai_config import SolutionProducerKind
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.task_runner import guess_language
 from kai_solution_server.service.incident_store.sql_types import SQLIncident
-from kai_solution_server.service.llm_interfacing.model_provider import (
-    ModelProvider,  # type: ignore
+from kai_solution_server.service.llm_interfacing.model_provider import (  # type: ignore
+    ModelProvider,
 )
 from kai_solution_server.service.solution_handling.solution_types import Solution
 

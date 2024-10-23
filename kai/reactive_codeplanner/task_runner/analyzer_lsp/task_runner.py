@@ -147,7 +147,7 @@ If you have any additional details or steps that need to be performed, put it he
             with open(task.file, "w") as f:
                 f.write(resp.java_file)
 
-            rcm.commit(f"AnalyzerTaskRunner changed file {str(task.file)}", resp)
+            rcm.commit(f"AnalyzerTaskRunner changed file {str(task.file)}", None)
             return TaskResult(modified_files=[Path(file_name)], encountered_errors=[])
 
         return TaskResult(modified_files=[], encountered_errors=[])
