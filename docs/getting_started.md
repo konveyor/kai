@@ -47,7 +47,7 @@ This is the simplest configuration which will limit configuration choices and wi
 
 ### Launch Kai with sample data and cached LLM responses
 
-_This will run Kai using [sample analysis reports](/samples/analysis_reports) that simulates the analysis data which will be obtained from Konveyor. Additionally it will default to using cached LLM responses as explained in [docs/contrib/configuration.md](/docs/contrib/configuration.md)_
+_This will run Kai using [sample analysis reports](/kai_solution_server/samples/analysis_reports) that simulates the analysis data which will be obtained from Konveyor. Additionally it will default to using cached LLM responses as explained in [docs/contrib/configuration.md](/docs/contrib/configuration.md)_
 
 Steps:
 

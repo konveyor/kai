@@ -100,7 +100,7 @@ cd ./samples
 ./fetch_apps.py
 ```
 
-This will check out the sample app source code to: `./samples/sample_repos`.
+This will check out the sample app source code to: `./kai_solution_server/samples/sample_repos`.
 
 Next, run the analysis:
 
@@ -117,7 +117,7 @@ cd ..
 ```
 
 The analysis data will be stored in:
-`samples/analysis_reports/{APP_NAME}/<initial|solved>/output.yaml`
+`kai_solution_server/samples/analysis_reports/{APP_NAME}/<initial|solved>/output.yaml`
 
 ## Build and test a local image
 
