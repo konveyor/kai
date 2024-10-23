@@ -17,7 +17,7 @@ from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.models import JsonRpcId
 from kai.jsonrpc.streams import BareJsonStream
 from kai.jsonrpc.util import get_logger
-from kai.models.kai_config import KaiConfigModels
+from kai.kai_config import KaiConfigModels
 from kai.rpc_server.server import KaiRpcApplication
 
 BLUE = "\033[94m"
@@ -45,7 +45,7 @@ def log_message(
     hack.exc_text = None
     hack.stack_info = None
 
-    rpc_log.handle(hack)  # type: ignore
+    rpc_log.handle(hack)  # type: ignore[arg-type]
 
 
 def log_stderr(stderr: IO[bytes]) -> None:
