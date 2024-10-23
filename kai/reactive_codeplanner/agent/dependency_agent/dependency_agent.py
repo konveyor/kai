@@ -286,7 +286,7 @@ Message:{message}
         # Note, that we have to ignore this type, because it must match LLM
         # Response type and they do not specify the dict args
         self,
-        content: Union[str, list[Union[str, dict[str, Any]]]],
+        content: Union[str, list[Union[str, dict[Any, Any]]]],
     ) -> Optional[_llm_response]:
         # We should not expect that the value is anything other than str for the type of
         # call that we know we are making
