@@ -553,7 +553,7 @@ def cmd(provider: str | None = None) -> None:
     parser.add_argument(
         "--analysis_dir_path",
         type=str,
-        default=os.path.join(PATH_GIT_ROOT, "samples/analysis_reports/"),
+        default=os.path.join(PATH_GIT_ROOT, "kai_solution_server/samples/analysis_reports/"),
         help="Path to analysis reports folder",
     )
     parser.add_argument(

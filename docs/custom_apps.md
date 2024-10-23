@@ -14,7 +14,7 @@ To run Kai with your Applications, follow these steps
 ## Configure Application
 
 1. Navigate to the samples folder - `cd samples`
-1. In `./samples/config.py`, add your application's info to `repos` dict.
+1. In `./kai_solution_server/samples/config.py`, add your application's info to `repos` dict.
 
 ```python
  "<app name>": [
@@ -76,9 +76,9 @@ Before running analysis, make sure that you have `kantra` installed
 
 To ensure the analysis uses the necessary custom rules, follow these steps:
 
-- Download or create your custom rules and place them in the samples/custom_rules directory.
+- Download or create your custom rules and place them in the kai_solution_server/samples/custom_rules directory.
 
-To run analysis reports for the applications listed in `./samples/config.py`, run
+To run analysis reports for the applications listed in `./kai_solution_server/samples/config.py`, run
 
 ```shell=
 ./analyze_apps.py
@@ -86,7 +86,7 @@ To run analysis reports for the applications listed in `./samples/config.py`, ru
 
 This step analyzes all sample apps we know about, in both the 'initial' and 'solved' states, expect this to run for ~2-3 hours.
 
-Analysis data will be stored in: `samples/analysis_reports/{APP_NAME}/<initial|solved>/output.yaml`
+Analysis data will be stored in: `kai_solution_server/samples/analysis_reports/{APP_NAME}/<initial|solved>/output.yaml`
 
 ### Run Kai server
 
@@ -106,7 +106,7 @@ Analysis data will be stored in: `samples/analysis_reports/{APP_NAME}/<initial|s
 
 <b>Note: </b> There are two different places where analysis is performed and currently only one of them is set to ignore the default Kantra rules:
 
-1. Analysis of Sample Data: This runs on several sample applications using both default and custom rules. It simulates integration with a Konveyor instance populated with data. Configuration for this analysis is in [analyze_apps.py](https://github.com/konveyor/kai/blob/main/samples/analyze_apps.py#L83).
+1. Analysis of Sample Data: This runs on several sample applications using both default and custom rules. It simulates integration with a Konveyor instance populated with data. Configuration for this analysis is in [analyze_apps.py](https://github.com/konveyor/kai/blob/main/kai_solution_server/samples/analyze_apps.py#L83).
 
 2. Client-Side Analysis: This can be handled through example/run_demo.py or running in an IDE. Default rules are ignored, and only custom rules are used. Configuration for this analysis is in [analyze.sh](https://github.com/konveyor/kai/blob/main/example/analyze.sh#L50)
 

@@ -11,7 +11,7 @@ SOURCE_ONLY=""
 # trunk-ignore(shellcheck/SC2034)
 DEFAULT_RULES_DIR="${PWD}/default_rules"
 
-CUSTOM_RULES_DIR="${PWD}/../samples/custom_rules"
+CUSTOM_RULES_DIR="${PWD}/../kai_solution_server/samples/custom_rules"
 
 # Choose to either analyze the initial or solved branch
 # Then comment out/in the appropriate below
@@ -21,11 +21,11 @@ OUTDIR=${PWD}/analysis/${SOURCE_DIR}/
 #BRANCH="quarkus"
 #OUTDIR=${PWD}/tmp/${SOURCE_DIR}/solved
 
-KANTRA_BIN="${PWD}/../samples/bin/kantra"
+KANTRA_BIN="${PWD}/../kai_solution_server/samples/bin/kantra"
 # CHECK that bin exits, exit if not
 if [[ ! -f ${KANTRA_BIN} ]]; then
 	echo "Kantra binary not found at ${KANTRA_BIN}"
-	echo "Please look at '${CWD}/../samples/macos/get_latest_kantra_cli.sh' for example of how to get Kantra"
+	echo "Please look at '${CWD}/../kai_solution_server/samples/macos/get_latest_kantra_cli.sh' for example of how to get Kantra"
 	exit 1
 fi
 

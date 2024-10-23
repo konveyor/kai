@@ -28,7 +28,7 @@ Note: For purposes of this initial prototype we are using an example of Java EE 
   1.  Static Code Analysis
 
       - We pinpoint where to begin work by leveraging static code analysis to guide us
-      - The static code analysis is informed via a collection of crowd sourced knowledge contained in our [rulesets](https://github.com/konveyor/rulesets/tree/main) plus augmented via [custom-rules](https://github.com/konveyor-ecosystem/kai/tree/main/samples/custom_rules)
+      - The static code analysis is informed via a collection of crowd sourced knowledge contained in our [rulesets](https://github.com/konveyor/rulesets/tree/main) plus augmented via [custom-rules](https://github.com/konveyor-ecosystem/kai/tree/main/kai_solution_server/samples/custom_rules)
       - We include in the prompt Analysis metadata information to give the LLM more context [such as](https://github.com/konveyor-ecosystem/kai/blob/main/example/analysis/coolstore/output.yaml#L2789)
 
             remote-ejb-to-quarkus-00000:
