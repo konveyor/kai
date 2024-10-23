@@ -9,34 +9,34 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel
 
+from kai.analyzer_types import ExtendedIncident, Incident, RuleSet, Violation
 from kai.jsonrpc.core import JsonRpcApplication, JsonRpcServer
 from kai.jsonrpc.logs import JsonRpcLoggingHandler
 from kai.jsonrpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcId
 from kai.jsonrpc.util import DEFAULT_FORMATTER, TRACE, CamelCaseBaseModel
-from kai.models.kai_config import KaiConfigModels
-from kai.models.report_types import ExtendedIncident, Incident, RuleSet, Violation
-from kai.repo_level_awareness.agent.dependency_agent.dependency_agent import (
+from kai.kai_config import KaiConfigModels
+from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
 )
-from kai.repo_level_awareness.agent.reflection_agent import ReflectionAgent
-from kai.repo_level_awareness.api import RpcClientConfig, Task, TaskResult
-from kai.repo_level_awareness.codeplan import TaskManager
-from kai.repo_level_awareness.task_runner.analyzer_lsp.api import AnalyzerRuleViolation
-from kai.repo_level_awareness.task_runner.analyzer_lsp.task_runner import (
+from kai.reactive_codeplanner.agent.reflection_agent import ReflectionAgent
+from kai.reactive_codeplanner.task_manager.api import RpcClientConfig, Task, TaskResult
+from kai.reactive_codeplanner.task_manager.task_manager import TaskManager
+from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import AnalyzerRuleViolation
+from kai.reactive_codeplanner.task_runner.analyzer_lsp.task_runner import (
     AnalyzerTaskRunner,
 )
-from kai.repo_level_awareness.task_runner.analyzer_lsp.validator import AnalyzerLSPStep
-from kai.repo_level_awareness.task_runner.compiler.compiler_task_runner import (
+from kai.reactive_codeplanner.task_runner.analyzer_lsp.validator import AnalyzerLSPStep
+from kai.reactive_codeplanner.task_runner.compiler.compiler_task_runner import (
     MavenCompilerTaskRunner,
 )
-from kai.repo_level_awareness.task_runner.compiler.maven_validator import (
+from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
     MavenCompileStep,
 )
-from kai.repo_level_awareness.task_runner.dependency.task_runner import (
+from kai.reactive_codeplanner.task_runner.dependency.task_runner import (
     DependencyTaskRunner,
 )
-from kai.repo_level_awareness.vfs.git_vfs import RepoContextManager, RepoContextSnapshot
-from kai.service.llm_interfacing.model_provider import ModelProvider
+from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager, RepoContextSnapshot
+from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
 
 
 class KaiRpcApplicationConfig(CamelCaseBaseModel):

@@ -32,20 +32,20 @@ print(temp_dir)
 
 from pathlib import Path
 from kai.jsonrpc.util import DEFAULT_FORMATTER, TRACE, get_logger
-from kai.repo_level_awareness.api import RpcClientConfig
-from kai.repo_level_awareness.codeplan import TaskManager
-from kai.repo_level_awareness.task_runner.analyzer_lsp.validator import AnalyzerLSPStep, AnalyzerLSPStep
-from kai.repo_level_awareness.task_runner.analyzer_lsp.task_runner import AnalyzerTaskRunner
-from kai.repo_level_awareness.task_runner.compiler.maven_validator import MavenCompileStep
-from kai.repo_level_awareness.task_runner.compiler.compiler_task_runner import MavenCompilerTaskRunner
-from kai.repo_level_awareness.task_runner.dependency.task_runner import DependencyTaskRunner
-from kai.repo_level_awareness.agent.dependency_agent.dependency_agent import MavenDependencyAgent
-from kai.models.report_types import Incident, RuleSet, Violation, Category
+from kai.reactive_codeplanner.api import RpcClientConfig
+from kai.reactive_codeplanner.task_manager import TaskManager
+from kai.reactive_codeplanner.task_runner.analyzer_lsp.validator import AnalyzerLSPStep, AnalyzerLSPStep
+from kai.reactive_codeplanner.task_runner.analyzer_lsp.task_runner import AnalyzerTaskRunner
+from kai.reactive_codeplanner.task_runner.compiler.maven_validator import MavenCompileStep
+from kai.reactive_codeplanner.task_runner.compiler.compiler_task_runner import MavenCompilerTaskRunner
+from kai.reactive_codeplanner.task_runner.dependency.task_runner import DependencyTaskRunner
+from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import MavenDependencyAgent
+from kai.analyzer_types import Incident, RuleSet, Violation, Category
 from kai.service.llm_interfacing.model_provider import ModelProvider
-from kai.models.kai_config import KaiConfig
-from kai.repo_level_awareness.vfs.git_vfs import RepoContextManager
+from kai.kai_config import KaiConfig
+from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
 import logging
-from kai.repo_level_awareness.task_runner.analyzer_lsp.api import AnalyzerDependencyRuleViolation, AnalyzerRuleViolation
+from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import AnalyzerDependencyRuleViolation, AnalyzerRuleViolation
 
 # logging.basicConfig(level=logging.DEBUG)
 # logging.getLogger('httpx').setLevel(logging.WARNING)

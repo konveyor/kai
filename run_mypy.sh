@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo "Running mypy..."
-mypy kai
+mypy kai kai_solution_server
 mypy_result=$?
 if [ "${mypy_result}" -ne 0 ]; then
 	echo "mypy failed.."
