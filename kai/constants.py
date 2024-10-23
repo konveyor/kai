@@ -25,7 +25,9 @@ PATH_MISC = os.path.join(PATH_DATA, "misc")
 PATH_SQL = os.path.join(PATH_DATA, "sql")
 PATH_TEMPLATES = os.path.join(PATH_DATA, "templates")
 
-PATH_LOCAL_REPO = os.path.join(PATH_GIT_ROOT, "samples/sample_repos")
+PATH_LOCAL_REPO = os.path.join(
+    PATH_GIT_ROOT, "kai_solution_server/samples/sample_repos"
+)
 
 PATH_TESTS = os.path.join(PATH_GIT_ROOT, "tests")
 PATH_TEST_DATA = pathlib.Path(os.path.join(PATH_GIT_ROOT, "tests/test_data"))

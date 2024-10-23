@@ -5,7 +5,7 @@
   - https://github.com/konveyor-ecosystem/coolstore
     - We will use the `main` branch which has the Java EE version.
     - We have found [these issues](https://github.com/jmle/kai-examples/blob/main/coolstore-examples/examples.md) in the `main` branch which need to be addressed before we move to Quarkus:
-      - This information was obtained by running [Kantra](https://github.com/konveyor/kantra) (Konveyor's static code analyzer) with these [custom-rules](https://github.com/konveyor-ecosystem/kai/tree/main/samples/custom_rules)
+      - This information was obtained by running [Kantra](https://github.com/konveyor/kantra) (Konveyor's static code analyzer) with these [custom-rules](https://github.com/konveyor-ecosystem/kai/tree/main/kai_solution_server/samples/custom_rules)
         - Full output from [Kantra](https://github.com/konveyor/kantra) is checked into the git repo here: [example/analysis/coolstore](example/analysis/coolstore)
   - Limitations:
     - Kai will perform a partial migration to Quarkus, but manual changes will be required.
