@@ -1,9 +1,6 @@
 import argparse
 import logging
 from pathlib import Path
-from typing import Optional
-
-from langchain_core.language_models.chat_models import BaseChatModel
 
 from kai.kai_config import KaiConfig
 from kai.reactive_codeplanner.task_manager.api import RpcClientConfig
@@ -19,7 +16,9 @@ from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
     MavenCompileStep,
 )
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
-from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider #type: ignore
+from kai_solution_server.service.llm_interfacing.model_provider import (
+    ModelProvider,  # type: ignore
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

@@ -36,8 +36,10 @@ from kai.reactive_codeplanner.task_runner.dependency.task_runner import (
     DependencyTaskRunner,
 )
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager, RepoContextSnapshot
+from kai_solution_server.service.llm_interfacing.model_provider import (
+    ModelProvider,  # type: ignore
+)
 
-from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider #type: ignore
 
 class KaiRpcApplicationConfig(CamelCaseBaseModel):
     process_id: Optional[int]

@@ -217,7 +217,7 @@ class RepoContextManager:
     def __init__(
         self,
         project_root: Path,
-        reflection_agent: Optional[ReflectionAgent]=None,
+        reflection_agent: Optional[ReflectionAgent] = None,
         initial_msg: str | None = None,
     ):
         self.project_root = project_root
@@ -235,7 +235,9 @@ class RepoContextManager:
 
         reflection_result = AgentResult(encountered_errors=[], modified_files=None)
         if self.reflection_agent:
-            if spawning_result is not None and isinstance(spawning_result, SpawningResult):
+            if spawning_result is not None and isinstance(
+                spawning_result, SpawningResult
+            ):
                 reflection_task = spawning_result.to_reflection_task()
                 if reflection_task:
                     reflection_result = self.reflection_agent.execute(reflection_task)

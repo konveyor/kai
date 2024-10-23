@@ -26,7 +26,7 @@ class PostSubmitAcceptedSolution(BaseModel):
     pass
 
 
-@to_route("post", "/get_solutions") 
+@to_route("post", "/get_solutions")
 async def post_get_solutions(request: Request) -> web.Response:
     KAI_LOG.debug(f"post_get_solutions recv'd: {request}")
 

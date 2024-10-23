@@ -65,7 +65,7 @@ class CamelCaseBaseModel(BaseModel):
             ),
             serialization_alias=to_camel,
         ),
-        populate_by_name=True
+        populate_by_name=True,
     )
 
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:

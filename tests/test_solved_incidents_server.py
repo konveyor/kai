@@ -11,7 +11,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from kai.constants import PATH_TEST_DATA
-from kai_solution_server.hub_importer import poll_api
 from kai.kai_config import (
     KaiConfig,
     KaiConfigIncidentStore,
@@ -20,6 +19,7 @@ from kai.kai_config import (
     SolutionDetectorKind,
     SolutionProducerKind,
 )
+from kai_solution_server.hub_importer import poll_api
 from kai_solution_server.main import app as kai_app
 from kai_solution_server.service.incident_store.incident_store import IncidentStore
 from kai_solution_server.service.incident_store.sql_types import (
@@ -167,7 +167,9 @@ class HubImporterTest(unittest.TestCase):
 
 
 class SolvedIncidentsServerTest(HubImporterTest, AioHTTPTestCase):
-    @patch("kai_solution_server.service.incident_store.IncidentStore.incident_store_from_config")
+    @patch(
+        "kai_solution_server.service.incident_store.incident_store.IncidentStore.incident_store_from_config"
+    )
     @patch("kai_solution_server.main.get_config")
     @patch("kai.kai_logging.init_logging")
     async def get_application(

@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass
@@ -10,9 +9,10 @@ class AgentRequest:
 
 
 @dataclass
-class AgentResult():
+class AgentResult:
     encountered_errors: list[str] | None
     modified_files: list[Path] | None
+
 
 class Agent(ABC):
     @abstractmethod

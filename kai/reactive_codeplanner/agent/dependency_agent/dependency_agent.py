@@ -9,7 +9,7 @@ sys.modules["_elementtree"] = None  # type: ignore[assignment]
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TypedDict, Union, cast, Callable
+from typing import Callable, Dict, List, Optional, TypedDict, Union
 
 from langchain.prompts.chat import HumanMessagePromptTemplate
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -165,10 +165,15 @@ Message:{message}
     """
     )
 
-    AgentMethods = TypedDict('AgentMethods', {
-        'search_fqdn.run': Callable[[str], Optional[FQDNResponse] | list[FQDNResponse]],
-        'find_in_pom._run': Callable[[str], FindInPomResponse] | None
-         })
+    AgentMethods = TypedDict(
+        "AgentMethods",
+        {
+            "search_fqdn.run": Callable[
+                [str], Optional[FQDNResponse] | list[FQDNResponse]
+            ],
+            "find_in_pom._run": Callable[[str], FindInPomResponse] | None,
+        },
+    )
     agent_methods: AgentMethods = {
         "search_fqdn.run": search_fqdn,
         "find_in_pom._run": None,
@@ -236,7 +241,9 @@ Message:{message}
             for a in llm_response.actions:
                 if "search_fqdn.run" in a.code:
                     logger.debug("running search for FQDN")
-                    _search_fqdn: Callable[[str], Optional[FQDNResponse] | list[FQDNResponse]] = self.agent_methods["search_fqdn.run"]
+                    _search_fqdn: Callable[
+                        [str], Optional[FQDNResponse] | list[FQDNResponse]
+                    ] = self.agent_methods["search_fqdn.run"]
                     result = _search_fqdn(a.code)
                     if not result or isinstance(result, list):
                         logger.info("Need to call sub-agent for selecting FQDN")
@@ -258,7 +265,9 @@ Message:{message}
             for a in llm_response.actions:
                 if "find_in_pom._run" in a.code:
                     logger.debug("running find in pom")
-                    _find_in_pom: Optional[Callable[[str], FindInPomResponse]] = self.agent_methods["find_in_pom._run"]
+                    _find_in_pom: Optional[Callable[[str], FindInPomResponse]] = (
+                        self.agent_methods["find_in_pom._run"]
+                    )
                     if _find_in_pom:
                         find_pom_lines = _find_in_pom(a.code)
 
@@ -276,7 +285,8 @@ Message:{message}
     def parse_llm_response(
         # Note, that we have to ignore this tpe, becuase it must match LLM Response type
         # and they do not specify the dict args
-        self, content: Union[str, List[Union[str, Dict]]] #type: ignore
+        self,
+        content: Union[str, List[Union[str, Dict]]],  # type: ignore
     ) -> Optional[_llm_response]:
         # We should not expect that the value is anything other than str for the type of
         # call that we know we are making

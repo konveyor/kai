@@ -1,8 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from git import Repo
-
 from kai_solution_server.service.incident_store.sql_types import SQLIncident
 from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
 from kai_solution_server.service.solution_handling.production import (
@@ -92,7 +90,9 @@ class TestSolutionProducerLLMLazy(unittest.TestCase):
         # Assert
         self.assertEqual(solution.llm_summary_generated, False)
 
-    @patch("kai_solution_server.service.solution_handling.production.jinja2.Environment")
+    @patch(
+        "kai_solution_server.service.solution_handling.production.jinja2.Environment"
+    )
     def test_post_process_one(self, mock_jinja_env):
         # Arrange
         incident = create_test_incident()

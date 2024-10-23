@@ -1,8 +1,8 @@
 import json
 import os
-from pathlib import Path
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Optional
 
 import tree_sitter as ts
@@ -210,7 +210,9 @@ Here's the input information:
                 if updated_file_contents is None or fix_gen_response is None:
                     return AgentResult(encountered_errors=[], modified_files=[])
                 chat_fix_gen.append(AIMessage(content=fix_gen_response.content))
-                diff = self._get_diff(last_updated_file_contents, updated_file_contents, language)
+                diff = self._get_diff(
+                    last_updated_file_contents, updated_file_contents, language
+                )
                 if not diff:
                     return AgentResult(encountered_errors=[], modified_files=[])
                 last_updated_file_contents = updated_file_contents
@@ -255,7 +257,9 @@ Here's the input information:
             diff = updated_file_summary.to_dict()
         return diff
 
-    def _parse_llm_response(self, content:  str | list[str | dict[Any, Any]]) -> Optional[str] :
+    def _parse_llm_response(
+        self, content: str | list[str | dict[Any, Any]]
+    ) -> Optional[str]:
         if isinstance(content, list):
             return None
         match_updated_file = re.search(

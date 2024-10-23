@@ -1,4 +1,4 @@
-#type: ignore
+# type: ignore
 
 ## Ignoring types, this has to be updated anyway, so when we do fix the types
 import os

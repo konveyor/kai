@@ -1,5 +1,7 @@
 import unittest
 
+from kai.reactive_codeplanner.task_manager import TaskManager
+
 # Import classes from your codebase
 from kai.reactive_codeplanner.task_manager.api import (
     RpcClientConfig,
@@ -9,7 +11,6 @@ from kai.reactive_codeplanner.task_manager.api import (
     ValidationResult,
     ValidationStep,
 )
-from kai.reactive_codeplanner.task_manager import TaskManager
 
 
 class MockValidationStep(ValidationStep):

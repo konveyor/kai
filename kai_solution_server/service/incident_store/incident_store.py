@@ -12,9 +12,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
+from kai.analyzer_types import Report, filter_incident_vars
 from kai.constants import PATH_GIT_ROOT, PATH_LOCAL_REPO
 from kai.kai_config import KaiConfig
-from kai.analyzer_types import Report, filter_incident_vars
 from kai_solution_server.service.incident_store.backend import (
     IncidentStoreBackend,
     incident_store_backend_factory,
@@ -28,7 +28,9 @@ from kai_solution_server.service.incident_store.sql_types import (
     SQLUnmodifiedReport,
     SQLViolation,
 )
-from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider #type: ignore
+from kai_solution_server.service.llm_interfacing.model_provider import (
+    ModelProvider,  # type: ignore
+)
 from kai_solution_server.service.solution_handling.detection import (
     SolutionDetectionAlgorithm,
     SolutionDetectorContext,
@@ -452,10 +454,9 @@ class IncidentStore:
         page_size = 100
         page = 0
         processed_count = 0
-        if limit < 0:
-            limit = 0
         # I have no idea what this is trying to do.
-        #limit = float("inf") if limit < 0 else limit
+        # we need a better way.
+        limit = float("inf") if limit < 0 else limit  # type: ignore
         KAI_LOG.debug(f"Running post_process with limit {limit}")
         with Session(self.engine) as session:
             while processed_count < limit:

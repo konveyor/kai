@@ -98,7 +98,7 @@ class MavenCompilerTaskRunner(TaskRunner):
 
     def refine_task(self, errors: list[str]) -> None:
         """We currently do not refine the tasks"""
-        return None 
+        return None
 
     def can_handle_error(self, errors: list[str]) -> bool:
         """We currently do not know if we can handle errors"""
@@ -147,7 +147,9 @@ class MavenCompilerTaskRunner(TaskRunner):
         """Private method that will be used to parse the contents and get the results"""
 
         if isinstance(message.content, list):
-            return MavenCompilerLLMResponse(reasoning="", java_file="", additional_information="")
+            return MavenCompilerLLMResponse(
+                reasoning="", java_file="", additional_information=""
+            )
 
         lines_of_output = message.content.splitlines()
 

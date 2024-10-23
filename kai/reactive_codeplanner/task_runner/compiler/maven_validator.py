@@ -4,8 +4,8 @@ import logging
 import re
 import subprocess  # trunk-ignore(bandit/B404)
 from dataclasses import dataclass, field
-from typing import Optional, Type, Sequence
 from pathlib import Path
+from typing import Optional, Sequence, Type
 
 from kai.reactive_codeplanner.task_manager.api import (
     ValidationError,
