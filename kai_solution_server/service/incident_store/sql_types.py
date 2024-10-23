@@ -63,10 +63,10 @@ SQLCategory: Enum = SQLEnum(report_types.Category)
 class SQLBase(DeclarativeBase):
     type_annotation_map = {
         dict[str, Any]: JSON()
-        .with_variant(postgresql.JSONB(), "postgresql")  # type: ignore
+        .with_variant(postgresql.JSONB(), "postgresql")  # type: ignore[no-untyped-call]
         .with_variant(sqlite.JSON(), "sqlite"),
         list[str]: JSON()
-        .with_variant(postgresql.JSONB(), "postgresql")  # type: ignore
+        .with_variant(postgresql.JSONB(), "postgresql")  # type: ignore[no-untyped-call]
         .with_variant(sqlite.JSON(), "sqlite"),
         Solution: SQLSolutionType,
     }
@@ -120,7 +120,7 @@ class SQLViolation(SQLBase):
         ForeignKey("rulesets.ruleset_name"), primary_key=True
     )
 
-    category: Mapped[SQLCategory]  # type: ignore
+    category: Mapped[SQLCategory]  # type: ignore[valid-type]
     labels: Mapped[list[str]]
 
     ruleset: Mapped[SQLRuleset] = relationship(back_populates="violations")

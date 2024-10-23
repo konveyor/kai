@@ -9,7 +9,7 @@ sys.modules["_elementtree"] = None  # type: ignore[assignment]
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, TypedDict, Union
+from typing import Any, Callable, Optional, TypedDict, Union
 
 from langchain.prompts.chat import HumanMessagePromptTemplate
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -283,10 +283,10 @@ Message:{message}
         )
 
     def parse_llm_response(
-        # Note, that we have to ignore this tpe, becuase it must match LLM Response type
-        # and they do not specify the dict args
+        # Note, that we have to ignore this type, because it must match LLM
+        # Response type and they do not specify the dict args
         self,
-        content: Union[str, List[Union[str, Dict]]],  # type: ignore
+        content: Union[str, list[Union[str, dict[str, Any]]]],
     ) -> Optional[_llm_response]:
         # We should not expect that the value is anything other than str for the type of
         # call that we know we are making

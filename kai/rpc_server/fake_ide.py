@@ -45,7 +45,7 @@ def log_message(
     hack.exc_text = None
     hack.stack_info = None
 
-    rpc_log.handle(hack)  # type: ignore
+    rpc_log.handle(hack)  # type: ignore[arg-type]
 
 
 def log_stderr(stderr: IO[bytes]) -> None:

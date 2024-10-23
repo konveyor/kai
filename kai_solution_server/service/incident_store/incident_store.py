@@ -28,9 +28,7 @@ from kai_solution_server.service.incident_store.sql_types import (
     SQLUnmodifiedReport,
     SQLViolation,
 )
-from kai_solution_server.service.llm_interfacing.model_provider import (  # type: ignore
-    ModelProvider,
-)
+from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
 from kai_solution_server.service.solution_handling.detection import (
     SolutionDetectionAlgorithm,
     SolutionDetectorContext,
@@ -454,9 +452,12 @@ class IncidentStore:
         page_size = 100
         page = 0
         processed_count = 0
-        # I have no idea what this is trying to do.
-        # we need a better way.
-        limit = float("inf") if limit < 0 else limit  # type: ignore
+
+        # FIXME: Basically if limit is less than zero, then we treat it as
+        # "there is no limit". There is no maximum integer value in Python. Mypy
+        # complains here because we're assigning a float to an int. A better way
+        # to do this would be to modify the while loop below here.
+        limit = float("inf") if limit < 0 else limit  # type: ignore[assignment]
         KAI_LOG.debug(f"Running post_process with limit {limit}")
         with Session(self.engine) as session:
             while processed_count < limit:
@@ -537,7 +538,7 @@ class IncidentStore:
         )
 
 
-def cmd(provider: str = "") -> None:
+def cmd(provider: str | None = None) -> None:
     parser = argparse.ArgumentParser(description="Process some parameters.")
     parser.add_argument(
         "--config_filepath",

@@ -1,5 +1,6 @@
 import os
 from abc import ABC, abstractmethod
+from typing import cast
 from urllib.parse import unquote, urlparse
 
 import jinja2
@@ -10,9 +11,7 @@ from kai.constants import PATH_TEMPLATES
 from kai.kai_config import SolutionProducerKind
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.task_runner import guess_language
 from kai_solution_server.service.incident_store.sql_types import SQLIncident
-from kai_solution_server.service.llm_interfacing.model_provider import (  # type: ignore
-    ModelProvider,
-)
+from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
 from kai_solution_server.service.solution_handling.solution_types import Solution
 
 
@@ -172,7 +171,7 @@ class SolutionProducerLLMLazy(SolutionProducer):
         # TODO: Parse LLM result. For now, just returning the content fully
 
         solution.llm_summary_generated = True
-        solution.llm_summary = llm_result.content
+        solution.llm_summary = cast(str | None, llm_result.content)
 
         return solution
 

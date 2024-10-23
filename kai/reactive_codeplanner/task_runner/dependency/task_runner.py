@@ -1,7 +1,7 @@
 # trunk-ignore-begin(ruff/E402)
 import sys
 
-sys.modules["_elementtree"] = None  # type: ignore
+sys.modules["_elementtree"] = None  # type: ignore[assignment]
 import logging
 import os
 import xml.etree.ElementTree as ET  # trunk-ignore(bandit/B405)
@@ -101,12 +101,12 @@ class DependencyTaskRunner(TaskRunner):
         ## We always need to add the new dep
         deps.append(maven_dep_response.fqdn_response.to_xml_element())
 
-        if deps._start_line_number != maven_dep_response.find_in_pom.start_line:  # type: ignore
+        if deps._start_line_number != maven_dep_response.find_in_pom.start_line:  # type: ignore[attr-defined]
             ## we know we need to remove this dep
             for dep in deps:
                 if (
-                    dep._start_line_number == maven_dep_response.find_in_pom.start_line  # type: ignore
-                    and dep._end_line_number == maven_dep_response.find_in_pom.end_line  # type: ignore
+                    dep._start_line_number == maven_dep_response.find_in_pom.start_line  # type: ignore[attr-defined]
+                    and dep._end_line_number == maven_dep_response.find_in_pom.end_line  # type: ignore[attr-defined]
                 ):
                     logger.debug("found dep %r and removing", dep)
                     deps.remove(dep)
