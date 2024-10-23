@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import yaml
 
-from samples.add_data_to_hub import (
+from kai_solution_server.samples.add_data_to_hub import (
     add_analysis_report,
     add_applications,
     get_application_id,
@@ -14,8 +14,8 @@ from samples.add_data_to_hub import (
 class TestAddDataToHub(unittest.TestCase):
 
     @unittest.skip("TODO: Figure out best way to mock gitpython's Repos")
-    @patch("samples.add_data_to_hub.requests.post")
-    @patch("samples.add_data_to_hub.requests.get")
+    @patch("kai_solution_server.samples.add_data_to_hub.requests.post")
+    @patch("kai_solution_server.samples.add_data_to_hub.requests.get")
     def test_add_applications(self, mock_get, mock_post):
         mock_sample_apps = {"app1": "path/to/app1", "app2": "path/to/app2"}
         mock_repos = {
@@ -24,9 +24,12 @@ class TestAddDataToHub(unittest.TestCase):
         }
 
         with patch(
-            "samples.add_data_to_hub.config.sample_apps", mock_sample_apps
-        ), patch("samples.add_data_to_hub.config.repos", mock_repos), patch(
-            "samples.add_data_to_hub.add_analysis_report"
+            "kai_solution_server.samples.add_data_to_hub.config.sample_apps",
+            mock_sample_apps,
+        ), patch(
+            "kai_solution_server.samples.add_data_to_hub.config.repos", mock_repos
+        ), patch(
+            "kai_solution_server.samples.add_data_to_hub.add_analysis_report"
         ), patch(
             "os.path.exists", return_value=True
         ):
@@ -47,7 +50,7 @@ class TestAddDataToHub(unittest.TestCase):
             self.assertEqual(mock_post.call_count, 4)
             self.assertEqual(mock_get.call_count, 2)
 
-    @patch("samples.add_data_to_hub.requests.get")
+    @patch("kai_solution_server.samples.add_data_to_hub.requests.get")
     def test_get_application_id(self, mock_get):
         mock_get.return_value.status_code = 200
         mock_get.return_value.json.return_value = [{"name": "app1", "id": 123}]
@@ -55,7 +58,7 @@ class TestAddDataToHub(unittest.TestCase):
         app_id = get_application_id("http://mock_hub_url", "app1", False)
         self.assertEqual(app_id, 123)
 
-    @patch("samples.add_data_to_hub.requests.post")
+    @patch("kai_solution_server.samples.add_data_to_hub.requests.post")
     def test_add_analysis_report(self, mock_post):
         mock_analysis_report = [
             {
