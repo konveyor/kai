@@ -4,7 +4,7 @@ import logging as core_logging
 import sys
 from typing import TYPE_CHECKING
 
-import kai.logging.kai_logging as logging
+import kai.logging.logging as logging
 
 if TYPE_CHECKING:
     from kai.jsonrpc.core import JsonRpcServer

@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, Sequence, Type
 
-from kai.logging.kai_logging import get_logger
+from kai.logging.logging import get_logger
 from kai.reactive_codeplanner.task_manager.api import (
     ValidationError,
     ValidationResult,

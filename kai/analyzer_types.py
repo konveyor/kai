@@ -14,7 +14,8 @@ from urllib.parse import urlparse
 
 import yaml
 from pydantic import AliasChoices, BaseModel, Field, RootModel
-from kai.logging.kai_logging import get_logger
+
+from kai.logging.logging import get_logger
 
 KAI_LOG = get_logger(__name__)
 

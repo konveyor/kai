@@ -12,12 +12,6 @@ import traceback
 from typing import Any, Dict, List
 from warnings import filterwarnings
 
-from pylspclient.json_rpc_endpoint import JsonRpcEndpoint, MyEncoder
-from pylspclient.lsp_client import LspEndpoint as RpcServer
-from pylspclient.lsp_errors import ErrorCodes, ResponseError
-
-from kai.logging.kai_logging import parent_log, setup_file_handler
-from kai.models.report_types import ExtendedIncident
 from playpen.client.cli import (
     generate_fix,
     get_config,
@@ -26,6 +20,12 @@ from playpen.client.cli import (
     get_trace,
     render_prompt,
 )
+from pylspclient.json_rpc_endpoint import JsonRpcEndpoint, MyEncoder
+from pylspclient.lsp_client import LspEndpoint as RpcServer
+from pylspclient.lsp_errors import ErrorCodes, ResponseError
+
+from kai.logging.logging import parent_log, setup_file_handler
+from kai.models.report_types import ExtendedIncident
 
 log = logging.getLogger("kai-rpc")
 

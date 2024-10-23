@@ -12,7 +12,7 @@ from aiohttp import web
 from gunicorn.app.wsgiapp import WSGIApplication  # type: ignore[import-untyped]
 
 from kai.kai_config import KaiConfig
-from kai.logging.kai_logging import init_logging_from_config
+from kai.logging.logging import init_logging_from_config
 from kai_solution_server.routes import kai_routes
 from kai_solution_server.service.incident_store.incident_store import IncidentStore
 

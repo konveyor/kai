@@ -5,10 +5,10 @@ from jinja2 import Template
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
 from kai.llm_interfacing.model_provider import ModelProvider
+from kai.logging.logging import get_logger
 from kai.reactive_codeplanner.agent.reflection_agent import ReflectionTask
 from kai.reactive_codeplanner.task_manager.api import Task, TaskResult
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
-from kai.logging.kai_logging import get_logger
 from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
     AccessControlError,
     AnnotationError,

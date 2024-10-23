@@ -18,7 +18,7 @@ from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcResponse
 from kai.jsonrpc.streams import BareJsonStream
 from kai.kai_config import KaiConfig
-from kai.logging.kai_logging import formatter
+from kai.logging.logging import formatter
 from kai.rpc_server.server import (
     GetCodeplanAgentSolutionParams,
     KaiRpcApplication,

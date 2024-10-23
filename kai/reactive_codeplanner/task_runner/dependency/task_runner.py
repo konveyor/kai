@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET  # trunk-ignore(bandit/B405)
 from dataclasses import dataclass
 from pathlib import Path
 
-from kai.logging.kai_logging import get_logger
+from kai.logging.logging import get_logger
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
     MavenDependencyRequest,

@@ -1,9 +1,10 @@
 from typing import Any
+
 from aiohttp import web
 from aiohttp.web_request import Request
 
+from kai.logging.logging import get_logger
 from kai_solution_server.routes.util import to_route
-from kai.logging.kai_logging import get_logger
 
 KAI_LOG = get_logger(__name__)
 

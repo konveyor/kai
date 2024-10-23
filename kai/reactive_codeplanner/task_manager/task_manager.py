@@ -5,7 +5,7 @@ from typing import Any, Generator, Optional
 
 from pydantic import BaseModel, ConfigDict
 
-import kai.logging.kai_logging as logging
+import kai.logging.logging as logging
 from kai.reactive_codeplanner.task_manager.api import (
     RpcClientConfig,
     Task,

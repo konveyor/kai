@@ -12,7 +12,7 @@ from kai.jsonrpc.models import (
     JsonRpcRequest,
     JsonRpcResponse,
 )
-from kai.logging.kai_logging import TRACE, get_logger
+from kai.logging.logging import TRACE, get_logger
 
 log = get_logger("jsonrpc")
 

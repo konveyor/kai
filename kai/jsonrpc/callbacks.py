@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Callable, Literal, get_origin
 from pydantic import BaseModel, ConfigDict, validate_call
 
 from kai.jsonrpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcRequest
-from kai.logging.kai_logging import TRACE, get_logger
+from kai.logging.logging import TRACE, get_logger
 
 if TYPE_CHECKING:
     from kai.jsonrpc.core import JsonRpcApplication, JsonRpcServer

@@ -5,7 +5,7 @@ from io import BufferedReader, BufferedWriter
 from pathlib import Path
 from typing import cast
 
-import kai.logging.kai_logging as logging
+import kai.logging.logging as logging
 from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.streams import BareJsonStream
 from kai.models.kai_config import KaiConfig

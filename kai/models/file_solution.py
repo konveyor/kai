@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from pygments import lexers
 from pygments.util import ClassNotFound
 
-import kai.logging.kai_logging as logging
+import kai.logging.logging as logging
 
 KAI_LOG = logging.get_logger(__name__)
 

@@ -115,7 +115,7 @@ def init_logging(
     setup_file_handler(log, log_file, log_dir, file_log_level)
 
 
-def initLoggingFromConfig(config: KaiConfig) -> None:
+def init_logging_from_config(config: KaiConfig) -> None:
     log_level: str | int = 0
     if isinstance(config.log_level, str):
         log_level = config.log_level.upper()

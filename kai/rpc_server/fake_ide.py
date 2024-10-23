@@ -18,7 +18,7 @@ from kai.jsonrpc.models import JsonRpcId
 from kai.jsonrpc.streams import BareJsonStream
 from kai.jsonrpc.util import get_logger
 from kai.kai_config import KaiConfigModels
-from kai.logging.kai_logging import get_logger
+from kai.logging.logging import get_logger
 from kai.rpc_server.server import KaiRpcApplication
 
 BLUE = "\033[94m"

@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from kai.kai_config import KaiConfig, KaiConfigIncidentStore, KaiConfigModels
-from kai.kai_logging import (
+from kai.logging.logging import (
     init_logging,
     init_logging_from_config,
     process_log_dir_replacements,

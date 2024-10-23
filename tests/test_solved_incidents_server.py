@@ -171,7 +171,7 @@ class SolvedIncidentsServerTest(HubImporterTest, AioHTTPTestCase):
         "kai_solution_server.service.incident_store.incident_store.IncidentStore.incident_store_from_config"
     )
     @patch("kai_solution_server.main.get_config")
-    @patch("kai.kai_logging.init_logging")
+    @patch("kai.logging.logging.init_logging")
     async def get_application(
         self, mock_incident_store, mock_get_config, mock_init_logging
     ) -> Coroutine[Any, Any, Application]:
