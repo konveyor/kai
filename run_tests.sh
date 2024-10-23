@@ -5,7 +5,7 @@ COVERAGE_REPORT_DIR="${COVERAGE_REPORT_DIR:-htmlcov}"
 echo "Coverage report will be saved to ${COVERAGE_REPORT_DIR}"
 
 echo "Running tests..."
-python -m coverage run --branch -m unittest discover --failfast
+python -m coverage run --branch -m pytest -s --exitfirst
 test_result=$?
 
 python -m coverage html --skip-empty -d "${COVERAGE_REPORT_DIR}"
