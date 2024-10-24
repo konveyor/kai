@@ -1,0 +1,102 @@
+name: Build and Publish Binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      use_latest_release:
+        type: boolean
+        default: true
+        description: Upload binaries to the most recent release
+      pattern:
+        type: string
+        default: 'v*'
+        description: Pick from tags matching this pattern
+      pre_release:
+        type: boolean
+        description: Look for pre-release?
+        default: false
+  pull_request:
+  push:
+jobs:
+  e2e_test:
+    name: Run e2e test
+    strategy:
+      matrix:
+        runs_on:
+          - os: ubuntu-latest
+            shell: bash
+          - os: macos-latest
+            shell: bash
+          - os: windows-latest
+            shell: cmd
+    runs-on: ${{ matrix.runs_on.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - id: release_info
+        uses: joutvhu/get-release@v1
+        with:
+          latest: ${{ github.event.inputs.use_latest_release }}
+          pattern: ${{ github.event.inputs.pattern }}
+          prerelease: ${{ github.event.inputs.pre_release }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          check-latest: true
+
+      - name: Set up venv (windows)
+        if: matrix.runs_on.os == 'windows-latest'
+        run: |
+          python -m venv venv
+          . venv\Scripts\activate
+          echo PATH=$PATH >> $GITHUB_ENV
+
+      - name: Set up venv (linux & mac)
+        if: matrix.runs_on.os != 'windows-latest'
+        run: |
+          python -m venv venv
+          . venv/bin/activate
+          echo PATH=$PATH >> $GITHUB_ENV
+
+      - name: Build RPC server
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+          pip install -e .
+          pyinstaller build/build.spec
+
+      - name: Build Kai Analyzer
+        run: |
+          cd kai-analyzer && go build -ldflags="-extldflags=-static" -o kai-analyzer main.go && cd ..
+
+      - name: Archive binaries (linux & mac)
+        if: matrix.runs_on.os != 'windows-latest' && github.event_name == 'workflow_dispatch'
+        run: |
+          zip -j kai-rpc-server.${{ matrix.runs_on.os }}.zip dist/kai-rpc-server kai-analyzer/kai-analyzer
+
+      - name: Archive binaries (windows)
+        if: matrix.runs_on.os == 'windows-latest' && github.event_name == 'workflow_dispatch'
+        run: |
+          mv kai-analyzer\kai-analyzer kai-analyzer\kai-analyzer.exe
+          $filesToInclude = "dist\kai-rpc-server.exe", "kai-analyzer\kai-analyzer.exe"
+          Compress-Archive -Path $filesToInclude -Destination kai-rpc-server.${{ matrix.runs_on.os }}.zip
+
+      - name: Upload binary
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.release_info.outputs.upload_url }}
+          asset_path: kai-rpc-server.${{ matrix.runs_on.os }}.zip
+          asset_name: kai-rpc-server.${{ matrix.runs_on.os }}.zip
+          asset_content_type: application/zip
