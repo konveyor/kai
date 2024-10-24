@@ -12,12 +12,10 @@ from pathlib import Path
 import requests
 
 # Ensure that we have 'kai' in our import path
-sys.path.append("../../kai")
+sys.path.append("../../")
 from kai.analyzer_types import ExtendedIncident, Report
-from kai.kai_logging import formatter
-from kai_solution_server.routes.get_incident_solutions_for_file import (
-    PostGetIncidentSolutionsForFileParams,
-)
+from kai.logging.logging import formatter
+from kai_solution_server.routes.get_solutions import PostGetSolutionsParams
 
 KAI_LOG = logging.getLogger(__name__)
 
@@ -30,7 +28,7 @@ SAMPLE_APP_DIR = "./coolstore"
 # 2) Limit to specific rulesets/violations we are interested in
 
 
-def _generate_fix(params: PostGetIncidentSolutionsForFileParams):
+def _generate_fix(params: PostGetSolutionsParams):
     headers = {"Content-type": "application/json", "Accept": "text/plain"}
     response = requests.post(
         ###
@@ -45,7 +43,7 @@ def _generate_fix(params: PostGetIncidentSolutionsForFileParams):
     return response
 
 
-def generate_fix(params: PostGetIncidentSolutionsForFileParams):
+def generate_fix(params: PostGetSolutionsParams):
     retries_left = 6
     for i in range(retries_left):
         try:
@@ -185,7 +183,7 @@ def process_file(
     with open(f"{SAMPLE_APP_DIR}/{str(file_path)}", "r") as f:
         file_contents = f.read()
 
-    params = PostGetIncidentSolutionsForFileParams(
+    params = PostGetSolutionsParams(
         file_name=str(file_path),
         file_contents=file_contents,
         application_name=APP_NAME,

@@ -1,14 +1,14 @@
-import logging
 from typing import Any, Optional
 
 from aiohttp import web
 from aiohttp.web_request import Request
 from pydantic import BaseModel
 
+from kai.logging.logging import get_logger
 from kai_solution_server.routes.util import to_route
 from kai_solution_server.service.solution_handling.solution_types import Solution
 
-KAI_LOG = logging.getLogger(__name__)
+KAI_LOG = get_logger(__name__)
 
 
 class PostGetSolutionsParams(BaseModel):

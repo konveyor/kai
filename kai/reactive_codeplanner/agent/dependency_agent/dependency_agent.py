@@ -6,7 +6,6 @@ import sys
 
 sys.modules["_elementtree"] = None  # type: ignore[assignment]
 
-import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Optional, TypedDict, Union
@@ -15,6 +14,7 @@ from langchain.prompts.chat import HumanMessagePromptTemplate
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import SystemMessage
 
+from kai.logging.logging import get_logger
 from kai.reactive_codeplanner.agent.api import Agent, AgentRequest, AgentResult
 from kai.reactive_codeplanner.agent.dependency_agent.api import (
     FindInPomResponse,
@@ -31,8 +31,7 @@ from kai.reactive_codeplanner.agent.dependency_agent.util import (
 
 # trunk-ignore-end(ruff/E402)
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -256,8 +255,11 @@ Message:{message}
                                 times=0,
                             )
                         )
-                        logger.debug("result from dependent agent: %r", r)
+                        if r.response is not None and isinstance(r.response, list):
+                            r.response = None
                         maven_search = r.response
+                        if not r.response:
+                            logger.debug("unable to get response from sub-agent")
                     else:
                         maven_search = result
 

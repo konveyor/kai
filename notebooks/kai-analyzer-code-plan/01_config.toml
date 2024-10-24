@@ -2,7 +2,7 @@
 # configuration options, please refer to `build/example_config.toml`
 
 log_level = "info"
-file_log_level = "debug"
+file_log_level = "info"
 log_dir = "$pwd/logs"
 demo_mode = false
 trace_enabled = true
@@ -20,86 +20,9 @@ database = "kai"
 user = "kai"
 password = "dog8code"
 
-# [models]
-# provider = "ChatIBMGenAI"
-
-# [models.args]
-# model_id = "meta-llama/llama-3-70b-instruct"
-# parameters.max_new_tokens = 2048
-
-
-# [models]
-# provider = "ChatOpenAI"
-
-# [models.args]
-# model = "gpt-3.5-turbo"
-
 [models]
-provider = "FakeListChatModel"
+provider = "ChatIBMGenAI"
 
 [models.args]
-responses = [
-  """## Reasoning
-1. The `@Remote` annotation is not supported in Quarkus as it is used for EJBs, which are not compatible with Quarkus. We need to replace it with JAX-RS annotations for REST functionality.
-2. The `@Stateless` annotation is not required for REST services in Quarkus as they are inherently stateless.
-3. For each method in the class, we need to annotate them appropriately for REST endpoints using JAX-RS annotations.
-
-## Updated Java File
-```java
-package com.redhat.coolstore.service;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.QueryParam;
-
-import com.redhat.coolstore.model.ShoppingCart;
-
-@Path("/shipping")
-public class ShippingService implements ShippingServiceRemote {
-
-    @GET
-    @Path("/calculateShipping")
-    public double calculateShipping(@QueryParam("cartTotal") double cartTotal) {
-        if (cartTotal >= 0 && cartTotal < 25) {
-            return 2.99;
-        } else if (cartTotal >= 25 && cartTotal < 50) {
-            return 4.99;
-        } else if (cartTotal >= 50 && cartTotal < 75) {
-            return 6.99;
-        } else if (cartTotal >= 75 && cartTotal < 100) {
-            return 8.99;
-        } else if (cartTotal >= 100 && cartTotal < 10000) {
-            return 10.99;
-        }
-        return 0;
-    }
-
-    @POST
-    @Path("/calculateShippingInsurance")
-    public double calculateShippingInsurance(@QueryParam("cartTotal") double cartTotal) {
-        if (cartTotal >= 25 && cartTotal < 100) {
-            return getPercentOfTotal(cartTotal, 0.02);
-        } else if (cartTotal >= 100 && cartTotal < 500) {
-            return getPercentOfTotal(cartTotal, 0.015);
-        } else if (cartTotal >= 500 && cartTotal < 10000) {
-            return getPercentOfTotal(cartTotal, 0.01);
-        }
-        return 0;
-    }
-
-    private static double getPercentOfTotal(double value, double percentOfTotal) {
-        return BigDecimal.valueOf(value * percentOfTotal)
-                .setScale(2, RoundingMode.HALF_UP)
-                .doubleValue();
-    }
-}
-```
-
-## Additional Information
-- The `@QueryParam` annotation is used to map query parameters from the URL to method parameters in JAX-RS.
-- The endpoints for the methods have been defined based on the method names, but they can be customized as needed.""",
-]
+model_id = "meta-llama/llama-3-70b-instruct"
+parameters.max_new_tokens = 2048
