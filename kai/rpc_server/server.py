@@ -1,15 +1,12 @@
 import logging
-import os
 import sys
 import threading
-import time
 import traceback
 from pathlib import Path
 from typing import Any, Optional, cast
 from unittest.mock import MagicMock
 from urllib.parse import urlparse
 
-import requests
 from pydantic import BaseModel
 
 from kai.analyzer_types import ExtendedIncident, Incident, RuleSet, Violation
@@ -18,11 +15,6 @@ from kai.jsonrpc.logs import JsonRpcLoggingHandler
 from kai.jsonrpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcId
 from kai.jsonrpc.util import DEFAULT_FORMATTER, TRACE, CamelCaseBaseModel
 from kai.kai_config import KaiConfigModels, SolutionConsumerKind
-from kai.models.file_solution import (
-    FileSolutionContent,
-    guess_language,
-    parse_file_solution_content,
-)
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
 )
@@ -44,15 +36,7 @@ from kai.reactive_codeplanner.task_runner.dependency.task_runner import (
     DependencyTaskRunner,
 )
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager, RepoContextSnapshot
-from kai.rpc_server.util import get_prompt, playback_if_demo_mode
-from kai_solution_server.routes.get_solutions import (
-    PostGetSolutionsParams,
-    ResponseGetSolutions,
-)
 from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
-from kai_solution_server.service.solution_handling.consumption import (
-    solution_consumer_factory,
-)
 
 
 class KaiRpcApplicationConfig(CamelCaseBaseModel):
@@ -222,153 +206,6 @@ class GetRagSolutionParams(BaseModel):
     incidents: list[ExtendedIncident]
     trace_enabled: bool = False
     include_solved_incidents: bool = False
-
-
-@app.add_request(method="getRAGSolution")
-def get_rag_solution(
-    app: KaiRpcApplication,
-    server: JsonRpcServer,
-    id: JsonRpcId,
-    params: GetRagSolutionParams,
-) -> None:
-    if not app.initialized:
-        server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
-        return
-
-    app.config = cast(KaiRpcApplicationConfig, app.config)
-
-    try:
-        model_provider = ModelProvider(app.config.model_provider)
-    except Exception as e:
-        server.send_response(
-            id=id,
-            error=JsonRpcError(
-                code=JsonRpcErrorCode.InternalError,
-                message=str(e),
-            ),
-        )
-        return
-
-    try:
-        app.log.info(f"get_rag_solution called {params.model_dump()}")
-
-        file_contents = ""
-        with open(app.config.root_path / params.file_path, "r") as f:
-            file_contents = f.read()
-
-        source_language = guess_language(file_contents, params.file_path.name)
-
-        app.log.info(
-            f"Processing {len(params.incidents)} incident(s) for {params.file_path}"
-        )
-
-        pb_incidents = [incident.model_dump() for incident in params.incidents]
-
-        if params.include_solved_incidents:
-            for pb_incident in pb_incidents:
-                solution_consumer = solution_consumer_factory(
-                    app.config.solution_consumer
-                )
-                try:
-                    headers = {"Content-type": "application/json"}
-                    response = requests.post(
-                        f"{app.config.kai_backend_url}/get_solutions",
-                        headers=headers,
-                        data=PostGetSolutionsParams(
-                            ruleset_name=pb_incident["ruleset_name"],
-                            violation_name=pb_incident["violation_name"],
-                            incident_variables=pb_incident["incident_variables"],
-                            incident_snip=pb_incident["code_snip"],
-                            limit=1,
-                        ).model_dump_json(),
-                    )
-                    if response.status_code == 200:
-                        parsed_res = ResponseGetSolutions.model_validate_json(
-                            response.json()
-                        )
-                        if len(parsed_res.solutions) != 0:
-                            solution_str = solution_consumer(parsed_res.solutions[0])
-
-                        if len(solution_str) != 0:
-                            pb_incident["solution_str"] = solution_str
-                    else:
-                        app.log.debug(
-                            f"Failed getting solved incidents, response code {response.status_code}"
-                        )
-                except Exception as e:
-                    app.log.error(f"Failed getting solved incidents - {e}")
-        pb_vars = {
-            "src_file_name": str(params.file_path),
-            "src_file_language": source_language,
-            "src_file_contents": file_contents,
-            "incidents": pb_incidents,
-            "model_provider": model_provider,
-        }
-
-        # Render the prompt
-        prompt = get_prompt(model_provider.template, pb_vars)
-        result = FileSolutionContent(
-            reasoning="",
-            updated_file="",
-            additional_info="",
-            used_prompts=[],
-            llm_results=[],
-        )
-        app.log.debug(f"Sending prompt: {prompt}")
-        llm_result = None
-        for retry_attempt_count in range(model_provider.llm_retries):
-            try:
-                with playback_if_demo_mode(
-                    app.config.demo_mode,
-                    model_provider.model_id,
-                    app.config.root_path.name,
-                    f'{str(params.file_path).replace(os.path.sep, "-")}',
-                ):
-                    app.log.info("calling model")
-                    llm_result = model_provider.llm.invoke(prompt)
-
-                    content = parse_file_solution_content(
-                        source_language, str(llm_result.content)
-                    )
-
-                    if not content.updated_file:
-                        raise Exception(
-                            f"Error in LLM Response: The LLM did not provide an updated file for {str(params.file_path)}"
-                        )
-
-                    result.updated_file = content.updated_file
-                    result.used_prompts.append(prompt)
-                    result.reasoning = content.reasoning
-                    result.additional_info = content.additional_info
-
-                    server.send_response(
-                        id=id,
-                        result=result.model_dump(),
-                    )
-                    return
-            except Exception as e:
-                app.log.info(
-                    f"Request to model failed for attempt {retry_attempt_count}/{model_provider.llm_retries} for {params.file_path} with exception {e}, retrying in {model_provider.llm_retry_delay}s"
-                )
-                app.log.debug(traceback.format_exc())
-                time.sleep(model_provider.llm_retry_delay)
-
-        app.log.error(f"Failed to generate updated file for {params.file_path}")
-        server.send_response(
-            id=id,
-            error=JsonRpcError(
-                code=JsonRpcErrorCode.InternalError,
-                message=f"Failed to generate updated file for {params.file_path}",
-            ),
-        )
-    except Exception:
-        server.send_response(
-            id=id,
-            error=JsonRpcError(
-                code=JsonRpcErrorCode.InternalError,
-                message=str(traceback.format_exc()),
-            ),
-        )
 
 
 class GetCodeplanAgentSolutionParams(BaseModel):
