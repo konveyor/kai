@@ -3,7 +3,7 @@
 import argparse
 import os
 import tempfile
-from typing import Any, Dict, List
+from typing import Any
 
 import requests
 import urllib3
@@ -207,8 +207,8 @@ def add_analysis_report(
 
 
 def reformat_analysis_report(
-    report: List[Dict[str, Any]], app_id: int, analysis_id: int, commit: str
-) -> Dict[str, Any]:
+    report: list[dict[str, Any]], app_id: int, analysis_id: int, commit: str
+) -> dict[str, Any]:
     issues = []
 
     for ruleset in report:
