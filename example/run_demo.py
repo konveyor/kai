@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 import contextlib
-import json
 import logging
 import os
-import subprocess
+import subprocess  # trunk-ignore(bandit/B404)
 import sys
 import time
 from io import BufferedReader, BufferedWriter
@@ -18,7 +17,6 @@ from kai.jsonrpc.models import JsonRpcError, JsonRpcId
 from kai.jsonrpc.streams import BareJsonStream
 from kai.kai_config import KaiConfig
 from kai.kai_logging import formatter
-from kai.models.file_solution import FileSolutionContent
 from kai.rpc_server.server import (
     GetCodeplanAgentSolutionParams,
     KaiRpcApplication,
@@ -111,69 +109,6 @@ def initialize_rpc_server() -> Generator[JsonRpcServer, None, None]:
         rpc_server.stop()
 
 
-def write_to_disk(file_path: Path, updated_file_contents: FileSolutionContent) -> None:
-    file = str(file_path)  # Temporary fix for Path object
-
-    # We expect that we are overwriting the file, so all directories should exist
-    intended_file_path = f"{SAMPLE_APP_DIR}/{file}"
-    if not os.path.exists(intended_file_path):
-        KAI_LOG.warning(
-            f"**WARNING* File {intended_file_path} does not exist.  Proceeding, but suspect this is a new file or there is a problem with the filepath"
-        )
-
-    KAI_LOG.info(f"Writing updated source code to {intended_file_path}")
-    try:
-        with open(intended_file_path, "w") as f:
-            f.write(updated_file_contents.updated_file)
-    except Exception as e:
-        KAI_LOG.error(
-            f"Failed to write updated_file @ {intended_file_path} with error: {e}"
-        )
-        KAI_LOG.error(f"Contents: {updated_file_contents.updated_file}")
-        return
-
-    # since the other files are all contained within the llm_result, avoid duplication
-    # when they're available
-    if updated_file_contents.llm_results:
-        llm_result_path = f"{intended_file_path}.llm_results.md"
-        KAI_LOG.info(f"Writing llm_result to {llm_result_path}")
-        try:
-            with open(llm_result_path, "w") as f:
-                f.write("\n---\n".join(updated_file_contents.llm_results))
-        except Exception as e:
-            KAI_LOG.error(
-                f"Failed to write llm_result @ {llm_result_path} with error: {e}"
-            )
-            KAI_LOG.error(f"LLM Results: {updated_file_contents.llm_results}")
-            return
-    else:
-        reasoning_path = f"{intended_file_path}.reasoning"
-        KAI_LOG.info(f"Writing reasoning to {reasoning_path}")
-        try:
-            with open(reasoning_path, "w") as f:
-                json.dump(updated_file_contents.reasoning, f)
-        except Exception as e:
-            KAI_LOG.error(
-                f"Failed to write reasoning @ {reasoning_path} with error: {e}"
-            )
-            KAI_LOG.error(f"Reasoning: {updated_file_contents.reasoning}")
-            return
-
-        additional_information_path = f"{intended_file_path}.additional_information.md"
-        KAI_LOG.info(f"Writing additional_information to {additional_information_path}")
-        try:
-            with open(additional_information_path, "w") as f:
-                f.write(updated_file_contents.additional_info)
-        except Exception as e:
-            KAI_LOG.error(
-                f"Failed to write additional_information @ {additional_information_path} with error: {e}"
-            )
-            KAI_LOG.error(
-                f"Additional information: {updated_file_contents.additional_info}"
-            )
-            return
-
-
 def process_file(
     server: JsonRpcServer,
     file_path: Path,
@@ -199,16 +134,6 @@ def process_file(
         return f"Failed to generate fix for file {params.file_path} - {response.message if response is not None else None}"
     elif isinstance(response, JsonRpcError) and response.error is not None:
         return f"Failed to generate fix for file {params.file_path} - {response.error.code} {response.error.message}"
-
-    try:
-        updated_file_contents: FileSolutionContent = FileSolutionContent.model_validate(
-            response.result
-        )
-    except Exception:
-        return f"Invalid response received for file {params.file_path}"
-
-    if os.getenv("WRITE_TO_DISK", "").lower() not in ("false", "0", "no"):
-        write_to_disk(file_path, updated_file_contents)
 
     end = time.time()
     return f"Took {end-start}s to process {file_path} with {len(incidents)} violations"
