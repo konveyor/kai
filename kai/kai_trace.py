@@ -153,6 +153,28 @@ class KaiTrace:
             f.write(json.dumps(response_metadata, indent=4, default=str))
 
     @enabled_check
+    def estimated_tokens(
+        self,
+        current_batch_count: int,
+        retry_count: int,
+        estimated_tokens: int,
+        token_estimation_encoding_base: str,
+    ):
+        estimated_tokens_file_path = os.path.join(
+            self.trace_dir,
+            f"{current_batch_count}",
+            f"{retry_count}",
+            "estimated_tokens.json",
+        )
+        os.makedirs(os.path.dirname(estimated_tokens_file_path), exist_ok=True)
+        prompt_token_estimate_details = {
+            "encoding_base": token_estimation_encoding_base,
+            "estimated_prompt_tokens": estimated_tokens,
+        }
+        with open(estimated_tokens_file_path, "w") as f:
+            f.write(json.dumps(prompt_token_estimate_details, indent=4))
+
+    @enabled_check
     def exception(
         self,
         current_batch_count: int,

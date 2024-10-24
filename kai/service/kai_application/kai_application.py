@@ -3,6 +3,7 @@ import time
 import traceback
 from typing import Iterator, Optional, cast
 
+import tiktoken
 from aiohttp import web
 from langchain_core.messages import BaseMessage, BaseMessageChunk
 from pydantic import BaseModel, ConfigDict
@@ -82,11 +83,67 @@ class KaiApplication:
             solution_producer,
         )
 
+        # Create Tiktoken configurations
+        self.tiktoken_encoding_base = self.config.token_estimation_encoding_base
+        KAI_LOG.info(f"Encoding base selected: {self.tiktoken_encoding_base}")
+
         KAI_LOG.info(f"Selected incident store: {config.incident_store.args.provider}")
 
         # Create solution consumer
 
         self.solution_consumer = solution_consumer_factory(config.solution_consumers)
+
+    def estimating_prompt_tokens(self, prompt: str) -> int:
+        try:
+            enc = tiktoken.encoding_for_model(self.tiktoken_encoding_base)
+            return len(enc.encode(prompt))
+        except KeyError as e:
+            KAI_LOG.warning(f"Encoding base could not be found {e}")
+            return 0
+
+    def has_tokens_exceeded(
+        self, response_metadata: dict, estimated_tokens: int, file_name: str
+    ):
+        """Checks if the token usage exceeds the estimated limit and logs a warning."""
+
+        token_keys = [
+            "prompt_token_count",
+            "prompt_tokens",
+            "input_prompt",
+            "input_tokens",
+        ]
+        key_found = False
+        for key, value in response_metadata.items():
+            if isinstance(value, dict):
+                for token in token_keys:
+                    actual_prompt_tokens = value.get(token)
+                    if actual_prompt_tokens:
+                        if (
+                            isinstance(actual_prompt_tokens, int)
+                            and actual_prompt_tokens > estimated_tokens
+                        ):
+                            key_found = True
+                            KAI_LOG.warning(
+                                f"{file_name} exceeds the estimated token count. Estimated Tokens: {estimated_tokens}, Actual Tokens: {actual_prompt_tokens}. Consider reducing the prompt size."
+                            )
+                        else:
+                            key_found = True
+                            return None
+            else:
+                if key in token_keys:
+                    if isinstance(value, int) and value > estimated_tokens:
+                        key_found = True
+                        KAI_LOG.warning(
+                            f"{file_name} exceeds the estimated token count. Estimated Tokens: {estimated_tokens}, Actual Tokens: {value}. Consider reducing the prompt size."
+                        )
+                    else:
+                        key_found = True
+                        return None
+
+        if key_found is False:
+            KAI_LOG.warning(
+                "None of the token key are not found in the response metadata. Please verify the response metadata for the specified model."
+            )
 
     def get_incident_solutions_for_file(
         self,
@@ -166,6 +223,7 @@ class KaiApplication:
             # Render the prompt
 
             prompt = get_prompt(self.model_provider.template, pb_vars)
+            estimated_prompt_tokens = self.estimating_prompt_tokens(prompt)
             trace.prompt(count, prompt, pb_vars)
 
             # Send the prompt to the llm
@@ -182,8 +240,19 @@ class KaiApplication:
                     ):
                         llm_result = self.model_provider.llm.invoke(prompt)
                         trace.llm_result(count, retry_attempt_count, llm_result)
+                        trace.estimated_tokens(
+                            count,
+                            retry_attempt_count,
+                            estimated_prompt_tokens,
+                            self.tiktoken_encoding_base,
+                        )
                         trace.response_metadata(
                             count, retry_attempt_count, llm_result.response_metadata
+                        )
+                        self.has_tokens_exceeded(
+                            llm_result.response_metadata,
+                            estimated_prompt_tokens,
+                            file_name,
                         )
 
                         content = parse_file_solution_content(
