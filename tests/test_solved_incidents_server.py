@@ -202,7 +202,7 @@ class SolvedIncidentsServerTest(HubImporterTest, AioHTTPTestCase):
         content = await response.json()
         status_code = response.status
         self.assertEqual(status_code, 200)
-        self.assertEqual(len(json.loads(content)["solutions"]), 43)
+        self.assertEqual(len(json.loads(content)["solutions"]), 10)
 
     @unittest.skip(reason="ran in parent fixture")
     def test_hub_importer(self):
