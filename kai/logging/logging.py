@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Self, override
+from typing import Self
 
 from kai.kai_config import KaiConfig
 
@@ -14,11 +14,10 @@ class KaiLogger(logging.Logger):
         super().__init__(name, configLogLevel)
         self.configLogLevel = configLogLevel
 
-    @override
     def getChild(self, suffix: str) -> Self:
         log = super().getChild(suffix)
         log.configLogLevel = self.configLogLevel
-        log.setLevel(self.configLogLevel)
+        log.setLevel(TRACE)
         log.handlers = self.handlers
         return log
 
@@ -109,9 +108,12 @@ def init_logging(
     log_file: str = "kai_server.log",
 ) -> None:
     global log
-    log = KaiLogger("kai", logging.DEBUG)
-    log.configLogLevel = logging.DEBUG
+    if not log:
+        log = KaiLogger("kai", TRACE)
+        log.configLogLevel = TRACE
 
+    for handler in log.handlers:
+        log.removeHandler(handler)
     setup_console_handler(log, console_log_level)
     setup_file_handler(log, log_file, log_dir, file_log_level)
 
@@ -136,3 +138,7 @@ def init_logging_from_config(config: KaiConfig) -> None:
         file_log_level = logging.DEBUG
 
     init_logging(log_level, file_log_level, config.log_dir)
+    if not log:
+        raise NotImplementedError()
+    for child_log in log.getChildren():
+        child_log.handlers = log.handlers

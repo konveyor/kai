@@ -1,6 +1,9 @@
 # Need to make sure that XML tree can use the new parser
 import sys
 
+from kai.logging.logging import get_logger, init_logging_from_config
+from kai.reactive_codeplanner.agent.reflection_agent import ReflectionAgent
+
 sys.modules['_elementtree'] = None
 import pprint
 
@@ -16,12 +19,12 @@ import subprocess
 if not os.path.exists("./coolstore"):
     subprocess.run("../../example/fetch.sh")
 
-if not os.path.exists("../../kai-analyzer/kai-analyzer"):
-    subprocess.run(["go", "build", "-o", "kai-analyzer", "main.go"], cwd="../../kai-analyzer")
+if not os.path.exists("../../kai_analyzer_rpc/kai_analyzer_rpc"):
+    subprocess.run(["go", "build", "-o", "kai_analyzer_rpc", "main.go"], cwd="../../kai_analyzer_rpc")
 
 # NOTE(JonahSussman): Python's default tmp dir gets clobbered somehow on my
 # machine, so putting it in local directory for now.
-temp_dir = tempfile.TemporaryDirectory(prefix="tmp-", dir=os.getcwd())
+temp_dir = tempfile.TemporaryDirectory(prefix="tmp-")
 coolstore_path = os.path.join(temp_dir.name, "coolstore")
 shutil.copytree("./coolstore", coolstore_path)
 
@@ -31,9 +34,8 @@ print(temp_dir)
 
 
 from pathlib import Path
-from kai.jsonrpc.util import DEFAULT_FORMATTER, TRACE, get_logger
-from kai.reactive_codeplanner.api import RpcClientConfig
-from kai.reactive_codeplanner.task_manager import TaskManager
+from kai.reactive_codeplanner.task_manager.api import RpcClientConfig
+from kai.reactive_codeplanner.task_manager.task_manager import TaskManager
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.validator import AnalyzerLSPStep, AnalyzerLSPStep
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.task_runner import AnalyzerTaskRunner
 from kai.reactive_codeplanner.task_runner.compiler.maven_validator import MavenCompileStep
@@ -41,27 +43,11 @@ from kai.reactive_codeplanner.task_runner.compiler.compiler_task_runner import M
 from kai.reactive_codeplanner.task_runner.dependency.task_runner import DependencyTaskRunner
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import MavenDependencyAgent
 from kai.analyzer_types import Incident, RuleSet, Violation, Category
-from kai.service.llm_interfacing.model_provider import ModelProvider
+from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
 from kai.kai_config import KaiConfig
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
 import logging
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import AnalyzerDependencyRuleViolation, AnalyzerRuleViolation
-
-# logging.basicConfig(level=logging.DEBUG)
-# logging.getLogger('httpx').setLevel(logging.WARNING)
-# logging.getLogger('httpcore').setLevel(logging.WARNING)
-# logging.getLogger('genai.extensions.langchain.chat_llm').setLevel(logging.WARNING)
-
-log = get_logger("jsonrpc")
-
-log.handlers.clear()
-
-file_handler = logging.FileHandler("the_log.log")
-file_handler.setLevel(TRACE)
-file_handler.setFormatter(DEFAULT_FORMATTER)
-
-root_logger = logging.getLogger()
-root_logger.addHandler(file_handler)
 
 # config = RpcClientConfig(Path(coolstore_path),
 #                          "../../kai-analyzer/kai-analyzer",
@@ -74,17 +60,19 @@ root_logger.addHandler(file_handler)
 #                          None)
 
 config = RpcClientConfig(Path(coolstore_path),
-                         "../../kai-analyzer/kai-analyzer",
-                         Path("/home/jonah/Projects/github.com/konveyor/rulesets/default/generated"),
-                         Path("/home/jonah/.vscode/extensions/redhat.java-1.35.1-linux-x64/server/bin/jdtls"),
+                         Path("../../kai_analyzer_rpc/kai_analyzer_rpc"),
+                         Path("/Users/shurley/repos/MTA/rulesets/default/generated"),
+                         Path("/Users/shurley/repos/kai/jdtls/bin/jdtls"),
                          Path("./java-bundle/java-analyzer-bundle.core-1.0.0-SNAPSHOT.jar"),
                          "konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee",
                          None,
                          None)
-
 kai_config = KaiConfig.model_validate_filepath("01_config.toml")
+
+init_logging_from_config(kai_config)
 modelProvider = ModelProvider(kai_config.models)
-rcm = RepoContextManager(config.repo_directory, modelProvider.llm)
+reflection_agent = ReflectionAgent(modelProvider.llm)
+rcm = RepoContextManager(config.repo_directory, reflection_agent, None)
 
 maven_dependency_agent = MavenDependencyAgent(modelProvider.llm, config.repo_directory)
 
@@ -125,7 +113,7 @@ violation = Violation(
 seed_task = AnalyzerRuleViolation(
     file=path,
     line=incident.line_number,
-    column=None,
+    column=0,
     message=incident.message,
     incident=incident,
     violation=violation,

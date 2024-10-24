@@ -79,7 +79,6 @@ class TestLoggingSetup(unittest.TestCase):
         )
         logger = get_logger("test")
         self.assertEqual(logger.level, logging.DEBUG)
-        print(f"herelrhelajdlfkjadlkjfsdlfjkasdlfkj {logger.handlers}")
         self.assertTrue(
             any(
                 isinstance(handler, logging.StreamHandler)
