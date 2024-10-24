@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import os
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from genai import Client, Credentials
 from genai.extensions.langchain.chat_llm import LangChainChatInterface
@@ -12,6 +14,11 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic.v1.utils import deep_update
 
 from kai.kai_config import KaiConfigModels
+
+if TYPE_CHECKING:
+    from langchain_core.language_models.base import LanguageModelInput
+    from langchain_core.messages import BaseMessage
+    from langchain_core.runnables import RunnableConfig
 
 
 class ModelProvider:
@@ -167,6 +174,16 @@ class ModelProvider:
             ]
         else:
             self.llama_header = config.llama_header
+
+    def invoke(
+        self,
+        input: LanguageModelInput,
+        config: Optional[RunnableConfig] = None,
+        *,
+        stop: Optional[list[str]] = None,
+        **kwargs: Any,
+    ) -> BaseMessage:
+        return self.llm.invoke(input, config, stop=stop, **kwargs)
 
 
 # TODO(Shawn): Remove when we get to config update that

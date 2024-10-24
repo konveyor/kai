@@ -16,6 +16,7 @@ from kai.kai_config import (
     KaiConfigIncidentStoreSQLiteArgs,
     KaiConfigModels,
 )
+from kai.llm_interfacing.model_provider import ModelProvider
 from kai_solution_server.service.incident_store.backend import (
     incident_store_backend_factory,
 )
@@ -31,7 +32,6 @@ from kai_solution_server.service.incident_store.sql_types import (
     SQLRuleset,
     SQLViolation,
 )
-from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
 from kai_solution_server.service.solution_handling.detection import (
     solution_detection_factory,
     solution_detection_naive,
