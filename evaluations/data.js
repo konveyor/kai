@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1729801902721,
+  "lastUpdate": 1729801903919,
   "repoUrl": "https://github.com/konveyor/kai",
   "entries": {
     "Benchmark": [
@@ -11221,6 +11221,35 @@ window.BENCHMARK_DATA = {
         "benches": [
           {
             "name": "ChatIBMGenAI_mistralai_mistral-7b-v0-1_example_a",
+            "value": "",
+            "unit": "Match"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "111421987+devjpt23@users.noreply.github.com",
+            "name": "Dev Jayesh Patel",
+            "username": "devjpt23"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f2f61251d93a74a5e9d40a0232647f868959c899",
+          "message": "added-token-estimation-functionality (#406)\n\nSigned-off-by: devjpt23 <devpatel232408@gmail.com>",
+          "timestamp": "2024-10-24T16:30:28-04:00",
+          "tree_id": "8de9cdaa768bf78f05ce2cb7cc525b13a87ba0d8",
+          "url": "https://github.com/konveyor/kai/commit/f2f61251d93a74a5e9d40a0232647f868959c899"
+        },
+        "date": 1729801903007,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "ChatIBMGenAI_deepseek-ai_deepseek-coder-33b-instruct_example_a",
             "value": "",
             "unit": "Match"
           }
