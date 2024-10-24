@@ -3,9 +3,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from jinja2 import Template
-from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
+from kai.llm_interfacing.model_provider import ModelProvider
 from kai.reactive_codeplanner.agent.reflection_agent import ReflectionTask
 from kai.reactive_codeplanner.task_manager.api import Task, TaskResult
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
@@ -93,8 +93,8 @@ class MavenCompilerTaskRunner(TaskRunner):
     """
     )
 
-    def __init__(self, llm: BaseChatModel) -> None:
-        self.__llm = llm
+    def __init__(self, model_provider: ModelProvider) -> None:
+        self._model_provider = model_provider
 
     def refine_task(self, errors: list[str]) -> None:
         """We currently do not refine the tasks"""
@@ -126,7 +126,7 @@ class MavenCompilerTaskRunner(TaskRunner):
             src_file_contents=src_file_contents, compile_errors=compile_errors
         )
 
-        ai_message = self.__llm.invoke(
+        ai_message = self._model_provider.invoke(
             [self.system_message, HumanMessage(content=content)]
         )
 
