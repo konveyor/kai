@@ -17,6 +17,7 @@ from kai.kai_config import KaiConfigModels
 
 if TYPE_CHECKING:
     from langchain_core.language_models.base import LanguageModelInput
+    from langchain_core.messages import BaseMessage
     from langchain_core.runnables import RunnableConfig
 
 
@@ -181,7 +182,7 @@ class ModelProvider:
         *,
         stop: Optional[list[str]] = None,
         **kwargs: Any,
-    ) -> Any:
+    ) -> BaseMessage:
         return self.llm.invoke(input, config, stop=stop, **kwargs)
 
 
