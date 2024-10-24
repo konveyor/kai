@@ -36,7 +36,7 @@ def main() -> None:
     )
 
     rpc_server.start()
-
+    rpc_server.join()
 
 if __name__ == "__main__":
     main()
