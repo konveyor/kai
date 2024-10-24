@@ -96,8 +96,8 @@ def main() -> None:
         None,
         validators=[MavenCompileStep(config), AnalyzerLSPStep(config)],
         agents=[
-            AnalyzerTaskRunner(modelProvider.llm),
-            MavenCompilerTaskRunner(modelProvider.llm),
+            AnalyzerTaskRunner(modelProvider),
+            MavenCompilerTaskRunner(modelProvider),
         ],
     )
     logger.info("TaskManager initialized with validators and agents.")

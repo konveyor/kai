@@ -283,7 +283,7 @@ def test_rcm(
     rcm = RepoContextManager(
         project_root=params.rcm_root,
         reflection_agent=ReflectionAgent(
-            llm=MagicMock(),
+            model_provider=MagicMock(),
         ),
     )
 
@@ -361,7 +361,7 @@ def get_codeplan_agent_solution(
     rcm = RepoContextManager(
         project_root=app.config.root_path,
         reflection_agent=ReflectionAgent(
-            llm=model_provider.llm, iterations=1, retries=3
+            model_provider=model_provider, iterations=1, retries=3
         ),
     )
 
@@ -390,10 +390,10 @@ def get_codeplan_agent_solution(
             AnalyzerLSPStep(task_manager_config),
         ],
         agents=[
-            AnalyzerTaskRunner(model_provider.llm),
-            MavenCompilerTaskRunner(model_provider.llm),
+            AnalyzerTaskRunner(model_provider),
+            MavenCompilerTaskRunner(model_provider),
             DependencyTaskRunner(
-                MavenDependencyAgent(model_provider.llm, app.config.root_path)
+                MavenDependencyAgent(model_provider, app.config.root_path)
             ),
         ],
     )

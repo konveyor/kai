@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Optional, cast
 
 from jinja2 import Template
-from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from pygments import lexers
 from pygments.lexer import LexerMeta
@@ -16,6 +15,7 @@ from kai.reactive_codeplanner.task_manager.api import Task, TaskResult
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import AnalyzerRuleViolation
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
+from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
 
 logger = logging.getLogger(__name__)
 
@@ -101,8 +101,8 @@ If you have any additional details or steps that need to be performed, put it he
     """
     )
 
-    def __init__(self, llm: BaseChatModel) -> None:
-        self.__llm = llm
+    def __init__(self, model_provider: ModelProvider) -> None:
+        self._model_provider = model_provider
 
     def refine_task(self, errors: list[str]) -> None:
         """We currently do not refine the tasks"""
@@ -136,7 +136,7 @@ If you have any additional details or steps that need to be performed, put it he
             incidents=[task.incident],
         )
 
-        aimessage = self.__llm.invoke(
+        aimessage = self._model_provider.invoke(
             [self.system_message, HumanMessage(content=content)]
         )
 

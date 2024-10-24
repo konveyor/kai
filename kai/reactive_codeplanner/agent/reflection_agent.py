@@ -12,11 +12,11 @@ from langchain.prompts.chat import (
     HumanMessagePromptTemplate,
     SystemMessagePromptTemplate,
 )
-from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from kai.reactive_codeplanner.agent.api import Agent, AgentRequest, AgentResult
 from kai.reactive_codeplanner.agent.ast_diff.parser import Language, extract_ast_info
+from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
 
 
 @dataclass
@@ -124,12 +124,12 @@ Here's the input information:
 
     def __init__(
         self,
-        llm: BaseChatModel,
+        model_provider: ModelProvider,
         iterations: int = 1,
         retries: int = 1,
         silent: bool = True,
     ) -> None:
-        self.__llm = llm
+        self._model_provider = model_provider
         self._iterations = iterations
         self._retries = retries
         self._silent = silent
@@ -187,7 +187,7 @@ Here's the input information:
             curr_iter += 1
             try:
                 self._out(to="reflection", frm="user", msg=chat_reflect[-1].content)
-                reflection_response = self.__llm.invoke(chat_reflect)
+                reflection_response = self._model_provider.invoke(chat_reflect)
                 self._out(
                     to="fix-gen", frm="reflection", msg=reflection_response.content
                 )
@@ -198,7 +198,7 @@ Here's the input information:
                 fix_gen_response = None
                 while fix_gen_attempts < self._retries:
                     fix_gen_attempts += 1
-                    fix_gen_response = self.__llm.invoke(chat_fix_gen)
+                    fix_gen_response = self._model_provider.invoke(chat_fix_gen)
                     self._out(
                         to="reflection", frm="fix-gen", msg=fix_gen_response.content
                     )

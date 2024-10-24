@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 from jinja2 import Template
-from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 
 from kai.reactive_codeplanner.agent.api import Agent, AgentRequest, AgentResult
@@ -13,6 +12,7 @@ from kai.reactive_codeplanner.agent.dependency_agent.util import (
     get_maven_query_from_code,
     search_fqdn_query,
 )
+from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -38,8 +38,8 @@ class FQDNDependencySelectorAgent(Agent):
         group_id: str
         reasoning: str
 
-    def __init__(self, llm: BaseChatModel) -> None:
-        self.__llm = llm
+    def __init__(self, model_provider: ModelProvider) -> None:
+        self._model_provider = model_provider
 
     message = Template(
         """
@@ -78,7 +78,7 @@ Searched dependencies:
             query.append(get_maven_query_from_code(ask.code))
 
         msg = [HumanMessage(content=self.message.render(message=ask.msg, query=query))]
-        fix_gen_response = self.__llm.invoke(msg)
+        fix_gen_response = self._model_provider.invoke(msg)
         llm_response = self.parse_llm_response(fix_gen_response.content)
         # Really we need to re-call the agent
         if not llm_response:
