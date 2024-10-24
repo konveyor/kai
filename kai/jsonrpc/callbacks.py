@@ -49,9 +49,13 @@ class JsonRpcCallback:
         self.validate_func_args = validate_func_args
 
         sig = inspect.signature(func)
+        # when params are dict[blah, blah] we need get_origin() to get correct full type
         self.params_model: type[dict[str, Any]] | type[BaseModel] | None = [
             get_origin(p.annotation) for p in sig.parameters.values()
         ][3]
+
+        if self.params_model is None:
+            self.params_model = [p.annotation for p in sig.parameters.values()][3]
 
     def __call__(
         self,
