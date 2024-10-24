@@ -14,9 +14,9 @@ from langchain.prompts.chat import (
 )
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
+from kai.llm_interfacing.model_provider import ModelProvider
 from kai.reactive_codeplanner.agent.api import Agent, AgentRequest, AgentResult
 from kai.reactive_codeplanner.agent.ast_diff.parser import Language, extract_ast_info
-from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
 
 
 @dataclass

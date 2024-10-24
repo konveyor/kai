@@ -5,6 +5,7 @@ from pathlib import Path
 from jinja2 import Template
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
+from kai.llm_interfacing.model_provider import ModelProvider
 from kai.reactive_codeplanner.agent.reflection_agent import ReflectionTask
 from kai.reactive_codeplanner.task_manager.api import Task, TaskResult
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
@@ -17,7 +18,6 @@ from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
     TypeMismatchError,
 )
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager, SpawningResult
-from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

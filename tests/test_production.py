@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+from kai.llm_interfacing.model_provider import ModelProvider
 from kai_solution_server.service.incident_store.sql_types import SQLIncident
-from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
 from kai_solution_server.service.solution_handling.production import (
     SolutionProducerLLMLazy,
     SolutionProducerTextOnly,

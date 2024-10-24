@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 
 from kai.kai_config import KaiConfig
+from kai.llm_interfacing.model_provider import ModelProvider
 from kai.reactive_codeplanner.task_manager.api import RpcClientConfig
 from kai.reactive_codeplanner.task_manager.task_manager import TaskManager
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.task_runner import (
@@ -16,7 +17,6 @@ from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
     MavenCompileStep,
 )
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
-from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,10 +24,10 @@ logger = logging.getLogger(__name__)
 
 
 def main() -> None:
-
     parser = argparse.ArgumentParser(
         description="Run the CodePlan loop against a project"
     )
+
     parser.add_argument(
         "source_directory",
         help="The root directory of the project to be fixed",
@@ -108,7 +108,8 @@ def main() -> None:
         logger.info("Executed task: %s, Result: %s", task, result)
         task_manager.supply_result(result)
     task_manager.stop()
-    logger.info("Codeplan execution completed.")
+
+    logger.info("Reactive code planner execution completed.")
 
 
 if __name__ == "__main__":

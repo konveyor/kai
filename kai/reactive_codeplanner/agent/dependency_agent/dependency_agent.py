@@ -4,7 +4,7 @@
 # so that we can hook into the parser and add attributes to the element.
 import sys
 
-from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
+from kai.llm_interfacing.model_provider import ModelProvider
 
 sys.modules["_elementtree"] = None  # type: ignore[assignment]
 

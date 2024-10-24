@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from genai import Client, Credentials
 from genai.extensions.langchain.chat_llm import LangChainChatInterface
 from genai.schema import DecodingMethod
-from git import TYPE_CHECKING
 from langchain_aws import ChatBedrock
 from langchain_community.chat_models import ChatOllama, ChatOpenAI
 from langchain_community.chat_models.fake import FakeListChatModel
