@@ -1,7 +1,7 @@
 # trunk-ignore-begin(ruff/E402)
 import importlib
 import sys
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET  # trunk-ignore(bandit/B405)
 
 # Forcing the reload after changing and re-importing will allow us
 # to pass the test.
