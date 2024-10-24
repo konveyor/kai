@@ -172,7 +172,10 @@ Added the `io.quarkus:quarkus-spring-cache` dependency to the `pom.xml` file and
 
     def test_find_in_pom(self):
         test_data_dir = Path(
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), "test-data")
+            os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "test_data/test_dependency_agent",
+            )
         )
 
         test_func = find_in_pom(test_data_dir)
