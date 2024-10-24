@@ -4,6 +4,8 @@
 # so that we can hook into the parser and add attributes to the element.
 import sys
 
+from kai.llm_interfacing.model_provider import ModelProvider
+
 sys.modules["_elementtree"] = None  # type: ignore[assignment]
 
 import logging
@@ -12,7 +14,6 @@ from pathlib import Path
 from typing import Any, Callable, Optional, TypedDict, Union
 
 from langchain.prompts.chat import HumanMessagePromptTemplate
-from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import SystemMessage
 
 from kai.reactive_codeplanner.agent.api import Agent, AgentRequest, AgentResult
@@ -181,13 +182,13 @@ Message:{message}
 
     def __init__(
         self,
-        llm: BaseChatModel,
+        model_provider: ModelProvider,
         project_base: Path,
         retries: int = 1,
     ) -> None:
-        self.__llm = llm
+        self._model_provider = model_provider
         self._retries = retries
-        self.child_agent = FQDNDependencySelectorAgent(llm=llm)
+        self.child_agent = FQDNDependencySelectorAgent(model_provider=model_provider)
         self.agent_methods.update({"find_in_pom._run": find_in_pom(project_base)})
 
     def execute(self, ask: AgentRequest) -> AgentResult:
@@ -213,7 +214,7 @@ Message:{message}
         while fix_gen_attempts < self._retries:
             fix_gen_attempts += 1
 
-            fix_gen_response = self.__llm.invoke(msg)
+            fix_gen_response = self._model_provider.invoke(msg)
             llm_response = self.parse_llm_response(fix_gen_response.content)
             # Break out of the while loop, if we don't have a final answer then we need to retry
             if llm_response is None or not llm_response.final_answer:
