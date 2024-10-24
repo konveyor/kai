@@ -238,25 +238,51 @@ class KaiApplication:
                         application_name,
                         f'{file_name.replace("/", "-")}',
                     ):
-                        llm_result = self.model_provider.llm.invoke(prompt)
-                        trace.llm_result(count, retry_attempt_count, llm_result)
+                        llm_request = [("human", prompt)]
+                        llm_result = self.model_provider.llm.invoke(llm_request)
+                        content = parse_file_solution_content(
+                            src_file_language, str(llm_result.content)
+                        )
+
+                        if len(content.updated_file) == 0:
+                            trace.llm_result_without_codeblocks(
+                                count, retry_attempt_count, llm_result.content
+                            )
+                            trace.response_metadata_for_response_without_codeblocks(
+                                count, retry_attempt_count, llm_result.response_metadata
+                            )
+                            self.has_tokens_exceeded(
+                                llm_result.response_metadata,
+                                estimated_prompt_tokens,
+                                file_name,
+                            )
+                            llm_request.append(
+                                (
+                                    "human",
+                                    "I request you to generate a complete response.",
+                                )
+                            )
+                            llm_result = self.model_provider.llm.invoke(llm_request)
+                            content = parse_file_solution_content(
+                                src_file_language, str(llm_result.content)
+                            )
+
+                        trace.llm_result_with_codeblocks(
+                            count, retry_attempt_count, llm_result.content
+                        )
+                        trace.response_metadata_for_response_with_codeblocks(
+                            count, retry_attempt_count, llm_result.response_metadata
+                        )
                         trace.estimated_tokens(
                             count,
                             retry_attempt_count,
                             estimated_prompt_tokens,
                             self.tiktoken_encoding_base,
                         )
-                        trace.response_metadata(
-                            count, retry_attempt_count, llm_result.response_metadata
-                        )
                         self.has_tokens_exceeded(
                             llm_result.response_metadata,
                             estimated_prompt_tokens,
                             file_name,
-                        )
-
-                        content = parse_file_solution_content(
-                            src_file_language, str(llm_result.content)
                         )
 
                         if not content.updated_file:
