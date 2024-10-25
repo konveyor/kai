@@ -51,7 +51,7 @@ class AnalyzerLSPStep(ValidationStep):
         ]
         if config.dep_open_source_labels_path is not None:
             args.append("-depOpenSourceLabelsFile")
-            args.append(config.dep_open_source_labels_path)
+            args.append(str(config.dep_open_source_labels_path))
         rpc_server = subprocess.Popen(
             args,
             stdin=subprocess.PIPE,

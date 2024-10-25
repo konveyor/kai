@@ -120,7 +120,7 @@ class CodePlanSolution(BaseModel):
 def apply_diff(filepath: Path, solution: CodePlanSolution) -> None:
     KAI_LOG.info(f"Writing updated source code to {filepath}")
     try:
-        subprocess.run(
+        subprocess.run(  # trunk-ignore(bandit/B603,bandit/B607)
             ["git", "apply"],
             input=solution.diff.encode("utf-8"),
             cwd=SAMPLE_APP_DIR,
