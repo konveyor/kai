@@ -15,6 +15,7 @@ from kai.jsonrpc.logs import JsonRpcLoggingHandler
 from kai.jsonrpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcId
 from kai.jsonrpc.util import DEFAULT_FORMATTER, TRACE, CamelCaseBaseModel
 from kai.kai_config import KaiConfigModels, SolutionConsumerKind
+from kai.llm_interfacing.model_provider import ModelProvider
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
 )
@@ -36,7 +37,6 @@ from kai.reactive_codeplanner.task_runner.dependency.task_runner import (
     DependencyTaskRunner,
 )
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager, RepoContextSnapshot
-from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
 
 
 class KaiRpcApplicationConfig(CamelCaseBaseModel):
@@ -57,7 +57,7 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
     analyzer_lsp_rpc_path: Path
     analyzer_lsp_rules_path: Path
     analyzer_lsp_java_bundle_path: Path
-    analyzer_dep_labels_file: Path
+    analyzer_lsp_dep_labels_path: Optional[Path] = None
 
 
 class KaiRpcApplication(JsonRpcApplication):
@@ -361,10 +361,10 @@ def get_codeplan_agent_solution(
         rules_directory=app.config.analyzer_lsp_rules_path,
         analyzer_lsp_path=app.config.analyzer_lsp_lsp_path,
         analyzer_java_bundle_path=app.config.analyzer_lsp_java_bundle_path,
-        dep_open_source_labels_file=app.config.analyzer_dep_labels_file,
         label_selector="konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee",
         incident_selector=None,
         included_paths=None,
+        dep_open_source_labels_path=app.config.analyzer_lsp_dep_labels_path,
     )
 
     task_manager = TaskManager(

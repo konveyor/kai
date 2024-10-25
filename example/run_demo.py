@@ -7,13 +7,15 @@ import sys
 import time
 from io import BufferedReader, BufferedWriter
 from pathlib import Path
-from typing import Any, Generator, cast
+from typing import Generator, cast
+
+from pydantic import BaseModel
 
 # Ensure that we have 'kai' in our import path
 sys.path.append("../../kai")
 from kai.analyzer_types import ExtendedIncident, Report
 from kai.jsonrpc.core import JsonRpcServer
-from kai.jsonrpc.models import JsonRpcError, JsonRpcId
+from kai.jsonrpc.models import JsonRpcError, JsonRpcResponse
 from kai.jsonrpc.streams import BareJsonStream
 from kai.kai_config import KaiConfig
 from kai.kai_logging import formatter
@@ -55,7 +57,7 @@ def initialize_rpc_server() -> Generator[JsonRpcServer, None, None]:
         analyzer_lsp_lsp_path=Path(ANALYSIS_LSP_PATH),
         analyzer_lsp_rpc_path=Path(ANALYSIS_RPC_PATH),
         analyzer_lsp_rules_path=Path(ANALYSIS_RULES_PATH),
-        analyzer_dep_labels_file=Path(ANALYSIS_DEP_LABELS_FILE),
+        analyzer_lsp_dep_labels_path=Path(ANALYSIS_DEP_LABELS_FILE),
     )
 
     current_directory = Path(os.path.dirname(os.path.realpath(__file__)))
@@ -69,15 +71,15 @@ def initialize_rpc_server() -> Generator[JsonRpcServer, None, None]:
 
     app = KaiRpcApplication()
 
-    @app.add_notify(method="logMessage")
-    def logMessage(
-        app: KaiRpcApplication,
-        server: JsonRpcServer,
-        id: JsonRpcId,
-        params: dict[Any, Any],
-    ) -> None:
-        KAI_LOG.info(str(params))
-        pass
+    # @app.add_notify(method="logMessage")
+    # def logMessage(
+    #     app: KaiRpcApplication,
+    #     server: JsonRpcServer,
+    #     id: JsonRpcId,
+    #     params: dict[Any, Any],
+    # ) -> None:
+    #     KAI_LOG.info(str(params))
+    #     pass
 
     rpc_server = JsonRpcServer(
         json_rpc_stream=BareJsonStream(
@@ -109,6 +111,27 @@ def initialize_rpc_server() -> Generator[JsonRpcServer, None, None]:
         rpc_server.stop()
 
 
+class CodePlanSolution(BaseModel):
+    diff: str
+    modified_files: list[str]
+    encountered_errors: list[str]
+
+
+def apply_diff(filepath: Path, solution: CodePlanSolution) -> None:
+    KAI_LOG.info(f"Writing updated source code to {filepath}")
+    try:
+        subprocess.run(
+            ["git", "apply"],
+            input=solution.diff.encode("utf-8"),
+            cwd=SAMPLE_APP_DIR,
+            check=True,
+        )
+    except Exception as e:
+        KAI_LOG.error(f"Failed to write updated_file @ {filepath} with error: {e}")
+        KAI_LOG.error(f"Diff: {solution.diff}")
+        return
+
+
 def process_file(
     server: JsonRpcServer,
     file_path: Path,
@@ -134,6 +157,14 @@ def process_file(
         return f"Failed to generate fix for file {params.file_path} - {response.message if response is not None else None}"
     elif isinstance(response, JsonRpcError) and response.error is not None:
         return f"Failed to generate fix for file {params.file_path} - {response.error.code} {response.error.message}"
+    elif not isinstance(response, JsonRpcResponse):
+        return f"Failed to generate fix for file {params.file_path} - invalid response type {type(response)}"
+    try:
+        solution = CodePlanSolution.model_validate(response.result)
+    except Exception as e:
+        return f"Failed to parse response {params.file_path} - {e}"
+
+    apply_diff(filepath=file_path, solution=solution)
 
     end = time.time()
     return f"Took {end-start}s to process {file_path} with {len(incidents)} violations"

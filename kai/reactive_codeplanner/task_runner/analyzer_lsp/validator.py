@@ -36,22 +36,24 @@ class AnalyzerLSPStep(ValidationStep):
     def __init__(self, config: RpcClientConfig) -> None:
         """This will start and analyzer-lsp jsonrpc server"""
         # trunk-ignore-begin(bandit/B603)
+        args: list[str] = [
+            str(config.analyzer_lsp_server_binary),
+            "-source-directory",
+            str(config.repo_directory),
+            "-rules-directory",
+            str(config.rules_directory),
+            "-lspServerPath",
+            str(config.analyzer_lsp_path),
+            "-bundles",
+            str(config.analyzer_java_bundle_path),
+            "-log-file",
+            "./kai-analyzer.log",
+        ]
+        if config.dep_open_source_labels_path is not None:
+            args.append("-depOpenSourceLabelsFile")
+            args.append(config.dep_open_source_labels_path)
         rpc_server = subprocess.Popen(
-            [
-                config.analyzer_lsp_server_binary,
-                "-source-directory",
-                config.repo_directory,
-                "-rules-directory",
-                config.rules_directory,
-                "-lspServerPath",
-                config.analyzer_lsp_path,
-                "-bundles",
-                config.analyzer_java_bundle_path,
-                "-log-file",
-                "./kai-analyzer.log",
-                "-depOpenSourceLabelsFile",
-                config.dep_open_source_labels_file,
-            ],
+            args,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
