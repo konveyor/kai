@@ -9,11 +9,8 @@ from pygments import lexers
 from pygments.lexer import LexerMeta
 from pygments.util import ClassNotFound
 
-<<<<<<< HEAD
 from kai.llm_interfacing.model_provider import ModelProvider
-=======
 from kai.logging.logging import get_logger
->>>>>>> a84e5f4 (fixup)
 from kai.reactive_codeplanner.agent.api import AgentResult
 from kai.reactive_codeplanner.task_manager.api import Task, TaskResult
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import AnalyzerRuleViolation

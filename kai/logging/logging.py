@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import Self
 
 from kai.kai_config import KaiConfig
 
@@ -10,15 +9,19 @@ TRACE = logging.DEBUG - 5
 class KaiLogger(logging.Logger):
     configLogLevel: int
 
-    def __init__(self, name: str, configLogLevel: int) -> None:
-        super().__init__(name, configLogLevel)
+    def __init__(self, name: str, configLogLevel: int, log_level: int):
+        super().__init__(name, log_level)
         self.configLogLevel = configLogLevel
 
-    def getChild(self, suffix: str) -> Self:
-        log = super().getChild(suffix)
-        log.configLogLevel = self.configLogLevel
-        log.setLevel(TRACE)
+    def getChild(self, suffix: str) -> "KaiLogger":
+        log = KaiLogger(
+            name=".".join([self.name, suffix]),
+            configLogLevel=self.configLogLevel,
+            log_level=TRACE,
+        )
+        log.parent = self
         log.handlers = self.handlers
+        log.filters = self.filters
         return log
 
     def setLevel(self, level: str | int) -> None:
@@ -45,8 +48,7 @@ def get_logger(childName: str) -> KaiLogger:
     global log
     if not log:
         # Default to debug, can be overriden at start or program by setting kai_logger
-        log = KaiLogger("kai", logging.DEBUG)
-        log.configLogLevel = logging.DEBUG
+        log = KaiLogger("kai", logging.DEBUG, logging.DEBUG)
 
     return log.getChild(childName)
 
@@ -109,8 +111,7 @@ def init_logging(
 ) -> None:
     global log
     if not log:
-        log = KaiLogger("kai", TRACE)
-        log.configLogLevel = TRACE
+        log = KaiLogger("kai", TRACE, TRACE)
 
     for handler in log.handlers:
         log.removeHandler(handler)
