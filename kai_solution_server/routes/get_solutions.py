@@ -16,6 +16,7 @@ class PostGetSolutionsParams(BaseModel):
     violation_name: str
     incident_variables: dict[str, Any]
     incident_snip: Optional[str] = None
+    limit: int = 10
 
 
 class ResponseGetSolutions(BaseModel):

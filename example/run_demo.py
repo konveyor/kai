@@ -1,265 +1,215 @@
 #!/usr/bin/env python
-
-import json
+import contextlib
 import logging
 import os
+import subprocess  # trunk-ignore(bandit/B404)
 import sys
 import time
-import traceback
-from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from io import BufferedReader, BufferedWriter
 from pathlib import Path
+from typing import Generator, cast
 
-import requests
+from pydantic import BaseModel
 
 # Ensure that we have 'kai' in our import path
 sys.path.append("../../kai")
 from kai.analyzer_types import ExtendedIncident, Report
+from kai.jsonrpc.core import JsonRpcServer
+from kai.jsonrpc.models import JsonRpcError, JsonRpcResponse
+from kai.jsonrpc.streams import BareJsonStream
+from kai.kai_config import KaiConfig
 from kai.kai_logging import formatter
-from kai_solution_server.routes.get_incident_solutions_for_file import (
-    PostGetIncidentSolutionsForFileParams,
+from kai.rpc_server.server import (
+    GetCodeplanAgentSolutionParams,
+    KaiRpcApplication,
+    KaiRpcApplicationConfig,
 )
 
-KAI_LOG = logging.getLogger(__name__)
+KAI_LOG = logging.getLogger("run_demo")
 
 SERVER_URL = "http://0.0.0.0:8080"
 APP_NAME = "coolstore"
-SAMPLE_APP_DIR = "./coolstore"
+SAMPLE_APP_DIR = Path("./coolstore")
+ANALYSIS_BUNDLE_PATH = "./analysis/bundle.jar"
+ANALYSIS_LSP_PATH = "./analysis/jdtls/bin/jdtls"
+ANALYSIS_RPC_PATH = "./analysis/analyzer_rpc"
+ANALYSIS_RULES_PATH = "./analysis/rulesets/"
+ANALYSIS_DEP_LABELS_FILE = "./analysis/maven.default.index"
+
 
 # TODOs
 # 1) Add ConfigFile to tweak the server URL and rulesets/violations
 # 2) Limit to specific rulesets/violations we are interested in
 
 
-def _generate_fix(params: PostGetIncidentSolutionsForFileParams):
-    headers = {"Content-type": "application/json", "Accept": "text/plain"}
-    response = requests.post(
-        ###
-        # If we are sending only one incident, we can use this endpoint
-        # f"{SERVER_URL}/get_incident_solution",
-        ###
-        f"{SERVER_URL}/get_incident_solutions_for_file",
-        data=params.model_dump_json(),
-        headers=headers,
-        timeout=3600,
-    )
-    return response
+@contextlib.contextmanager
+def initialize_rpc_server() -> Generator[JsonRpcServer, None, None]:
+    kai_config = KaiConfig.model_validate_filepath("config.toml")
 
-
-def generate_fix(params: PostGetIncidentSolutionsForFileParams):
-    retries_left = 6
-    for i in range(retries_left):
-        try:
-            response = _generate_fix(params)
-            if response.status_code == 200:
-                return response
-            else:
-                KAI_LOG.info(
-                    f"[{params.file_name}] Received status code {response.status_code}"
-                )
-        except requests.exceptions.RequestException as e:
-            KAI_LOG.error(f"[{params.file_name}] Received exception: {e}")
-            # This is what a timeout exception will look like:
-            # requests.exceptions.ReadTimeout: HTTPConnectionPool(host='0.0.0.0', port=8080): Read timed out. (read timeout=600)
-        KAI_LOG.error(
-            f"[{params.file_name}] Failed to get a '200' response from the server.  Retrying {retries_left-i} more times"
-        )
-    sys.exit(
-        f"[{params.file_name}] Failed to get a '200' response from the server.  Parameters = {params}"
+    config = KaiRpcApplicationConfig(
+        process_id=None,
+        demo_mode=True,
+        root_path=SAMPLE_APP_DIR,
+        kai_backend_url=SERVER_URL,
+        log_dir_path=Path("./logs"),
+        model_provider=kai_config.models,
+        analyzer_lsp_java_bundle_path=Path(ANALYSIS_BUNDLE_PATH),
+        analyzer_lsp_lsp_path=Path(ANALYSIS_LSP_PATH),
+        analyzer_lsp_rpc_path=Path(ANALYSIS_RPC_PATH),
+        analyzer_lsp_rules_path=Path(ANALYSIS_RULES_PATH),
+        analyzer_lsp_dep_labels_path=Path(ANALYSIS_DEP_LABELS_FILE),
     )
 
+    current_directory = Path(os.path.dirname(os.path.realpath(__file__)))
+    rpc_binary_path = current_directory / ".." / "kai" / "rpc_server" / "main.py"
+    rpc_subprocess = subprocess.Popen(  # trunk-ignore(bandit/B603,bandit/B607)
+        ["python", rpc_binary_path],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        env=os.environ,
+    )
 
-def parse_response(response: requests.Response):
+    app = KaiRpcApplication()
+
+    # @app.add_notify(method="logMessage")
+    # def logMessage(
+    #     app: KaiRpcApplication,
+    #     server: JsonRpcServer,
+    #     id: JsonRpcId,
+    #     params: dict[Any, Any],
+    # ) -> None:
+    #     KAI_LOG.info(str(params))
+    #     pass
+
+    rpc_server = JsonRpcServer(
+        json_rpc_stream=BareJsonStream(
+            cast(BufferedReader, rpc_subprocess.stdout),
+            cast(BufferedWriter, rpc_subprocess.stdin),
+        ),
+        app=app,
+        request_timeout=240,
+    )
+    rpc_server.start()
+
+    # wait for server to start up
+    time.sleep(3)
+
     try:
-        result = response.json()
-
-        if isinstance(result, str):
-            return json.loads(result)
-        elif isinstance(result, dict):
-            return result
-        else:
-            KAI_LOG.error(f"Unexpected response type: {type(result)}")
-            KAI_LOG.error(f"Response: {response}")
-            sys.exit(1)
-
-    except Exception as e:
-        KAI_LOG.error(f"Failed to parse response with error: {e}")
-        KAI_LOG.error(f"Response: {response}")
-        sys.exit(1)
-
-    ## TODO:  Below is rough guess at error handling, need to confirm
-    # if "error" in response_json:
-    #    print(f"Error: {response_json['error']}")
-    #    return ""
-
-    # TODO: When we are batching incidents we get back a parse result so we dont
-    # need below return
-    # pydantic_models.parse_file_solution_content(response_json["updated_file"])
-
-
-def write_to_disk(file_path: Path, updated_file_contents: dict):
-    file_path = str(file_path)  # Temporary fix for Path object
-
-    # We expect that we are overwriting the file, so all directories should exist
-    intended_file_path = f"{SAMPLE_APP_DIR}/{file_path}"
-    if not os.path.exists(intended_file_path):
-        KAI_LOG.warning(
-            f"**WARNING* File {intended_file_path} does not exist.  Proceeding, but suspect this is a new file or there is a problem with the filepath"
+        response = rpc_server.send_request(
+            method="initialize", params=config.model_dump()
         )
+        if response is None:
+            raise Exception("Failed to initialize RPC server, received None response")
+        elif isinstance(response, JsonRpcError):
+            raise Exception(
+                f"Failed to initialize RPC server - {response.code} {response.message}"
+            )
+        yield rpc_server
+    finally:
+        rpc_subprocess.terminate()
+        rpc_subprocess.wait()
+        rpc_server.stop()
 
-    KAI_LOG.info(f"Writing updated source code to {intended_file_path}")
+
+class CodePlanSolution(BaseModel):
+    diff: str
+    modified_files: list[str]
+    encountered_errors: list[str]
+
+
+def apply_diff(filepath: Path, solution: CodePlanSolution) -> None:
+    KAI_LOG.info(f"Writing updated source code to {filepath}")
     try:
-        with open(intended_file_path, "w") as f:
-            f.write(updated_file_contents["updated_file"])
-    except Exception as e:
-        KAI_LOG.error(
-            f"Failed to write updated_file @ {intended_file_path} with error: {e}"
+        subprocess.run(  # trunk-ignore(bandit/B603,bandit/B607)
+            ["git", "apply"],
+            input=solution.diff.encode("utf-8"),
+            cwd=SAMPLE_APP_DIR,
+            check=True,
         )
-        KAI_LOG.error(f"Contents: {updated_file_contents}")
-        sys.exit(1)
-
-    prompts_path = f"{intended_file_path}.prompts.md"
-    KAI_LOG.info(f"Writing prompts to {prompts_path}")
-    try:
-        with open(prompts_path, "w") as f:
-            f.write("\n---\n".join(updated_file_contents["used_prompts"]))
     except Exception as e:
-        KAI_LOG.error(f"Failed to write prompts @ {prompts_path} with error: {e}")
-        KAI_LOG.error(f"Contents: {updated_file_contents}")
-        sys.exit(1)
-
-    llm_response_metadata_path = f"{intended_file_path}.llm_response_metadata.json"
-    KAI_LOG.info(f"Writing llm_response_metadata to {llm_response_metadata_path}")
-    try:
-        with open(llm_response_metadata_path, "w") as f:
-            json.dump(updated_file_contents["response_metadatas"], f)
-    except Exception as e:
-        KAI_LOG.error(
-            f"Failed to write llm_response_metadata @ {llm_response_metadata_path} with error: {e}"
-        )
-        KAI_LOG.error(f"Contents: {updated_file_contents}")
-        sys.exit(1)
-
-    # since the other files are all contained within the llm_result, avoid duplication
-    # when they're available
-    if updated_file_contents.get("llm_results"):
-        llm_result_path = f"{intended_file_path}.llm_result.md"
-        KAI_LOG.info(f"Writing llm_result to {llm_result_path}")
-        try:
-            model_id = updated_file_contents.get("model_id", "unknown")
-            with open(llm_result_path, "w") as f:
-                f.write(f"Model ID: {model_id}\n")
-                f.write("\n---\n".join(updated_file_contents["llm_results"]))
-        except Exception as e:
-            KAI_LOG.error(
-                f"Failed to write llm_result @ {llm_result_path} with error: {e}"
-            )
-            KAI_LOG.error(f"Contents: {updated_file_contents}")
-            sys.exit(1)
-    else:
-        reasoning_path = f"{intended_file_path}.reasoning"
-        KAI_LOG.info(f"Writing reasoning to {reasoning_path}")
-        try:
-            with open(reasoning_path, "w") as f:
-                json.dump(updated_file_contents["total_reasoning"], f)
-        except Exception as e:
-            KAI_LOG.error(
-                f"Failed to write reasoning @ {reasoning_path} with error: {e}"
-            )
-            KAI_LOG.error(f"Contents: {updated_file_contents}")
-            sys.exit(1)
-
-        additional_information_path = f"{intended_file_path}.additional_information.md"
-        KAI_LOG.info(f"Writing additional_information to {additional_information_path}")
-        try:
-            with open(additional_information_path, "w") as f:
-                f.write(
-                    "\n---\n".join(updated_file_contents["used_additional_information"])
-                )
-        except Exception as e:
-            KAI_LOG.error(
-                f"Failed to write additional_information @ {additional_information_path} with error: {e}"
-            )
-            KAI_LOG.error(f"Contents: {updated_file_contents}")
-            sys.exit(1)
+        KAI_LOG.error(f"Failed to write updated_file @ {filepath} with error: {e}")
+        KAI_LOG.error(f"Diff: {solution.diff}")
+        return
 
 
 def process_file(
+    server: JsonRpcServer,
     file_path: Path,
     incidents: list[ExtendedIncident],
     num_impacted_files: int,
     count: int,
-):
+) -> str:
     start = time.time()
     KAI_LOG.info(
         f"File #{count} of {num_impacted_files} - Processing {file_path} which has {len(incidents)} incidents."
     )
 
-    with open(f"{SAMPLE_APP_DIR}/{str(file_path)}", "r") as f:
-        file_contents = f.read()
-
-    params = PostGetIncidentSolutionsForFileParams(
-        file_name=str(file_path),
-        file_contents=file_contents,
-        application_name=APP_NAME,
+    params = GetCodeplanAgentSolutionParams(
+        file_path=file_path,
         incidents=incidents,
-        include_llm_results=True,
+        max_depth=1,
+        max_iterations=1,
     )
 
-    response = generate_fix(params)
-    KAI_LOG.info(f"Response StatusCode: {response.status_code} for {file_path}\n")
+    response = server.send_request("getCodeplanAgentSolution", params.model_dump())
 
-    updated_file_contents: dict = parse_response(response)
-    if os.getenv("WRITE_TO_DISK", "").lower() not in ("false", "0", "no"):
-        write_to_disk(file_path, updated_file_contents)
+    if isinstance(response, JsonRpcError) or response is None:
+        return f"Failed to generate fix for file {params.file_path} - {response.message if response is not None else None}"
+    elif isinstance(response, JsonRpcError) and response.error is not None:
+        return f"Failed to generate fix for file {params.file_path} - {response.error.code} {response.error.message}"
+    elif not isinstance(response, JsonRpcResponse):
+        return f"Failed to generate fix for file {params.file_path} - invalid response type {type(response)}"
+    try:
+        solution = CodePlanSolution.model_validate(response.result)
+    except Exception as e:
+        return f"Failed to parse response {params.file_path} - {e}"
+
+    apply_diff(filepath=file_path, solution=solution)
 
     end = time.time()
-    return f"{end-start}s to process {file_path} with {len(incidents)} violations"
+    return f"Took {end-start}s to process {file_path} with {len(incidents)} violations"
 
 
-def run_demo(report: Report):
+def run_demo(report: Report, server: JsonRpcServer) -> None:
     impacted_files = report.get_impacted_files()
     num_impacted_files = len(impacted_files)
-    remaining_files = num_impacted_files
 
     total_incidents = sum(len(incidents) for incidents in impacted_files.values())
     print(f"{num_impacted_files} files with a total of {total_incidents} incidents.")
 
-    max_workers = int(os.environ.get("KAI_MAX_WORKERS", 8))
-    KAI_LOG.info(f"Running in parallel with {max_workers} workers")
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures: list[Future[str]] = []
-        for count, (file_path, incidents) in enumerate(impacted_files.items(), 1):
-            future = executor.submit(
-                process_file, file_path, incidents, num_impacted_files, count
-            )
-            futures.append(future)
+    for count, (file_path, incidents) in enumerate(impacted_files.items(), 1):
+        for incident in incidents:
+            incident.uri = os.path.join(SAMPLE_APP_DIR, file_path)
 
-        for future in as_completed(futures):
-            try:
-                result = future.result()
-                KAI_LOG.info(f"Result:  {result}")
-            except Exception as exc:
-                KAI_LOG.error(f"Generated an exception: {exc}")
-                KAI_LOG.error(traceback.format_exc())
-                exit(1)
-
-            remaining_files -= 1
-            KAI_LOG.info(
-                f"{remaining_files} files remaining from total of {num_impacted_files}"
-            )
+        process_file(
+            server=server,
+            incidents=incidents,
+            file_path=SAMPLE_APP_DIR / file_path,
+            count=count,
+            num_impacted_files=num_impacted_files,
+        )
 
 
-if __name__ == "__main__":
-    console_handler = logging.StreamHandler()
+def main() -> None:
+    console_handler = logging.StreamHandler(sys.stderr)
     console_handler.setFormatter(formatter)
+    # logging.getLogger("jsonrpc").setLevel(logging.CRITICAL)
     KAI_LOG.addHandler(console_handler)
-    KAI_LOG.setLevel("DEBUG")
+    KAI_LOG.setLevel(logging.DEBUG)
 
     start = time.time()
 
     coolstore_analysis_dir = "./analysis/coolstore/output.yaml"
     report = Report.load_report_from_file(coolstore_analysis_dir)
-    run_demo(report)
+    try:
+        with initialize_rpc_server() as server:
+            run_demo(report, server)
+        KAI_LOG.info(
+            f"Total time to process '{coolstore_analysis_dir}' was {time.time()-start}s"
+        )
+    except Exception as e:
+        KAI_LOG.error(f"Error running demo - {e}")
 
-    end = time.time()
-    KAI_LOG.info(f"Total time to process '{coolstore_analysis_dir}' was {end-start}s")
+
+if __name__ == "__main__":
+    main()
