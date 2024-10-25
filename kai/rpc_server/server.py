@@ -14,7 +14,7 @@ from kai.jsonrpc.core import JsonRpcApplication, JsonRpcServer
 from kai.jsonrpc.logs import JsonRpcLoggingHandler
 from kai.jsonrpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcId
 from kai.jsonrpc.util import DEFAULT_FORMATTER, TRACE, CamelCaseBaseModel
-from kai.kai_config import KaiConfigModels
+from kai.kai_config import KaiConfigModels, SolutionConsumerKind
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
@@ -44,17 +44,20 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
 
     root_path: Path
     model_provider: KaiConfigModels
+    solution_consumer: SolutionConsumerKind = SolutionConsumerKind.DIFF_ONLY
     kai_backend_url: str
 
     log_level: str = "INFO"
     stderr_log_level: str = "TRACE"
     file_log_level: Optional[str] = None
     log_dir_path: Optional[Path] = None
+    demo_mode: bool = False
 
     analyzer_lsp_lsp_path: Path
     analyzer_lsp_rpc_path: Path
     analyzer_lsp_rules_path: Path
     analyzer_lsp_java_bundle_path: Path
+    analyzer_lsp_dep_labels_path: Optional[Path] = None
 
 
 class KaiRpcApplication(JsonRpcApplication):
@@ -122,9 +125,16 @@ def initialize(
         app.config = params
 
         app.config.root_path = app.config.root_path.resolve()
-        app.config.analyzer_lsp_rpc_path = app.config.analyzer_lsp_rpc_path.resolve()
         if app.config.log_dir_path:
             app.config.log_dir_path = app.config.log_dir_path.resolve()
+        app.config.analyzer_lsp_rpc_path = app.config.analyzer_lsp_rpc_path.resolve()
+        app.config.analyzer_lsp_java_bundle_path = (
+            app.config.analyzer_lsp_java_bundle_path.resolve()
+        )
+        app.config.analyzer_lsp_lsp_path = app.config.analyzer_lsp_lsp_path.resolve()
+        app.config.analyzer_lsp_rules_path = (
+            app.config.analyzer_lsp_rules_path.resolve()
+        )
 
         app.log.setLevel(TRACE)
         app.log.handlers.clear()
@@ -191,44 +201,19 @@ def set_config(
         )
 
 
-# @app.add_request(method="getRAGSolution")
-# def get_rag_solution(
-#     app: KaiRpcApplication,
-#     server: JsonRpcServer,
-#     id: JsonRpcId,
-#     params: PostGetIncidentSolutionsForFileParams,
-# ) -> None:
-#     if not app.initialized:
-#         server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
-#         return
-#     app.config = cast(KaiRpcApplicationConfig, app.config)
-
-#     # NOTE: This is not at all what we should be doing
-#     try:
-#         app.log.info(f"get_rag_solution: {params}")
-#         params_dict = params.model_dump()
-#         result = requests.post(
-#             f"{app.config.kai_backend_url}/get_incident_solutions_for_file",
-#             json=params_dict,
-#             timeout=1024,
-#         )
-#         app.log.info(f"get_rag_solution result: {result}")
-#         app.log.info(f"get_rag_solution result.json(): {result.json()}")
-
-#         server.send_response(id=id, result=dict(result.json()))
-#     except Exception:
-#         server.send_response(
-#             id=id,
-#             error=JsonRpcError(
-#                 code=JsonRpcErrorCode.InternalError,
-#                 message=str(traceback.format_exc()),
-#             ),
-#         )
+class GetRagSolutionParams(BaseModel):
+    file_path: Path
+    incidents: list[ExtendedIncident]
+    trace_enabled: bool = False
+    include_solved_incidents: bool = False
 
 
 class GetCodeplanAgentSolutionParams(BaseModel):
     file_path: Path
     incidents: list[ExtendedIncident]
+
+    max_iterations: Optional[int] = None
+    max_depth: Optional[int] = None
 
 
 class GitVFSUpdateParams(BaseModel):
@@ -379,6 +364,7 @@ def get_codeplan_agent_solution(
         label_selector="konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee",
         incident_selector=None,
         included_paths=None,
+        dep_open_source_labels_path=app.config.analyzer_lsp_dep_labels_path,
     )
 
     task_manager = TaskManager(
@@ -400,7 +386,7 @@ def get_codeplan_agent_solution(
 
     num_loops = 0
     result: TaskResult
-    for task in task_manager.get_next_task(0):
+    for task in task_manager.get_next_task(0, params.max_iterations, params.max_depth):
         if num_loops == 2:
             break
 
