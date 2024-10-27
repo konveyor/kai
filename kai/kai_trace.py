@@ -128,53 +128,36 @@ class KaiTrace:
             f.write(json.dumps(data, indent=4))
 
     @enabled_check
-    def llm_result_with_codeblocks(
-        self, current_batch_count: int, retry_count: int, result: BaseMessage
+    def llm_result(
+        self,
+        current_batch_count: int,
+        retry_count: int,
+        result: BaseMessage,
+        output_filename: str,
     ):
         result_file_path = os.path.join(
-            self.trace_dir, f"{current_batch_count}", f"{retry_count}", "llm_result"
+            self.trace_dir,
+            f"{current_batch_count}",
+            f"{retry_count}",
+            f"{output_filename}",
         )
         os.makedirs(os.path.dirname(result_file_path), exist_ok=True)
         with open(result_file_path, "w") as f:
             f.write(str(result))
 
     @enabled_check
-    def llm_result_without_codeblocks(
-        self, current_batch_count: int, retry_count: int, result: BaseMessage
-    ):
-        result_file_path = os.path.join(
-            self.trace_dir,
-            f"{current_batch_count}",
-            f"{retry_count}",
-            "llm_result_without_codeblocks",
-        )
-        os.makedirs(os.path.dirname(result_file_path), exist_ok=True)
-        with open(result_file_path, "w") as f:
-            f.write(str(result))
-
-    @enabled_check
-    def response_metadata_for_response_with_codeblocks(
-        self, current_batch_count: int, retry_count: int, response_metadata: dict
+    def response_metadata(
+        self,
+        current_batch_count: int,
+        retry_count: int,
+        response_metadata: dict,
+        output_filename: str,
     ):
         response_metadata_file_path = os.path.join(
             self.trace_dir,
             f"{current_batch_count}",
             f"{retry_count}",
-            "response_metadata.json",
-        )
-        os.makedirs(os.path.dirname(response_metadata_file_path), exist_ok=True)
-        with open(response_metadata_file_path, "w") as f:
-            f.write(json.dumps(response_metadata, indent=4, default=str))
-
-    @enabled_check
-    def response_metadata_for_response_without_codeblocks(
-        self, current_batch_count: int, retry_count: int, response_metadata: dict
-    ):
-        response_metadata_file_path = os.path.join(
-            self.trace_dir,
-            f"{current_batch_count}",
-            f"{retry_count}",
-            "response_metadata_without_codeblocks.json",
+            f"{output_filename}",
         )
         os.makedirs(os.path.dirname(response_metadata_file_path), exist_ok=True)
         with open(response_metadata_file_path, "w") as f:

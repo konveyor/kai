@@ -1,6 +1,8 @@
 import logging
+import re
 import time
 import traceback
+from difflib import unified_diff
 from typing import Iterator, Optional, cast
 
 import tiktoken
@@ -92,6 +94,40 @@ class KaiApplication:
         # Create solution consumer
 
         self.solution_consumer = solution_consumer_factory(config.solution_consumers)
+
+    def is_response_request_merge_needed(self, content: str):
+        comments_pattern = r"(Rest of the code remains unchanged)|(rest of the code remains the same)|(Other methods remain unchanged)|(Rest of the class remains unchanged)|(Rest of the methods remain unchanged)"
+        comments_pattern_matches = re.findall(comments_pattern, content, re.DOTALL)
+        if comments_pattern_matches:
+            return True
+
+    def merging_response(self, input_file: str, llm_response: str) -> str:
+        diff_output = unified_diff(
+            llm_response.splitlines(), input_file.splitlines(), lineterm=""
+        )
+        diff_lines = "\n".join(list(diff_output))
+        diff_line_list = diff_lines.splitlines()
+
+        updated_lines = [line for line in diff_line_list]
+        backtick_indices = []
+        commented_text = ""
+
+        commented_line_index = 1
+
+        for line in updated_lines:
+            if "Rest of" in line:
+                commented_line_index += updated_lines.index(line)
+                commented_text += line
+            if "```" in line:
+                backtick_indices.append(updated_lines.index(line))
+
+        cleaned_comment_text = commented_text.replace("-", "").strip()
+        extracted_code = ""
+        for i in range(commented_line_index, backtick_indices[1]):
+            if "+" in updated_lines[i]:
+                extracted_code += updated_lines[i].replace("+", "") + "\n"
+
+        return llm_response.replace(cleaned_comment_text, extracted_code)
 
     def estimating_prompt_tokens(self, prompt: str) -> int:
         try:
@@ -246,11 +282,17 @@ class KaiApplication:
 
                         # The LLM response must include code blocks (formatted within triple backticks) to be considered complete. Usually, the LM responds with code blocks, but occasionally it fails to do so, as noted in issue #350 [https://github.com/konveyor/kai/issues/350] . Complete responses are saved in the trace directory directly. For incomplete responses, an additional prompt is sent to the LLM, and the resulting complete response (with code blocks) is saved in the trace directory as a new file.
                         if len(content.updated_file) == 0:
-                            trace.llm_result_without_codeblocks(
-                                count, retry_attempt_count, llm_result.content
+                            trace.llm_result(
+                                count,
+                                retry_attempt_count,
+                                llm_result.content,
+                                "llm_result_without_codeblocks",
                             )
-                            trace.response_metadata_for_response_without_codeblocks(
-                                count, retry_attempt_count, llm_result.response_metadata
+                            trace.response_metadata(
+                                count,
+                                retry_attempt_count,
+                                llm_result.response_metadata,
+                                "response_metadata_without_codeblocks.json",
                             )
                             self.has_tokens_exceeded(
                                 llm_result.response_metadata,
@@ -268,11 +310,17 @@ class KaiApplication:
                                 src_file_language, str(llm_result.content)
                             )
 
-                        trace.llm_result_with_codeblocks(
-                            count, retry_attempt_count, llm_result.content
+                        trace.llm_result(
+                            count,
+                            retry_attempt_count,
+                            llm_result.content,
+                            "llm_result_with_codeblocks",
                         )
-                        trace.response_metadata_for_response_with_codeblocks(
-                            count, retry_attempt_count, llm_result.response_metadata
+                        trace.response_metadata(
+                            count,
+                            retry_attempt_count,
+                            llm_result.response_metadata,
+                            "response_metadata_with_codeblocks.json",
                         )
                         trace.estimated_tokens(
                             count,
@@ -285,6 +333,20 @@ class KaiApplication:
                             estimated_prompt_tokens,
                             file_name,
                         )
+
+                        if self.is_response_request_merge_needed(
+                            str(llm_result.content)
+                        ):
+                            KAI_LOG.warning("This file contains unnecessary comments.")
+                            new_llm_response = self.merging_response(
+                                prompt, str(llm_result.content)
+                            )
+                            trace.llm_result(
+                                count,
+                                retry_attempt_count,
+                                new_llm_response,
+                                "llm_result_with_no_unnecessary_comments",
+                            )
 
                         if not content.updated_file:
                             raise Exception(
