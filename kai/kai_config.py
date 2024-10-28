@@ -214,8 +214,8 @@ class KaiConfig(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="KAI__", env_nested_delimiter="__")
 
-    log_level: str = "INFO"
-    file_log_level: str = "INFO"
+    log_level: str | int = "INFO"
+    file_log_level: str | int = "INFO"
     log_dir: str = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "../../logs"
     )

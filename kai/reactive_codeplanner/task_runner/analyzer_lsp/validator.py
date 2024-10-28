@@ -1,4 +1,3 @@
-import logging
 import subprocess  # trunk-ignore(bandit/B404)
 import threading
 from io import BufferedReader, BufferedWriter
@@ -11,6 +10,7 @@ from kai.analyzer_types import Report
 from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcResponse
 from kai.jsonrpc.streams import BareJsonStream
+from kai.logging.logging import TRACE, get_logger
 from kai.reactive_codeplanner.task_manager.api import (
     RpcClientConfig,
     ValidationError,
@@ -23,8 +23,7 @@ from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import (
     AnalyzerRuleViolation,
 )
 
-# logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def log_stderr(stderr: IO[bytes]) -> None:
@@ -99,12 +98,12 @@ class AnalyzerLSPStep(ValidationStep):
         elif analyzer_output.result is None:
             raise ValidationException(message="Analyzer lsp's output is None")
         elif isinstance(analyzer_output.result, BaseModel):
-            logger.debug("analyzer_output.result is a BaseModel, dumping it")
+            logger.log(TRACE, "analyzer_output.result is a BaseModel, dumping it")
+            logger.log(TRACE, analyzer_output.result)
             analyzer_output.result = analyzer_output.result.model_dump()
-            logger.debug(analyzer_output.result)
         else:
-            logger.debug("analyzer_output.result is not a BaseModel")
-            logger.debug(analyzer_output.result)
+            logger.log(TRACE, "analyzer_output.result is not a BaseModel")
+            logger.log(TRACE, analyzer_output.result)
 
         errors = self.__parse_analyzer_lsp_output(analyzer_output.result)
         return ValidationResult(
@@ -143,6 +142,7 @@ class AnalyzerLSPStep(ValidationStep):
         rulesets = analyzer_output.get("Rulesets")
 
         if not rulesets or not isinstance(rulesets, list):
+            logger.info("parsed zero results from validator")
             return []
 
         r = Report.load_report_from_object(rulesets, "analysis_run_task_runner")

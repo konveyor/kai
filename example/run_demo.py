@@ -12,13 +12,13 @@ from typing import Generator, cast
 from pydantic import BaseModel
 
 # Ensure that we have 'kai' in our import path
-sys.path.append("../../kai")
+sys.path.append("../../")
 from kai.analyzer_types import ExtendedIncident, Report
 from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcResponse
 from kai.jsonrpc.streams import BareJsonStream
 from kai.kai_config import KaiConfig
-from kai.kai_logging import formatter
+from kai.logging.logging import formatter
 from kai.rpc_server.server import (
     GetCodeplanAgentSolutionParams,
     KaiRpcApplication,

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
 import os
 import pathlib
 import shutil
@@ -16,7 +15,9 @@ from urllib.parse import urlparse
 import yaml
 from pydantic import AliasChoices, BaseModel, Field, RootModel
 
-KAI_LOG = logging.getLogger(__name__)
+from kai.logging.logging import get_logger
+
+KAI_LOG = get_logger(__name__)
 
 
 """
@@ -230,6 +231,7 @@ class Report:
             self.workaround_counter_for_missing_ruleset_name += 1
 
         ruleset = RuleSet.model_validate(ruleset_dict)
+
         if ruleset.name:
             self.rulesets[ruleset.name] = ruleset
 

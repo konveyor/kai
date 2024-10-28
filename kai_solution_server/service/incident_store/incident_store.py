@@ -16,6 +16,7 @@ from kai.analyzer_types import Report, filter_incident_vars
 from kai.constants import PATH_GIT_ROOT, PATH_LOCAL_REPO
 from kai.kai_config import KaiConfig
 from kai.llm_interfacing.model_provider import ModelProvider
+from kai.logging.logging import get_logger
 from kai_solution_server.service.incident_store.backend import (
     IncidentStoreBackend,
     incident_store_backend_factory,
@@ -40,7 +41,7 @@ from kai_solution_server.service.solution_handling.production import (
 )
 from kai_solution_server.service.solution_handling.solution_types import Solution
 
-KAI_LOG = logging.getLogger(__name__)
+KAI_LOG = get_logger(__name__)
 
 T = TypeVar("T")
 
