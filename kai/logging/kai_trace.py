@@ -1,7 +1,4 @@
-# type: ignore
-# Ignore types I will fix this one later
 import json
-import logging
 import os
 from time import localtime, strftime
 from typing import Any, Callable
@@ -9,13 +6,13 @@ from typing import Any, Callable
 from langchain.schema.messages import BaseMessage
 from pydantic import BaseModel
 
-from kai.kai_logging import process_log_dir_replacements
+from kai.logging.logging import get_logger, process_log_dir_replacements
 
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 def enabled_check(func: Callable[..., Any]) -> Callable[..., Any]:
-    def wrapper(obj: KaiTrace, *args: Any, **kwargs: Any) -> Any:
+    def wrapper(obj: "KaiTrace", *args: Any, **kwargs: Any) -> Any:
         if obj.enabled:
             return func(obj, *args, **kwargs)
         else:
@@ -53,8 +50,8 @@ class KaiTrace:
         self.batch_mode = batch_mode
         self.application_name = application_name
         self.file_name = file_name
-        self.time_start = -1.0
-        self.time_end = -1.0
+        self.time_start = float(-1)
+        self.time_end = float(-1)
 
         # We use the same parent directory of logging for trace data
         log_dir = process_log_dir_replacements(self.log_dir)
