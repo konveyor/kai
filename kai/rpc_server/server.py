@@ -13,9 +13,10 @@ from kai.analyzer_types import ExtendedIncident, Incident, RuleSet, Violation
 from kai.jsonrpc.core import JsonRpcApplication, JsonRpcServer
 from kai.jsonrpc.logs import JsonRpcLoggingHandler
 from kai.jsonrpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcId
-from kai.jsonrpc.util import DEFAULT_FORMATTER, TRACE, CamelCaseBaseModel
+from kai.jsonrpc.util import CamelCaseBaseModel
 from kai.kai_config import KaiConfigModels, SolutionConsumerKind
 from kai.llm_interfacing.model_provider import ModelProvider
+from kai.logging.logging import TRACE, formatter, get_logger
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
 )
@@ -66,7 +67,7 @@ class KaiRpcApplication(JsonRpcApplication):
 
         self.initialized = False
         self.config: Optional[KaiRpcApplicationConfig] = None
-        self.log = logging.getLogger("kai_rpc_application")
+        self.log = get_logger("kai_rpc_application")
 
 
 app = KaiRpcApplication()
@@ -142,12 +143,12 @@ def initialize(
 
         stderr_handler = logging.StreamHandler(sys.stderr)
         stderr_handler.setLevel(TRACE)
-        stderr_handler.setFormatter(DEFAULT_FORMATTER)
+        stderr_handler.setFormatter(formatter)
         app.log.addHandler(stderr_handler)
 
         notify_handler = JsonRpcLoggingHandler(server)
         notify_handler.setLevel(app.config.log_level)
-        notify_handler.setFormatter(DEFAULT_FORMATTER)
+        notify_handler.setFormatter(formatter)
         app.log.addHandler(notify_handler)
 
         if app.config.file_log_level and app.config.log_dir_path:
@@ -156,7 +157,7 @@ def initialize(
 
             file_handler = logging.FileHandler(log_file)
             file_handler.setLevel(app.config.file_log_level)
-            file_handler.setFormatter(DEFAULT_FORMATTER)
+            file_handler.setFormatter(formatter)
             app.log.addHandler(file_handler)
 
         app.log.info(f"Initialized with config: {app.config}")

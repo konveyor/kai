@@ -1,36 +1,8 @@
 import logging
-import sys
 from typing import Any
 
 from pydantic import AliasChoices, AliasGenerator, BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
-
-TRACE = logging.DEBUG - 5
-DEFAULT_FORMATTER = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-
-
-def get_logger(
-    name: str,
-    stderr_level: int | str = "TRACE",
-    formatter: logging.Formatter = DEFAULT_FORMATTER,
-) -> logging.Logger:
-    logging.addLevelName(logging.DEBUG - 5, "TRACE")
-
-    logger = logging.getLogger(name)
-
-    if logger.hasHandlers():
-        return logger
-
-    logger.setLevel(TRACE)
-
-    stderr_handler = logging.StreamHandler(sys.stderr)
-    stderr_handler.setLevel(stderr_level)
-    stderr_handler.setFormatter(formatter)
-    logger.addHandler(stderr_handler)
-
-    return logger
 
 
 def log_record_to_dict(record: logging.LogRecord) -> dict[str, Any]:

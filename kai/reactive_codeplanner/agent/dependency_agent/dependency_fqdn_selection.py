@@ -1,4 +1,3 @@
-import logging
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -6,6 +5,7 @@ from jinja2 import Template
 from langchain_core.messages import HumanMessage
 
 from kai.llm_interfacing.model_provider import ModelProvider
+from kai.logging.logging import get_logger
 from kai.reactive_codeplanner.agent.api import Agent, AgentRequest, AgentResult
 from kai.reactive_codeplanner.agent.dependency_agent.api import FQDNResponse
 from kai.reactive_codeplanner.agent.dependency_agent.util import (
@@ -14,8 +14,7 @@ from kai.reactive_codeplanner.agent.dependency_agent.util import (
     search_fqdn_query,
 )
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -28,7 +27,7 @@ class FQDNDependencySelectorRequest(AgentRequest):
 
 @dataclass
 class FQDNDependencySelectorResult(AgentResult):
-    response: Optional[FQDNResponse]
+    response: FQDNResponse | list[FQDNResponse] | None
 
 
 class FQDNDependencySelectorAgent(Agent):
