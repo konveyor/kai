@@ -9,7 +9,6 @@ from collections.abc import KeysView
 from enum import StrEnum
 from io import StringIO, TextIOWrapper
 from pathlib import Path
-from time import time
 from typing import Any, Iterator, Optional
 from urllib.parse import urlparse
 
@@ -231,13 +230,8 @@ class Report:
             )
             self.workaround_counter_for_missing_ruleset_name += 1
 
-        start = time()
         ruleset = RuleSet.model_validate(ruleset_dict)
-        end = time()
 
-        howlog = end - start
-
-        KAI_LOG.info(f"took {howlog} to validate ruleset {ruleset.name}")
         if ruleset.name:
             self.rulesets[ruleset.name] = ruleset
 
