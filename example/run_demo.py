@@ -144,18 +144,8 @@ def process_file(
         f"File #{count} of {num_impacted_files} - Processing {file_path} which has {len(incidents)} incidents."
     )
 
-<<<<<<< HEAD
     params = GetCodeplanAgentSolutionParams(
         file_path=file_path,
-=======
-    with open(f"{SAMPLE_APP_DIR}/{str(file_path)}", "r") as f:
-        file_contents = f.read()
-
-    params = PostGetSolutionsParams(
-        file_name=str(file_path),
-        file_contents=file_contents,
-        application_name=APP_NAME,
->>>>>>> 2568e06 (using correct type)
         incidents=incidents,
         max_depth=1,
         max_iterations=1,
