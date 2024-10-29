@@ -15,6 +15,7 @@ from typing import Any, Callable, Optional, TypedDict, Union
 from langchain.prompts.chat import HumanMessagePromptTemplate
 from langchain_core.messages import SystemMessage
 
+from kai.kai_vcr_util import playback_if_demo_mode
 from kai.logging.logging import get_logger
 from kai.reactive_codeplanner.agent.api import Agent, AgentRequest, AgentResult
 from kai.reactive_codeplanner.agent.dependency_agent.api import (
@@ -213,7 +214,14 @@ Message:{message}
         while fix_gen_attempts < self._retries:
             fix_gen_attempts += 1
 
-            fix_gen_response = self._model_provider.invoke(msg)
+            with playback_if_demo_mode(
+                demo_mode=request.demo_mode,
+                model_id=self._model_provider.model_id,
+                application_name=request.application_name,
+                agent="dependency",
+                filename=request.file_path,
+            ):
+                fix_gen_response = self._model_provider.invoke(msg)
             llm_response = self.parse_llm_response(fix_gen_response.content)
             # Break out of the while loop, if we don't have a final answer then we need to retry
             if llm_response is None or not llm_response.final_answer:
@@ -250,6 +258,8 @@ Message:{message}
                         r = self.child_agent.execute(
                             FQDNDependencySelectorRequest(
                                 request.file_path,
+                                request.application_name,
+                                request.demo_mode,
                                 request.message,
                                 a.code,
                                 query=[],

@@ -8,6 +8,8 @@ from kai.logging.kai_trace import KaiTrace
 @dataclass
 class AgentRequest:
     file_path: str
+    application_name: str
+    demo_mode: bool
 
 
 @dataclass

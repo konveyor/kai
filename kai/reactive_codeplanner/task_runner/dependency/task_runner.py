@@ -64,7 +64,9 @@ class DependencyTaskRunner(TaskRunner):
         if isinstance(task, PackageDoesNotExistError):
             msg = f"Maven Compiler Error:\n{task.message}"
 
-        maven_dep_response = self._agent.execute(MavenDependencyRequest(task.file, msg))
+        maven_dep_response = self._agent.execute(
+            MavenDependencyRequest(task.file, rcm.project_name, task.demo_mode, msg)
+        )
         logger.info("got mvn dep response: %r", maven_dep_response)
 
         if not isinstance(maven_dep_response, MavenDependencyResult):

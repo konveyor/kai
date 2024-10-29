@@ -165,7 +165,9 @@ class RepoContextSnapshot:
         )
 
     def commit(
-        self, msg: str | None = None, spawning_result: SpawningResult | None = None
+        self,
+        msg: Optional[str] = None,
+        spawning_result: Optional[SpawningResult] = None,
     ) -> "RepoContextSnapshot":
         """
         Commits the current state of the repository and returns a new snapshot.
@@ -218,13 +220,17 @@ class RepoContextManager:
     def __init__(
         self,
         project_root: Path,
+        project_name: str = "",
         reflection_agent: Optional[ReflectionAgent] = None,
-        initial_msg: str | None = None,
+        initial_msg: Optional[str] = None,
     ):
         self.project_root = project_root
         self.snapshot = RepoContextSnapshot.initialize(project_root, initial_msg)
         self.first_snapshot = self.snapshot
         self.reflection_agent = reflection_agent
+        self.project_name = project_name
+        if project_name == "":
+            self.project_name = project_root.name.lower()
 
     def commit(
         self, msg: str | None = None, spawning_result: SpawningResult | None = None

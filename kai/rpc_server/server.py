@@ -215,6 +215,7 @@ class GetCodeplanAgentSolutionParams(BaseModel):
 
     max_iterations: Optional[int] = None
     max_depth: Optional[int] = None
+    demo_mode: bool = False
 
 
 class GitVFSUpdateParams(BaseModel):
@@ -341,6 +342,7 @@ def get_codeplan_agent_solution(
                     name=incident.ruleset_name,
                     description=incident.ruleset_description or "",
                 ),
+                demo_mode=True,
             )
         )
 
@@ -412,15 +414,11 @@ def get_codeplan_agent_solution(
     # FIXME: This is a hack to stop the task_manager as it's hanging trying to stop everything
     threading.Thread(target=task_manager.stop).start()
 
-    diff = rcm.snapshot.diff(rcm.first_snapshot)
-
-    rcm.reset_to_first()
-
     server.send_response(
         id=id,
         result={
             "encountered_errors": [str(e) for e in result.encountered_errors],
             "modified_files": [str(f) for f in result.modified_files],
-            "diff": diff[1] + diff[2],
+            "diff": "",
         },
     )

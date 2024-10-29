@@ -9,6 +9,7 @@ from pygments import lexers
 from pygments.lexer import LexerMeta
 from pygments.util import ClassNotFound
 
+from kai.kai_vcr_util import playback_if_demo_mode
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.logging.logging import get_logger
 from kai.reactive_codeplanner.agent.api import AgentResult
@@ -136,9 +137,16 @@ If you have any additional details or steps that need to be performed, put it he
             incidents=[task.incident],
         )
 
-        aimessage = self._model_provider.invoke(
-            [self.system_message, HumanMessage(content=content)]
-        )
+        with playback_if_demo_mode(
+            demo_mode=task.demo_mode,
+            model_id=self._model_provider.model_id,
+            application_name=rcm.project_name,
+            agent="analysis",
+            filename=task.file,
+        ):
+            aimessage = self._model_provider.invoke(
+                [self.system_message, HumanMessage(content=content)]
+            )
 
         resp = self.parse_llm_response(aimessage)
 

@@ -4,6 +4,7 @@ from pathlib import Path
 from jinja2 import Template
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
+from kai.kai_vcr_util import playback_if_demo_mode
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.logging.logging import get_logger
 from kai.reactive_codeplanner.agent.reflection_agent import ReflectionTask
@@ -30,10 +31,14 @@ class MavenCompilerLLMResponse(SpawningResult):
     file_path: str = ""
     input_file: str = ""
     input_errors: list[str] = field(default_factory=list)
+    application_name: str = ""
+    demo_mode: bool = False
 
     def to_reflection_task(self) -> ReflectionTask:
         return ReflectionTask(
             file_path=self.file_path,
+            application_name=self.application_name,
+            demo_mode=self.demo_mode,
             issues=set(self.input_errors),
             reasoning=self.reasoning,
             updated_file=self.java_file,
@@ -125,14 +130,23 @@ class MavenCompilerTaskRunner(TaskRunner):
             src_file_contents=src_file_contents, compile_errors=compile_errors
         )
 
-        ai_message = self._model_provider.invoke(
-            [self.system_message, HumanMessage(content=content)]
-        )
+        with playback_if_demo_mode(
+            demo_mode=task.demo_mode,
+            model_id=self._model_provider.model_id,
+            application_name=rcm.project_name,
+            agent="compiler",
+            filename=task.file,
+        ):
+            ai_message = self._model_provider.invoke(
+                [self.system_message, HumanMessage(content=content)]
+            )
 
         resp = self.parse_llm_response(ai_message)
         resp.file_path = task.file
         resp.input_file = src_file_contents
         resp.input_errors = [task.message]
+        resp.demo_mode = task.demo_mode
+        resp.application_name = rcm.project_name
 
         # rewrite the file, based on the java file returned
         with open(task.file, "w") as f:

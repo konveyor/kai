@@ -61,6 +61,7 @@ def initialize_rpc_server() -> Generator[JsonRpcServer, None, None]:
     )
 
     current_directory = Path(os.path.dirname(os.path.realpath(__file__)))
+    # TODO (pgaikwad): this needs to change we have binary published
     rpc_binary_path = current_directory / ".." / "kai" / "rpc_server" / "main.py"
     rpc_subprocess = subprocess.Popen(  # trunk-ignore(bandit/B603,bandit/B607)
         ["python", rpc_binary_path],
@@ -120,12 +121,15 @@ class CodePlanSolution(BaseModel):
 def apply_diff(filepath: Path, solution: CodePlanSolution) -> None:
     KAI_LOG.info(f"Writing updated source code to {filepath}")
     try:
-        subprocess.run(  # trunk-ignore(bandit/B603,bandit/B607)
-            ["git", "apply"],
-            input=solution.diff.encode("utf-8"),
-            cwd=SAMPLE_APP_DIR,
-            check=True,
-        )
+        # TODO (pgaikwad): this is a NOOP right now because
+        # we are writing the file to disk in codeplan
+        pass
+        # subprocess.run(  # trunk-ignore(bandit/B603,bandit/B607)
+        #     ["git", "apply"],
+        #     input=solution.diff.encode("utf-8"),
+        #     cwd=SAMPLE_APP_DIR,
+        #     check=True,
+        # )
     except Exception as e:
         KAI_LOG.error(f"Failed to write updated_file @ {filepath} with error: {e}")
         KAI_LOG.error(f"Diff: {solution.diff}")
@@ -191,11 +195,11 @@ def run_demo(report: Report, server: JsonRpcServer) -> None:
 
 
 def main() -> None:
-    console_handler = logging.StreamHandler(sys.stderr)
+    console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
-    # logging.getLogger("jsonrpc").setLevel(logging.CRITICAL)
-    KAI_LOG.addHandler(console_handler)
-    KAI_LOG.setLevel(logging.DEBUG)
+    logger = logging.getLogger()
+    logger.addHandler(console_handler)
+    logger.setLevel(logging.DEBUG)
 
     start = time.time()
 

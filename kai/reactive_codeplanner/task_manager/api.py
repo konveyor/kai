@@ -26,6 +26,7 @@ class Task:
     retry_count: int = 0
     max_retries: int = 3
     creation_order: int = field(init=False)
+    demo_mode: bool = False
 
     _creation_counter = 0
 
