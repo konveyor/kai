@@ -122,7 +122,7 @@ Searched dependencies:
         for line in content.splitlines():
             if not line:
                 continue
-            elif "ArtifactId" in line:
+            elif "ArtifactId:" in line:
                 # Get the line
                 parts = line.split(":")
                 if len(parts) != 2:
@@ -134,7 +134,7 @@ Searched dependencies:
                     logger.error("invalid parts: %r", parts)
                 group_id = parts[1].strip()
                 pass
-            elif "Reasoning" in line or in_reasoning:
+            elif "Reasoning:" in line or in_reasoning:
                 in_reasoning = True
                 reasoning_str = "\n".join([reasoning_str, line])
 
