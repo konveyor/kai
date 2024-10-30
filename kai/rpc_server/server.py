@@ -70,6 +70,7 @@ class KaiRpcApplication(JsonRpcApplication):
         self.initialized = False
         self.config: Optional[KaiRpcApplicationConfig] = None
         self.log = get_logger("kai_rpc_application")
+        self.analysis_validator: Optional[AnalyzerLSPStep] = None
 
 
 app = KaiRpcApplication()
@@ -92,7 +93,8 @@ def shutdown(
     app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
     server.shutdown_flag = True
-
+    if app.analysis_validator is not None:
+        app.analysis_validator.stop()
     server.send_response(id=id, result={})
 
 
@@ -101,7 +103,8 @@ def exit(
     app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
     server.shutdown_flag = True
-
+    if app.analysis_validator is not None:
+        app.analysis_validator.stop()
     server.send_response(id=id, result={})
 
 
@@ -161,6 +164,20 @@ def initialize(
             file_handler.setLevel(app.config.file_log_level)
             file_handler.setFormatter(formatter)
             app.log.addHandler(file_handler)
+
+        app.analysis_validator = AnalyzerLSPStep(
+            RpcClientConfig(
+                repo_directory=app.config.root_path,
+                analyzer_lsp_server_binary=app.config.analyzer_lsp_rpc_path,
+                rules_directory=app.config.analyzer_lsp_rules_path,
+                analyzer_lsp_path=app.config.analyzer_lsp_lsp_path,
+                analyzer_java_bundle_path=app.config.analyzer_lsp_java_bundle_path,
+                label_selector="konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee",
+                incident_selector=None,
+                included_paths=None,
+                dep_open_source_labels_path=app.config.analyzer_lsp_dep_labels_path,
+            )
+        )
 
         app.log.info(f"Initialized with config: {app.config}")
 
@@ -370,13 +387,16 @@ def get_codeplan_agent_solution(
         dep_open_source_labels_path=app.config.analyzer_lsp_dep_labels_path,
     )
 
+    if app.analysis_validator is None:
+        app.analysis_validator = AnalyzerLSPStep(task_manager_config)
+
     task_manager = TaskManager(
         config=task_manager_config,
         rcm=rcm,
         seed_tasks=seed_tasks,
         validators=[
             MavenCompileStep(task_manager_config),
-            AnalyzerLSPStep(task_manager_config),
+            app.analysis_validator,
         ],
         task_runners=[
             AnalyzerTaskRunner(AnalyzerAgent(model_provider)),

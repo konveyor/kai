@@ -17,6 +17,9 @@ if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
 PATH_GIT_ROOT = os.path.join(PATH_KAI, "..")
 
 PATH_SOLUTION_SERVER_ROOT = os.path.join(PATH_GIT_ROOT, "kai_solution_server")
+# pyinstaller doesn't maintain the same directory structure and we cannot go up a dir
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    PATH_SOLUTION_SERVER_ROOT = os.path.join(PATH_KAI, "kai_solution_server")
 
 PATH_DATA = os.path.join(PATH_SOLUTION_SERVER_ROOT, "data")
 
