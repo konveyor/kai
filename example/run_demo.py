@@ -29,17 +29,34 @@ KAI_LOG = logging.getLogger("run_demo")
 
 SERVER_URL = "http://0.0.0.0:8080"
 APP_NAME = "coolstore"
-SAMPLE_APP_DIR = Path("./coolstore")
-ANALYSIS_BUNDLE_PATH = "./analysis/bundle.jar"
-ANALYSIS_LSP_PATH = "./analysis/jdtls/bin/jdtls"
-ANALYSIS_RPC_PATH = "./analysis/analyzer_rpc"
-ANALYSIS_RULES_PATH = "./analysis/rulesets/"
-ANALYSIS_DEP_LABELS_FILE = "./analysis/maven.default.index"
+SAMPLE_APP_DIR = Path("coolstore")
+ANALYSIS_BUNDLE_PATH = Path(".", "analysis", "bundle.jar")
+ANALYSIS_LSP_PATH = Path(".", "analysis", "jdtls", "bin", "jdtls")
+ANALYSIS_RPC_PATH = Path(".", "analysis", "analyzer_rpc")
+ANALYSIS_RULES_PATH = Path(".", "analysis", "rulesets")
+ANALYSIS_DEP_LABELS_FILE = Path(".", "analysis", "maven.default.index")
+RPC_BINARY_PATH = Path(".", "analysis", "kai-rpc-server")
 
 
 # TODOs
 # 1) Add ConfigFile to tweak the server URL and rulesets/violations
 # 2) Limit to specific rulesets/violations we are interested in
+
+
+def pre_flight_checks() -> None:
+    for path in [
+        SAMPLE_APP_DIR,
+        ANALYSIS_BUNDLE_PATH,
+        ANALYSIS_LSP_PATH,
+        ANALYSIS_RPC_PATH,
+        ANALYSIS_DEP_LABELS_FILE,
+        RPC_BINARY_PATH,
+    ]:
+        if not path.exists():
+            print(
+                f"Required demo component not found at {path}. Make sure you have pre-requisites set up as described in https://github.com/konveyor/kai/blob/main/example/README.md"
+            )
+            sys.exit()
 
 
 @contextlib.contextmanager
@@ -53,18 +70,15 @@ def initialize_rpc_server() -> Generator[JsonRpcServer, None, None]:
         kai_backend_url=SERVER_URL,
         log_dir_path=Path("./logs"),
         model_provider=kai_config.models,
-        analyzer_lsp_java_bundle_path=Path(ANALYSIS_BUNDLE_PATH),
-        analyzer_lsp_lsp_path=Path(ANALYSIS_LSP_PATH),
-        analyzer_lsp_rpc_path=Path(ANALYSIS_RPC_PATH),
-        analyzer_lsp_rules_path=Path(ANALYSIS_RULES_PATH),
-        analyzer_lsp_dep_labels_path=Path(ANALYSIS_DEP_LABELS_FILE),
+        analyzer_lsp_java_bundle_path=ANALYSIS_BUNDLE_PATH,
+        analyzer_lsp_lsp_path=ANALYSIS_LSP_PATH,
+        analyzer_lsp_rpc_path=ANALYSIS_RPC_PATH,
+        analyzer_lsp_rules_path=ANALYSIS_RULES_PATH,
+        analyzer_lsp_dep_labels_path=ANALYSIS_DEP_LABELS_FILE,
     )
 
-    current_directory = Path(os.path.dirname(os.path.realpath(__file__)))
-    # TODO (pgaikwad): this needs to change we have binary published
-    rpc_binary_path = current_directory / ".." / "kai" / "rpc_server" / "main.py"
     rpc_subprocess = subprocess.Popen(  # trunk-ignore(bandit/B603,bandit/B607)
-        ["python", rpc_binary_path],
+        [RPC_BINARY_PATH],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         env=os.environ,
@@ -206,6 +220,7 @@ def main() -> None:
     coolstore_analysis_dir = "./analysis/coolstore/output.yaml"
     report = Report.load_report_from_file(coolstore_analysis_dir)
     try:
+        pre_flight_checks()
         with initialize_rpc_server() as server:
             run_demo(report, server)
         KAI_LOG.info(
