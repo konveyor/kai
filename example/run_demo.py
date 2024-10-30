@@ -32,7 +32,7 @@ APP_NAME = "coolstore"
 SAMPLE_APP_DIR = Path("coolstore")
 ANALYSIS_BUNDLE_PATH = Path(".", "analysis", "bundle.jar")
 ANALYSIS_LSP_PATH = Path(".", "analysis", "jdtls", "bin", "jdtls")
-ANALYSIS_RPC_PATH = Path(".", "analysis", "analyzer_rpc")
+ANALYSIS_RPC_PATH = Path(".", "analysis", "kai-analyzer-rpc")
 ANALYSIS_RULES_PATH = Path(".", "analysis", "rulesets")
 ANALYSIS_DEP_LABELS_FILE = Path(".", "analysis", "maven.default.index")
 RPC_BINARY_PATH = Path(".", "analysis", "kai-rpc-server")
@@ -54,9 +54,9 @@ def pre_flight_checks() -> None:
     ]:
         if not path.exists():
             print(
-                f"Required demo component not found at {path}. Make sure you have pre-requisites set up as described in https://github.com/konveyor/kai/blob/main/example/README.md"
+                f"Required demo component not found at path '{path}'. Make sure you have pre-requisites set up as described in https://github.com/konveyor/kai/blob/main/example/README.md"
             )
-            sys.exit()
+            sys.exit(1)
 
 
 @contextlib.contextmanager

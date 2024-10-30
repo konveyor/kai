@@ -1,0 +1,902 @@
+diff --git a/pom.xml b/pom.xml
+index 0e760b8..6327ce1 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -1,3 +1,4 @@
++
+ <?xml version="1.0" encoding="UTF-8"?>
+ <project 
+     xmlns="http://maven.apache.org/POM/4.0.0" 
+@@ -63,6 +64,18 @@
+         </plugins>
+     </build>
+     <profiles>
+-<!-- TODO: Add OpenShift profile here -->
++        <!-- TODO: Add OpenShift profile here -->
++        <profile>
++            <id>native</id>
++            <activation>
++                <property>
++                    <name>native</name>
++                </property>
++            </activation>
++            <properties>
++                <skipITs>false</skipITs>
++                <quarkus.package.type>native</quarkus.package.type>
++            </properties>
++        </profile>
+     </profiles>
+ </project>
+diff --git a/src/main/java/com/redhat/coolstore/model/InventoryEntity.java b/src/main/java/com/redhat/coolstore/model/InventoryEntity.java
+index 1aa1dc9..f7ab7c1 100644
+--- a/src/main/java/com/redhat/coolstore/model/InventoryEntity.java
++++ b/src/main/java/com/redhat/coolstore/model/InventoryEntity.java
+@@ -1,3 +1,4 @@
++
+ package com.redhat.coolstore.model;
+ 
+ import java.io.Serializable;
+@@ -7,7 +8,7 @@ import javax.persistence.Entity;
+ import javax.persistence.Id;
+ import javax.persistence.Table;
+ import javax.persistence.UniqueConstraint;
+-import javax.xml.bind.annotation.XmlRootElement;
++import jakarta.xml.bind.annotation.XmlRootElement; // Updated import statement
+ 
+ @Entity
+ @XmlRootElement
+diff --git a/src/main/java/com/redhat/coolstore/model/Order.java b/src/main/java/com/redhat/coolstore/model/Order.java
+index 3793e23..0d62f02 100644
+--- a/src/main/java/com/redhat/coolstore/model/Order.java
++++ b/src/main/java/com/redhat/coolstore/model/Order.java
+@@ -1,18 +1,19 @@
++
+ package com.redhat.coolstore.model;
+ 
+ import java.io.Serializable;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+-import javax.persistence.CascadeType;
+-import javax.persistence.Column;
+-import javax.persistence.Entity;
+-import javax.persistence.FetchType;
+-import javax.persistence.GeneratedValue;
+-import javax.persistence.Id;
+-import javax.persistence.JoinColumn;
+-import javax.persistence.OneToMany;
+-import javax.persistence.Table;
++import jakarta.persistence.CascadeType;
++import jakarta.persistence.Column;
++import jakarta.persistence.Entity;
++import jakarta.persistence.FetchType;
++import jakarta.persistence.GeneratedValue;
++import jakarta.persistence.Id;
++import jakarta.persistence.JoinColumn;
++import jakarta.persistence.OneToMany;
++import jakarta.persistence.Table;
+ 
+ @Entity
+ @Table(name = "ORDERS")
+@@ -39,8 +40,6 @@ public class Order implements Serializable {
+ 	private double shippingDiscount;
+ 
+ 	@Column(name="TOTAL_PRICE")
+-
+-	
+ 	@OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+ 	@JoinColumn(name="ORDER_ID")
+ 	private List<OrderItem> itemList = new ArrayList<>();
+@@ -133,4 +132,4 @@ public class Order implements Serializable {
+ 				+ "]";
+ 	}
+ 
+-}
+\ No newline at end of file
++}
+diff --git a/src/main/java/com/redhat/coolstore/model/OrderItem.java b/src/main/java/com/redhat/coolstore/model/OrderItem.java
+index 2ae6af0..d02ccca 100644
+--- a/src/main/java/com/redhat/coolstore/model/OrderItem.java
++++ b/src/main/java/com/redhat/coolstore/model/OrderItem.java
+@@ -1,12 +1,13 @@
++
+ package com.redhat.coolstore.model;
+ 
+ import java.io.Serializable;
+ 
+-import javax.persistence.Column;
+-import javax.persistence.Entity;
+-import javax.persistence.GeneratedValue;
+-import javax.persistence.Id;
+-import javax.persistence.Table;
++import jakarta.persistence.Column;
++import jakarta.persistence.Entity;
++import jakarta.persistence.GeneratedValue;
++import jakarta.persistence.Id;
++import jakarta.persistence.Table;
+ 
+ @Entity
+ @Table(name = "ORDER_ITEMS")
+@@ -45,4 +46,4 @@ public class OrderItem implements Serializable {
+ 		return "OrderItem [productId=" + productId + ", quantity=" + quantity + "]";
+ 	}
+ 
+-}
+\ No newline at end of file
++}
+diff --git a/src/main/java/com/redhat/coolstore/model/ShoppingCart.java b/src/main/java/com/redhat/coolstore/model/ShoppingCart.java
+index 276b994..95ee484 100644
+--- a/src/main/java/com/redhat/coolstore/model/ShoppingCart.java
++++ b/src/main/java/com/redhat/coolstore/model/ShoppingCart.java
+@@ -1,10 +1,12 @@
++
+ package com.redhat.coolstore.model;
+ 
+ import java.io.Serializable;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+-import javax.enterprise.context.Dependent;
++// Updated import statement from javax.enterprise to jakarta.enterprise
++import jakarta.enterprise.context.Dependent;
+ 
+ @Dependent
+ public class ShoppingCart implements Serializable {
+diff --git a/src/main/java/com/redhat/coolstore/persistence/Resources.java b/src/main/java/com/redhat/coolstore/persistence/Resources.java
+index 3fd5c3c..5e281ca 100644
+--- a/src/main/java/com/redhat/coolstore/persistence/Resources.java
++++ b/src/main/java/com/redhat/coolstore/persistence/Resources.java
+@@ -1,17 +1,16 @@
++
+ package com.redhat.coolstore.persistence;
+ 
+ import javax.enterprise.context.Dependent;
+-import javax.enterprise.inject.Produces;
++import javax.inject.Inject;
+ import javax.persistence.EntityManager;
+-import javax.persistence.PersistenceContext;
+ 
+ @Dependent
+ public class Resources {
+ 
+-    @PersistenceContext
++    @Inject
+     private EntityManager em;
+ 
+-    @Produces
+     public EntityManager getEntityManager() {
+         return em;
+     }
+diff --git a/src/main/java/com/redhat/coolstore/rest/CartEndpoint.java b/src/main/java/com/redhat/coolstore/rest/CartEndpoint.java
+index f82283b..b97099c 100644
+--- a/src/main/java/com/redhat/coolstore/rest/CartEndpoint.java
++++ b/src/main/java/com/redhat/coolstore/rest/CartEndpoint.java
+@@ -1,3 +1,4 @@
++
+ package com.redhat.coolstore.rest;
+ 
+ import java.io.Serializable;
+@@ -8,13 +9,13 @@ import java.util.Map;
+ 
+ import javax.enterprise.context.SessionScoped;
+ import javax.inject.Inject;
+-import javax.ws.rs.DELETE;
+-import javax.ws.rs.GET;
+-import javax.ws.rs.POST;
+-import javax.ws.rs.Path;
+-import javax.ws.rs.PathParam;
+-import javax.ws.rs.Produces;
+-import javax.ws.rs.core.MediaType;
++import jakarta.ws.rs.DELETE;
++import jakarta.ws.rs.GET;
++import jakarta.ws.rs.POST;
++import jakarta.ws.rs.Path;
++import jakarta.ws.rs.PathParam;
++import jakarta.ws.rs.Produces;
++import jakarta.ws.rs.core.MediaType;
+ 
+ import com.redhat.coolstore.model.Product;
+ import com.redhat.coolstore.model.ShoppingCart;
+diff --git a/src/main/java/com/redhat/coolstore/rest/OrderEndpoint.java b/src/main/java/com/redhat/coolstore/rest/OrderEndpoint.java
+index 5c4f270..ee6056e 100644
+--- a/src/main/java/com/redhat/coolstore/rest/OrderEndpoint.java
++++ b/src/main/java/com/redhat/coolstore/rest/OrderEndpoint.java
+@@ -1,3 +1,4 @@
++
+ package com.redhat.coolstore.rest;
+ 
+ import java.io.Serializable;
+@@ -5,12 +6,12 @@ import java.util.List;
+ 
+ import javax.enterprise.context.RequestScoped;
+ import javax.inject.Inject;
+-import javax.ws.rs.Consumes;
+-import javax.ws.rs.GET;
+-import javax.ws.rs.Path;
+-import javax.ws.rs.PathParam;
+-import javax.ws.rs.Produces;
+-import javax.ws.rs.core.MediaType;
++import jakarta.ws.rs.Consumes;
++import jakarta.ws.rs.GET;
++import jakarta.ws.rs.Path;
++import jakarta.ws.rs.PathParam;
++import jakarta.ws.rs.Produces;
++import jakarta.ws.rs.core.MediaType;
+ 
+ import com.redhat.coolstore.model.Order;
+ import com.redhat.coolstore.service.OrderService;
+diff --git a/src/main/java/com/redhat/coolstore/rest/ProductEndpoint.java b/src/main/java/com/redhat/coolstore/rest/ProductEndpoint.java
+index 112ea41..e222b6f 100644
+--- a/src/main/java/com/redhat/coolstore/rest/ProductEndpoint.java
++++ b/src/main/java/com/redhat/coolstore/rest/ProductEndpoint.java
+@@ -1,3 +1,4 @@
++
+ package com.redhat.coolstore.rest;
+ 
+ import java.io.Serializable;
+@@ -5,8 +6,8 @@ import java.util.List;
+ 
+ import javax.enterprise.context.RequestScoped;
+ import javax.inject.Inject;
+-import javax.ws.rs.*;
+-import javax.ws.rs.core.MediaType;
++import jakarta.ws.rs.*;
++import jakarta.ws.rs.core.MediaType;
+ 
+ import com.redhat.coolstore.model.Product;
+ import com.redhat.coolstore.service.ProductService;
+diff --git a/src/main/java/com/redhat/coolstore/rest/RestApplication.java b/src/main/java/com/redhat/coolstore/rest/RestApplication.java
+index 72ceec9..7d3e75d 100644
+--- a/src/main/java/com/redhat/coolstore/rest/RestApplication.java
++++ b/src/main/java/com/redhat/coolstore/rest/RestApplication.java
+@@ -1,10 +1,2 @@
+-package com.redhat.coolstore.rest;
+ 
+-import javax.ws.rs.ApplicationPath;
+-import javax.ws.rs.core.Application;
+-
+-
+-@ApplicationPath("/services")
+-public class RestApplication extends Application {
+-
+-}
++// The RestApplication.java file can be removed as it is no longer necessary in Quarkus for JAX-RS activation.
+diff --git a/src/main/java/com/redhat/coolstore/service/CatalogService.java b/src/main/java/com/redhat/coolstore/service/CatalogService.java
+index 422a3f4..9abf43f 100644
+--- a/src/main/java/com/redhat/coolstore/service/CatalogService.java
++++ b/src/main/java/com/redhat/coolstore/service/CatalogService.java
+@@ -1,3 +1,4 @@
++
+ package com.redhat.coolstore.service;
+ 
+ import java.util.List;
+diff --git a/src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java b/src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java
+index 0cee762..587e628 100644
+--- a/src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java
++++ b/src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java
+@@ -1,79 +1,31 @@
++
+ package com.redhat.coolstore.service;
+ 
+ import com.redhat.coolstore.model.Order;
+ import com.redhat.coolstore.utils.Transformers;
++import com.redhat.coolstore.service.CatalogService;
+ 
+ import javax.inject.Inject;
+-import javax.jms.*;
+-import javax.naming.Context;
+-import javax.naming.InitialContext;
+-import javax.naming.NamingException;
+-import javax.rmi.PortableRemoteObject;
+-import java.util.Hashtable;
++import org.eclipse.microprofile.reactive.messaging.Incoming;
+ 
+-public class InventoryNotificationMDB implements MessageListener {
++public class InventoryNotificationMDB {
+ 
+     private static final int LOW_THRESHOLD = 50;
+ 
+     @Inject
+     private CatalogService catalogService;
+ 
+-    private final static String JNDI_FACTORY = "weblogic.jndi.WLInitialContextFactory";
+-    private final static String JMS_FACTORY = "TCF";
+-    private final static String TOPIC = "topic/orders";
+-    private TopicConnection tcon;
+-    private TopicSession tsession;
+-    private TopicSubscriber tsubscriber;
+-
+-    public void onMessage(Message rcvMessage) {
+-        TextMessage msg;
+-        {
+-            try {
+-                System.out.println("received message inventory");
+-                if (rcvMessage instanceof TextMessage) {
+-                    msg = (TextMessage) rcvMessage;
+-                    String orderStr = msg.getBody(String.class);
+-                    Order order = Transformers.jsonToOrder(orderStr);
+-                    order.getItemList().forEach(orderItem -> {
+-                        int old_quantity = catalogService.getCatalogItemById(orderItem.getProductId()).getInventory().getQuantity();
+-                        int new_quantity = old_quantity - orderItem.getQuantity();
+-                        if (new_quantity < LOW_THRESHOLD) {
+-                            System.out.println("Inventory for item " + orderItem.getProductId() + " is below threshold (" + LOW_THRESHOLD + "), contact supplier!");
+-                        } else {
+-                            orderItem.setQuantity(new_quantity);
+-                        }
+-                    });
+-                }
+-
+-
+-            } catch (JMSException jmse) {
+-                System.err.println("An exception occurred: " + jmse.getMessage());
++    @Incoming("orders")
++    public void processOrder(String orderStr) {
++        Order order = Transformers.jsonToOrder(orderStr);
++        order.getItemList().forEach(orderItem -> {
++            int old_quantity = catalogService.getCatalogItemById(orderItem.getProductId()).getInventory().getQuantity();
++            int new_quantity = old_quantity - orderItem.getQuantity();
++            if (new_quantity < LOW_THRESHOLD) {
++                System.out.println("Inventory for item " + orderItem.getProductId() + " is below threshold (" + LOW_THRESHOLD + "), contact supplier!");
++            } else {
++                orderItem.setQuantity(new_quantity);
+             }
+-        }
+-    }
+-
+-    public void init() throws NamingException, JMSException {
+-        Context ctx = getInitialContext();
+-        TopicConnectionFactory tconFactory = (TopicConnectionFactory) PortableRemoteObject.narrow(ctx.lookup(JMS_FACTORY), TopicConnectionFactory.class);
+-        tcon = tconFactory.createTopicConnection();
+-        tsession = tcon.createTopicSession(false, Session.AUTO_ACKNOWLEDGE);
+-        Topic topic = (Topic) PortableRemoteObject.narrow(ctx.lookup(TOPIC), Topic.class);
+-        tsubscriber = tsession.createSubscriber(topic);
+-        tsubscriber.setMessageListener(this);
+-        tcon.start();
+-    }
+-
+-    public void close() throws JMSException {
+-        tsubscriber.close();
+-        tsession.close();
+-        tcon.close();
+-    }
+-
+-    private static InitialContext getInitialContext() throws NamingException {
+-        Hashtable<String, String> env = new Hashtable<>();
+-        env.put(Context.INITIAL_CONTEXT_FACTORY, JNDI_FACTORY);
+-        env.put(Context.PROVIDER_URL, "t3://localhost:7001");
+-        env.put("weblogic.jndi.createIntermediateContexts", "true");
+-        return new InitialContext(env);
++        });
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/src/main/java/com/redhat/coolstore/service/OrderService.java b/src/main/java/com/redhat/coolstore/service/OrderService.java
+index 748e413..44a0de2 100644
+--- a/src/main/java/com/redhat/coolstore/service/OrderService.java
++++ b/src/main/java/com/redhat/coolstore/service/OrderService.java
+@@ -1,15 +1,14 @@
++
+ package com.redhat.coolstore.service;
+ 
+ import com.redhat.coolstore.model.Order;
+ import java.util.List;
+-import javax.ejb.Stateless;
+ import javax.inject.Inject;
+ import javax.persistence.EntityManager;
+ import javax.persistence.criteria.CriteriaBuilder;
+ import javax.persistence.criteria.CriteriaQuery;
+ import javax.persistence.criteria.Root;
+ 
+-@Stateless
+ public class OrderService {
+ 
+   @Inject
+@@ -30,4 +29,4 @@ public class OrderService {
+   public Order getOrderById(long id) {
+     return em.find(Order.class, id);
+   }
+-}
+\ No newline at end of file
++}
+diff --git a/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java b/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java
+index 42ef2fb..f207c27 100644
+--- a/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java
++++ b/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java
+@@ -1,47 +1,34 @@
++
+ package com.redhat.coolstore.service;
+ 
+-import javax.ejb.ActivationConfigProperty;
+-import javax.ejb.MessageDriven;
+ import javax.inject.Inject;
+-import javax.jms.JMSException;
+-import javax.jms.Message;
+-import javax.jms.MessageListener;
+-import javax.jms.TextMessage;
++
++import org.eclipse.microprofile.reactive.messaging.Incoming;
+ 
+ import com.redhat.coolstore.model.Order;
+ import com.redhat.coolstore.utils.Transformers;
+ 
+-@MessageDriven(name = "OrderServiceMDB", activationConfig = {
+-	@ActivationConfigProperty(propertyName = "destinationLookup", propertyValue = "topic/orders"),
+-	@ActivationConfigProperty(propertyName = "destinationType", propertyValue = "javax.jms.Topic"),
+-	@ActivationConfigProperty(propertyName = "acknowledgeMode", propertyValue = "Auto-acknowledge")})
+-public class OrderServiceMDB implements MessageListener { 
+-
+-	@Inject
+-	OrderService orderService;
+-
+-	@Inject
+-	CatalogService catalogService;
+-
+-	@Override
+-	public void onMessage(Message rcvMessage) {
+-		System.out.println("\nMessage recd !");
+-		TextMessage msg = null;
+-		try {
+-				if (rcvMessage instanceof TextMessage) {
+-						msg = (TextMessage) rcvMessage;
+-						String orderStr = msg.getBody(String.class);
+-						System.out.println("Received order: " + orderStr);
+-						Order order = Transformers.jsonToOrder(orderStr);
+-						System.out.println("Order object is " + order);
+-						orderService.save(order);
+-						order.getItemList().forEach(orderItem -> {
+-							catalogService.updateInventoryItems(orderItem.getProductId(), orderItem.getQuantity());
+-						});
+-				}
+-		} catch (JMSException e) {
+-			throw new RuntimeException(e);
+-		}
+-	}
+-
+-}
+\ No newline at end of file
++public class OrderServiceMDB {
++
++    @Inject
++    OrderService orderService;
++
++    @Inject
++    CatalogService catalogService;
++
++    @Incoming("orders")
++    public void onMessage(String orderStr) {
++        System.out.println("\nMessage recd !");
++        try {
++            System.out.println("Received order: " + orderStr);
++            Order order = Transformers.jsonToOrder(orderStr);
++            System.out.println("Order object is " + order);
++            orderService.save(order);
++            order.getItemList().forEach(orderItem -> {
++                catalogService.updateInventoryItems(orderItem.getProductId(), orderItem.getQuantity());
++            });
++        } catch (Exception e) {
++            throw new RuntimeException(e);
++        }
++    }
++}
+diff --git a/src/main/java/com/redhat/coolstore/service/ProductService.java b/src/main/java/com/redhat/coolstore/service/ProductService.java
+index 33002fd..6ac2f90 100644
+--- a/src/main/java/com/redhat/coolstore/service/ProductService.java
++++ b/src/main/java/com/redhat/coolstore/service/ProductService.java
+@@ -1,17 +1,18 @@
++
+ package com.redhat.coolstore.service;
+ 
+ import com.redhat.coolstore.model.CatalogItemEntity;
+ import com.redhat.coolstore.model.Product;
+ import com.redhat.coolstore.utils.Transformers;
+ 
+-import javax.ejb.Stateless;
++import javax.enterprise.context.ApplicationScoped;
+ import javax.inject.Inject;
+ import java.util.List;
+ import java.util.stream.Collectors;
+ 
+ import static com.redhat.coolstore.utils.Transformers.toProduct;
+ 
+-@Stateless
++@ApplicationScoped
+ public class ProductService {
+ 
+     @Inject
+diff --git a/src/main/java/com/redhat/coolstore/service/PromoService.java b/src/main/java/com/redhat/coolstore/service/PromoService.java
+index 9febd6f..45be098 100644
+--- a/src/main/java/com/redhat/coolstore/service/PromoService.java
++++ b/src/main/java/com/redhat/coolstore/service/PromoService.java
+@@ -1,3 +1,4 @@
++
+ package com.redhat.coolstore.service;
+ 
+ import java.io.Serializable;
+@@ -6,7 +7,7 @@ import java.util.HashSet;
+ import java.util.Map;
+ import java.util.Set;
+ 
+-import javax.enterprise.context.ApplicationScoped;
++import jakarta.enterprise.context.ApplicationScoped;
+ 
+ import com.redhat.coolstore.model.Promotion;
+ import com.redhat.coolstore.model.ShoppingCart;
+diff --git a/src/main/java/com/redhat/coolstore/service/ShippingService.java b/src/main/java/com/redhat/coolstore/service/ShippingService.java
+index c820fcd..1e10ab3 100644
+--- a/src/main/java/com/redhat/coolstore/service/ShippingService.java
++++ b/src/main/java/com/redhat/coolstore/service/ShippingService.java
+@@ -1,71 +1,53 @@
++
+ package com.redhat.coolstore.service;
+ 
+ import java.math.BigDecimal;
+ import java.math.RoundingMode;
+ 
+-import javax.ejb.Remote;
+-import javax.ejb.Stateless;
++import jakarta.ws.rs.POST;
++import jakarta.ws.rs.Path;
++import jakarta.ws.rs.Produces;
++import jakarta.ws.rs.Consumes;
++import jakarta.ws.rs.core.MediaType;
+ 
+ import com.redhat.coolstore.model.ShoppingCart;
+ 
+-@Stateless
+-@Remote
+-public class ShippingService implements ShippingServiceRemote {
++@Path("/shipping")
++@Produces(MediaType.APPLICATION_JSON)
++@Consumes(MediaType.APPLICATION_JSON)
++public class ShippingService {
+ 
+-    @Override
++    @POST
++    @Path("/calculateShipping")
+     public double calculateShipping(ShoppingCart sc) {
+-
+         if (sc != null) {
+-
+             if (sc.getCartItemTotal() >= 0 && sc.getCartItemTotal() < 25) {
+-
+                 return 2.99;
+-
+             } else if (sc.getCartItemTotal() >= 25 && sc.getCartItemTotal() < 50) {
+-
+                 return 4.99;
+-
+             } else if (sc.getCartItemTotal() >= 50 && sc.getCartItemTotal() < 75) {
+-
+                 return 6.99;
+-
+             } else if (sc.getCartItemTotal() >= 75 && sc.getCartItemTotal() < 100) {
+-
+                 return 8.99;
+-
+             } else if (sc.getCartItemTotal() >= 100 && sc.getCartItemTotal() < 10000) {
+-
+                 return 10.99;
+-
+             }
+-
+         }
+-
+         return 0;
+-
+     }
+ 
+-    @Override
++    @POST
++    @Path("/calculateShippingInsurance")
+     public double calculateShippingInsurance(ShoppingCart sc) {
+-
+         if (sc != null) {
+-
+             if (sc.getCartItemTotal() >= 25 && sc.getCartItemTotal() < 100) {
+-
+                 return getPercentOfTotal(sc.getCartItemTotal(), 0.02);
+-
+             } else if (sc.getCartItemTotal() >= 100 && sc.getCartItemTotal() < 500) {
+-
+                 return getPercentOfTotal(sc.getCartItemTotal(), 0.015);
+-
+             } else if (sc.getCartItemTotal() >= 500 && sc.getCartItemTotal() < 10000) {
+-
+                 return getPercentOfTotal(sc.getCartItemTotal(), 0.01);
+-
+             }
+-
+         }
+-
+         return 0;
+     }
+ 
+@@ -74,5 +56,4 @@ public class ShippingService implements ShippingServiceRemote {
+                 .setScale(2, RoundingMode.HALF_UP)
+                 .doubleValue();
+     }
+-
+ }
+diff --git a/src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java b/src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java
+index e6ee388..a140599 100644
+--- a/src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java
++++ b/src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java
+@@ -1,35 +1,25 @@
++
+ package com.redhat.coolstore.service;
+ 
+ import java.util.logging.Logger;
+-import javax.ejb.Stateless;
+-import javax.annotation.Resource;
+ import javax.inject.Inject;
+-import javax.jms.JMSContext;
+-import javax.jms.Topic;
++import org.eclipse.microprofile.reactive.messaging.Channel;
++import org.eclipse.microprofile.reactive.messaging.Emitter;
+ 
+ import com.redhat.coolstore.model.ShoppingCart;
+ import com.redhat.coolstore.utils.Transformers;
+ 
+-@Stateless
+-public class ShoppingCartOrderProcessor  {
++public class ShoppingCartOrderProcessor {
+ 
+     @Inject
+     Logger log;
+ 
+-
+     @Inject
+-    private transient JMSContext context;
+-
+-    @Resource(lookup = "java:/topic/orders")
+-    private Topic ordersTopic;
++    @Channel("orders")
++    Emitter<String> ordersEmitter;
+ 
+-    
+-  
+-    public void  process(ShoppingCart cart) {
++    public void process(ShoppingCart cart) {
+         log.info("Sending order from processor: ");
+-        context.createProducer().send(ordersTopic, Transformers.shoppingCartToJson(cart));
++        ordersEmitter.send(Transformers.shoppingCartToJson(cart));
+     }
+-
+-
+-
+ }
+diff --git a/src/main/java/com/redhat/coolstore/service/ShoppingCartService.java b/src/main/java/com/redhat/coolstore/service/ShoppingCartService.java
+index 06df53e..899c03d 100644
+--- a/src/main/java/com/redhat/coolstore/service/ShoppingCartService.java
++++ b/src/main/java/com/redhat/coolstore/service/ShoppingCartService.java
+@@ -1,19 +1,20 @@
++
+ package com.redhat.coolstore.service;
+ 
+ import java.util.Hashtable;
+ import java.util.logging.Logger;
+ 
+-import javax.ejb.Stateful;
+ import javax.inject.Inject;
+ import javax.naming.Context;
+ import javax.naming.InitialContext;
+ import javax.naming.NamingException;
++import javax.enterprise.context.SessionScoped;
+ 
+ import com.redhat.coolstore.model.Product;
+ import com.redhat.coolstore.model.ShoppingCart;
+ import com.redhat.coolstore.model.ShoppingCartItem;
+ 
+-@Stateful
++@SessionScoped
+ public class ShoppingCartService  {
+ 
+     @Inject
+@@ -25,14 +26,11 @@ public class ShoppingCartService  {
+     @Inject
+     PromoService ps;
+ 
+-
+     @Inject
+     ShoppingCartOrderProcessor shoppingCartOrderProcessor;
+ 
+     private ShoppingCart cart  = new ShoppingCart(); //Each user can have multiple shopping carts (tabbed browsing)
+ 
+-   
+-
+     public ShoppingCartService() {
+     }
+ 
+diff --git a/src/main/java/com/redhat/coolstore/utils/DataBaseMigrationStartup.java b/src/main/java/com/redhat/coolstore/utils/DataBaseMigrationStartup.java
+index b263d75..49468f4 100644
+--- a/src/main/java/com/redhat/coolstore/utils/DataBaseMigrationStartup.java
++++ b/src/main/java/com/redhat/coolstore/utils/DataBaseMigrationStartup.java
+@@ -1,3 +1,4 @@
++
+ package com.redhat.coolstore.utils;
+ 
+ import org.flywaydb.core.Flyway;
+@@ -9,7 +10,7 @@ import javax.ejb.Singleton;
+ import javax.ejb.Startup;
+ import javax.ejb.TransactionManagement;
+ import javax.ejb.TransactionManagementType;
+-import javax.inject.Inject;
++import jakarta.inject.Inject; // Updated import statement
+ import javax.sql.DataSource;
+ import java.util.logging.Level;
+ import java.util.logging.Logger;
+@@ -31,7 +32,6 @@ public class DataBaseMigrationStartup {
+     @PostConstruct
+     private void startup() {
+ 
+-
+         try {
+             logger.info("Initializing/migrating the database using FlyWay");
+             Flyway flyway = new Flyway();
+@@ -47,7 +47,4 @@ public class DataBaseMigrationStartup {
+ 
+         }
+     }
+-
+-
+-
+-}
+\ No newline at end of file
++}
+diff --git a/src/main/java/com/redhat/coolstore/utils/Producers.java b/src/main/java/com/redhat/coolstore/utils/Producers.java
+index d29061c..895125b 100644
+--- a/src/main/java/com/redhat/coolstore/utils/Producers.java
++++ b/src/main/java/com/redhat/coolstore/utils/Producers.java
+@@ -1,16 +1,16 @@
++
+ package com.redhat.coolstore.utils;
+ 
+-import javax.enterprise.inject.Produces;
++import javax.inject.Named;
+ import javax.enterprise.inject.spi.InjectionPoint;
+ import java.util.logging.Logger;
+ 
+-
+ public class Producers {
+ 
+     Logger log = Logger.getLogger(Producers.class.getName());
+ 
+-    @Produces
+-    public Logger produceLog(InjectionPoint injectionPoint) {
++    @Named
++    public Logger getLogger(InjectionPoint injectionPoint) {
+         return Logger.getLogger(injectionPoint.getMember().getDeclaringClass().getName());
+     }
+ 
+diff --git a/src/main/java/com/redhat/coolstore/utils/StartupListener.java b/src/main/java/com/redhat/coolstore/utils/StartupListener.java
+index 3b06ebb..70597d8 100644
+--- a/src/main/java/com/redhat/coolstore/utils/StartupListener.java
++++ b/src/main/java/com/redhat/coolstore/utils/StartupListener.java
+@@ -1,9 +1,10 @@
++
+ package com.redhat.coolstore.utils;
+ 
+ import weblogic.application.ApplicationLifecycleEvent;
+ import weblogic.application.ApplicationLifecycleListener;
+ 
+-import javax.inject.Inject;
++import jakarta.inject.Inject;  // Updated import statement
+ import java.util.logging.Logger;
+ 
+ public class StartupListener extends ApplicationLifecycleListener {
+diff --git a/src/main/java/com/redhat/coolstore/utils/Transformers.java b/src/main/java/com/redhat/coolstore/utils/Transformers.java
+index cffb386..b584870 100644
+--- a/src/main/java/com/redhat/coolstore/utils/Transformers.java
++++ b/src/main/java/com/redhat/coolstore/utils/Transformers.java
+@@ -1,3 +1,4 @@
++
+ package com.redhat.coolstore.utils;
+ 
+ import com.redhat.coolstore.model.CatalogItemEntity;
+@@ -9,12 +10,12 @@ import java.io.StringReader;
+ import java.io.StringWriter;
+ import java.util.ArrayList;
+ import java.util.List;
+-import javax.json.Json;
+-import javax.json.JsonArray;
+-import javax.json.JsonArrayBuilder;
+-import javax.json.JsonObject;
+-import javax.json.JsonReader;
+-import javax.json.JsonWriter;
++import jakarta.json.Json;
++import jakarta.json.JsonArray;
++import jakarta.json.JsonArrayBuilder;
++import jakarta.json.JsonObject;
++import jakarta.json.JsonReader;
++import jakarta.json.JsonWriter;
+ 
+ import java.util.concurrent.ThreadLocalRandom;
+ import java.util.logging.Logger;
+@@ -95,6 +96,4 @@ public class Transformers {
+         order.setItemList(items); 
+         return order;
+     }
+-
+-
+ }
+diff --git a/src/main/resources/META-INF/persistence.xml b/src/main/resources/META-INF/persistence.xml
+index 6abc296..89547f5 100644
+--- a/src/main/resources/META-INF/persistence.xml
++++ b/src/main/resources/META-INF/persistence.xml
+@@ -1,17 +1,13 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-<persistence version="2.1"
+-             xmlns="http://xmlns.jcp.org/xml/ns/persistence" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+-             xsi:schemaLocation="
+-        http://xmlns.jcp.org/xml/ns/persistence
+-        http://xmlns.jcp.org/xml/ns/persistence/persistence_2_1.xsd">
+-    <persistence-unit name="primary">
+-        <jta-data-source>java:jboss/datasources/CoolstoreDS</jta-data-source>
+-        <properties>
+-            <property name="javax.persistence.schema-generation.database.action" value="none"/>
+-            <property name="hibernate.show_sql" value="false" />
+-            <property name="hibernate.format_sql" value="true" />
+-            <property name="hibernate.use_sql_comments" value="true" />
+-            <property name="hibernate.jdbc.use_get_generated_keys" value="false" />
+-        </properties>
+-    </persistence-unit>
+-</persistence>
+\ No newline at end of file
++
++# application.properties for Quarkus
++
++# Datasource configuration
++quarkus.datasource.jdbc.url=jdbc:your_database_url_here
++quarkus.datasource.db-kind=your_db_kind_here
++# Assuming username and password are needed
++quarkus.datasource.username=your_username_here
++quarkus.datasource.password=your_password_here
++
++# Hibernate ORM configuration
++quarkus.hibernate-orm.log.sql=false
++# Additional Hibernate configurations can be added as needed
+diff --git a/src/main/webapp/WEB-INF/beans.xml b/src/main/webapp/WEB-INF/beans.xml
+index 1eefdbf..8106058 100644
+--- a/src/main/webapp/WEB-INF/beans.xml
++++ b/src/main/webapp/WEB-INF/beans.xml
+@@ -1,23 +1,2 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-<!--
+-    JBoss, Home of Professional Open Source
+-    Copyright 2015, Red Hat, Inc. and/or its affiliates, and individual
+-    contributors by the @authors tag. See the copyright.txt in the
+-    distribution for a full listing of individual contributors.
+-    Licensed under the Apache License, Version 2.0 (the "License");
+-    you may not use this file except in compliance with the License.
+-    You may obtain a copy of the License at
+-    http://www.apache.org/licenses/LICENSE-2.0
+-    Unless required by applicable law or agreed to in writing, software
+-    distributed under the License is distributed on an "AS IS" BASIS,
+-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-    See the License for the specific language governing permissions and
+-    limitations under the License.
+--->
+-<!-- Marker file indicating CDI should be enabled -->
+-<beans xmlns="http://xmlns.jcp.org/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+-	   xsi:schemaLocation="
+-      http://xmlns.jcp.org/xml/ns/javaee
+-      http://xmlns.jcp.org/xml/ns/javaee/beans_1_1.xsd"
+-	   bean-discovery-mode="all">
+-</beans>
+\ No newline at end of file
++
++// The beans.xml file is not needed in Quarkus for basic CDI functionality and can be removed.
+diff --git a/src/main/webapp/WEB-INF/web.xml b/src/main/webapp/WEB-INF/web.xml
+index d278861..d20ed83 100644
+--- a/src/main/webapp/WEB-INF/web.xml
++++ b/src/main/webapp/WEB-INF/web.xml
+@@ -1,6 +1,6 @@
+-<!--suppress ServletWithoutMappingInspection -->
++
++<!-- This file is part of the migration process to Quarkus. The <distributable /> tag has been removed as Quarkus does not support session replication in the same way as Java EE. Future steps should involve re-architecting session management to use an external service. -->
+ <web-app xmlns="http://java.sun.com/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd"
+          version="3.0">
+-    <distributable />
+ </web-app>
