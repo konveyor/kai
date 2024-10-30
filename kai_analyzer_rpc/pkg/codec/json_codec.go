@@ -13,6 +13,10 @@ import (
 	"github.com/go-logr/logr"
 )
 
+const (
+	ContentHeaderFormat = `Content-Length: %v\r\nContent-Type: application/vscode-jsonrpc; charset=utf-8\r\n\r\n`
+)
+
 // Connection wraps a pair of unidirectional streams as an io.ReadWriteCloser.
 type Connection struct {
 	Input  io.ReadCloser
@@ -47,20 +51,40 @@ type Codec interface {
 type codec struct {
 	rpc.ClientCodec
 	rpc.ServerCodec
-	logger logr.Logger
+	logger     logr.Logger
+	connection *Connection
+}
+
+func (c *codec) writeHeader(v any) error {
+	// Marshal the JSON-RPC payload
+	body, err := json.Marshal(v)
+	if err != nil {
+		return fmt.Errorf("error marshaling request body: %w", err)
+	}
+	if _, err := c.connection.Output.Write([]byte(fmt.Sprintf(ContentHeaderFormat, len(body)))); err != nil {
+		return fmt.Errorf("error writing request headers: %w", err)
+	}
+	return nil
 }
 
 func (c *codec) WriteRequest(r *rpc.Request, v any) error {
 	c.logger.V(3).Info("write request", "request", r, "value", v)
-	err := c.ClientCodec.WriteRequest(r, v)
-	c.logger.V(3).Info("finished request header", "err", err, "request", r)
+
+	err := c.writeHeader(v)
+	if err != nil {
+		return err
+	}
+
+	err = c.ClientCodec.WriteRequest(r, v)
+	c.logger.V(3).Info("finished write request", "err", err, "request", r)
 	return err
 }
 
 func (c *codec) ReadRequestHeader(r *rpc.Request) error {
+	// Proceed to read the rest of the request header
 	c.logger.V(3).Info("read request header", "request", r)
-	err := c.ServerCodec.ReadRequestHeader(r)
-	c.logger.V(3).Info("finished request header", "err", err, "request", r)
+	err = c.ServerCodec.ReadRequestHeader(r)
+	c.logger.V(3).Info("finished read request header", "err", err, "request", r)
 	return err
 }
 
@@ -73,7 +97,12 @@ func (c *codec) ReadRequestBody(r any) error {
 
 func (c *codec) WriteResponse(r *rpc.Response, v any) error {
 	c.logger.V(3).Info("writing response", "response", r, "object", v)
-	err := c.ServerCodec.WriteResponse(r, v)
+	err := c.writeHeader(v)
+	if err != nil {
+		return err
+	}
+
+	err = c.ServerCodec.WriteResponse(r, v)
 	c.logger.V(3).Info("finished write response", "err", err)
 	return err
 }
@@ -92,8 +121,10 @@ func (c *codec) Close() error {
 
 func NewCodec(connection Connection, logger logr.Logger) Codec {
 	return &codec{
-		ClientCodec: jsonrpc.NewClientCodec(&connection), ServerCodec: NewServerCodec(&connection, logger),
-		logger: logger.WithName("json codec"),
+		ClientCodec: jsonrpc.NewClientCodec(&connection),
+		ServerCodec: NewServerCodec(&connection, logger),
+		logger:      logger.WithName("json codec"),
+		connection:  &connection,
 	}
 }
 
