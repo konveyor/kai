@@ -35,6 +35,7 @@ def playback_if_demo_mode(
             "path",
             "query",
             "headers",
+            "body",
         ],
         record_on_exception=False,
         filter_headers=[
