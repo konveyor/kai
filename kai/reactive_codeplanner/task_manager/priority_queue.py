@@ -22,11 +22,12 @@ class PriorityTaskQueue:
                 # Existing task takes precedence; do not add or modify
                 return
 
-        priority = task.priority
+        priority = task.oldest_ancestor().priority
         if priority not in self.task_stacks:
             self.task_stacks[priority] = []
             logger.debug("Created new task stack for priority %s.", priority)
         self.task_stacks[priority].append(task)
+        self.task_stacks[priority].sort()
         logger.debug("Task %s added to priority %s stack.", task, priority)
 
     def pop(self) -> Task:

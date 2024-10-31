@@ -126,7 +126,10 @@ class TaskManager:
                 return
             iterations += 1
             task = self.priority_queue.pop()
-            if max_priority is not None and task.priority > max_priority:
+            if (
+                max_priority is not None
+                and task.oldest_ancestor().priority > max_priority
+            ):
                 # Put the task back and stop iteration
                 self.priority_queue.push(task)
                 return
@@ -149,14 +152,12 @@ class TaskManager:
     def handle_new_tasks_after_processing(self, task: Task) -> None:
         logger.info("Handling new tasks after processing task: %s", task)
         self._validators_are_stale = True
-        new_tasks = self.run_validators()
-        new_tasks_set = set(new_tasks)
-        unprocessed_new_tasks = new_tasks_set - self.processed_tasks
+        unprocessed_new_tasks = set(self.run_validators())
         logger.debug("Unprocessed new tasks: %s", unprocessed_new_tasks)
 
         # Identify resolved tasks to remove from stacks
-        tasks_in_stacks = self.priority_queue.all_tasks()
-        resolved_tasks = tasks_in_stacks - new_tasks_set
+        tasks_in_queue = self.priority_queue.all_tasks()
+        resolved_tasks = tasks_in_queue - unprocessed_new_tasks
         logger.debug("Resolved tasks to remove from stacks: %s", resolved_tasks)
 
         # Remove resolved tasks from the stacks and mark them as processed
@@ -173,22 +174,28 @@ class TaskManager:
         ]
 
         if similar_tasks:
-            new_dupe_task = similar_tasks[0]  # Assuming only one similar task
-            unprocessed_new_tasks.remove(new_dupe_task)
-            logger.debug("Task %s still unprocessed after execution.", task)
+            for t in similar_tasks:
+                unprocessed_new_tasks.remove(t)
+            logger.debug("Task %s still unsolved after execution.", task)
             self.handle_ignored_task(task)
         else:
             self.processed_tasks.add(task)
             logger.debug("Task %s processed successfully.", task)
 
-        new_child_tasks = unprocessed_new_tasks - tasks_in_stacks
+        new_child_tasks = unprocessed_new_tasks - tasks_in_queue
         # We want the higher priority things at the end of the list, so when we append and pop we get the highest priority
         for child_task in sorted(new_child_tasks):
-            child_task.parent = task
-            child_task.depth = task.depth + 1
-            child_task.priority = task.priority
-            task.children.append(child_task)
-            self.priority_queue.push(child_task)
+            try:
+                if child_task == task:
+                    raise ValueError(
+                        f"A task cannot be added as a child of itself: {task}"
+                    )
+                child_task.parent = task
+                child_task.depth = task.depth + 1
+                task.children.append(child_task)
+                self.priority_queue.push(child_task)
+            except ValueError as e:
+                logger.error(f"Error adding child task: {e}")
 
     def should_skip_task(self, task: Task) -> bool:
         skip = (

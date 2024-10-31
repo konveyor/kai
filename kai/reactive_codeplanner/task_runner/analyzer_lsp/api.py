@@ -18,6 +18,11 @@ class AnalyzerRuleViolation(ValidationError):
     # TODO Highest priority?
     priority: int = 2
 
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}<loc={self.file}:{self.line}:{self.column}, message={self.violation.description}>"
+
+    __repr__ = __str__
+
     # TODO: Define a new hash function?
 
 

@@ -156,7 +156,7 @@ class AnalyzerLSPStep(ValidationStep):
                         class_to_use = AnalyzerDependencyRuleViolation
                     validation_errors.append(
                         class_to_use(
-                            file=urlparse(i.uri).path,
+                            file=urlparse(i.uri).path.lstrip("/"),
                             line=i.line_number,
                             column=-1,
                             message=i.message,
