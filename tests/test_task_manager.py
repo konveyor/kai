@@ -325,7 +325,9 @@ class TestTaskManager(unittest.TestCase):
             executed_tasks.append(task)
 
         self.assertEqual(len(executed_tasks), 4)
-        self.assertIn(toplevel, task_manager.task_stacks[toplevel.priority])
+        self.assertIn(
+            toplevel, task_manager.priority_queue.task_stacks[toplevel.priority]
+        )
         self.assertNotIn(toplevel, executed_tasks)
 
         for task in task_manager.get_next_task(max_priority=10):
@@ -333,7 +335,7 @@ class TestTaskManager(unittest.TestCase):
 
         self.assertEqual(len(executed_tasks), 5)
         self.assertEqual(toplevel, executed_tasks[-1])
-        self.assertEqual(task_manager.task_stacks, {})
+        self.assertEqual(task_manager.priority_queue.task_stacks, {})
 
     def test_max_depth_handling(self):
         # Setup

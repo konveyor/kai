@@ -3,8 +3,6 @@
 from pathlib import Path
 from typing import Any, Generator, Optional
 
-from pydantic import BaseModel, ConfigDict
-
 import kai.logging.logging as logging
 from kai.reactive_codeplanner.task_manager.api import (
     RpcClientConfig,
@@ -12,25 +10,11 @@ from kai.reactive_codeplanner.task_manager.api import (
     TaskResult,
     ValidationStep,
 )
+from kai.reactive_codeplanner.task_manager.priority_queue import PriorityTaskQueue
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
 
-# Configure logging
 logger = logging.get_logger(__name__)
-
-
-class UpdatedFileContent(BaseModel):
-    updated_file: str
-    total_reasoning: list[str]
-    used_prompts: list[str]
-    model_id: str
-    additional_information: list[str]
-    response_metadatas: list[dict[str, Any]]
-
-    llm_results: Optional[list[str | list[str | dict[str, Any]]]]
-
-    # "model_" is a Pydantic protected namespace, so we must remove it
-    model_config = ConfigDict(protected_namespaces=())
 
 
 class TaskManager:
@@ -48,8 +32,8 @@ class TaskManager:
         self.unprocessed_files: list[Path] = []
 
         self.processed_tasks: set[Task] = set()
-        self.task_stacks: dict[int, list[Task]] = {}
         self.ignored_tasks: list[Task] = []
+        self.priority_queue: PriorityTaskQueue = PriorityTaskQueue()
 
         if validators is not None:
             self.validators.extend(validators)
@@ -70,7 +54,7 @@ class TaskManager:
             for task in seed_tasks:
                 # Seed tasks are assumed to be of the highest priority
                 task.priority = 0
-                self.add_task_to_stack(task)
+                self.priority_queue.push(task)
                 logger.info("Seed task %s added to stack.", task)
 
         logger.info("TaskManager initialized.")
@@ -79,7 +63,7 @@ class TaskManager:
         logger.info("Executing task: %s", task)
         agent = self.get_agent_for_task(task)
         logger.info("Agent selected for task: %s", agent)
-        result = agent.execute_task(self.rcm, task)
+        result: TaskResult = agent.execute_task(self.rcm, task)
 
         logger.debug("Task execution result: %s", result)
         return result
@@ -133,18 +117,18 @@ class TaskManager:
         max_iterations: Optional[int] = None,
         max_depth: Optional[int] = None,
     ) -> Generator[Task, Any, None]:
-        self.initialize_task_stacks()
+        self.initialize_priority_queue()
         iterations = 0
 
-        while self.has_tasks_within_depth(max_depth):
+        while self.priority_queue.has_tasks_within_depth(max_depth):
             if max_iterations is not None and iterations >= max_iterations:
                 # kill the loop, no more iterations allowed
                 return
             iterations += 1
-            task = self.pop_task_from_highest_priority()
+            task = self.priority_queue.pop()
             if max_priority is not None and task.priority > max_priority:
                 # Put the task back and stop iteration
-                self.add_task_to_stack(task)
+                self.priority_queue.push(task)
                 return
             logger.debug("Popped task from stack: %s", task)
             if self.should_skip_task(task):
@@ -155,47 +139,12 @@ class TaskManager:
             yield task
             self.handle_new_tasks_after_processing(task)
 
-    def initialize_task_stacks(self) -> None:
+    def initialize_priority_queue(self) -> None:
         logger.info("Initializing task stacks.")
 
         new_tasks = self.run_validators()
         for task in new_tasks:
-            self.add_task_to_stack(task)
-
-    def has_tasks_within_depth(self, max_depth: Optional[int]) -> bool:
-        for task_stack in self.task_stacks.values():
-            for task in task_stack:
-                if max_depth is None or task.depth <= max_depth:
-                    return True
-        return False
-
-    def add_task_to_stack(self, task: Task) -> None:
-        for priority_level, task_stack in self.task_stacks.items():
-            if task in task_stack:
-                logger.debug(
-                    "Task %s already exists in priority %s stack. Existing task takes precedence.",
-                    task,
-                    priority_level,
-                )
-                # Existing task takes precedence; do not add or modify
-                return
-
-        priority = task.priority
-        if priority not in self.task_stacks:
-            self.task_stacks[priority] = []
-            logger.debug("Created new task stack for priority %s.", priority)
-        self.task_stacks[priority].append(task)
-        logger.debug("Task %s added to priority %s stack.", task, priority)
-
-    def pop_task_from_highest_priority(self) -> Task:
-        highest_priority = min(self.task_stacks.keys())
-        task_stack = self.task_stacks[highest_priority]
-        task = task_stack.pop()
-        logger.debug("Popped task %s from priority %s stack.", task, highest_priority)
-        if not task_stack:
-            del self.task_stacks[highest_priority]
-            logger.debug("Priority %s stack is empty and removed.", highest_priority)
-        return task
+            self.priority_queue.push(task)
 
     def handle_new_tasks_after_processing(self, task: Task) -> None:
         logger.info("Handling new tasks after processing task: %s", task)
@@ -206,13 +155,13 @@ class TaskManager:
         logger.debug("Unprocessed new tasks: %s", unprocessed_new_tasks)
 
         # Identify resolved tasks to remove from stacks
-        tasks_in_stacks = set().union(*self.task_stacks.values())
+        tasks_in_stacks = self.priority_queue.all_tasks()
         resolved_tasks = tasks_in_stacks - new_tasks_set
         logger.debug("Resolved tasks to remove from stacks: %s", resolved_tasks)
 
         # Remove resolved tasks from the stacks and mark them as processed
         for resolved_task in resolved_tasks:
-            self.remove_task_from_stacks(resolved_task)
+            self.priority_queue.remove(resolved_task)
             self.processed_tasks.add(resolved_task)
             logger.info(
                 "Task %s resolved indirectly and removed from queue.", resolved_task
@@ -239,22 +188,7 @@ class TaskManager:
             child_task.depth = task.depth + 1
             child_task.priority = task.priority
             task.children.append(child_task)
-            self.add_task_to_stack(child_task)
-
-    def remove_task_from_stacks(self, task: Task) -> None:
-        for priority_level in list(self.task_stacks.keys()):
-            task_stack = self.task_stacks[priority_level]
-            if task in task_stack:
-                task_stack.remove(task)
-                logger.debug(
-                    "Removed task %s from priority %s stack.", task, priority_level
-                )
-                if not task_stack:
-                    del self.task_stacks[priority_level]
-                    logger.debug(
-                        "Priority %s stack is empty and removed.", priority_level
-                    )
-                break  # Since tasks should only be in one stack, we can break
+            self.priority_queue.push(child_task)
 
     def should_skip_task(self, task: Task) -> bool:
         skip = (
@@ -287,7 +221,7 @@ class TaskManager:
                 task,
                 task.retry_count,
             )
-            self.add_task_to_stack(task)
+            self.priority_queue.push(task)
         else:
             self.ignored_tasks.append(task)
             logger.warning(
