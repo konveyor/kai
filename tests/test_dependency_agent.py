@@ -1,16 +1,5 @@
-# trunk-ignore-begin(ruff/E402)
-import importlib
-import sys
-import xml.etree.ElementTree as ET  # trunk-ignore(bandit/B405)
-
-# Forcing the reload after changing and re-importing will allow us
-# to pass the test.
-sys.modules["_elementtree"] = None  # type: ignore[assignment]
-importlib.reload(ET)
-
 import os
 import unittest
-import xml.etree.ElementTree as ET  # trunk-ignore(bandit/B405)
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -28,8 +17,6 @@ from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
 from kai.reactive_codeplanner.agent.dependency_agent.util import (
     get_maven_query_from_code,
 )
-
-# trunk-ignore-end(ruff/E402)
 
 
 class TestDependencyAgent(unittest.TestCase):
@@ -188,11 +175,16 @@ Added the `io.quarkus:quarkus-spring-cache` dependency to the `pom.xml` file and
         test_cases = [
             TestCase(
                 'start_line, end_line = open_file_gen._run(relative_file_path="module/file.py", keywords={"groupId": "org.jboss.spec.javax.jms", "artifactId": "jboss-jms-api_2.0_spec"})',
-                FindInPomResponse(18, 22),
+                FindInPomResponse(
+                    override=True,
+                    group_id="org.jboss.spec.javax.jms",
+                    artifact_id="jboss-jms-api_2.0_spec",
+                    version="2.0.0.Final",
+                ),
             ),
             TestCase(
                 'start_line, end_line = open_file_gen._run(relative_file_path="module/file.py", keywords={"groupId": "google.com", "artifactId": "guava"})',
-                FindInPomResponse(17, 17),
+                FindInPomResponse(override=False),
             ),
         ]
 

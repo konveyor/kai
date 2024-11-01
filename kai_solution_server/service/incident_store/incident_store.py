@@ -528,6 +528,9 @@ class IncidentStore:
         KAI_LOG.info(f"Selected provider: {config.models.provider}")
         KAI_LOG.info(f"Selected model: {model_provider.model_id}")
 
+        if config.incident_store is None:
+            raise ValueError
+
         backend = incident_store_backend_factory(config.incident_store.args)
 
         solution_detector = solution_detection_factory(
@@ -590,7 +593,9 @@ def cmd(provider: str | None = None) -> None:
     KAI_LOG.info(f"config: {config}")
     incident_store = IncidentStore.incident_store_from_config(config)
 
-    if provider is not None and config.incident_store.args.provider != provider:
+    if provider is not None and (
+        config.incident_store is None or config.incident_store.args.provider != provider
+    ):
         raise Exception(f"This script only works with {provider} incident store.")
 
     incident_store = IncidentStore.incident_store_from_config(config)
