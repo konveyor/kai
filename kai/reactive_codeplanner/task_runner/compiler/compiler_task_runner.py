@@ -33,7 +33,7 @@ class MavenCompilerLLMResponse(SpawningResult):
 
     def to_reflection_task(self) -> ReflectionTask:
         return ReflectionTask(
-            file_path=self.file_path,
+            file_path=Path(self.file_path),
             issues=set(self.input_errors),
             reasoning=self.reasoning,
             updated_file=self.java_file,

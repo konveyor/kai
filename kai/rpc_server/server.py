@@ -17,6 +17,7 @@ from kai.jsonrpc.util import CamelCaseBaseModel
 from kai.kai_config import KaiConfigModels, SolutionConsumerKind
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.logging.logging import TRACE, formatter, get_logger
+from kai.reactive_codeplanner.agent.analyzer_fix.agent import AnalyzerAgent
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
 )
@@ -377,7 +378,7 @@ def get_codeplan_agent_solution(
             AnalyzerLSPStep(task_manager_config),
         ],
         agents=[
-            AnalyzerTaskRunner(model_provider),
+            AnalyzerTaskRunner(AnalyzerAgent(model_provider)),
             MavenCompilerTaskRunner(model_provider),
             DependencyTaskRunner(
                 MavenDependencyAgent(model_provider, app.config.root_path)

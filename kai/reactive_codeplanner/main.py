@@ -4,6 +4,7 @@ from pathlib import Path
 
 from kai.kai_config import KaiConfig
 from kai.llm_interfacing.model_provider import ModelProvider
+from kai.reactive_codeplanner.agent.analyzer_fix.agent import AnalyzerAgent
 from kai.reactive_codeplanner.task_manager.api import RpcClientConfig
 from kai.reactive_codeplanner.task_manager.task_manager import TaskManager
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.task_runner import (
@@ -96,7 +97,7 @@ def main() -> None:
         None,
         validators=[MavenCompileStep(config), AnalyzerLSPStep(config)],
         agents=[
-            AnalyzerTaskRunner(modelProvider),
+            AnalyzerTaskRunner(AnalyzerAgent(modelProvider)),
             MavenCompilerTaskRunner(modelProvider),
         ],
     )

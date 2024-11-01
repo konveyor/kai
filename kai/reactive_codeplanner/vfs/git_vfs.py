@@ -234,7 +234,7 @@ class RepoContextManager:
         Also runs the reflection agent validate the repository state.
         """
 
-        reflection_result = AgentResult(encountered_errors=[], modified_files=None)
+        reflection_result = AgentResult()
         if self.reflection_agent:
             if spawning_result is not None and isinstance(
                 spawning_result, SpawningResult
