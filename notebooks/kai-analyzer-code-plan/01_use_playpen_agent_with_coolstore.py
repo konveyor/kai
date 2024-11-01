@@ -128,7 +128,7 @@ task_manager = TaskManager(
         # TODO: Set up with maven as well?
         validators=[AnalyzerLSPStep(config), MavenCompileStep(config)],
         # Agents are really task_runners
-        agents=[anayzer_task_runner, maven_compiler_task_runner, dependency_task_runner],
+        task_runners=[anayzer_task_runner, maven_compiler_task_runner, dependency_task_runner],
     )
 
 
