@@ -55,7 +55,7 @@ class TestTaskManager(unittest.TestCase):
             config=None,
             rcm=None,
             validators=[validator],
-            agents=[MockTaskRunner()],
+            task_runners=[MockTaskRunner()],
         )
 
         # Collect executed tasks
@@ -93,7 +93,7 @@ class TestTaskManager(unittest.TestCase):
             config=None,
             rcm=None,
             validators=[validator],
-            agents=[MockTaskRunner()],
+            task_runners=[MockTaskRunner()],
         )
 
         executed_tasks = []
@@ -142,7 +142,7 @@ class TestTaskManager(unittest.TestCase):
             config=None,
             rcm=None,
             validators=[validator],
-            agents=[MockTaskRunner()],
+            task_runners=[MockTaskRunner()],
         )
 
         executed_tasks = []
@@ -194,7 +194,7 @@ class TestTaskManager(unittest.TestCase):
             config=None,
             rcm=None,
             validators=[validator],
-            agents=[MockTaskRunner()],
+            task_runners=[MockTaskRunner()],
         )
 
         for _task in task_manager.get_next_task():
@@ -239,7 +239,7 @@ class TestTaskManager(unittest.TestCase):
             config=None,
             rcm=None,
             validators=[validator],
-            agents=[MockTaskRunner()],
+            task_runners=[MockTaskRunner()],
         )
 
         executed_tasks = []
@@ -315,7 +315,7 @@ class TestTaskManager(unittest.TestCase):
             rcm=None,
             seed_tasks=seed_tasks,
             validators=[validator],
-            agents=[MockTaskRunner()],
+            task_runners=[MockTaskRunner()],
         )
 
         executed_tasks = []
@@ -366,7 +366,10 @@ class TestTaskManager(unittest.TestCase):
             ],
         )
         task_manager = TaskManager(
-            config=None, rcm=None, validators=[validator], agents=[MockTaskRunner()]
+            config=None,
+            rcm=None,
+            validators=[validator],
+            task_runners=[MockTaskRunner()],
         )
 
         executed_tasks = []

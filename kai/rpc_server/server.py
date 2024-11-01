@@ -21,6 +21,7 @@ from kai.reactive_codeplanner.agent.analyzer_fix.agent import AnalyzerAgent
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
 )
+from kai.reactive_codeplanner.agent.maven_compiler_fix.agent import MavenCompilerAgent
 from kai.reactive_codeplanner.agent.reflection_agent import ReflectionAgent
 from kai.reactive_codeplanner.task_manager.api import RpcClientConfig, Task, TaskResult
 from kai.reactive_codeplanner.task_manager.task_manager import TaskManager
@@ -377,9 +378,9 @@ def get_codeplan_agent_solution(
             MavenCompileStep(task_manager_config),
             AnalyzerLSPStep(task_manager_config),
         ],
-        agents=[
+        task_runners=[
             AnalyzerTaskRunner(AnalyzerAgent(model_provider)),
-            MavenCompilerTaskRunner(model_provider),
+            MavenCompilerTaskRunner(MavenCompilerAgent(model_provider)),
             DependencyTaskRunner(
                 MavenDependencyAgent(model_provider, app.config.root_path)
             ),
