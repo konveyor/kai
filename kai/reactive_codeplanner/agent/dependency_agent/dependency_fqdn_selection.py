@@ -27,7 +27,7 @@ class FQDNDependencySelectorRequest(AgentRequest):
 
 @dataclass
 class FQDNDependencySelectorResult(AgentResult):
-    response: FQDNResponse | list[FQDNResponse] | None
+    response: FQDNResponse | list[FQDNResponse] | None = None
 
 
 class FQDNDependencySelectorAgent(Agent):
@@ -68,7 +68,7 @@ Searched dependencies:
     def execute(self, ask: AgentRequest) -> FQDNDependencySelectorResult:
         if not isinstance(ask, FQDNDependencySelectorRequest):
             return FQDNDependencySelectorResult(
-                encountered_errors=None, modified_files=None, response=None
+                encountered_errors=None, file_to_modify=None, response=None
             )
 
         query = ask.query
@@ -82,7 +82,7 @@ Searched dependencies:
         # Really we need to re-call the agent
         if not llm_response:
             return FQDNDependencySelectorResult(
-                encountered_errors=None, modified_files=None, response=None
+                encountered_errors=None, file_to_modify=None, response=None
             )
 
         new_query = get_maven_query(
@@ -106,7 +106,7 @@ Searched dependencies:
         if isinstance(response, list):
             response = None
         return FQDNDependencySelectorResult(
-            encountered_errors=None, modified_files=None, response=response
+            encountered_errors=None, file_to_modify=None, response=response
         )
 
     def parse_llm_response(

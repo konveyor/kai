@@ -136,7 +136,7 @@ Here's the input information:
 
     def execute(self, task: AgentRequest) -> AgentResult:
         if not isinstance(task, ReflectionTask):
-            return AgentResult(encountered_errors=[], modified_files=[])
+            return AgentResult()
 
         reflection_task: ReflectionTask = task
 
@@ -153,7 +153,7 @@ Here's the input information:
         )
 
         if language is None or not diff or not reflection_task.issues:
-            return AgentResult(encountered_errors=[], modified_files=[])
+            return AgentResult()
 
         # initiate chats
         chat_fix_gen = [
@@ -208,13 +208,13 @@ Here's the input information:
                     if updated_file_contents:
                         break
                 if updated_file_contents is None or fix_gen_response is None:
-                    return AgentResult(encountered_errors=[], modified_files=[])
+                    return AgentResult()
                 chat_fix_gen.append(AIMessage(content=fix_gen_response.content))
                 diff = self._get_diff(
                     last_updated_file_contents, updated_file_contents, language
                 )
                 if not diff:
-                    return AgentResult(encountered_errors=[], modified_files=[])
+                    return AgentResult()
                 last_updated_file_contents = updated_file_contents
                 chat_reflect.append(
                     self.msg_templ_user_reflect.format(
@@ -223,7 +223,7 @@ Here's the input information:
                 )
             except Exception as e:
                 self._out(to="user", frm="agent", msg=f"error occurred: {str(e)}")
-                return AgentResult(encountered_errors=[], modified_files=[])
+                return AgentResult()
 
         # commit the result here
         if last_updated_file_contents:
@@ -231,7 +231,7 @@ Here's the input information:
             with open(reflection_task.file_path, "w+") as f:
                 f.write(last_updated_file_contents)
 
-        return AgentResult(encountered_errors=[], modified_files=modified_files)
+        return AgentResult()
 
     def _get_diff(
         self, original_content: str, updated_content: str, language: Language | None
