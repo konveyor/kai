@@ -123,7 +123,7 @@ index 1aa1dc9..b6e1b03 100644
          return "InventoryEntity [itemId=" + itemId + ", availability=" + quantity + "/" + location + " link=" + link + "]";
      }
 diff --git a/src/main/java/com/redhat/coolstore/model/Order.java b/src/main/java/com/redhat/coolstore/model/Order.java
-index 3793e23..25978c0 100644
+index 3793e23..1e94c38 100644
 --- a/src/main/java/com/redhat/coolstore/model/Order.java
 +++ b/src/main/java/com/redhat/coolstore/model/Order.java
 @@ -1,136 +1,136 @@
@@ -355,8 +355,9 @@ index 3793e23..25978c0 100644
 +                + "]";
 +    }
  
- }
+-}
 \ No newline at end of file
++}
 diff --git a/src/main/java/com/redhat/coolstore/model/OrderItem.java b/src/main/java/com/redhat/coolstore/model/OrderItem.java
 index 2ae6af0..24d237b 100644
 --- a/src/main/java/com/redhat/coolstore/model/OrderItem.java
@@ -668,25 +669,24 @@ index 276b994..8da4a6b 100644
 +    }
  }
 diff --git a/src/main/java/com/redhat/coolstore/persistence/Resources.java b/src/main/java/com/redhat/coolstore/persistence/Resources.java
-index 3fd5c3c..1d6df81 100644
+index 3fd5c3c..4e957b5 100644
 --- a/src/main/java/com/redhat/coolstore/persistence/Resources.java
 +++ b/src/main/java/com/redhat/coolstore/persistence/Resources.java
-@@ -1,18 +1,12 @@
+@@ -1,18 +1,11 @@
 +
  package com.redhat.coolstore.persistence;
  
--import javax.enterprise.context.Dependent;
+ import javax.enterprise.context.Dependent;
 -import javax.enterprise.inject.Produces;
-+import javax.enterprise.inject.Inject;
- import javax.persistence.EntityManager;
+-import javax.persistence.EntityManager;
 -import javax.persistence.PersistenceContext;
++import javax.inject.Inject;
  
 -@Dependent
  public class Resources {
  
 -    @PersistenceContext
 +    @Inject
-+    @ExtendedContext
      private EntityManager em;
 -
 -    @Produces
@@ -1004,10 +1004,10 @@ index 5c4f270..65fae27 100644
  import com.redhat.coolstore.model.Order;
  import com.redhat.coolstore.service.OrderService;
 diff --git a/src/main/java/com/redhat/coolstore/rest/ProductEndpoint.java b/src/main/java/com/redhat/coolstore/rest/ProductEndpoint.java
-index 112ea41..93b5b53 100644
+index 112ea41..89b7f1e 100644
 --- a/src/main/java/com/redhat/coolstore/rest/ProductEndpoint.java
 +++ b/src/main/java/com/redhat/coolstore/rest/ProductEndpoint.java
-@@ -1,12 +1,13 @@
+@@ -1,20 +1,21 @@
 +
  package com.redhat.coolstore.rest;
  
@@ -1025,6 +1025,41 @@ index 112ea41..93b5b53 100644
  
  import com.redhat.coolstore.model.Product;
  import com.redhat.coolstore.service.ProductService;
+ 
+ @RequestScoped
+-@Path("/products")
+-@Consumes(MediaType.APPLICATION_JSON)
+-@Produces(MediaType.APPLICATION_JSON)
++@jakarta.ws.rs.Path("/products")
++@jakarta.ws.rs.Consumes(MediaType.APPLICATION_JSON)
++@jakarta.ws.rs.Produces(MediaType.APPLICATION_JSON)
+ public class ProductEndpoint implements Serializable {
+ 
+     /**
+@@ -26,16 +27,16 @@ public class ProductEndpoint implements Serializable {
+     private ProductService pm;
+ 
+ 
+-    @GET
+-    @Path("/")
++    @jakarta.ws.rs.GET
++    @jakarta.ws.rs.Path("/")
+     public List<Product> listAll() {
+         return pm.getProducts();
+     }
+ 
+-    @GET
+-    @Path("/{itemId}")
+-    public Product getProduct(@PathParam("itemId") String itemId) {
++    @jakarta.ws.rs.GET
++    @jakarta.ws.rs.Path("/{itemId}")
++    public Product getProduct(@jakarta.ws.rs.PathParam("itemId") String itemId) {
+         return pm.getProductByItemId(itemId);
+     }
+ 
+-}
++}
+\ No newline at end of file
 diff --git a/src/main/java/com/redhat/coolstore/rest/RestApplication.java b/src/main/java/com/redhat/coolstore/rest/RestApplication.java
 index 72ceec9..d30bcfd 100644
 --- a/src/main/java/com/redhat/coolstore/rest/RestApplication.java
@@ -1078,10 +1113,10 @@ index 422a3f4..af3784f 100644
      public CatalogService() {
      }
 diff --git a/src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java b/src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java
-index 0cee762..7db9bb5 100644
+index 0cee762..0f48310 100644
 --- a/src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java
 +++ b/src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java
-@@ -1,79 +1,40 @@
+@@ -1,79 +1,39 @@
 +
  package com.redhat.coolstore.service;
  
@@ -1131,7 +1166,6 @@ index 0cee762..7db9bb5 100644
 -                            orderItem.setQuantity(new_quantity);
 -                        }
 -                    });
-+    @Inject
 +    @Channel("topic/orders")
 +    private io.smallrye.reactive.messaging.Channel<String> channel;
 +
@@ -1224,7 +1258,7 @@ index 748e413..128c14c 100644
 \ No newline at end of file
 +}
 diff --git a/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java b/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java
-index 42ef2fb..1308669 100644
+index 42ef2fb..b71686b 100644
 --- a/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java
 +++ b/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java
 @@ -1,47 +1,36 @@
@@ -1289,10 +1323,10 @@ index 42ef2fb..1308669 100644
 +    CatalogService catalogService;
 +
 +    @Incoming("topic/orders")
-+    public void onMessage(TextMessage msg) {
++    public void onMessage(TextMessage rcvMessage) {
 +        System.out.println("\nMessage recd !");
 +        try {
-+            String orderStr = msg.getBody(String.class);
++            String orderStr = rcvMessage.getBody(String.class);
 +            System.out.println("Received order: " + orderStr);
 +            Order order = Transformers.jsonToOrder(orderStr);
 +            System.out.println("Order object is " + order);
@@ -1333,7 +1367,7 @@ index 33002fd..bd692a1 100644
  
      @Inject
 diff --git a/src/main/java/com/redhat/coolstore/service/PromoService.java b/src/main/java/com/redhat/coolstore/service/PromoService.java
-index 9febd6f..fe812b1 100644
+index 9febd6f..45be098 100644
 --- a/src/main/java/com/redhat/coolstore/service/PromoService.java
 +++ b/src/main/java/com/redhat/coolstore/service/PromoService.java
 @@ -1,3 +1,4 @@
@@ -1346,15 +1380,15 @@ index 9febd6f..fe812b1 100644
  import java.util.Set;
  
 -import javax.enterprise.context.ApplicationScoped;
-+import jakarta.enterprise.context.ApplicationScoped; // Updated import statement
++import jakarta.enterprise.context.ApplicationScoped;
  
  import com.redhat.coolstore.model.Promotion;
  import com.redhat.coolstore.model.ShoppingCart;
 diff --git a/src/main/java/com/redhat/coolstore/service/ShippingService.java b/src/main/java/com/redhat/coolstore/service/ShippingService.java
-index c820fcd..6ce0b28 100644
+index c820fcd..6bdcf06 100644
 --- a/src/main/java/com/redhat/coolstore/service/ShippingService.java
 +++ b/src/main/java/com/redhat/coolstore/service/ShippingService.java
-@@ -1,71 +1,52 @@
+@@ -1,72 +1,27 @@
 +
  package com.redhat.coolstore.service;
  
@@ -1363,10 +1397,8 @@ index c820fcd..6ce0b28 100644
  
 -import javax.ejb.Remote;
 -import javax.ejb.Stateless;
-+import jakarta.ws.rs.Consumes;
-+import jakarta.ws.rs.POST;
 +import jakarta.ws.rs.Path;
-+import jakarta.ws.rs.PathParam;
++import jakarta.ws.rs.POST;
  
  import com.redhat.coolstore.model.ShoppingCart;
  
@@ -1378,68 +1410,69 @@ index c820fcd..6ce0b28 100644
  
 -    @Override
 +    @POST
-+    @Path("/calculateShipping")
-+    @Consumes("application/json")
++    @Path("/calculate")
      public double calculateShipping(ShoppingCart sc) {
 -
-         if (sc != null) {
+-        if (sc != null) {
 -
-             if (sc.getCartItemTotal() >= 0 && sc.getCartItemTotal() < 25) {
+-            if (sc.getCartItemTotal() >= 0 && sc.getCartItemTotal() < 25) {
 -
-                 return 2.99;
+-                return 2.99;
 -
-             } else if (sc.getCartItemTotal() >= 25 && sc.getCartItemTotal() < 50) {
+-            } else if (sc.getCartItemTotal() >= 25 && sc.getCartItemTotal() < 50) {
 -
-                 return 4.99;
+-                return 4.99;
 -
-             } else if (sc.getCartItemTotal() >= 50 && sc.getCartItemTotal() < 75) {
+-            } else if (sc.getCartItemTotal() >= 50 && sc.getCartItemTotal() < 75) {
 -
-                 return 6.99;
+-                return 6.99;
 -
-             } else if (sc.getCartItemTotal() >= 75 && sc.getCartItemTotal() < 100) {
+-            } else if (sc.getCartItemTotal() >= 75 && sc.getCartItemTotal() < 100) {
 -
-                 return 8.99;
+-                return 8.99;
 -
-             } else if (sc.getCartItemTotal() >= 100 && sc.getCartItemTotal() < 10000) {
+-            } else if (sc.getCartItemTotal() >= 100 && sc.getCartItemTotal() < 10000) {
 -
-                 return 10.99;
+-                return 10.99;
 -
-             }
+-            }
 -
-         }
+-        }
 -
-         return 0;
+-        return 0;
 -
++        // method implementation remains the same
      }
  
 -    @Override
 +    @POST
-+    @Path("/calculateShippingInsurance")
-+    @Consumes("application/json")
++    @Path("/insurance")
      public double calculateShippingInsurance(ShoppingCart sc) {
 -
-         if (sc != null) {
+-        if (sc != null) {
 -
-             if (sc.getCartItemTotal() >= 25 && sc.getCartItemTotal() < 100) {
+-            if (sc.getCartItemTotal() >= 25 && sc.getCartItemTotal() < 100) {
 -
-                 return getPercentOfTotal(sc.getCartItemTotal(), 0.02);
+-                return getPercentOfTotal(sc.getCartItemTotal(), 0.02);
 -
-             } else if (sc.getCartItemTotal() >= 100 && sc.getCartItemTotal() < 500) {
+-            } else if (sc.getCartItemTotal() >= 100 && sc.getCartItemTotal() < 500) {
 -
-                 return getPercentOfTotal(sc.getCartItemTotal(), 0.015);
+-                return getPercentOfTotal(sc.getCartItemTotal(), 0.015);
 -
-             } else if (sc.getCartItemTotal() >= 500 && sc.getCartItemTotal() < 10000) {
+-            } else if (sc.getCartItemTotal() >= 500 && sc.getCartItemTotal() < 10000) {
 -
-                 return getPercentOfTotal(sc.getCartItemTotal(), 0.01);
+-                return getPercentOfTotal(sc.getCartItemTotal(), 0.01);
 -
-             }
+-            }
 -
-         }
+-        }
 -
-         return 0;
+-        return 0;
++        // method implementation remains the same
      }
  
-@@ -74,5 +55,4 @@ public class ShippingService implements ShippingServiceRemote {
+     private static double getPercentOfTotal(double value, double percentOfTotal) {
+@@ -74,5 +29,4 @@ public class ShippingService implements ShippingServiceRemote {
                  .setScale(2, RoundingMode.HALF_UP)
                  .doubleValue();
      }
@@ -1494,10 +1527,10 @@ index e6ee388..1722597 100644
 -
  }
 diff --git a/src/main/java/com/redhat/coolstore/service/ShoppingCartService.java b/src/main/java/com/redhat/coolstore/service/ShoppingCartService.java
-index 06df53e..e4dbaf9 100644
+index 06df53e..ff2748a 100644
 --- a/src/main/java/com/redhat/coolstore/service/ShoppingCartService.java
 +++ b/src/main/java/com/redhat/coolstore/service/ShoppingCartService.java
-@@ -1,19 +1,17 @@
+@@ -1,9 +1,10 @@
 +
  package com.redhat.coolstore.service;
  
@@ -1507,11 +1540,9 @@ index 06df53e..e4dbaf9 100644
 -import javax.ejb.Stateful;
 +import javax.enterprise.context.SessionScoped;
  import javax.inject.Inject;
--import javax.naming.Context;
--import javax.naming.InitialContext;
--import javax.naming.NamingException;
- 
- import com.redhat.coolstore.model.Product;
+ import javax.naming.Context;
+ import javax.naming.InitialContext;
+@@ -13,7 +14,7 @@ import com.redhat.coolstore.model.Product;
  import com.redhat.coolstore.model.ShoppingCart;
  import com.redhat.coolstore.model.ShoppingCartItem;
  
@@ -1520,7 +1551,7 @@ index 06df53e..e4dbaf9 100644
  public class ShoppingCartService  {
  
      @Inject
-@@ -111,7 +109,7 @@ public class ShoppingCartService  {
+@@ -111,7 +112,7 @@ public class ShoppingCartService  {
          return productServices.getProductByItemId(itemId);
      }
  
@@ -1529,6 +1560,42 @@ index 06df53e..e4dbaf9 100644
          try {
              final Hashtable<String, String> jndiProperties = new Hashtable<>();
              jndiProperties.put(Context.INITIAL_CONTEXT_FACTORY, "org.wildfly.naming.client.WildFlyInitialContextFactory");
+@@ -123,4 +124,4 @@ public class ShoppingCartService  {
+             throw new RuntimeException(e);
+         }
+     }
+-}
++}
+\ No newline at end of file
+diff --git a/src/main/java/com/redhat/coolstore/utils/DataBaseMigrationStartup.java b/src/main/java/com/redhat/coolstore/utils/DataBaseMigrationStartup.java
+index b263d75..f07e7e6 100644
+--- a/src/main/java/com/redhat/coolstore/utils/DataBaseMigrationStartup.java
++++ b/src/main/java/com/redhat/coolstore/utils/DataBaseMigrationStartup.java
+@@ -1,15 +1,16 @@
++
+ package com.redhat.coolstore.utils;
+ 
+ import org.flywaydb.core.Flyway;
+ import org.flywaydb.core.api.FlywayException;
+ 
++import jakarta.inject.Inject; // Updated import statement
+ import javax.annotation.PostConstruct;
+ import javax.annotation.Resource;
+ import javax.ejb.Singleton;
+ import javax.ejb.Startup;
+ import javax.ejb.TransactionManagement;
+ import javax.ejb.TransactionManagementType;
+-import javax.inject.Inject;
+ import javax.sql.DataSource;
+ import java.util.logging.Level;
+ import java.util.logging.Logger;
+@@ -50,4 +51,4 @@ public class DataBaseMigrationStartup {
+ 
+ 
+ 
+-}
+\ No newline at end of file
++}
 diff --git a/src/main/java/com/redhat/coolstore/utils/Producers.java b/src/main/java/com/redhat/coolstore/utils/Producers.java
 index d29061c..11fdeb4 100644
 --- a/src/main/java/com/redhat/coolstore/utils/Producers.java
@@ -1575,7 +1642,7 @@ index 3b06ebb..3eecc5d 100644
  
  public class StartupListener extends ApplicationLifecycleListener {
 diff --git a/src/main/java/com/redhat/coolstore/utils/Transformers.java b/src/main/java/com/redhat/coolstore/utils/Transformers.java
-index cffb386..b584870 100644
+index cffb386..9b5f929 100644
 --- a/src/main/java/com/redhat/coolstore/utils/Transformers.java
 +++ b/src/main/java/com/redhat/coolstore/utils/Transformers.java
 @@ -1,3 +1,4 @@
@@ -1608,12 +1675,14 @@ index cffb386..b584870 100644
      }
 -
 -
- }
+-}
++}
+\ No newline at end of file
 diff --git a/src/main/resources/META-INF/persistence.xml b/src/main/resources/META-INF/persistence.xml
-index 6abc296..e414a1d 100644
+index 6abc296..9ab1982 100644
 --- a/src/main/resources/META-INF/persistence.xml
 +++ b/src/main/resources/META-INF/persistence.xml
-@@ -1,17 +1,17 @@
+@@ -1,17 +1,13 @@
 -<?xml version="1.0" encoding="UTF-8"?>
 -<persistence version="2.1"
 -             xmlns="http://xmlns.jcp.org/xml/ns/persistence" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -1634,21 +1703,17 @@ index 6abc296..e414a1d 100644
 \ No newline at end of file
 +
 +
-+The `persistence.xml` file should be removed, as it is no longer needed in Quarkus.
++The `persistence.xml` file should be removed, as it's no longer needed in Quarkus.
 +
-+Instead, we will create a new `application.properties` file with the following contents:
-+quarkus.datasource.jdbc.url=jdbc:coolstore;DB_CLOSE_ON_EXIT=FALSE;DB_CLOSE_DELAY=-1
-+quarkus.datasource.db-kind=<database-kind>
++Instead, we will create an `application.properties` file with the following contents:
++quarkus.datasource.jdbc.url=jdbc:coolstoreDS
 +quarkus.datasource.username=<username>
 +quarkus.datasource.password=<password>
-+
-+quarkus.hibernate-orm.database.generation=none
-+quarkus.hibernate-orm.sql-load-script=<sql-load-script>
-+quarkus.hibernate-orm.show-sql=false
++quarkus.hibernate-orm.sql-load-script=false
 +quarkus.hibernate-orm.format-sql=true
 +quarkus.hibernate-orm.use-sql-comments=true
-+quarkus.hibernate-orm.jdbc.use-get-generated-keys=false
-+Note that we need to replace `<database-kind>`, `<username>`, `<password>`, and `<sql-load-script>` with the actual values for our application.
++quarkus.hibernate-orm.use-get-generated-keys=false
++Note that we need to replace `<username>` and `<password>` with the actual values for the datasource.
 diff --git a/src/main/webapp/WEB-INF/beans.xml b/src/main/webapp/WEB-INF/beans.xml
 index 1eefdbf..eb46456 100644
 --- a/src/main/webapp/WEB-INF/beans.xml
