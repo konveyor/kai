@@ -1,4 +1,3 @@
-import logging
 import os
 from contextlib import contextmanager
 from typing import Generator
@@ -6,8 +5,9 @@ from typing import Generator
 import vcr  # type: ignore
 
 from kai.constants import PATH_DATA
+from kai.logging.logging import get_logger
 
-KAI_LOG = logging.getLogger("vcr")
+logger = get_logger(__name__)
 
 
 @contextmanager
@@ -35,7 +35,6 @@ def playback_if_demo_mode(
             "path",
             "query",
             "headers",
-            "body",
         ],
         record_on_exception=False,
         filter_headers=[
@@ -52,8 +51,8 @@ def playback_if_demo_mode(
             "user-agent",
         ],
     )
-    KAI_LOG.debug(
-        f"record_mode='{record_mode}' - Using cassette {application_name}/{agent}/{model_id}/{filename}.yaml",
+    logger.debug(
+        f"record_mode='{record_mode}' - Using cassette {PATH_DATA}/vcr/{application_name}/{agent}/{model_id}/{filename}.yaml",
     )
 
     # Workaround to actually blow away the cassettes instead of appending
