@@ -10,9 +10,9 @@ from PyInstaller.building.build_main import Analysis
 from PyInstaller.building.api import PYZ, EXE, COLLECT
 from PyInstaller.utils.hooks import collect_data_files
 
-data_dirs = [
-    ('../kai_solution_server/data/vcr', 'kai_solution_server/data/vcr'),
-]
+#data_dirs = [
+#    ('../kai_solution_server/data/vcr', 'kai_solution_server/data/vcr'),
+#]
 
 script_path = '../kai/rpc_server/main.py'
 
@@ -20,7 +20,7 @@ a = Analysis(
     [script_path],
     pathex=[os.path.dirname(script_path), '../'],
     binaries=[],
-    datas=data_dirs,
+#    datas=data_dirs,
     hiddenimports=["_ssl"],
     hookspath=[],
     runtime_hooks=[],
