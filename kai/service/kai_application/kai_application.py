@@ -238,25 +238,70 @@ class KaiApplication:
                         application_name,
                         f'{file_name.replace("/", "-")}',
                     ):
-                        llm_result = self.model_provider.llm.invoke(prompt)
-                        trace.llm_result(count, retry_attempt_count, llm_result)
+                        llm_request = [("human", prompt)]
+                        llm_result = self.model_provider.llm.invoke(llm_request)
+                        content = parse_file_solution_content(
+                            src_file_language, str(llm_result.content)
+                        )
+
+                        # The LLM response must include code blocks (formatted within triple backticks) to be considered complete. Usually, the LLM responds with code blocks, but occasionally it fails to do so, as noted in issue #350 [https://github.com/konveyor/kai/issues/350] . Complete responses are saved in the trace directory directly. For incomplete responses, an additional prompt is sent to the LLM, and the resulting complete response (with code blocks) is saved in the trace directory as a new file.
+
+                        if len(content.updated_file) == 0:
+
+                            trace.llm_result(
+                                count,
+                                retry_attempt_count,
+                                llm_result.content,
+                                "llm_result_without_codeblocks",
+                            )
+                            trace.response_metadata(
+                                count,
+                                retry_attempt_count,
+                                llm_result.response_metadata,
+                                "response_metadata_without_codeblocks.json",
+                            )
+                            self.has_tokens_exceeded(
+                                llm_result.response_metadata,
+                                estimated_prompt_tokens,
+                                file_name,
+                            )
+                            llm_request.append(
+                                (
+                                    "human",
+                                    "I request you to generate a complete response.",
+                                )
+                            )
+                            llm_result = self.model_provider.llm.invoke(llm_request)
+                            content = parse_file_solution_content(
+                                src_file_language, str(llm_result.content)
+                            )
+                            if not content.updated_file:
+                                raise Exception(
+                                    f"The LLM could not provide a response with complete codeblocks for {file_name}."
+                                )
+
+                        trace.llm_result(
+                            count,
+                            retry_attempt_count,
+                            llm_result.content,
+                            "llm_result_with_codeblocks",
+                        )
+                        trace.response_metadata(
+                            count,
+                            retry_attempt_count,
+                            llm_result.response_metadata,
+                            "response_metadata_with_codeblocks.json",
+                        )
                         trace.estimated_tokens(
                             count,
                             retry_attempt_count,
                             estimated_prompt_tokens,
                             self.tiktoken_encoding_base,
                         )
-                        trace.response_metadata(
-                            count, retry_attempt_count, llm_result.response_metadata
-                        )
                         self.has_tokens_exceeded(
                             llm_result.response_metadata,
                             estimated_prompt_tokens,
                             file_name,
-                        )
-
-                        content = parse_file_solution_content(
-                            src_file_language, str(llm_result.content)
                         )
 
                         if not content.updated_file:
