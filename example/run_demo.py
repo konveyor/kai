@@ -116,24 +116,21 @@ def initialize_rpc_server() -> Generator[JsonRpcServer, None, None]:
         rpc_server.stop()
 
 
-class CodePlanSolution(BaseModel):
+class CodePlanSolutionResponse(BaseModel):
     diff: str
     modified_files: list[str]
     encountered_errors: list[str]
 
 
-def apply_diff(filepath: Path, solution: CodePlanSolution) -> None:
+def apply_diff(filepath: Path, solution: CodePlanSolutionResponse) -> None:
     KAI_LOG.info(f"Writing updated source code to {filepath}")
     try:
-        # TODO (pgaikwad): this is a NOOP right now because
-        # we are writing the file to disk in codeplan
-        pass
-        # subprocess.run(  # trunk-ignore(bandit/B603,bandit/B607)
-        #     ["git", "apply"],
-        #     input=solution.diff.encode("utf-8"),
-        #     cwd=SAMPLE_APP_DIR,
-        #     check=True,
-        # )
+        subprocess.run(  # trunk-ignore(bandit/B603,bandit/B607)
+            ["git", "apply"],
+            input=solution.diff.encode("utf-8"),
+            cwd=SAMPLE_APP_DIR,
+            check=True,
+        )
     except Exception as e:
         KAI_LOG.error(f"Failed to write updated_file @ {filepath} with error: {e}")
         KAI_LOG.error(f"Diff: {solution.diff}")
@@ -168,7 +165,7 @@ def process_file(
     elif not isinstance(response, JsonRpcResponse):
         return f"Failed to generate fix for file {params.file_path} - invalid response type {type(response)}"
     try:
-        solution = CodePlanSolution.model_validate(response.result)
+        solution = CodePlanSolutionResponse.model_validate(response.result)
     except Exception as e:
         return f"Failed to parse response {params.file_path} - {e}"
 
