@@ -529,7 +529,7 @@ class IncidentStore:
         KAI_LOG.info(f"Selected model: {model_provider.model_id}")
 
         if config.incident_store is None:
-            raise ValueError
+            raise ValueError("must provide a incident store")
 
         backend = incident_store_backend_factory(config.incident_store.args)
 

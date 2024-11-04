@@ -1,6 +1,5 @@
 import os
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Optional, cast
 
 from jinja2 import Template
@@ -108,7 +107,7 @@ If you have any additional details or steps that need to be performed, put it he
         if not isinstance(ask, AnalyzerFixRequest):
             return AnalyzerFixResponse(
                 encountered_errors=["invalid request type"],
-                file_to_modify=Path(""),
+                file_to_modify=None,
                 reasoning=None,
                 additional_information=None,
                 updated_file_content=None,
@@ -152,10 +151,13 @@ If you have any additional details or steps that need to be performed, put it he
         for line in lines_of_output:
             if line.strip() == "## Reasoning":
                 in_reasoning = True
+                in_java_file = False
+                in_additional_details = False
                 continue
             if line.strip() == "## Updated Java File":
                 in_java_file = True
                 in_reasoning = False
+                in_additional_details = False
                 continue
             if "## Additional Information" in line.strip():
                 in_reasoning = False

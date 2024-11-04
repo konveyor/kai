@@ -1,6 +1,3 @@
-# This is needed because we are overriding the parser to get line numbers
-# The only way to do that, is tell it not to use the c-version of the parser
-# so that we can hook into the parser and add attributes to the element.
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Optional, TypedDict, Union

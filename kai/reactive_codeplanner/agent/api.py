@@ -11,7 +11,7 @@ class AgentRequest:
 @dataclass
 class AgentResult:
     encountered_errors: list[str] | None = None
-    # TODO: consider changing this, as an agent shoudl not be responsible for changing the file
+    # TODO: consider changing this, as an agent should not be responsible for changing the file
     # We may not need this generically, but for planning agents we may. leaving for now.
     file_to_modify: Path | None = None
     reasoning: str | None = None

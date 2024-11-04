@@ -88,13 +88,17 @@ class MavenCompilerAgent(Agent):
         for line in lines_of_output:
             if line.strip() == "## Updated Java File":
                 in_java_file = True
+                in_reasoning = False
+                in_additional_details = False
                 continue
             if line.strip() == "## Reasoning":
                 in_java_file = False
                 in_reasoning = True
+                in_additional_details = False
                 continue
             if line.strip() == "## Additional Information (optional)":
                 in_reasoning = False
+                in_java_file = False
                 in_additional_details = True
                 continue
             if in_java_file:
