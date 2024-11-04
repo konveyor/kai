@@ -125,14 +125,11 @@ jobs:
           git diff > actual.diff
           sed -i -e 's/index.*//g' actual.diff
           sed -i -e 's/index.*//g' ../run_demo_expected_output.diff
+          cat actual.diff
         env:
           PATH: ${{ env.PATH }}
           GENAI_KEY: ${{ secrets.GENAI_KEY }}
-
-      - name: Debug actual output
-        if: matrix.runs_on.os == 'ubuntu-latest' 
-        run: |
-          cat actual.diff
+          
       
 #   Tasks below will only happen when this action is dispatched to publish a release.
 
