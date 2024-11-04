@@ -43,6 +43,7 @@ from kai_solution_server.service.solution_handling.solution_types import Solutio
 
 KAI_LOG = get_logger(__name__)
 
+T = TypeVar("T")
 
 
 def deep_sort(obj: T) -> T:
