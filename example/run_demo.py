@@ -86,16 +86,6 @@ def initialize_rpc_server() -> Generator[JsonRpcServer, None, None]:
 
     app = KaiRpcApplication()
 
-    # @app.add_notify(method="logMessage")
-    # def logMessage(
-    #     app: KaiRpcApplication,
-    #     server: JsonRpcServer,
-    #     id: JsonRpcId,
-    #     params: dict[Any, Any],
-    # ) -> None:
-    #     KAI_LOG.info(str(params))
-    #     pass
-
     rpc_server = JsonRpcServer(
         json_rpc_stream=BareJsonStream(
             cast(BufferedReader, rpc_subprocess.stdout),
@@ -135,12 +125,15 @@ class CodePlanSolution(BaseModel):
 def apply_diff(filepath: Path, solution: CodePlanSolution) -> None:
     KAI_LOG.info(f"Writing updated source code to {filepath}")
     try:
-        subprocess.run(  # trunk-ignore(bandit/B603,bandit/B607)
-            ["git", "apply"],
-            input=solution.diff.encode("utf-8"),
-            cwd=SAMPLE_APP_DIR,
-            check=True,
-        )
+        # TODO (pgaikwad): this is a NOOP right now because
+        # we are writing the file to disk in codeplan
+        pass
+        # subprocess.run(  # trunk-ignore(bandit/B603,bandit/B607)
+        #     ["git", "apply"],
+        #     input=solution.diff.encode("utf-8"),
+        #     cwd=SAMPLE_APP_DIR,
+        #     check=True,
+        # )
     except Exception as e:
         KAI_LOG.error(f"Failed to write updated_file @ {filepath} with error: {e}")
         KAI_LOG.error(f"Diff: {solution.diff}")
@@ -203,6 +196,7 @@ def run_demo(report: Report, server: JsonRpcServer) -> None:
             count=count,
             num_impacted_files=num_impacted_files,
         )
+        break
 
 
 def main() -> None:
