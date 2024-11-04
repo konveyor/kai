@@ -12,7 +12,7 @@ import dateutil.parser
 import requests
 import urllib3
 from git import GitCommandError, Repo
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 from kai.analyzer_types import Report
 from kai.kai_config import KaiConfig
@@ -52,22 +52,11 @@ class Incident(KaiBaseModel):  # type: ignore[no-redef]
     createTime: Optional[str] = None
     issue: int
     file: str
-    uri: str
+    uri: str = Field(..., alias="file")
     lineNumber: int = Field(..., alias="line")
     message: str
     codeSnip: str
     variables: dict[str, Any] = Field(..., alias="facts")
-<<<<<<< HEAD
-
-    @model_validator(mode="before")
-    @classmethod
-    def supply_uri_if_missing(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            if "file" in data and "uri" not in data:
-                data["uri"] = data["file"]
-        return data
-=======
->>>>>>> 8ebca33 (:ghost: Fix mypy types (#435))
 
 
 class Link(KaiBaseModel):
@@ -137,12 +126,6 @@ Options:
 - critical: A serious error, indicating that the program itself may be unable to continue running.
 Example: --loglevel debug (default: warning)""",
     )
-    arg_parser.add_argument(
-        "--hub_token",
-        type=str,
-        default=os.getenv("JWT", default=""),
-        help="Hub auth token.",
-    )
 
     arg_parser.add_argument(
         "--config_filepath",
@@ -211,20 +194,14 @@ Example: --loglevel debug (default: warning)""",
     )
 
 
-<<<<<<< HEAD
-def paginate_api(
-    url: str, token: str, timeout: int = 60, verify: bool = True
-) -> Iterator:
-=======
 def paginate_api(url: str, timeout: int = 60, verify: bool = True) -> Iterator[Any]:
->>>>>>> 8ebca33 (:ghost: Fix mypy types (#435))
     previous_offset = None
     current_offset = 0
     while previous_offset != current_offset:
         previous_offset = current_offset
         request_params = {"offset": f"{current_offset}"}
         for item in get_data_from_api(
-            url, token, params=request_params, timeout=timeout, verify=verify
+            url, params=request_params, timeout=timeout, verify=verify
         ):
             current_offset += 1
             yield item
@@ -232,7 +209,6 @@ def paginate_api(url: str, timeout: int = 60, verify: bool = True) -> Iterator[A
 
 def poll_api(
     konveyor_hub_url: str,
-    token: str,
     incident_store: IncidentStore,
     interval: int = 60,
     timeout: int = 60,
@@ -245,7 +221,7 @@ def poll_api(
 
     while poll_condition():
         new_last_analysis = import_from_api(
-            incident_store, konveyor_hub_url, token, last_analysis, timeout, verify
+            incident_store, konveyor_hub_url, last_analysis, timeout, verify
         )
 
         if new_last_analysis == last_analysis:
@@ -269,7 +245,6 @@ def poll_api(
 def import_from_api(
     incident_store: IncidentStore,
     konveyor_hub_url: str,
-    token: str,
     last_analysis: int = 0,
     timeout: int = 60,
     verify: bool = True,
@@ -277,7 +252,7 @@ def import_from_api(
     analyses_url = f"{konveyor_hub_url}/analyses"
     request_params = {"filter": f"id>{last_analysis}"}
     analyses = get_data_from_api(
-        analyses_url, token, params=request_params, timeout=timeout, verify=verify
+        analyses_url, params=request_params, timeout=timeout, verify=verify
     )
 
     validated_analyses = [Analysis(**item) for item in analyses]
@@ -285,7 +260,7 @@ def import_from_api(
     # TODO(fabianvf) add mechanism to skip import if a report has already been imported
     with tempfile.TemporaryDirectory() as tmpdir:
         reports = process_analyses(
-            validated_analyses, konveyor_hub_url, token, tmpdir, timeout, verify
+            validated_analyses, konveyor_hub_url, tmpdir, timeout, verify
         )
 
         for app, creds, report in reports:
@@ -304,23 +279,15 @@ def import_from_api(
 
 
 def get_data_from_api(
-<<<<<<< HEAD
-    url: str, token: str, params=None, timeout: int = 60, verify: bool = True
-):
-=======
     url: str,
     params: dict[str, Any] | None = None,
     timeout: int = 60,
     verify: bool = True,
 ) -> Any:
->>>>>>> 8ebca33 (:ghost: Fix mypy types (#435))
     if not params:
         params = {}
     KAI_LOG.debug(f"Making request to {url} with {params=}")
-    headers = {"Authorization": f"Bearer {token}"}
-    response = requests.get(
-        url, params=params, timeout=timeout, verify=verify, headers=headers
-    )
+    response = requests.get(url, params=params, timeout=timeout, verify=verify)
     response.raise_for_status()
     return response.json()
 
@@ -328,7 +295,6 @@ def get_data_from_api(
 def process_analyses(
     analyses: list[Analysis],
     konveyor_hub_url: str,
-    token: str,
     application_dir: str,
     request_timeout: int = 60,
     request_verify: bool = True,
@@ -341,7 +307,6 @@ def process_analyses(
         )
         resp = get_data_from_api(
             f"{konveyor_hub_url}/applications/{analysis.application.id}",
-            token,
             timeout=request_timeout,
             verify=request_verify,
         )
@@ -353,7 +318,6 @@ def process_analyses(
                 creds = Identity(
                     **get_data_from_api(
                         f"{konveyor_hub_url}/identities/{identity.id}",
-                        token,
                         timeout=request_timeout,
                         verify=request_verify,
                     )
@@ -381,7 +345,7 @@ def process_analyses(
         report_data: dict[str, Any] = {}
         issues_url = f"{konveyor_hub_url}/analyses/{analysis.id}/issues"
         for raw_issue in paginate_api(
-            issues_url, token, timeout=request_timeout, verify=request_verify
+            issues_url, timeout=request_timeout, verify=request_verify
         ):
             issue = Issue(**raw_issue)
             KAI_LOG.info(
@@ -408,8 +372,7 @@ def process_analyses(
                 incident.file = remove_base_dir(incident.file)
                 incident.uri = remove_base_dir(incident.uri)
                 KAI_LOG.debug(f"{incident.variables=}")
-
-            report_data[key]["violations"][issue.rule] = {  # type: ignore
+            report_data[key]["violations"][issue.rule] = {
                 "category": issue.category,
                 "description": issue.description,
                 "effort": issue.effort,
