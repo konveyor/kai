@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, Sequence, Type
 
+from opentelemetry import trace
+
 from kai.logging.logging import get_logger
 from kai.reactive_codeplanner.task_manager.api import (
     ValidationError,
@@ -15,9 +17,12 @@ from kai.reactive_codeplanner.task_manager.api import (
 
 logger = get_logger(__name__)
 
+tracer = trace.get_tracer("maven_validator")
+
 
 class MavenCompileStep(ValidationStep):
 
+    @tracer.start_as_current_span("run_validator")
     def run(self) -> ValidationResult:
         maven_output = run_maven(self.config.repo_directory)
         errors: Sequence[ValidationError] = parse_maven_output(maven_output)

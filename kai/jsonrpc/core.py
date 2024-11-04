@@ -1,6 +1,7 @@
 import threading
 from typing import Any, Callable, Literal, Optional, overload
 
+from opentelemetry import trace
 from pydantic import BaseModel
 
 from kai.jsonrpc.callbacks import JsonRpcCallable, JsonRpcCallback
@@ -13,7 +14,7 @@ from kai.jsonrpc.models import (
     JsonRpcResult,
 )
 from kai.jsonrpc.streams import JsonRpcStream
-from kai.logging.logging import TRACE, get_logger
+from kai.logging.logging import TRACE, KaiLogger, get_logger
 
 log = get_logger("jsonrpc")
 
@@ -40,39 +41,40 @@ class JsonRpcApplication:
 
     def handle_request(self, request: JsonRpcRequest, server: "JsonRpcServer") -> None:
         log.log(TRACE, "Handling request: %s", request)
+        tracer = trace.get_tracer("json_rpc")
+        with tracer.start_as_current_span("handle_request"):
+            if request.id is not None:
+                log.log(TRACE, "Request is a request")
 
-        if request.id is not None:
-            log.log(TRACE, "Request is a request")
+                if request.method not in self.request_callbacks:
+                    server.send_response(
+                        error=JsonRpcError(
+                            code=JsonRpcErrorCode.MethodNotFound,
+                            message=f"Method not found: {request.method}",
+                        ),
+                        id=request.id,
+                    )
+                    return
 
-            if request.method not in self.request_callbacks:
-                server.send_response(
-                    error=JsonRpcError(
-                        code=JsonRpcErrorCode.MethodNotFound,
-                        message=f"Method not found: {request.method}",
-                    ),
-                    id=request.id,
+                log.log(TRACE, "Calling method: %s", request.method)
+
+                self.request_callbacks[request.method](
+                    request=request, server=server, app=self
                 )
-                return
 
-            log.log(TRACE, "Calling method: %s", request.method)
+            else:
+                log.log(TRACE, "Request is a notification")
 
-            self.request_callbacks[request.method](
-                request=request, server=server, app=self
-            )
+                if request.method not in self.notify_callbacks:
+                    log.error(f"Notify method not found: {request.method}")
+                    log.error(f"Notify methods: {self.notify_callbacks.keys()}")
+                    return
 
-        else:
-            log.log(TRACE, "Request is a notification")
+                log.log(TRACE, "Calling method: %s", request.method)
 
-            if request.method not in self.notify_callbacks:
-                log.error(f"Notify method not found: {request.method}")
-                log.error(f"Notify methods: {self.notify_callbacks.keys()}")
-                return
-
-            log.log(TRACE, "Calling method: %s", request.method)
-
-            self.notify_callbacks[request.method](
-                request=request, server=server, app=self
-            )
+                self.notify_callbacks[request.method](
+                    request=request, server=server, app=self
+                )
 
     @overload
     def add(
@@ -201,6 +203,7 @@ class JsonRpcServer(threading.Thread):
         json_rpc_stream: JsonRpcStream,
         app: JsonRpcApplication | None = None,
         request_timeout: float | None = 60.0,
+        log: KaiLogger | None = None,
     ):
         if app is None:
             app = JsonRpcApplication()
@@ -217,50 +220,62 @@ class JsonRpcServer(threading.Thread):
         self.outstanding_requests: set[JsonRpcId] = set()
 
         self.shutdown_flag = False
+        self.log = get_logger("jsonrpc-server")
+        if log is not None:
+            self.log = log
 
     def stop(self) -> None:
         self.shutdown_flag = True
 
     def run(self) -> None:
-        log.debug("Server thread started")
+        self.log.debug("Server thread started")
 
         while not self.shutdown_flag:
-            log.debug("Waiting for message")
+            self.log.debug("Waiting for message")
+            tracer = trace.get_tracer("json_rpc")
             msg = self.jsonrpc_stream.recv()
             if msg is None:
-                log.info("Server quit")
+                self.log.info("Server quit")
                 break
-
-            elif isinstance(msg, JsonRpcError):
-                self.jsonrpc_stream.send(JsonRpcResponse(error=msg))
-                continue
-
-            elif isinstance(msg, JsonRpcRequest):
-                log.log(TRACE, "Received request: %s", msg)
-                if msg.id is not None:
-                    self.outstanding_requests.add(msg.id)
-
-                self.app.handle_request(msg, self)
-
-                if msg.id is not None and msg.id in self.outstanding_requests:
-                    self.send_response(
-                        id=msg.id,
-                        error=JsonRpcError(
-                            code=JsonRpcErrorCode.InternalError,
-                            message="No response sent",
-                        ),
+            with tracer.start_as_current_span("recieved_message") as span:
+                if isinstance(msg, JsonRpcError):
+                    span.add_event(
+                        "rpc_error_receiving_message", attributes={"message": f"{msg}"}
                     )
+                    self.jsonrpc_stream.send(JsonRpcResponse(error=msg))
+                    break
 
-            elif isinstance(msg, JsonRpcResponse):
-                if msg.id is not None:
-                    self.response_dict[msg.id] = msg
-                    cond = self.event_dict[msg.id]
-                    cond.acquire()
-                    cond.notify()
-                    cond.release()
+                elif isinstance(msg, JsonRpcRequest):
+                    self.log.log(TRACE, "Received request: %s", msg)
+                    span.add_event("received_request", attributes={"message": f"{msg}"})
+                    if msg.id is not None:
+                        self.outstanding_requests.add(msg.id)
 
-            else:
-                log.error(f"Unknown message type: {type(msg)}")
+                    self.app.handle_request(msg, self)
+
+                    if msg.id is not None and msg.id in self.outstanding_requests:
+                        self.send_response(
+                            id=msg.id,
+                            error=JsonRpcError(
+                                code=JsonRpcErrorCode.InternalError,
+                                message="No response sent",
+                            ),
+                        )
+
+                elif isinstance(msg, JsonRpcResponse):
+                    span.add_event(
+                        "received_response", attributes={"message": f"{msg}"}
+                    )
+                    if msg.id is not None:
+                        self.response_dict[msg.id] = msg
+                        cond = self.event_dict[msg.id]
+                        cond.acquire()
+                        cond.notify()
+                        cond.release()
+
+                else:
+                    span.add_event("received_unknown", attributes={"message": f"{msg}"})
+                    self.log.error(f"Unknown message type: {type(msg)}")
 
         self.jsonrpc_stream.close()
 
@@ -270,31 +285,33 @@ class JsonRpcServer(threading.Thread):
         if isinstance(params, BaseModel):
             params = params.model_dump()
 
-        log.log(TRACE, "Sending request: %s", method)
-        current_id = self.next_id
-        self.next_id += 1
-        cond = threading.Condition()
-        self.event_dict[current_id] = cond
+        tracer = trace.get_tracer("json_rpc")
+        with tracer.start_as_current_span("send_request"):
+            self.log.log(TRACE, "Sending request: %s", method)
+            current_id = self.next_id
+            self.next_id += 1
+            cond = threading.Condition()
+            self.event_dict[current_id] = cond
 
-        cond.acquire()
-        self.jsonrpc_stream.send(
-            JsonRpcRequest(method=method, params=params, id=current_id)
-        )
-
-        if self.shutdown_flag:
-            cond.release()
-            return None
-
-        if not cond.wait(self.request_timeout):
-            cond.release()
-            return JsonRpcError(
-                code=JsonRpcErrorCode.InternalError,
-                message="Timeout waiting for response",
+            cond.acquire()
+            self.jsonrpc_stream.send(
+                JsonRpcRequest(method=method, params=params, id=current_id)
             )
-        cond.release()
 
-        self.event_dict.pop(current_id)
-        return self.response_dict.pop(current_id)
+            if self.shutdown_flag:
+                cond.release()
+                return None
+
+            if not cond.wait(self.request_timeout):
+                cond.release()
+                return JsonRpcError(
+                    code=JsonRpcErrorCode.InternalError,
+                    message="Timeout waiting for response",
+                )
+            cond.release()
+
+            self.event_dict.pop(current_id)
+            return self.response_dict.pop(current_id)
 
     def send_notification(
         self,
@@ -314,15 +331,17 @@ class JsonRpcServer(threading.Thread):
         error: Optional[JsonRpcError] = None,
         id: JsonRpcId = None,
     ) -> None:
-        if response is None:
-            response = JsonRpcResponse(result=result, error=error, id=id)
+        tracer = trace.get_tracer("json_rpc")
+        with tracer.start_as_current_span("send_response"):
+            if response is None:
+                response = JsonRpcResponse(result=result, error=error, id=id)
 
-        if response.id is not None:
-            if response.id not in self.outstanding_requests:
-                log.error(
-                    f"Request ID {response.id} not found in outstanding requests\nTried sending: {response}"
-                )
-                return
-            self.outstanding_requests.remove(response.id)
+            if response.id is not None:
+                if response.id not in self.outstanding_requests:
+                    self.log.error(
+                        f"Request ID {response.id} not found in outstanding requests\nTried sending: {response}"
+                    )
+                    return
+                self.outstanding_requests.remove(response.id)
 
-        self.jsonrpc_stream.send(response)
+            self.jsonrpc_stream.send(response)

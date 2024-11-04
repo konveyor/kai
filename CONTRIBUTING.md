@@ -191,6 +191,26 @@ steps:
 
 For end users, please refer to the IDE plugin documentation for the primary interaction path.
 
+### Using Open Telemtry
+
+If you would like to use open telemetry to see the span's and performance of specific code paths you should look at using jaeger.
+
+To run the all in one jaeger instance use:
+
+```bash
+podman run --rm \
+  -e COLLECTOR_ZIPKIN_HOST_PORT=:9411 \
+  -p 16686:16686 \
+  -p 4317:4317 \
+  -p 4318:4318 \
+  -p 9411:9411 \
+  jaegertracing/all-in-one:latest
+```
+
+Once you do this, then you can use `localhost:16686` to see the jaeger interface.
+
+When you run the demo, use `ENABLE_TRACING=1 ./run_demo.py`
+
 ## Working with Notebooks
 
 When working with Jupyter notebooks, ensure you've installed the project in

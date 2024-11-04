@@ -12,7 +12,7 @@ from kai.jsonrpc.models import (
     JsonRpcRequest,
     JsonRpcResponse,
 )
-from kai.logging.logging import TRACE, get_logger
+from kai.logging.logging import TRACE, KaiLogger, get_logger
 
 log = get_logger("jsonrpc")
 
@@ -160,19 +160,23 @@ class BareJsonStream(JsonRpcStream):
         send_file: BufferedWriter,
         json_dumps_kwargs: dict[Any, Any] | None = None,
         json_loads_kwargs: dict[Any, Any] | None = None,
+        log: KaiLogger | None = None,
     ):
         super().__init__(recv_file, send_file, json_dumps_kwargs, json_loads_kwargs)
 
         self.buffer: str = ""
         self.decoder = json.JSONDecoder()
         self.chunk_size = 512
+        self.log = get_logger("jsonrpc")
+        if log is not None:
+            self.log = log
 
     def send(self, msg: JsonRpcRequest | JsonRpcResponse) -> None:
         json_req = f"{msg.model_dump_json()}\n"
 
         # Prevent infinite recursion
         if not isinstance(msg, JsonRpcRequest) or msg.method != "logMessage":
-            log.log(TRACE, "send: %s", json_req)
+            self.log.log(TRACE, "send: %s", json_req)
         else:
             log_msg = msg.model_copy()
             if log_msg.params is None:
@@ -184,7 +188,7 @@ class BareJsonStream(JsonRpcStream):
                 if hasattr(log_msg.params, "message"):
                     log_msg.params.message = "<omitted>"
 
-            log.log(TRACE, f"send: {log_msg.model_dump_json()}")
+            self.log.log(TRACE, f"send: {log_msg.model_dump_json()}")
 
         with self.send_lock:
             self.send_file.write(json_req.encode())
@@ -203,7 +207,7 @@ class BareJsonStream(JsonRpcStream):
 
             try:
                 msg, idx = self.decoder.raw_decode(result.decode("utf-8"))
-                log.log(TRACE, "recv msg: %s", msg)
+                self.log.log(TRACE, "recv msg: %s", msg)
                 if "method" in msg:
                     return JsonRpcRequest.model_validate(msg)
                 else:

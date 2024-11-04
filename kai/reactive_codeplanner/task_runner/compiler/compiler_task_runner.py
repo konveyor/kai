@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from opentelemetry import trace
+
 from kai.logging.logging import get_logger
 from kai.reactive_codeplanner.agent.maven_compiler_fix.agent import MavenCompilerAgent
 from kai.reactive_codeplanner.agent.maven_compiler_fix.api import (
@@ -20,6 +22,7 @@ from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager, SpawningResult
 
 logger = get_logger(__name__)
+tracer = trace.get_tracer("maven_compile_task_runner")
 
 
 @dataclass
@@ -62,6 +65,7 @@ class MavenCompilerTaskRunner(TaskRunner):
         """Will determine if the task if a MavenCompilerError, and if we can handle these issues."""
         return isinstance(task, self.handled_type)
 
+    @tracer.start_as_current_span("maven_execute_task")
     def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
         """This will be responsible for getting the full file from LLM and updating the file on disk"""
 

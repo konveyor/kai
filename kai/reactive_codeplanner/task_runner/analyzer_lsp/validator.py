@@ -4,6 +4,7 @@ from io import BufferedReader, BufferedWriter
 from typing import IO, Any, cast
 from urllib.parse import urlparse
 
+from opentelemetry import trace
 from pydantic import BaseModel
 
 from kai.analyzer_types import Report
@@ -24,6 +25,7 @@ from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import (
 )
 
 logger = get_logger(__name__)
+tracer = trace.get_tracer("analyzer_validator")
 
 
 def log_stderr(stderr: IO[bytes]) -> None:
@@ -75,6 +77,7 @@ class AnalyzerLSPStep(ValidationStep):
 
         super().__init__(config)
 
+    @tracer.start_as_current_span("run_validation")
     def run(self) -> ValidationResult:
         logger.debug("Running analyzer-lsp")
 

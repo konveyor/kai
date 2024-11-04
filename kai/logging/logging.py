@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 
 from kai.kai_config import KaiConfig
 
@@ -17,11 +18,9 @@ class KaiLogger(logging.Logger):
         log = KaiLogger(
             name=".".join([self.name, suffix]),
             configLogLevel=self.configLogLevel,
-            log_level=TRACE,
+            log_level=logging.NOTSET,
         )
         log.parent = self
-        log.handlers = self.handlers
-        log.filters = self.filters
         return log
 
     def setLevel(self, level: str | int) -> None:
@@ -55,7 +54,7 @@ def get_logger(childName: str) -> KaiLogger:
 
 # console_handler = logging.StreamHandler()
 formatter = logging.Formatter(
-    "%(levelname)s - %(asctime)s - %(name)s - [%(filename)20s:%(lineno)-4s - %(funcName)20s()] - %(message)s"
+    "%(levelname)s - %(asctime)s - %(name)s - %(threadName)s - [%(filename)s:%(lineno)s - %(funcName)s()] - %(message)s"
 )
 
 
@@ -73,7 +72,7 @@ def process_log_dir_replacements(log_dir: str) -> str:
 
 
 def setup_console_handler(logger: KaiLogger, log_level: str | int = "INFO") -> None:
-    console_handler = logging.StreamHandler()
+    console_handler = logging.StreamHandler(sys.stderr)
     console_handler.setLevel(log_level)
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
@@ -142,4 +141,4 @@ def init_logging_from_config(config: KaiConfig) -> None:
     if not log:
         raise NotImplementedError()
     for child_log in log.getChildren():
-        child_log.handlers = log.handlers
+        child_log.handlers = []

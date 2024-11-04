@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from lxml import etree as ET  # trunk-ignore(bandit/B410)
+from opentelemetry import trace
 
 from kai.logging.logging import get_logger
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
@@ -22,6 +23,7 @@ from kai.reactive_codeplanner.task_runner.dependency.api import (
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
 
 logger = get_logger(__name__)
+tracer = trace.get_tracer("dependency_task_runner")
 
 
 @dataclass
@@ -46,6 +48,7 @@ class DependencyTaskRunner(TaskRunner):
     def can_handle_task(self, task: Task) -> bool:
         return isinstance(task, self.handled_type)
 
+    @tracer.start_as_current_span("dependency_task_execute")
     def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
         if not isinstance(
             task,
