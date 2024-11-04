@@ -79,7 +79,7 @@ def find_in_pom(path: Path) -> Callable[[str], FindInPomResponse]:
     ## Open XML file
     ## parse XML, find the dependency node if we have group and artifact we will return start_line and end_line for the full node
     ## If we don't have group and artifact, but we have dependencies, then we will find the start of the dependecies node. start_line and end_line will be the same. The start of the dependencies.
-    tagToKwargs = {
+    tag_to_kwargs = {
         "{http://maven.apache.org/POM/4.0.0}artifactId": "artifactId",
         "{http://maven.apache.org/POM/4.0.0}groupId": "groupId",
         "{http://maven.apache.org/POM/4.0.0}version": "version",
@@ -108,7 +108,7 @@ def find_in_pom(path: Path) -> Callable[[str], FindInPomResponse]:
             found = []
             dep_dic: dict[str, str] = {}
             for child in dep:
-                key = tagToKwargs.get(child.tag)
+                key = tag_to_kwargs.get(child.tag)
                 if not key:
                     continue
                 if isinstance(child.text, str):

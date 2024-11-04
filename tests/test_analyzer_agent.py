@@ -61,7 +61,7 @@ class TestAnalyzerAgent(unittest.TestCase):
         print(result)
         expected = AnalyzerFixResponse(
             encountered_errors=["invalid request type"],
-            file_to_modify=Path(""),
+            file_to_modify=None,
             reasoning=None,
             updated_file_content=None,
             additional_information=None,
