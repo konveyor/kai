@@ -19,7 +19,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from pydantic.v1.utils import deep_update
 
-from kai.constants import PATH_DATA
+from kai.constants import PATH_LLM_CACHE
 from kai.kai_config import KaiConfigModels
 from kai.logging.logging import get_logger
 
@@ -233,7 +233,7 @@ class ModelProvider:
             {"input": input, "model_id": self.model_id}, sort_keys=True, default=str
         )
         hash_value = hashlib.sha256(param_str.encode()).hexdigest()
-        dir = os.path.join(PATH_DATA, "llm_cache", self.model_id)
+        dir = os.path.join(PATH_LLM_CACHE, self.model_id)
         os.makedirs(dir, exist_ok=True)
         return os.path.join(dir, f"{hash_value}.json")
 
