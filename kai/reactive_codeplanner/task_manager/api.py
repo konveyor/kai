@@ -29,6 +29,11 @@ class Task:
 
     _creation_counter = 0
 
+    def oldest_ancestor(self) -> "Task":
+        if self.parent:
+            return self.parent.oldest_ancestor()
+        return self
+
     def __post_init__(self) -> None:
         self.creation_order = Task._creation_counter
         Task._creation_counter += 1
@@ -109,6 +114,11 @@ class ValidationError(Task):
                 and self.message == error2.message
             )
         return False
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}<loc={self.file}:{self.line}:{self.column}, message={self.message}>"
+
+    __repr__ = __str__
 
 
 # FIXME: Might not need

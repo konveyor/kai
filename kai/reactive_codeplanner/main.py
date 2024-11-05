@@ -4,6 +4,9 @@ from pathlib import Path
 
 from kai.kai_config import KaiConfig
 from kai.llm_interfacing.model_provider import ModelProvider
+from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
+    MavenDependencyAgent,
+)
 from kai.reactive_codeplanner.task_manager.api import RpcClientConfig
 from kai.reactive_codeplanner.task_manager.task_manager import TaskManager
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.task_runner import (
@@ -16,16 +19,23 @@ from kai.reactive_codeplanner.task_runner.compiler.compiler_task_runner import (
 from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
     MavenCompileStep,
 )
+from kai.reactive_codeplanner.task_runner.dependency.task_runner import (
+    DependencyTaskRunner,
+)
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def main() -> None:
+
     parser = argparse.ArgumentParser(
         description="Run the CodePlan loop against a project"
+    )
+    parser.add_argument(
+        "kai_config",
+        help="The path to the kai config file",
+        type=Path,
     )
 
     parser.add_argument(
@@ -78,7 +88,7 @@ def main() -> None:
         args.analyzer_lsp_server_binary,
         args.rules_directory,
         args.analyzer_lsp_path,
-        args.java_bundle_path,
+        args.analyzer_lsp_java_bundle,
         args.label_selector,
         args.incident_selector,
         None,
@@ -87,8 +97,8 @@ def main() -> None:
 
     logger.info("Starting reactive codeplanner with configuration: %s", config)
 
-    kai_config = KaiConfig.model_validate_filepath("../../kai/config.toml")
-    modelProvider = ModelProvider(kai_config.models)
+    kai_config = KaiConfig.model_validate_filepath(args.kai_config)
+    model_provider = ModelProvider(kai_config.models)
 
     task_manager = TaskManager(
         config,
@@ -96,8 +106,11 @@ def main() -> None:
         None,
         validators=[MavenCompileStep(config), AnalyzerLSPStep(config)],
         agents=[
-            AnalyzerTaskRunner(modelProvider),
-            MavenCompilerTaskRunner(modelProvider),
+            AnalyzerTaskRunner(model_provider),
+            MavenCompilerTaskRunner(model_provider),
+            DependencyTaskRunner(
+                MavenDependencyAgent(model_provider, config.repo_directory)
+            ),
         ],
     )
     logger.info("TaskManager initialized with validators and agents.")
@@ -108,8 +121,7 @@ def main() -> None:
         logger.info("Executed task: %s, Result: %s", task, result)
         task_manager.supply_result(result)
     task_manager.stop()
-
-    logger.info("Reactive code planner execution completed.")
+    logger.info("Codeplan execution completed.")
 
 
 if __name__ == "__main__":
