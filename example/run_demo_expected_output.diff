@@ -1,5 +1,5 @@
 diff --git a/pom.xml b/pom.xml
-index 0e760b8..6327ce1 100644
+index 0e760b8..069b369 100644
 --- a/pom.xml
 +++ b/pom.xml
 @@ -1,3 +1,4 @@
@@ -7,12 +7,11 @@ index 0e760b8..6327ce1 100644
  <?xml version="1.0" encoding="UTF-8"?>
  <project 
      xmlns="http://maven.apache.org/POM/4.0.0" 
-@@ -63,6 +64,18 @@
+@@ -63,6 +64,17 @@
          </plugins>
      </build>
      <profiles>
 -<!-- TODO: Add OpenShift profile here -->
-+        <!-- TODO: Add OpenShift profile here -->
 +        <profile>
 +            <id>native</id>
 +            <activation>
@@ -28,28 +27,106 @@ index 0e760b8..6327ce1 100644
      </profiles>
  </project>
 diff --git a/src/main/java/com/redhat/coolstore/model/InventoryEntity.java b/src/main/java/com/redhat/coolstore/model/InventoryEntity.java
-index 1aa1dc9..f7ab7c1 100644
+index 1aa1dc9..b6e1b03 100644
 --- a/src/main/java/com/redhat/coolstore/model/InventoryEntity.java
 +++ b/src/main/java/com/redhat/coolstore/model/InventoryEntity.java
-@@ -1,3 +1,4 @@
+@@ -1,20 +1,21 @@
 +
  package com.redhat.coolstore.model;
  
  import java.io.Serializable;
-@@ -7,7 +8,7 @@ import javax.persistence.Entity;
- import javax.persistence.Id;
- import javax.persistence.Table;
- import javax.persistence.UniqueConstraint;
+ 
+-import javax.persistence.Column;
+-import javax.persistence.Entity;
+-import javax.persistence.Id;
+-import javax.persistence.Table;
+-import javax.persistence.UniqueConstraint;
 -import javax.xml.bind.annotation.XmlRootElement;
-+import jakarta.xml.bind.annotation.XmlRootElement; // Updated import statement
++import jakarta.persistence.Column;
++import jakarta.persistence.Entity;
++import jakarta.persistence.Id;
++import jakarta.persistence.Table;
++import jakarta.persistence.UniqueConstraint;
++import jakarta.xml.bind.annotation.XmlRootElement;
  
  @Entity
  @XmlRootElement
+ @Table(name = "INVENTORY", uniqueConstraints = @UniqueConstraint(columnNames = "itemId"))
+ public class InventoryEntity implements Serializable {
+ 
+-	private static final long serialVersionUID = 7526472295622776147L; 
++    private static final long serialVersionUID = 7526472295622776147L; 
+ 
+     @Id
+     private String itemId;
+@@ -36,38 +37,38 @@ public class InventoryEntity implements Serializable {
+     }
+ 
+     public String getItemId() {
+-		return itemId;
+-	}
++        return itemId;
++    }
+ 
+-	public void setItemId(String itemId) {
+-		this.itemId = itemId;
+-	}
++    public void setItemId(String itemId) {
++        this.itemId = itemId;
++    }
+ 
+-	public String getLocation() {
+-		return location;
+-	}
++    public String getLocation() {
++        return location;
++    }
+ 
+-	public void setLocation(String location) {
+-		this.location = location;
+-	}
++    public void setLocation(String location) {
++        this.location = location;
++    }
+ 
+-	public int getQuantity() {
+-		return quantity;
+-	}
++    public int getQuantity() {
++        return quantity;
++    }
+ 
+-	public void setQuantity(int quantity) {
+-		this.quantity = quantity;
+-	}
++    public void setQuantity(int quantity) {
++        this.quantity = quantity;
++    }
+ 
+-	public String getLink() {
+-		return link;
+-	}
++    public String getLink() {
++        return link;
++    }
+ 
+-	public void setLink(String link) {
+-		this.link = link;
+-	}
++    public void setLink(String link) {
++        this.link = link;
++    }
+ 
+-	@Override
++    @Override
+     public String toString() {
+         return "InventoryEntity [itemId=" + itemId + ", availability=" + quantity + "/" + location + " link=" + link + "]";
+     }
 diff --git a/src/main/java/com/redhat/coolstore/model/Order.java b/src/main/java/com/redhat/coolstore/model/Order.java
-index 3793e23..0d62f02 100644
+index 3793e23..1e94c38 100644
 --- a/src/main/java/com/redhat/coolstore/model/Order.java
 +++ b/src/main/java/com/redhat/coolstore/model/Order.java
-@@ -1,18 +1,19 @@
+@@ -1,136 +1,136 @@
 +
  package com.redhat.coolstore.model;
  
@@ -78,27 +155,214 @@ index 3793e23..0d62f02 100644
  
  @Entity
  @Table(name = "ORDERS")
-@@ -39,8 +40,6 @@ public class Order implements Serializable {
- 	private double shippingDiscount;
+ public class Order implements Serializable {
  
- 	@Column(name="TOTAL_PRICE")
--
+-	private static final long serialVersionUID = -1L;
++    private static final long serialVersionUID = -1L;
+ 
+-	@Id
+-	@GeneratedValue
+-	private long orderId;
++    @Id
++    @GeneratedValue
++    private long orderId;
+ 
+-	private String customerName;
++    private String customerName;
+ 
+-	private String customerEmail;
++    private String customerEmail;
+ 
+-	private double orderValue;
++    private double orderValue;
+ 
+-	private double retailPrice;
++    private double retailPrice;
+ 
+-	private double discount;
++    private double discount;
+ 
+-	private double shippingFee;
++    private double shippingFee;
+ 
+-	private double shippingDiscount;
++    private double shippingDiscount;
+ 
+-	@Column(name="TOTAL_PRICE")
++    @Column(name="TOTAL_PRICE")
+ 
 -	
- 	@OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
- 	@JoinColumn(name="ORDER_ID")
- 	private List<OrderItem> itemList = new ArrayList<>();
-@@ -133,4 +132,4 @@ public class Order implements Serializable {
- 				+ "]";
- 	}
+-	@OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+-	@JoinColumn(name="ORDER_ID")
+-	private List<OrderItem> itemList = new ArrayList<>();
++    @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
++    @JoinColumn(name="ORDER_ID")
++    private List<OrderItem> itemList = new ArrayList<>();
+ 
+-	public Order() {}
++    public Order() {}
+ 
+-	public long getOrderId() {
+-		return orderId;
+-	}
++    public long getOrderId() {
++        return orderId;
++    }
+ 
+-	public void setOrderId(long orderId) {
+-		this.orderId = orderId;
+-	}
++    public void setOrderId(long orderId) {
++        this.orderId = orderId;
++    }
+ 
+-	public String getCustomerName() {
+-		return customerName;
+-	}
++    public String getCustomerName() {
++        return customerName;
++    }
+ 
+-	public void setCustomerName(String customerName) {
+-		this.customerName = customerName;
+-	}
++    public void setCustomerName(String customerName) {
++        this.customerName = customerName;
++    }
+ 
+-	public String getCustomerEmail() {
+-		return customerEmail;
+-	}
++    public String getCustomerEmail() {
++        return customerEmail;
++    }
+ 
+-	public void setCustomerEmail(String customerEmail) {
+-		this.customerEmail = customerEmail;
+-	}
++    public void setCustomerEmail(String customerEmail) {
++        this.customerEmail = customerEmail;
++    }
+ 
+-	public double getOrderValue() {
+-		return orderValue;
+-	}
++    public double getOrderValue() {
++        return orderValue;
++    }
+ 
+-	public void setOrderValue(double orderValue) {
+-		this.orderValue = orderValue;
+-	}
++    public void setOrderValue(double orderValue) {
++        this.orderValue = orderValue;
++    }
+ 
+-	public double getRetailPrice() {
+-		return retailPrice;
+-	}
++    public double getRetailPrice() {
++        return retailPrice;
++    }
+ 
+-	public void setRetailPrice(double retailPrice) {
+-		this.retailPrice = retailPrice;
+-	}
++    public void setRetailPrice(double retailPrice) {
++        this.retailPrice = retailPrice;
++    }
+ 
+-	public double getDiscount() {
+-		return discount;
+-	}
++    public double getDiscount() {
++        return discount;
++    }
+ 
+-	public void setDiscount(double discount) {
+-		this.discount = discount;
+-	}
++    public void setDiscount(double discount) {
++        this.discount = discount;
++    }
+ 
+-	public double getShippingFee() {
+-		return shippingFee;
+-	}
++    public double getShippingFee() {
++        return shippingFee;
++    }
+ 
+-	public void setShippingFee(double shippingFee) {
+-		this.shippingFee = shippingFee;
+-	}
++    public void setShippingFee(double shippingFee) {
++        this.shippingFee = shippingFee;
++    }
+ 
+-	public double getShippingDiscount() {
+-		return shippingDiscount;
+-	}
++    public double getShippingDiscount() {
++        return shippingDiscount;
++    }
+ 
+-	public void setShippingDiscount(double shippingDiscount) {
+-		this.shippingDiscount = shippingDiscount;
+-	}
++    public void setShippingDiscount(double shippingDiscount) {
++        this.shippingDiscount = shippingDiscount;
++    }
+ 
+-	public void setItemList(List<OrderItem> itemList) {
+-		this.itemList = itemList;
+-	}
++    public void setItemList(List<OrderItem> itemList) {
++        this.itemList = itemList;
++    }
+ 
+-	public List<OrderItem> getItemList() {
+-		return itemList;
+-	}
++    public List<OrderItem> getItemList() {
++        return itemList;
++    }
+ 
+-	@Override
+-	public String toString() {
+-		return "Order [orderId=" + orderId
+-				+ ", customerName=" + customerName
+-				+ ", customerEmail=" + customerEmail
+-				+ ", orderValue=" + orderValue
+-				+ ", retailPrice=" + retailPrice
+-				+ ", discount=" + discount
+-				+ ", shippingFee=" + shippingFee
+-				+ ", shippingDiscount=" + shippingDiscount
+-				+ ", itemList=" + itemList 
+-				+ "]";
+-	}
++    @Override
++    public String toString() {
++        return "Order [orderId=" + orderId
++                + ", customerName=" + customerName
++                + ", customerEmail=" + customerEmail
++                + ", orderValue=" + orderValue
++                + ", retailPrice=" + retailPrice
++                + ", discount=" + discount
++                + ", shippingFee=" + shippingFee
++                + ", shippingDiscount=" + shippingDiscount
++                + ", itemList=" + itemList 
++                + "]";
++    }
  
 -}
 \ No newline at end of file
 +}
 diff --git a/src/main/java/com/redhat/coolstore/model/OrderItem.java b/src/main/java/com/redhat/coolstore/model/OrderItem.java
-index 2ae6af0..d02ccca 100644
+index 2ae6af0..24d237b 100644
 --- a/src/main/java/com/redhat/coolstore/model/OrderItem.java
 +++ b/src/main/java/com/redhat/coolstore/model/OrderItem.java
-@@ -1,12 +1,13 @@
+@@ -1,48 +1,49 @@
 +
  package com.redhat.coolstore.model;
  
@@ -117,18 +381,73 @@ index 2ae6af0..d02ccca 100644
  
  @Entity
  @Table(name = "ORDER_ITEMS")
-@@ -45,4 +46,4 @@ public class OrderItem implements Serializable {
- 		return "OrderItem [productId=" + productId + ", quantity=" + quantity + "]";
- 	}
+ public class OrderItem implements Serializable {
+-	private static final long serialVersionUID = 64565445665456666L;
++    private static final long serialVersionUID = 64565445665456666L;
+ 
+-	@Id
+-	@Column(name="ID")
+-	@GeneratedValue
+-	private long id;
++    @Id
++    @Column(name="ID")
++    @GeneratedValue
++    private long id;
+ 
+-	private int quantity;
++    private int quantity;
+ 
+-	private String productId;
++    private String productId;
+ 
+-	public OrderItem() {}
++    public OrderItem() {}
+ 
+-	public String getProductId() {
+-		return productId;
+-	}
++    public String getProductId() {
++        return productId;
++    }
+ 
+-	public void setProductId(String productId) {
+-		this.productId = productId;
+-	}
++    public void setProductId(String productId) {
++        this.productId = productId;
++    }
+ 
+-	public int getQuantity() {
+-		return quantity;
+-	}
++    public int getQuantity() {
++        return quantity;
++    }
+ 
+-	public void setQuantity(int quantity) {
+-		this.quantity = quantity;
+-	}
++    public void setQuantity(int quantity) {
++        this.quantity = quantity;
++    }
+ 
+-	@Override
+-	public String toString() {
+-		return "OrderItem [productId=" + productId + ", quantity=" + quantity + "]";
+-	}
++    @Override
++    public String toString() {
++        return "OrderItem [productId=" + productId + ", quantity=" + quantity + "]";
++    }
  
 -}
 \ No newline at end of file
 +}
 diff --git a/src/main/java/com/redhat/coolstore/model/ShoppingCart.java b/src/main/java/com/redhat/coolstore/model/ShoppingCart.java
-index 276b994..95ee484 100644
+index 276b994..b52f602 100644
 --- a/src/main/java/com/redhat/coolstore/model/ShoppingCart.java
 +++ b/src/main/java/com/redhat/coolstore/model/ShoppingCart.java
-@@ -1,10 +1,12 @@
+@@ -1,115 +1,116 @@
 +
  package com.redhat.coolstore.model;
  
@@ -137,38 +456,248 @@ index 276b994..95ee484 100644
  import java.util.List;
  
 -import javax.enterprise.context.Dependent;
-+// Updated import statement from javax.enterprise to jakarta.enterprise
 +import jakarta.enterprise.context.Dependent;
  
- @Dependent
+-@Dependent
++@jakarta.enterprise.context.Dependent
  public class ShoppingCart implements Serializable {
+ 
+-	private static final long serialVersionUID = -1108043957592113528L;
+-
+-	private double cartItemTotal;
+-
+-	private double cartItemPromoSavings;
+-	
+-	private double shippingTotal;
+-	
+-	private double shippingPromoSavings;
+-	
+-	private double cartTotal;
+-			
+-	private List<ShoppingCartItem> shoppingCartItemList = new ArrayList<ShoppingCartItem>();
+-
+-	public ShoppingCart() {
+-		
+-	}
+-	
+-	public List<ShoppingCartItem> getShoppingCartItemList() {
+-		return shoppingCartItemList;
+-	}
+-
+-	public void setShoppingCartItemList(List<ShoppingCartItem> shoppingCartItemList) {
+-		this.shoppingCartItemList = shoppingCartItemList;
+-	}
+-
+-	public void resetShoppingCartItemList() {
+-		shoppingCartItemList = new ArrayList<ShoppingCartItem>();
+-	}
+-
+-	public void addShoppingCartItem(ShoppingCartItem sci) {
+-		
+-		if ( sci != null ) {
+-			
+-			shoppingCartItemList.add(sci);
+-			
+-		}
+-		
+-	}
+-	
+-	public boolean removeShoppingCartItem(ShoppingCartItem sci) {
+-		
+-		boolean removed = false;
+-		
+-		if ( sci != null ) {
+-			
+-			removed = shoppingCartItemList.remove(sci);
+-			
+-		}
+-		
+-		return removed;
+-		
+-	}
+-
+-	public double getCartItemTotal() {
+-		return cartItemTotal;
+-	}
+-
+-	public void setCartItemTotal(double cartItemTotal) {
+-		this.cartItemTotal = cartItemTotal;
+-	}
+-
+-	public double getShippingTotal() {
+-		return shippingTotal;
+-	}
+-
+-	public void setShippingTotal(double shippingTotal) {
+-		this.shippingTotal = shippingTotal;
+-	}
+-
+-	public double getCartTotal() {
+-		return cartTotal;
+-	}
+-
+-	public void setCartTotal(double cartTotal) {
+-		this.cartTotal = cartTotal;
+-	}
+-
+-	public double getCartItemPromoSavings() {
+-		return cartItemPromoSavings;
+-	}
+-
+-	public void setCartItemPromoSavings(double cartItemPromoSavings) {
+-		this.cartItemPromoSavings = cartItemPromoSavings;
+-	}
+-
+-	public double getShippingPromoSavings() {
+-		return shippingPromoSavings;
+-	}
+-
+-	public void setShippingPromoSavings(double shippingPromoSavings) {
+-		this.shippingPromoSavings = shippingPromoSavings;
+-	}
+-
+-	@Override
+-	public String toString() {
+-		return "ShoppingCart [cartItemTotal=" + cartItemTotal
+-				+ ", cartItemPromoSavings=" + cartItemPromoSavings
+-				+ ", shippingTotal=" + shippingTotal
+-				+ ", shippingPromoSavings=" + shippingPromoSavings
+-				+ ", cartTotal=" + cartTotal + ", shoppingCartItemList="
+-				+ shoppingCartItemList + "]";
+-	}
++    private static final long serialVersionUID = -1108043957592113528L;
++
++    private double cartItemTotal;
++
++    private double cartItemPromoSavings;
++    
++    private double shippingTotal;
++    
++    private double shippingPromoSavings;
++    
++    private double cartTotal;
++            
++    private List<ShoppingCartItem> shoppingCartItemList = new ArrayList<ShoppingCartItem>();
++
++    public ShoppingCart() {
++        
++    }
++    
++    public List<ShoppingCartItem> getShoppingCartItemList() {
++        return shoppingCartItemList;
++    }
++
++    public void setShoppingCartItemList(List<ShoppingCartItem> shoppingCartItemList) {
++        this.shoppingCartItemList = shoppingCartItemList;
++    }
++
++    public void resetShoppingCartItemList() {
++        shoppingCartItemList = new ArrayList<ShoppingCartItem>();
++    }
++
++    public void addShoppingCartItem(ShoppingCartItem sci) {
++        
++        if ( sci != null ) {
++            
++            shoppingCartItemList.add(sci);
++            
++        }
++        
++    }
++    
++    public boolean removeShoppingCartItem(ShoppingCartItem sci) {
++        
++        boolean removed = false;
++        
++        if ( sci != null ) {
++            
++            removed = shoppingCartItemList.remove(sci);
++            
++        }
++        
++        return removed;
++        
++    }
++
++    public double getCartItemTotal() {
++        return cartItemTotal;
++    }
++
++    public void setCartItemTotal(double cartItemTotal) {
++        this.cartItemTotal = cartItemTotal;
++    }
++
++    public double getShippingTotal() {
++        return shippingTotal;
++    }
++
++    public void setShippingTotal(double shippingTotal) {
++        this.shippingTotal = shippingTotal;
++    }
++
++    public double getCartTotal() {
++        return cartTotal;
++    }
++
++    public void setCartTotal(double cartTotal) {
++        this.cartTotal = cartTotal;
++    }
++
++    public double getCartItemPromoSavings() {
++        return cartItemPromoSavings;
++    }
++
++    public void setCartItemPromoSavings(double cartItemPromoSavings) {
++        this.cartItemPromoSavings = cartItemPromoSavings;
++    }
++
++    public double getShippingPromoSavings() {
++        return shippingPromoSavings;
++    }
++
++    public void setShippingPromoSavings(double shippingPromoSavings) {
++        this.shippingPromoSavings = shippingPromoSavings;
++    }
++
++    @Override
++    public String toString() {
++        return "ShoppingCart [cartItemTotal=" + cartItemTotal
++                + ", cartItemPromoSavings=" + cartItemPromoSavings
++                + ", shippingTotal=" + shippingTotal
++                + ", shippingPromoSavings=" + shippingPromoSavings
++                + ", cartTotal=" + cartTotal + ", shoppingCartItemList="
++                + shoppingCartItemList + "]";
++    }
+ }
 diff --git a/src/main/java/com/redhat/coolstore/persistence/Resources.java b/src/main/java/com/redhat/coolstore/persistence/Resources.java
-index 3fd5c3c..5e281ca 100644
+index 3fd5c3c..1d6df81 100644
 --- a/src/main/java/com/redhat/coolstore/persistence/Resources.java
 +++ b/src/main/java/com/redhat/coolstore/persistence/Resources.java
-@@ -1,17 +1,16 @@
+@@ -1,18 +1,12 @@
 +
  package com.redhat.coolstore.persistence;
  
- import javax.enterprise.context.Dependent;
+-import javax.enterprise.context.Dependent;
 -import javax.enterprise.inject.Produces;
-+import javax.inject.Inject;
++import javax.enterprise.inject.Inject;
  import javax.persistence.EntityManager;
 -import javax.persistence.PersistenceContext;
  
- @Dependent
+-@Dependent
  public class Resources {
  
 -    @PersistenceContext
 +    @Inject
++    @ExtendedContext
      private EntityManager em;
- 
+-
 -    @Produces
-     public EntityManager getEntityManager() {
-         return em;
-     }
+-    public EntityManager getEntityManager() {
+-        return em;
+-    }
+ }
 diff --git a/src/main/java/com/redhat/coolstore/rest/CartEndpoint.java b/src/main/java/com/redhat/coolstore/rest/CartEndpoint.java
-index f82283b..b97099c 100644
+index f82283b..54289a5 100644
 --- a/src/main/java/com/redhat/coolstore/rest/CartEndpoint.java
 +++ b/src/main/java/com/redhat/coolstore/rest/CartEndpoint.java
 @@ -1,3 +1,4 @@
@@ -176,10 +705,12 @@ index f82283b..b97099c 100644
  package com.redhat.coolstore.rest;
  
  import java.io.Serializable;
-@@ -8,13 +9,13 @@ import java.util.Map;
+@@ -6,15 +7,15 @@ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
  
- import javax.enterprise.context.SessionScoped;
- import javax.inject.Inject;
+-import javax.enterprise.context.SessionScoped;
+-import javax.inject.Inject;
 -import javax.ws.rs.DELETE;
 -import javax.ws.rs.GET;
 -import javax.ws.rs.POST;
@@ -187,6 +718,8 @@ index f82283b..b97099c 100644
 -import javax.ws.rs.PathParam;
 -import javax.ws.rs.Produces;
 -import javax.ws.rs.core.MediaType;
++import jakarta.enterprise.context.SessionScoped;
++import jakarta.inject.Inject;
 +import jakarta.ws.rs.DELETE;
 +import jakarta.ws.rs.GET;
 +import jakarta.ws.rs.POST;
@@ -197,25 +730,272 @@ index f82283b..b97099c 100644
  
  import com.redhat.coolstore.model.Product;
  import com.redhat.coolstore.model.ShoppingCart;
+@@ -25,124 +26,124 @@ import com.redhat.coolstore.service.ShoppingCartService;
+ @Path("/cart")
+ public class CartEndpoint implements Serializable {
+ 
+-	private static final long serialVersionUID = -7227732980791688773L;
+-
+-	@Inject
+-	private ShoppingCartService shoppingCartService;
+-
+-	@GET
+-	@Path("/{cartId}")
+-	@Produces(MediaType.APPLICATION_JSON)
+-	public ShoppingCart getCart(@PathParam("cartId") String cartId) {
+-		return shoppingCartService.getShoppingCart(cartId);
+-	}
+-
+-	@POST
+-	@Path("/checkout/{cartId}")
+-	@Produces(MediaType.APPLICATION_JSON)
+-	public ShoppingCart checkout(@PathParam("cartId") String cartId) {
+-		return shoppingCartService.checkOutShoppingCart(cartId);
+-	}
+-
+-	@POST
+-	@Path("/{cartId}/{itemId}/{quantity}")
+-	@Produces(MediaType.APPLICATION_JSON)
+-	public ShoppingCart add(@PathParam("cartId") String cartId,
+-							@PathParam("itemId") String itemId,
+-							@PathParam("quantity") int quantity) throws Exception {
+-		ShoppingCart cart = shoppingCartService.getShoppingCart(cartId);
+-
+-		Product product = shoppingCartService.getProduct(itemId);
+-
+-		ShoppingCartItem sci = new ShoppingCartItem();
+-		sci.setProduct(product);
+-		sci.setQuantity(quantity);
+-		sci.setPrice(product.getPrice());
+-		cart.addShoppingCartItem(sci);
+-
+-		try {
+-			shoppingCartService.priceShoppingCart(cart);
+-			cart.setShoppingCartItemList(dedupeCartItems(cart.getShoppingCartItemList()));
+-		} catch (Exception ex) {
+-			cart.removeShoppingCartItem(sci);
+-			throw ex;
+-		}
+-
+-		return cart;
+-	}
+-
+-	@POST
+-	@Path("/{cartId}/{tmpId}")
+-	@Produces(MediaType.APPLICATION_JSON)
+-	public ShoppingCart set(@PathParam("cartId") String cartId,
+-							@PathParam("tmpId") String tmpId) throws Exception {
+-
+-		ShoppingCart cart = shoppingCartService.getShoppingCart(cartId);
+-		ShoppingCart tmpCart = shoppingCartService.getShoppingCart(tmpId);
+-
+-		if (tmpCart != null) {
+-			cart.resetShoppingCartItemList();
+-			cart.setShoppingCartItemList(tmpCart.getShoppingCartItemList());
+-		}
+-
+-		try {
+-			shoppingCartService.priceShoppingCart(cart);
+-			cart.setShoppingCartItemList(dedupeCartItems(cart.getShoppingCartItemList()));
+-		} catch (Exception ex) {
+-			throw ex;
+-		}
+-
+-		return cart;
+-	}
+-
+-	@DELETE
+-	@Path("/{cartId}/{itemId}/{quantity}")
+-	@Produces(MediaType.APPLICATION_JSON)
+-	public ShoppingCart delete(@PathParam("cartId") String cartId,
+-							   @PathParam("itemId") String itemId,
+-							   @PathParam("quantity") int quantity) throws Exception {
+-
+-		List<ShoppingCartItem> toRemoveList = new ArrayList<>();
+-
+-		ShoppingCart cart = shoppingCartService.getShoppingCart(cartId);
+-
+-		cart.getShoppingCartItemList().stream()
+-				.filter(sci -> sci.getProduct().getItemId().equals(itemId))
+-				.forEach(sci -> {
+-					if (quantity >= sci.getQuantity()) {
+-						toRemoveList.add(sci);
+-					} else {
+-						sci.setQuantity(sci.getQuantity() - quantity);
+-					}
+-				});
+-
+-		toRemoveList.forEach(cart::removeShoppingCartItem);
+-
+-		shoppingCartService.priceShoppingCart(cart);
+-		return cart;
+-	}
+-
+-
+-
+-	private List<ShoppingCartItem> dedupeCartItems(List<ShoppingCartItem> cartItems) {
+-		List<ShoppingCartItem> result = new ArrayList<>();
+-		Map<String, Integer> quantityMap = new HashMap<>();
+-		for (ShoppingCartItem sci : cartItems) {
+-			if (quantityMap.containsKey(sci.getProduct().getItemId())) {
+-				quantityMap.put(sci.getProduct().getItemId(), quantityMap.get(sci.getProduct().getItemId()) + sci.getQuantity());
+-			} else {
+-				quantityMap.put(sci.getProduct().getItemId(), sci.getQuantity());
+-			}
+-		}
+-
+-		for (String itemId : quantityMap.keySet()) {
+-			Product p = shoppingCartService.getProduct(itemId);
+-			ShoppingCartItem newItem = new ShoppingCartItem();
+-			newItem.setQuantity(quantityMap.get(itemId));
+-			newItem.setPrice(p.getPrice());
+-			newItem.setProduct(p);
+-			result.add(newItem);
+-		}
+-		return result;
+-	}
++    private static final long serialVersionUID = -7227732980791688773L;
++
++    @Inject
++    private ShoppingCartService shoppingCartService;
++
++    @GET
++    @Path("/{cartId}")
++    @Produces(MediaType.APPLICATION_JSON)
++    public ShoppingCart getCart(@PathParam("cartId") String cartId) {
++        return shoppingCartService.getShoppingCart(cartId);
++    }
++
++    @POST
++    @Path("/checkout/{cartId}")
++    @Produces(MediaType.APPLICATION_JSON)
++    public ShoppingCart checkout(@PathParam("cartId") String cartId) {
++        return shoppingCartService.checkOutShoppingCart(cartId);
++    }
++
++    @POST
++    @Path("/{cartId}/{itemId}/{quantity}")
++    @Produces(MediaType.APPLICATION_JSON)
++    public ShoppingCart add(@PathParam("cartId") String cartId,
++                            @PathParam("itemId") String itemId,
++                            @PathParam("quantity") int quantity) throws Exception {
++        ShoppingCart cart = shoppingCartService.getShoppingCart(cartId);
++
++        Product product = shoppingCartService.getProduct(itemId);
++
++        ShoppingCartItem sci = new ShoppingCartItem();
++        sci.setProduct(product);
++        sci.setQuantity(quantity);
++        sci.setPrice(product.getPrice());
++        cart.addShoppingCartItem(sci);
++
++        try {
++            shoppingCartService.priceShoppingCart(cart);
++            cart.setShoppingCartItemList(dedupeCartItems(cart.getShoppingCartItemList()));
++        } catch (Exception ex) {
++            cart.removeShoppingCartItem(sci);
++            throw ex;
++        }
++
++        return cart;
++    }
++
++    @POST
++    @Path("/{cartId}/{tmpId}")
++    @Produces(MediaType.APPLICATION_JSON)
++    public ShoppingCart set(@PathParam("cartId") String cartId,
++                            @PathParam("tmpId") String tmpId) throws Exception {
++
++        ShoppingCart cart = shoppingCartService.getShoppingCart(cartId);
++        ShoppingCart tmpCart = shoppingCartService.getShoppingCart(tmpId);
++
++        if (tmpCart != null) {
++            cart.resetShoppingCartItemList();
++            cart.setShoppingCartItemList(tmpCart.getShoppingCartItemList());
++        }
++
++        try {
++            shoppingCartService.priceShoppingCart(cart);
++            cart.setShoppingCartItemList(dedupeCartItems(cart.getShoppingCartItemList()));
++        } catch (Exception ex) {
++            throw ex;
++        }
++
++        return cart;
++    }
++
++    @DELETE
++    @Path("/{cartId}/{itemId}/{quantity}")
++    @Produces(MediaType.APPLICATION_JSON)
++    public ShoppingCart delete(@PathParam("cartId") String cartId,
++                               @PathParam("itemId") String itemId,
++                               @PathParam("quantity") int quantity) throws Exception {
++
++        List<ShoppingCartItem> toRemoveList = new ArrayList<>();
++
++        ShoppingCart cart = shoppingCartService.getShoppingCart(cartId);
++
++        cart.getShoppingCartItemList().stream()
++                .filter(sci -> sci.getProduct().getItemId().equals(itemId))
++                .forEach(sci -> {
++                    if (quantity >= sci.getQuantity()) {
++                        toRemoveList.add(sci);
++                    } else {
++                        sci.setQuantity(sci.getQuantity() - quantity);
++                    }
++                });
++
++        toRemoveList.forEach(cart::removeShoppingCartItem);
++
++        shoppingCartService.priceShoppingCart(cart);
++        return cart;
++    }
++
++
++
++    private List<ShoppingCartItem> dedupeCartItems(List<ShoppingCartItem> cartItems) {
++        List<ShoppingCartItem> result = new ArrayList<>();
++        Map<String, Integer> quantityMap = new HashMap<>();
++        for (ShoppingCartItem sci : cartItems) {
++            if (quantityMap.containsKey(sci.getProduct().getItemId())) {
++                quantityMap.put(sci.getProduct().getItemId(), quantityMap.get(sci.getProduct().getItemId()) + sci.getQuantity());
++            } else {
++                quantityMap.put(sci.getProduct().getItemId(), sci.getQuantity());
++            }
++        }
++
++        for (String itemId : quantityMap.keySet()) {
++            Product p = shoppingCartService.getProduct(itemId);
++            ShoppingCartItem newItem = new ShoppingCartItem();
++            newItem.setQuantity(quantityMap.get(itemId));
++            newItem.setPrice(p.getPrice());
++            newItem.setProduct(p);
++            result.add(newItem);
++        }
++        return result;
++    }
+ }
 diff --git a/src/main/java/com/redhat/coolstore/rest/OrderEndpoint.java b/src/main/java/com/redhat/coolstore/rest/OrderEndpoint.java
-index 5c4f270..ee6056e 100644
+index 5c4f270..65fae27 100644
 --- a/src/main/java/com/redhat/coolstore/rest/OrderEndpoint.java
 +++ b/src/main/java/com/redhat/coolstore/rest/OrderEndpoint.java
-@@ -1,3 +1,4 @@
+@@ -1,16 +1,17 @@
 +
  package com.redhat.coolstore.rest;
  
  import java.io.Serializable;
-@@ -5,12 +6,12 @@ import java.util.List;
+ import java.util.List;
  
- import javax.enterprise.context.RequestScoped;
- import javax.inject.Inject;
+-import javax.enterprise.context.RequestScoped;
+-import javax.inject.Inject;
 -import javax.ws.rs.Consumes;
 -import javax.ws.rs.GET;
 -import javax.ws.rs.Path;
 -import javax.ws.rs.PathParam;
 -import javax.ws.rs.Produces;
 -import javax.ws.rs.core.MediaType;
++import jakarta.enterprise.context.RequestScoped;
++import jakarta.inject.Inject;
 +import jakarta.ws.rs.Consumes;
 +import jakarta.ws.rs.GET;
 +import jakarta.ws.rs.Path;
@@ -226,43 +1006,46 @@ index 5c4f270..ee6056e 100644
  import com.redhat.coolstore.model.Order;
  import com.redhat.coolstore.service.OrderService;
 diff --git a/src/main/java/com/redhat/coolstore/rest/ProductEndpoint.java b/src/main/java/com/redhat/coolstore/rest/ProductEndpoint.java
-index 112ea41..e222b6f 100644
+index 112ea41..93b5b53 100644
 --- a/src/main/java/com/redhat/coolstore/rest/ProductEndpoint.java
 +++ b/src/main/java/com/redhat/coolstore/rest/ProductEndpoint.java
-@@ -1,3 +1,4 @@
+@@ -1,12 +1,13 @@
 +
  package com.redhat.coolstore.rest;
  
  import java.io.Serializable;
-@@ -5,8 +6,8 @@ import java.util.List;
+ import java.util.List;
  
- import javax.enterprise.context.RequestScoped;
- import javax.inject.Inject;
+-import javax.enterprise.context.RequestScoped;
+-import javax.inject.Inject;
 -import javax.ws.rs.*;
 -import javax.ws.rs.core.MediaType;
++import jakarta.enterprise.context.RequestScoped;
++import jakarta.inject.Inject;
 +import jakarta.ws.rs.*;
 +import jakarta.ws.rs.core.MediaType;
  
  import com.redhat.coolstore.model.Product;
  import com.redhat.coolstore.service.ProductService;
 diff --git a/src/main/java/com/redhat/coolstore/rest/RestApplication.java b/src/main/java/com/redhat/coolstore/rest/RestApplication.java
-index 72ceec9..7d3e75d 100644
+index 72ceec9..d30bcfd 100644
 --- a/src/main/java/com/redhat/coolstore/rest/RestApplication.java
 +++ b/src/main/java/com/redhat/coolstore/rest/RestApplication.java
-@@ -1,10 +1,2 @@
+@@ -1,10 +1,6 @@
 -package com.redhat.coolstore.rest;
- 
+-
 -import javax.ws.rs.ApplicationPath;
 -import javax.ws.rs.core.Application;
--
--
+ 
++package com.redhat.coolstore.rest;
+ 
 -@ApplicationPath("/services")
 -public class RestApplication extends Application {
--
--}
-+// The RestApplication.java file can be removed as it is no longer necessary in Quarkus for JAX-RS activation.
++public class RestApplication {
+ 
+ }
 diff --git a/src/main/java/com/redhat/coolstore/service/CatalogService.java b/src/main/java/com/redhat/coolstore/service/CatalogService.java
-index 422a3f4..9abf43f 100644
+index 422a3f4..af3784f 100644
 --- a/src/main/java/com/redhat/coolstore/service/CatalogService.java
 +++ b/src/main/java/com/redhat/coolstore/service/CatalogService.java
 @@ -1,3 +1,4 @@
@@ -270,35 +1053,62 @@ index 422a3f4..9abf43f 100644
  package com.redhat.coolstore.service;
  
  import java.util.List;
+@@ -5,23 +6,20 @@ import java.util.logging.Logger;
+ 
+ import javax.inject.Inject;
+ 
++import javax.persistence.EntityManager;
+ import javax.persistence.criteria.CriteriaBuilder;
+ import javax.persistence.criteria.CriteriaQuery;
+ import javax.persistence.criteria.Root;
+ 
+-import javax.ejb.Stateless;
+-import javax.persistence.EntityManager;
+-
+ import com.redhat.coolstore.model.*;
+ 
+-@Stateless
+ public class CatalogService {
+ 
+     @Inject
+     Logger log;
+ 
+     @Inject
+-    private EntityManager em;
++    EntityManager em; // No need for @PersistenceContext
+ 
+     public CatalogService() {
+     }
 diff --git a/src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java b/src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java
-index 0cee762..587e628 100644
+index 0cee762..6872737 100644
 --- a/src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java
 +++ b/src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java
-@@ -1,79 +1,31 @@
+@@ -1,79 +1,33 @@
 +
  package com.redhat.coolstore.service;
  
  import com.redhat.coolstore.model.Order;
  import com.redhat.coolstore.utils.Transformers;
-+import com.redhat.coolstore.service.CatalogService;
++import io.smallrye.reactive.messaging.annotation.Channel;
++import io.smallrye.reactive.messaging.annotation.Inject;
++import io.smallrye.reactive.messaging.Message;
  
- import javax.inject.Inject;
+-import javax.inject.Inject;
 -import javax.jms.*;
 -import javax.naming.Context;
 -import javax.naming.InitialContext;
 -import javax.naming.NamingException;
 -import javax.rmi.PortableRemoteObject;
 -import java.util.Hashtable;
-+import org.eclipse.microprofile.reactive.messaging.Incoming;
- 
+-
 -public class InventoryNotificationMDB implements MessageListener {
 +public class InventoryNotificationMDB {
  
      private static final int LOW_THRESHOLD = 50;
  
      @Inject
-     private CatalogService catalogService;
- 
+-    private CatalogService catalogService;
+-
 -    private final static String JNDI_FACTORY = "weblogic.jndi.WLInitialContextFactory";
 -    private final static String JMS_FACTORY = "TCF";
 -    private final static String TOPIC = "topic/orders";
@@ -325,12 +1135,15 @@ index 0cee762..587e628 100644
 -                        }
 -                    });
 -                }
--
--
++    @Channel("topic/orders")
++    private Message<String> message;
+ 
++    @Inject
++    private CatalogService catalogService;
+ 
 -            } catch (JMSException jmse) {
 -                System.err.println("An exception occurred: " + jmse.getMessage());
-+    @Incoming("orders")
-+    public void processOrder(String orderStr) {
++    public void onMessage(String orderStr) {
 +        Order order = Transformers.jsonToOrder(orderStr);
 +        order.getItemList().forEach(orderItem -> {
 +            int old_quantity = catalogService.getCatalogItemById(orderItem.getProductId()).getInventory().getQuantity();
@@ -372,10 +1185,10 @@ index 0cee762..587e628 100644
 \ No newline at end of file
 +}
 diff --git a/src/main/java/com/redhat/coolstore/service/OrderService.java b/src/main/java/com/redhat/coolstore/service/OrderService.java
-index 748e413..44a0de2 100644
+index 748e413..128c14c 100644
 --- a/src/main/java/com/redhat/coolstore/service/OrderService.java
 +++ b/src/main/java/com/redhat/coolstore/service/OrderService.java
-@@ -1,15 +1,14 @@
+@@ -1,20 +1,22 @@
 +
  package com.redhat.coolstore.service;
  
@@ -391,8 +1204,17 @@ index 748e413..44a0de2 100644
 -@Stateless
  public class OrderService {
  
-   @Inject
-@@ -30,4 +29,4 @@ public class OrderService {
+-  @Inject
+   private EntityManager em;
+ 
++  public OrderService(EntityManager em) {
++    this.em = em;
++  }
++
+   public void save(Order order) {
+     em.persist(order);
+   }
+@@ -30,4 +32,4 @@ public class OrderService {
    public Order getOrderById(long id) {
      return em.find(Order.class, id);
    }
@@ -400,22 +1222,23 @@ index 748e413..44a0de2 100644
 \ No newline at end of file
 +}
 diff --git a/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java b/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java
-index 42ef2fb..f207c27 100644
+index 42ef2fb..b71686b 100644
 --- a/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java
 +++ b/src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java
-@@ -1,47 +1,34 @@
+@@ -1,47 +1,36 @@
 +
  package com.redhat.coolstore.service;
  
 -import javax.ejb.ActivationConfigProperty;
 -import javax.ejb.MessageDriven;
- import javax.inject.Inject;
+-import javax.inject.Inject;
 -import javax.jms.JMSException;
 -import javax.jms.Message;
 -import javax.jms.MessageListener;
 -import javax.jms.TextMessage;
-+
-+import org.eclipse.microprofile.reactive.messaging.Incoming;
++import jakarta.jms.JMSException;
++import jakarta.jms.TextMessage;
++import io.smallrye.reactive.messaging.Incoming;
  
  import com.redhat.coolstore.model.Order;
  import com.redhat.coolstore.utils.Transformers;
@@ -455,7 +1278,7 @@ index 42ef2fb..f207c27 100644
 -
 -}
 \ No newline at end of file
-+public class OrderServiceMDB {
++public class OrderServiceMDB { 
 +
 +    @Inject
 +    OrderService orderService;
@@ -463,10 +1286,11 @@ index 42ef2fb..f207c27 100644
 +    @Inject
 +    CatalogService catalogService;
 +
-+    @Incoming("orders")
-+    public void onMessage(String orderStr) {
++    @Incoming("topic/orders")
++    public void onMessage(TextMessage rcvMessage) {
 +        System.out.println("\nMessage recd !");
 +        try {
++            String orderStr = rcvMessage.getBody(String.class);
 +            System.out.println("Received order: " + orderStr);
 +            Order order = Transformers.jsonToOrder(orderStr);
 +            System.out.println("Order object is " + order);
@@ -474,23 +1298,24 @@ index 42ef2fb..f207c27 100644
 +            order.getItemList().forEach(orderItem -> {
 +                catalogService.updateInventoryItems(orderItem.getProductId(), orderItem.getQuantity());
 +            });
-+        } catch (Exception e) {
++        } catch (JMSException e) {
 +            throw new RuntimeException(e);
 +        }
 +    }
++
 +}
 diff --git a/src/main/java/com/redhat/coolstore/service/ProductService.java b/src/main/java/com/redhat/coolstore/service/ProductService.java
-index 33002fd..6ac2f90 100644
+index 33002fd..92e3335 100644
 --- a/src/main/java/com/redhat/coolstore/service/ProductService.java
 +++ b/src/main/java/com/redhat/coolstore/service/ProductService.java
-@@ -1,17 +1,18 @@
+@@ -1,17 +1,17 @@
 +
  package com.redhat.coolstore.service;
  
  import com.redhat.coolstore.model.CatalogItemEntity;
  import com.redhat.coolstore.model.Product;
  import com.redhat.coolstore.utils.Transformers;
- 
+-
 -import javax.ejb.Stateless;
 +import javax.enterprise.context.ApplicationScoped;
  import javax.inject.Inject;
@@ -504,327 +1329,11 @@ index 33002fd..6ac2f90 100644
  public class ProductService {
  
      @Inject
-diff --git a/src/main/java/com/redhat/coolstore/service/PromoService.java b/src/main/java/com/redhat/coolstore/service/PromoService.java
-index 9febd6f..45be098 100644
---- a/src/main/java/com/redhat/coolstore/service/PromoService.java
-+++ b/src/main/java/com/redhat/coolstore/service/PromoService.java
-@@ -1,3 +1,4 @@
-+
- package com.redhat.coolstore.service;
- 
- import java.io.Serializable;
-@@ -6,7 +7,7 @@ import java.util.HashSet;
- import java.util.Map;
- import java.util.Set;
- 
--import javax.enterprise.context.ApplicationScoped;
-+import jakarta.enterprise.context.ApplicationScoped;
- 
- import com.redhat.coolstore.model.Promotion;
- import com.redhat.coolstore.model.ShoppingCart;
-diff --git a/src/main/java/com/redhat/coolstore/service/ShippingService.java b/src/main/java/com/redhat/coolstore/service/ShippingService.java
-index c820fcd..1e10ab3 100644
---- a/src/main/java/com/redhat/coolstore/service/ShippingService.java
-+++ b/src/main/java/com/redhat/coolstore/service/ShippingService.java
-@@ -1,71 +1,53 @@
-+
- package com.redhat.coolstore.service;
- 
- import java.math.BigDecimal;
- import java.math.RoundingMode;
- 
--import javax.ejb.Remote;
--import javax.ejb.Stateless;
-+import jakarta.ws.rs.POST;
-+import jakarta.ws.rs.Path;
-+import jakarta.ws.rs.Produces;
-+import jakarta.ws.rs.Consumes;
-+import jakarta.ws.rs.core.MediaType;
- 
- import com.redhat.coolstore.model.ShoppingCart;
- 
--@Stateless
--@Remote
--public class ShippingService implements ShippingServiceRemote {
-+@Path("/shipping")
-+@Produces(MediaType.APPLICATION_JSON)
-+@Consumes(MediaType.APPLICATION_JSON)
-+public class ShippingService {
- 
--    @Override
-+    @POST
-+    @Path("/calculateShipping")
-     public double calculateShipping(ShoppingCart sc) {
--
-         if (sc != null) {
--
-             if (sc.getCartItemTotal() >= 0 && sc.getCartItemTotal() < 25) {
--
-                 return 2.99;
--
-             } else if (sc.getCartItemTotal() >= 25 && sc.getCartItemTotal() < 50) {
--
-                 return 4.99;
--
-             } else if (sc.getCartItemTotal() >= 50 && sc.getCartItemTotal() < 75) {
--
-                 return 6.99;
--
-             } else if (sc.getCartItemTotal() >= 75 && sc.getCartItemTotal() < 100) {
--
-                 return 8.99;
--
-             } else if (sc.getCartItemTotal() >= 100 && sc.getCartItemTotal() < 10000) {
--
-                 return 10.99;
--
-             }
--
-         }
--
-         return 0;
--
-     }
- 
--    @Override
-+    @POST
-+    @Path("/calculateShippingInsurance")
-     public double calculateShippingInsurance(ShoppingCart sc) {
--
-         if (sc != null) {
--
-             if (sc.getCartItemTotal() >= 25 && sc.getCartItemTotal() < 100) {
--
-                 return getPercentOfTotal(sc.getCartItemTotal(), 0.02);
--
-             } else if (sc.getCartItemTotal() >= 100 && sc.getCartItemTotal() < 500) {
--
-                 return getPercentOfTotal(sc.getCartItemTotal(), 0.015);
--
-             } else if (sc.getCartItemTotal() >= 500 && sc.getCartItemTotal() < 10000) {
--
-                 return getPercentOfTotal(sc.getCartItemTotal(), 0.01);
--
-             }
--
-         }
--
-         return 0;
-     }
- 
-@@ -74,5 +56,4 @@ public class ShippingService implements ShippingServiceRemote {
-                 .setScale(2, RoundingMode.HALF_UP)
-                 .doubleValue();
-     }
--
- }
-diff --git a/src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java b/src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java
-index e6ee388..a140599 100644
---- a/src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java
-+++ b/src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java
-@@ -1,35 +1,25 @@
-+
- package com.redhat.coolstore.service;
- 
- import java.util.logging.Logger;
--import javax.ejb.Stateless;
--import javax.annotation.Resource;
- import javax.inject.Inject;
--import javax.jms.JMSContext;
--import javax.jms.Topic;
-+import org.eclipse.microprofile.reactive.messaging.Channel;
-+import org.eclipse.microprofile.reactive.messaging.Emitter;
- 
- import com.redhat.coolstore.model.ShoppingCart;
- import com.redhat.coolstore.utils.Transformers;
- 
--@Stateless
--public class ShoppingCartOrderProcessor  {
-+public class ShoppingCartOrderProcessor {
- 
-     @Inject
-     Logger log;
- 
--
-     @Inject
--    private transient JMSContext context;
--
--    @Resource(lookup = "java:/topic/orders")
--    private Topic ordersTopic;
-+    @Channel("orders")
-+    Emitter<String> ordersEmitter;
- 
--    
--  
--    public void  process(ShoppingCart cart) {
-+    public void process(ShoppingCart cart) {
-         log.info("Sending order from processor: ");
--        context.createProducer().send(ordersTopic, Transformers.shoppingCartToJson(cart));
-+        ordersEmitter.send(Transformers.shoppingCartToJson(cart));
-     }
--
--
--
- }
-diff --git a/src/main/java/com/redhat/coolstore/service/ShoppingCartService.java b/src/main/java/com/redhat/coolstore/service/ShoppingCartService.java
-index 06df53e..899c03d 100644
---- a/src/main/java/com/redhat/coolstore/service/ShoppingCartService.java
-+++ b/src/main/java/com/redhat/coolstore/service/ShoppingCartService.java
-@@ -1,19 +1,20 @@
-+
- package com.redhat.coolstore.service;
- 
- import java.util.Hashtable;
- import java.util.logging.Logger;
- 
--import javax.ejb.Stateful;
- import javax.inject.Inject;
- import javax.naming.Context;
- import javax.naming.InitialContext;
- import javax.naming.NamingException;
-+import javax.enterprise.context.SessionScoped;
- 
- import com.redhat.coolstore.model.Product;
- import com.redhat.coolstore.model.ShoppingCart;
- import com.redhat.coolstore.model.ShoppingCartItem;
- 
--@Stateful
-+@SessionScoped
- public class ShoppingCartService  {
- 
-     @Inject
-@@ -25,14 +26,11 @@ public class ShoppingCartService  {
-     @Inject
-     PromoService ps;
- 
--
-     @Inject
-     ShoppingCartOrderProcessor shoppingCartOrderProcessor;
- 
-     private ShoppingCart cart  = new ShoppingCart(); //Each user can have multiple shopping carts (tabbed browsing)
- 
--   
--
-     public ShoppingCartService() {
-     }
- 
-diff --git a/src/main/java/com/redhat/coolstore/utils/DataBaseMigrationStartup.java b/src/main/java/com/redhat/coolstore/utils/DataBaseMigrationStartup.java
-index b263d75..49468f4 100644
---- a/src/main/java/com/redhat/coolstore/utils/DataBaseMigrationStartup.java
-+++ b/src/main/java/com/redhat/coolstore/utils/DataBaseMigrationStartup.java
-@@ -1,3 +1,4 @@
-+
- package com.redhat.coolstore.utils;
- 
- import org.flywaydb.core.Flyway;
-@@ -9,7 +10,7 @@ import javax.ejb.Singleton;
- import javax.ejb.Startup;
- import javax.ejb.TransactionManagement;
- import javax.ejb.TransactionManagementType;
--import javax.inject.Inject;
-+import jakarta.inject.Inject; // Updated import statement
- import javax.sql.DataSource;
- import java.util.logging.Level;
- import java.util.logging.Logger;
-@@ -31,7 +32,6 @@ public class DataBaseMigrationStartup {
-     @PostConstruct
-     private void startup() {
- 
--
-         try {
-             logger.info("Initializing/migrating the database using FlyWay");
-             Flyway flyway = new Flyway();
-@@ -47,7 +47,4 @@ public class DataBaseMigrationStartup {
- 
-         }
-     }
--
--
--
--}
-\ No newline at end of file
-+}
-diff --git a/src/main/java/com/redhat/coolstore/utils/Producers.java b/src/main/java/com/redhat/coolstore/utils/Producers.java
-index d29061c..895125b 100644
---- a/src/main/java/com/redhat/coolstore/utils/Producers.java
-+++ b/src/main/java/com/redhat/coolstore/utils/Producers.java
-@@ -1,16 +1,16 @@
-+
- package com.redhat.coolstore.utils;
- 
--import javax.enterprise.inject.Produces;
-+import javax.inject.Named;
- import javax.enterprise.inject.spi.InjectionPoint;
- import java.util.logging.Logger;
- 
--
- public class Producers {
- 
-     Logger log = Logger.getLogger(Producers.class.getName());
- 
--    @Produces
--    public Logger produceLog(InjectionPoint injectionPoint) {
-+    @Named
-+    public Logger getLogger(InjectionPoint injectionPoint) {
-         return Logger.getLogger(injectionPoint.getMember().getDeclaringClass().getName());
-     }
- 
-diff --git a/src/main/java/com/redhat/coolstore/utils/StartupListener.java b/src/main/java/com/redhat/coolstore/utils/StartupListener.java
-index 3b06ebb..70597d8 100644
---- a/src/main/java/com/redhat/coolstore/utils/StartupListener.java
-+++ b/src/main/java/com/redhat/coolstore/utils/StartupListener.java
-@@ -1,9 +1,10 @@
-+
- package com.redhat.coolstore.utils;
- 
- import weblogic.application.ApplicationLifecycleEvent;
- import weblogic.application.ApplicationLifecycleListener;
- 
--import javax.inject.Inject;
-+import jakarta.inject.Inject;  // Updated import statement
- import java.util.logging.Logger;
- 
- public class StartupListener extends ApplicationLifecycleListener {
-diff --git a/src/main/java/com/redhat/coolstore/utils/Transformers.java b/src/main/java/com/redhat/coolstore/utils/Transformers.java
-index cffb386..b584870 100644
---- a/src/main/java/com/redhat/coolstore/utils/Transformers.java
-+++ b/src/main/java/com/redhat/coolstore/utils/Transformers.java
-@@ -1,3 +1,4 @@
-+
- package com.redhat.coolstore.utils;
- 
- import com.redhat.coolstore.model.CatalogItemEntity;
-@@ -9,12 +10,12 @@ import java.io.StringReader;
- import java.io.StringWriter;
- import java.util.ArrayList;
- import java.util.List;
--import javax.json.Json;
--import javax.json.JsonArray;
--import javax.json.JsonArrayBuilder;
--import javax.json.JsonObject;
--import javax.json.JsonReader;
--import javax.json.JsonWriter;
-+import jakarta.json.Json;
-+import jakarta.json.JsonArray;
-+import jakarta.json.JsonArrayBuilder;
-+import jakarta.json.JsonObject;
-+import jakarta.json.JsonReader;
-+import jakarta.json.JsonWriter;
- 
- import java.util.concurrent.ThreadLocalRandom;
- import java.util.logging.Logger;
-@@ -95,6 +96,4 @@ public class Transformers {
-         order.setItemList(items); 
-         return order;
-     }
--
--
- }
 diff --git a/src/main/resources/META-INF/persistence.xml b/src/main/resources/META-INF/persistence.xml
-index 6abc296..89547f5 100644
+index 6abc296..d644ad1 100644
 --- a/src/main/resources/META-INF/persistence.xml
 +++ b/src/main/resources/META-INF/persistence.xml
-@@ -1,17 +1,13 @@
+@@ -1,17 +1,16 @@
 -<?xml version="1.0" encoding="UTF-8"?>
 -<persistence version="2.1"
 -             xmlns="http://xmlns.jcp.org/xml/ns/persistence" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -844,20 +1353,23 @@ index 6abc296..89547f5 100644
 -</persistence>
 \ No newline at end of file
 +
-+# application.properties for Quarkus
++**Remove the `persistence.xml` file**
 +
-+# Datasource configuration
-+quarkus.datasource.jdbc.url=jdbc:your_database_url_here
-+quarkus.datasource.db-kind=your_db_kind_here
-+# Assuming username and password are needed
-+quarkus.datasource.username=your_username_here
-+quarkus.datasource.password=your_password_here
++Instead, add the following configuration properties to the `application.properties` file:
++quarkus.datasource.jdbc.url=jdbc:coolstore;DB_CLOSE_ON_EXIT=FALSE;DB_CLOSE_DELAY=-1
++quarkus.datasource.db-kind=<database-kind>
++quarkus.datasource.username=<username>
++quarkus.datasource.password=<password>
 +
-+# Hibernate ORM configuration
-+quarkus.hibernate-orm.log.sql=false
-+# Additional Hibernate configurations can be added as needed
++quarkus.hibernate-orm.database.generation=none
++quarkus.hibernate-orm.sql-load-script=<script>
++quarkus.hibernate-orm.show-sql=false
++quarkus.hibernate-orm.format-sql=true
++quarkus.hibernate-orm.use-sql-comments=true
++quarkus.hibernate-orm.jdbc.use-get-generated-keys=false
++Note: Replace `<database-kind>`, `<username>`, `<password>`, and `<script>` with the actual values for your database.
 diff --git a/src/main/webapp/WEB-INF/beans.xml b/src/main/webapp/WEB-INF/beans.xml
-index 1eefdbf..8106058 100644
+index 1eefdbf..eb46456 100644
 --- a/src/main/webapp/WEB-INF/beans.xml
 +++ b/src/main/webapp/WEB-INF/beans.xml
 @@ -1,23 +1,2 @@
@@ -886,17 +1398,17 @@ index 1eefdbf..8106058 100644
 -</beans>
 \ No newline at end of file
 +
-+// The beans.xml file is not needed in Quarkus for basic CDI functionality and can be removed.
++<!-- This file can be removed, as CDI is enabled by default in Quarkus -->
 diff --git a/src/main/webapp/WEB-INF/web.xml b/src/main/webapp/WEB-INF/web.xml
-index d278861..d20ed83 100644
+index d278861..3f76208 100644
 --- a/src/main/webapp/WEB-INF/web.xml
 +++ b/src/main/webapp/WEB-INF/web.xml
-@@ -1,6 +1,6 @@
+@@ -1,6 +1,2 @@
 -<!--suppress ServletWithoutMappingInspection -->
-+
-+<!-- This file is part of the migration process to Quarkus. The <distributable /> tag has been removed as Quarkus does not support session replication in the same way as Java EE. Future steps should involve re-architecting session management to use an external service. -->
- <web-app xmlns="http://java.sun.com/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-          xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd"
-          version="3.0">
+-<web-app xmlns="http://java.sun.com/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+-         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd"
+-         version="3.0">
 -    <distributable />
- </web-app>
+-</web-app>
++
++// The web.xml file should be removed as Quarkus uses a different configuration mechanism.
