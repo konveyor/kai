@@ -65,11 +65,11 @@ def initialize_rpc_server() -> Generator[JsonRpcServer, None, None]:
 
     config = KaiRpcApplicationConfig(
         process_id=None,
-        demo_mode=True,
         root_path=SAMPLE_APP_DIR,
         kai_backend_url=SERVER_URL,
         log_dir_path=Path("./logs"),
         model_provider=kai_config.models,
+        demo_mode=True,
         analyzer_lsp_java_bundle_path=ANALYSIS_BUNDLE_PATH,
         analyzer_lsp_lsp_path=ANALYSIS_LSP_PATH,
         analyzer_lsp_rpc_path=ANALYSIS_RPC_PATH,
@@ -77,7 +77,7 @@ def initialize_rpc_server() -> Generator[JsonRpcServer, None, None]:
         analyzer_lsp_dep_labels_path=ANALYSIS_DEP_LABELS_FILE,
     )
 
-    rpc_subprocess = subprocess.Popen(  # trunk-ignore(bandit/B603,bandit/B607)
+    rpc_subprocess = subprocess.Popen(  # trunk-ignore(bandit/B603)
         [RPC_BINARY_PATH],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
@@ -193,7 +193,6 @@ def run_demo(report: Report, server: JsonRpcServer) -> None:
             count=count,
             num_impacted_files=num_impacted_files,
         )
-        break
 
 
 def main() -> None:

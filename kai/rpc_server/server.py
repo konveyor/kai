@@ -328,7 +328,7 @@ def get_codeplan_agent_solution(
     app.config = cast(KaiRpcApplicationConfig, app.config)
 
     try:
-        model_provider = ModelProvider(app.config.model_provider)
+        model_provider = ModelProvider(app.config.model_provider, app.config.demo_mode)
     except Exception as e:
         server.send_response(
             id=id,
