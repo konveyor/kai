@@ -1,20 +1,22 @@
 from __future__ import annotations
 
+import datetime
 import hashlib
 import json
 import os
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import Any, Optional
 
-import dateutil
-import dateutil.parser
 from genai import Client, Credentials
 from genai.extensions.langchain.chat_llm import LangChainChatInterface
 from genai.schema import DecodingMethod
 from langchain_aws import ChatBedrock
 from langchain_community.chat_models import ChatOllama
 from langchain_community.chat_models.fake import FakeListChatModel
+from langchain_core.language_models.base import LanguageModelInput
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.load import dumps
+from langchain_core.load import dumps, loads
+from langchain_core.messages import BaseMessage
+from langchain_core.runnables import RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from pydantic.v1.utils import deep_update
@@ -22,11 +24,6 @@ from pydantic.v1.utils import deep_update
 from kai.constants import PATH_LLM_CACHE
 from kai.kai_config import KaiConfigModels
 from kai.logging.logging import get_logger
-
-if TYPE_CHECKING:
-    from langchain_core.language_models.base import LanguageModelInput
-    from langchain_core.messages import BaseMessage
-    from langchain_core.runnables import RunnableConfig
 
 LOG = get_logger(__name__)
 
@@ -197,30 +194,33 @@ class ModelProvider:
         if self.demo_mode:
             cache_file = self.__get_cache_filename(input)
 
-            LOG.debug(f"Using cached file {cache_file}")
+            LOG.debug(f"Using cache file {cache_file}")
 
             if os.path.exists(cache_file):
                 try:
-                    LOG.debug("Using cached response from file")
+                    LOG.debug(f"Cache exists, loading from {cache_file}")
+                    content = ""
                     with open(cache_file, "r") as f:
-                        f.read()
-                    entry: dict[str, Union[BaseMessage, LanguageModelInput]] = (
-                        json.loads(cache_file, object_hook=datetime_parser)
-                    )
-                    response = entry.get("output")
-                    if isinstance(response, BaseMessage):
-                        return response
+                        content = f.read()
+                    entry: dict[str, Any] = loads(content)
+                    cached_res: BaseMessage | None = entry.get("output", None)
+                    if cached_res is not None:
+                        return cached_res
                 except Exception as e:
                     LOG.error(f"Failed retrieving response from cache - {e}")
 
             response = self.llm.invoke(input, config, stop=stop, **kwargs)
+            to_cache = response.model_copy()
+            to_cache.response_metadata.get("meta", {}).pop("created_at", None)
             try:
                 json_repr = dumps(
                     {
                         "input": input,
-                        "output": response,
+                        "output": to_cache,
                     },
+                    pretty=True,
                 )
+                LOG.debug("Storing response to cache")
                 with open(cache_file, "w+") as f:
                     f.write(json_repr)
             except Exception as e:
@@ -266,10 +266,8 @@ def get_env_bool(key: str, default: Optional[bool] = None) -> bool | None:
     return str_to_bool(val)
 
 
-def datetime_parser(json_dict: dict[str, Any]) -> dict[str, Any]:
-    for key, value in json_dict.items():
-        try:
-            json_dict[key] = dateutil.parser.parse(value)
-        except (ValueError, AttributeError):
-            pass
-    return json_dict
+class DatetimeEncoder(json.JSONEncoder):
+    def default(self, obj: Any) -> Any:
+        if isinstance(obj, datetime.datetime):
+            return obj.isoformat()
+        return super().default(obj)
