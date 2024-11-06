@@ -230,7 +230,7 @@ class KaiConfig(BaseSettings):
     gunicorn_timeout: int = 3600
     gunicorn_bind: str = "0.0.0.0:8080"
 
-    incident_store: KaiConfigIncidentStore | None
+    incident_store: Optional[KaiConfigIncidentStore] = None
     models: KaiConfigModels
 
     solution_consumers: list[SolutionConsumerKind] = Field(

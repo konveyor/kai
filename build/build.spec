@@ -10,9 +10,9 @@ from PyInstaller.building.build_main import Analysis
 from PyInstaller.building.api import PYZ, EXE, COLLECT
 from PyInstaller.utils.hooks import collect_data_files
 
-#data_dirs = [
-#    ('../data/templates', 'data/templates'),
-#]
+data_dirs = [
+    ('../kai/data/llm_cache', 'data/llm_cache'),
+]
 
 script_path = '../kai/rpc_server/main.py'
 
@@ -20,8 +20,8 @@ a = Analysis(
     [script_path],
     pathex=[os.path.dirname(script_path), '../'],
     binaries=[],
-#    datas=data_dirs,
-    hiddenimports=["_ssl"],
+    datas=data_dirs,
+    hiddenimports=["_ssl", "pydantic.deprecated.decorator"],
     hookspath=[],
     runtime_hooks=[],
     excludes=[],

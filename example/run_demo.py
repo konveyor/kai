@@ -29,17 +29,34 @@ KAI_LOG = logging.getLogger("run_demo")
 
 SERVER_URL = "http://0.0.0.0:8080"
 APP_NAME = "coolstore"
-SAMPLE_APP_DIR = Path("./coolstore")
-ANALYSIS_BUNDLE_PATH = "./analysis/bundle.jar"
-ANALYSIS_LSP_PATH = "./analysis/jdtls/bin/jdtls"
-ANALYSIS_RPC_PATH = "./analysis/analyzer_rpc"
-ANALYSIS_RULES_PATH = "./analysis/rulesets/"
-ANALYSIS_DEP_LABELS_FILE = "./analysis/maven.default.index"
+SAMPLE_APP_DIR = Path("coolstore")
+ANALYSIS_BUNDLE_PATH = Path(".", "analysis", "bundle.jar")
+ANALYSIS_LSP_PATH = Path(".", "analysis", "jdtls", "bin", "jdtls")
+ANALYSIS_RPC_PATH = Path(".", "analysis", "kai-analyzer-rpc")
+ANALYSIS_RULES_PATH = Path(".", "analysis", "rulesets")
+ANALYSIS_DEP_LABELS_FILE = Path(".", "analysis", "maven.default.index")
+RPC_BINARY_PATH = Path(".", "analysis", "kai-rpc-server")
 
 
 # TODOs
 # 1) Add ConfigFile to tweak the server URL and rulesets/violations
 # 2) Limit to specific rulesets/violations we are interested in
+
+
+def pre_flight_checks() -> None:
+    for path in [
+        SAMPLE_APP_DIR,
+        ANALYSIS_BUNDLE_PATH,
+        ANALYSIS_LSP_PATH,
+        ANALYSIS_RPC_PATH,
+        ANALYSIS_DEP_LABELS_FILE,
+        RPC_BINARY_PATH,
+    ]:
+        if not path.exists():
+            print(
+                f"Required demo component not found at path '{path}'. Make sure you have pre-requisites set up as described in https://github.com/konveyor/kai/blob/main/example/README.md"
+            )
+            sys.exit(1)
 
 
 @contextlib.contextmanager
@@ -48,38 +65,26 @@ def initialize_rpc_server() -> Generator[JsonRpcServer, None, None]:
 
     config = KaiRpcApplicationConfig(
         process_id=None,
-        demo_mode=True,
         root_path=SAMPLE_APP_DIR,
         kai_backend_url=SERVER_URL,
         log_dir_path=Path("./logs"),
         model_provider=kai_config.models,
-        analyzer_lsp_java_bundle_path=Path(ANALYSIS_BUNDLE_PATH),
-        analyzer_lsp_lsp_path=Path(ANALYSIS_LSP_PATH),
-        analyzer_lsp_rpc_path=Path(ANALYSIS_RPC_PATH),
-        analyzer_lsp_rules_path=Path(ANALYSIS_RULES_PATH),
-        analyzer_lsp_dep_labels_path=Path(ANALYSIS_DEP_LABELS_FILE),
+        demo_mode=True,
+        analyzer_lsp_java_bundle_path=ANALYSIS_BUNDLE_PATH,
+        analyzer_lsp_lsp_path=ANALYSIS_LSP_PATH,
+        analyzer_lsp_rpc_path=ANALYSIS_RPC_PATH,
+        analyzer_lsp_rules_path=ANALYSIS_RULES_PATH,
+        analyzer_lsp_dep_labels_path=ANALYSIS_DEP_LABELS_FILE,
     )
 
-    current_directory = Path(os.path.dirname(os.path.realpath(__file__)))
-    rpc_binary_path = current_directory / ".." / "kai" / "rpc_server" / "main.py"
-    rpc_subprocess = subprocess.Popen(  # trunk-ignore(bandit/B603,bandit/B607)
-        ["python", rpc_binary_path],
+    rpc_subprocess = subprocess.Popen(  # trunk-ignore(bandit/B603)
+        [RPC_BINARY_PATH],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         env=os.environ,
     )
 
     app = KaiRpcApplication()
-
-    # @app.add_notify(method="logMessage")
-    # def logMessage(
-    #     app: KaiRpcApplication,
-    #     server: JsonRpcServer,
-    #     id: JsonRpcId,
-    #     params: dict[Any, Any],
-    # ) -> None:
-    #     KAI_LOG.info(str(params))
-    #     pass
 
     rpc_server = JsonRpcServer(
         json_rpc_stream=BareJsonStream(
@@ -111,13 +116,13 @@ def initialize_rpc_server() -> Generator[JsonRpcServer, None, None]:
         rpc_server.stop()
 
 
-class CodePlanSolution(BaseModel):
+class CodePlanSolutionResponse(BaseModel):
     diff: str
     modified_files: list[str]
     encountered_errors: list[str]
 
 
-def apply_diff(filepath: Path, solution: CodePlanSolution) -> None:
+def apply_diff(filepath: Path, solution: CodePlanSolutionResponse) -> None:
     KAI_LOG.info(f"Writing updated source code to {filepath}")
     try:
         subprocess.run(  # trunk-ignore(bandit/B603,bandit/B607)
@@ -160,7 +165,7 @@ def process_file(
     elif not isinstance(response, JsonRpcResponse):
         return f"Failed to generate fix for file {params.file_path} - invalid response type {type(response)}"
     try:
-        solution = CodePlanSolution.model_validate(response.result)
+        solution = CodePlanSolutionResponse.model_validate(response.result)
     except Exception as e:
         return f"Failed to parse response {params.file_path} - {e}"
 
@@ -202,6 +207,7 @@ def main() -> None:
     coolstore_analysis_dir = "./analysis/coolstore/output.yaml"
     report = Report.load_report_from_file(coolstore_analysis_dir)
     try:
+        pre_flight_checks()
         with initialize_rpc_server() as server:
             run_demo(report, server)
         KAI_LOG.info(

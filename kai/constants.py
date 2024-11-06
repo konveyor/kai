@@ -20,6 +20,7 @@ PATH_SOLUTION_SERVER_ROOT = os.path.join(PATH_GIT_ROOT, "kai_solution_server")
 
 PATH_DATA = os.path.join(PATH_SOLUTION_SERVER_ROOT, "data")
 
+PATH_LLM_CACHE = os.path.join(PATH_KAI, "data", "llm_cache")
 PATH_BENCHMARKS = os.path.join(PATH_DATA, "benchmarks")
 PATH_MISC = os.path.join(PATH_DATA, "misc")
 PATH_SQL = os.path.join(PATH_DATA, "sql")
