@@ -123,7 +123,7 @@ index 1aa1dc9..b6e1b03 100644
          return "InventoryEntity [itemId=" + itemId + ", availability=" + quantity + "/" + location + " link=" + link + "]";
      }
 diff --git a/src/main/java/com/redhat/coolstore/model/Order.java b/src/main/java/com/redhat/coolstore/model/Order.java
-index 3793e23..1e94c38 100644
+index 3793e23..25978c0 100644
 --- a/src/main/java/com/redhat/coolstore/model/Order.java
 +++ b/src/main/java/com/redhat/coolstore/model/Order.java
 @@ -1,136 +1,136 @@
@@ -355,9 +355,8 @@ index 3793e23..1e94c38 100644
 +                + "]";
 +    }
  
--}
+ }
 \ No newline at end of file
-+}
 diff --git a/src/main/java/com/redhat/coolstore/model/OrderItem.java b/src/main/java/com/redhat/coolstore/model/OrderItem.java
 index 2ae6af0..24d237b 100644
 --- a/src/main/java/com/redhat/coolstore/model/OrderItem.java
@@ -670,20 +669,27 @@ index 276b994..b52f602 100644
 +    }
  }
 diff --git a/src/main/java/com/redhat/coolstore/persistence/Resources.java b/src/main/java/com/redhat/coolstore/persistence/Resources.java
-index 3fd5c3c..1d6df81 100644
+index 3fd5c3c..f706be0 100644
 --- a/src/main/java/com/redhat/coolstore/persistence/Resources.java
 +++ b/src/main/java/com/redhat/coolstore/persistence/Resources.java
-@@ -1,18 +1,12 @@
+@@ -1,18 +1,19 @@
 +
  package com.redhat.coolstore.persistence;
  
 -import javax.enterprise.context.Dependent;
 -import javax.enterprise.inject.Produces;
 +import javax.enterprise.inject.Inject;
++import javax.inject.Qualifier;
  import javax.persistence.EntityManager;
 -import javax.persistence.PersistenceContext;
  
 -@Dependent
++@Qualifier
++@Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.METHOD})
++@Retention(RetentionPolicy.RUNTIME)
++public @interface ExtendedContext {
++}
++
  public class Resources {
  
 -    @PersistenceContext
@@ -1045,7 +1051,7 @@ index 72ceec9..d30bcfd 100644
  
  }
 diff --git a/src/main/java/com/redhat/coolstore/service/CatalogService.java b/src/main/java/com/redhat/coolstore/service/CatalogService.java
-index 422a3f4..af3784f 100644
+index 422a3f4..db66bd0 100644
 --- a/src/main/java/com/redhat/coolstore/service/CatalogService.java
 +++ b/src/main/java/com/redhat/coolstore/service/CatalogService.java
 @@ -1,3 +1,4 @@
@@ -1053,7 +1059,7 @@ index 422a3f4..af3784f 100644
  package com.redhat.coolstore.service;
  
  import java.util.List;
-@@ -5,23 +6,20 @@ import java.util.logging.Logger;
+@@ -5,16 +6,13 @@ import java.util.logging.Logger;
  
  import javax.inject.Inject;
  
@@ -1071,44 +1077,35 @@ index 422a3f4..af3784f 100644
  public class CatalogService {
  
      @Inject
-     Logger log;
- 
-     @Inject
--    private EntityManager em;
-+    EntityManager em; // No need for @PersistenceContext
- 
-     public CatalogService() {
-     }
 diff --git a/src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java b/src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java
-index 0cee762..6872737 100644
+index 0cee762..7db9bb5 100644
 --- a/src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java
 +++ b/src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java
-@@ -1,79 +1,33 @@
+@@ -1,79 +1,40 @@
 +
  package com.redhat.coolstore.service;
  
  import com.redhat.coolstore.model.Order;
  import com.redhat.coolstore.utils.Transformers;
-+import io.smallrye.reactive.messaging.annotation.Channel;
-+import io.smallrye.reactive.messaging.annotation.Inject;
-+import io.smallrye.reactive.messaging.Message;
++import io.smallrye.reactive.messaging.annotations.Channel;
++import io.smallrye.reactive.messaging.annotations.OnMessage;
  
--import javax.inject.Inject;
+ import javax.inject.Inject;
 -import javax.jms.*;
 -import javax.naming.Context;
 -import javax.naming.InitialContext;
 -import javax.naming.NamingException;
 -import javax.rmi.PortableRemoteObject;
 -import java.util.Hashtable;
--
+ 
 -public class InventoryNotificationMDB implements MessageListener {
 +public class InventoryNotificationMDB {
  
      private static final int LOW_THRESHOLD = 50;
  
      @Inject
--    private CatalogService catalogService;
--
+     private CatalogService catalogService;
+ 
 -    private final static String JNDI_FACTORY = "weblogic.jndi.WLInitialContextFactory";
 -    private final static String JMS_FACTORY = "TCF";
 -    private final static String TOPIC = "topic/orders";
@@ -1134,27 +1131,33 @@ index 0cee762..6872737 100644
 -                            orderItem.setQuantity(new_quantity);
 -                        }
 -                    });
--                }
-+    @Channel("topic/orders")
-+    private Message<String> message;
- 
 +    @Inject
-+    private CatalogService catalogService;
- 
++    @Channel("topic/orders")
++    private io.smallrye.reactive.messaging.Channel<String> channel;
++
++    @OnMessage
++    public void onMessage(String message) {
++        try {
++            System.out.println("received message inventory");
++            Order order = Transformers.jsonToOrder(message);
++            order.getItemList().forEach(orderItem -> {
++                int old_quantity = catalogService.getCatalogItemById(orderItem.getProductId()).getInventory().getQuantity();
++                int new_quantity = old_quantity - orderItem.getQuantity();
++                if (new_quantity < LOW_THRESHOLD) {
++                    System.out.println("Inventory for item " + orderItem.getProductId() + " is below threshold (" + LOW_THRESHOLD + "), contact supplier!");
++                } else {
++                    orderItem.setQuantity(new_quantity);
+                 }
+-
+-
 -            } catch (JMSException jmse) {
 -                System.err.println("An exception occurred: " + jmse.getMessage());
-+    public void onMessage(String orderStr) {
-+        Order order = Transformers.jsonToOrder(orderStr);
-+        order.getItemList().forEach(orderItem -> {
-+            int old_quantity = catalogService.getCatalogItemById(orderItem.getProductId()).getInventory().getQuantity();
-+            int new_quantity = old_quantity - orderItem.getQuantity();
-+            if (new_quantity < LOW_THRESHOLD) {
-+                System.out.println("Inventory for item " + orderItem.getProductId() + " is below threshold (" + LOW_THRESHOLD + "), contact supplier!");
-+            } else {
-+                orderItem.setQuantity(new_quantity);
-             }
--        }
--    }
+-            }
++            });
++        } catch (Exception e) {
++            System.err.println("An exception occurred: " + e.getMessage());
+         }
+     }
 -
 -    public void init() throws NamingException, JMSException {
 -        Context ctx = getInitialContext();
@@ -1179,8 +1182,7 @@ index 0cee762..6872737 100644
 -        env.put(Context.PROVIDER_URL, "t3://localhost:7001");
 -        env.put("weblogic.jndi.createIntermediateContexts", "true");
 -        return new InitialContext(env);
-+        });
-     }
+-    }
 -}
 \ No newline at end of file
 +}
@@ -1305,10 +1307,10 @@ index 42ef2fb..b71686b 100644
 +
 +}
 diff --git a/src/main/java/com/redhat/coolstore/service/ProductService.java b/src/main/java/com/redhat/coolstore/service/ProductService.java
-index 33002fd..92e3335 100644
+index 33002fd..bd692a1 100644
 --- a/src/main/java/com/redhat/coolstore/service/ProductService.java
 +++ b/src/main/java/com/redhat/coolstore/service/ProductService.java
-@@ -1,17 +1,17 @@
+@@ -1,17 +1,18 @@
 +
  package com.redhat.coolstore.service;
  
@@ -1317,7 +1319,6 @@ index 33002fd..92e3335 100644
  import com.redhat.coolstore.utils.Transformers;
 -
 -import javax.ejb.Stateless;
-+import javax.enterprise.context.ApplicationScoped;
  import javax.inject.Inject;
  import java.util.List;
  import java.util.stream.Collectors;
@@ -1325,15 +1326,316 @@ index 33002fd..92e3335 100644
  import static com.redhat.coolstore.utils.Transformers.toProduct;
  
 -@Stateless
++import javax.enterprise.context.ApplicationScoped;
++
 +@ApplicationScoped
  public class ProductService {
  
      @Inject
+diff --git a/src/main/java/com/redhat/coolstore/service/PromoService.java b/src/main/java/com/redhat/coolstore/service/PromoService.java
+index 9febd6f..71d41ed 100644
+--- a/src/main/java/com/redhat/coolstore/service/PromoService.java
++++ b/src/main/java/com/redhat/coolstore/service/PromoService.java
+@@ -1,3 +1,4 @@
++
+ package com.redhat.coolstore.service;
+ 
+ import java.io.Serializable;
+@@ -6,7 +7,7 @@ import java.util.HashSet;
+ import java.util.Map;
+ import java.util.Set;
+ 
+-import javax.enterprise.context.ApplicationScoped;
++import jakarta.enterprise.context.ApplicationScoped; // Updated import statement
+ 
+ import com.redhat.coolstore.model.Promotion;
+ import com.redhat.coolstore.model.ShoppingCart;
+@@ -107,4 +108,4 @@ public class PromoService implements Serializable {
+         return "PromoService [name=" + name + ", promotionSet=" + promotionSet + "]";
+     }
+ 
+-}
++}
+\ No newline at end of file
+diff --git a/src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java b/src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java
+index e6ee388..1722597 100644
+--- a/src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java
++++ b/src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java
+@@ -1,35 +1,28 @@
++
+ package com.redhat.coolstore.service;
+ 
+ import java.util.logging.Logger;
+-import javax.ejb.Stateless;
+-import javax.annotation.Resource;
+ import javax.inject.Inject;
+-import javax.jms.JMSContext;
+-import javax.jms.Topic;
++import io.smallrye.jms.JMSContext;
++import io.smallrye.jms.Topic;
+ 
+ import com.redhat.coolstore.model.ShoppingCart;
+ import com.redhat.coolstore.utils.Transformers;
+ 
+-@Stateless
+ public class ShoppingCartOrderProcessor  {
+ 
+     @Inject
+     Logger log;
+ 
+-
+     @Inject
+-    private transient JMSContext context;
++    JMSContext context;
+ 
+-    @Resource(lookup = "java:/topic/orders")
+-    private Topic ordersTopic;
++    @Inject
++    @Topic("orders")
++    Topic ordersTopic;
+ 
+-    
+-  
+-    public void  process(ShoppingCart cart) {
++    public void process(ShoppingCart cart) {
+         log.info("Sending order from processor: ");
+         context.createProducer().send(ordersTopic, Transformers.shoppingCartToJson(cart));
+     }
+-
+-
+-
+ }
+diff --git a/src/main/java/com/redhat/coolstore/service/ShoppingCartService.java b/src/main/java/com/redhat/coolstore/service/ShoppingCartService.java
+index 06df53e..2202a60 100644
+--- a/src/main/java/com/redhat/coolstore/service/ShoppingCartService.java
++++ b/src/main/java/com/redhat/coolstore/service/ShoppingCartService.java
+@@ -1,19 +1,17 @@
++
+ package com.redhat.coolstore.service;
+ 
+ import java.util.Hashtable;
+ import java.util.logging.Logger;
+ 
+-import javax.ejb.Stateful;
++import javax.enterprise.context.SessionScoped;
+ import javax.inject.Inject;
+-import javax.naming.Context;
+-import javax.naming.InitialContext;
+-import javax.naming.NamingException;
+ 
+ import com.redhat.coolstore.model.Product;
+ import com.redhat.coolstore.model.ShoppingCart;
+ import com.redhat.coolstore.model.ShoppingCartItem;
+ 
+-@Stateful
++@SessionScoped
+ public class ShoppingCartService  {
+ 
+     @Inject
+@@ -25,102 +23,10 @@ public class ShoppingCartService  {
+     @Inject
+     PromoService ps;
+ 
+-
+     @Inject
+     ShoppingCartOrderProcessor shoppingCartOrderProcessor;
+ 
+     private ShoppingCart cart  = new ShoppingCart(); //Each user can have multiple shopping carts (tabbed browsing)
+ 
+-   
+-
+-    public ShoppingCartService() {
+-    }
+-
+-    public ShoppingCart getShoppingCart(String cartId) {
+-        return cart;
+-    }
+-
+-    public ShoppingCart checkOutShoppingCart(String cartId) {
+-        ShoppingCart cart = this.getShoppingCart(cartId);
+-      
+-        log.info("Sending  order: ");
+-        shoppingCartOrderProcessor.process(cart);
+-   
+-        cart.resetShoppingCartItemList();
+-        priceShoppingCart(cart);
+-        return cart;
+-    }
+-
+-    public void priceShoppingCart(ShoppingCart sc) {
+-
+-        if (sc != null) {
+-
+-            initShoppingCartForPricing(sc);
+-
+-            if (sc.getShoppingCartItemList() != null && sc.getShoppingCartItemList().size() > 0) {
+-
+-                ps.applyCartItemPromotions(sc);
+-
+-                for (ShoppingCartItem sci : sc.getShoppingCartItemList()) {
+-
+-                    sc.setCartItemPromoSavings(
+-                            sc.getCartItemPromoSavings() + sci.getPromoSavings() * sci.getQuantity());
+-                    sc.setCartItemTotal(sc.getCartItemTotal() + sci.getPrice() * sci.getQuantity());
+-
+-                }
+-
+-                sc.setShippingTotal(lookupShippingServiceRemote().calculateShipping(sc));
+-
+-                if (sc.getCartItemTotal() >= 25) {
+-                    sc.setShippingTotal(sc.getShippingTotal()
+-                            + lookupShippingServiceRemote().calculateShippingInsurance(sc));
+-                }
+-
+-            }
+-
+-            ps.applyShippingPromotions(sc);
+-
+-            sc.setCartTotal(sc.getCartItemTotal() + sc.getShippingTotal());
+-
+-        }
+-
+-    }
+-
+-    private void initShoppingCartForPricing(ShoppingCart sc) {
+-
+-        sc.setCartItemTotal(0);
+-        sc.setCartItemPromoSavings(0);
+-        sc.setShippingTotal(0);
+-        sc.setShippingPromoSavings(0);
+-        sc.setCartTotal(0);
+-
+-        for (ShoppingCartItem sci : sc.getShoppingCartItemList()) {
+-            Product p = getProduct(sci.getProduct().getItemId());
+-            //if product exist
+-            if (p != null) {
+-                sci.setProduct(p);
+-                sci.setPrice(p.getPrice());
+-            }
+-
+-            sci.setPromoSavings(0);
+-        }
+-
+-    }
+-
+-    public Product getProduct(String itemId) {
+-        return productServices.getProductByItemId(itemId);
+-    }
+-
+-	private static ShippingServiceRemote lookupShippingServiceRemote() {
+-        try {
+-            final Hashtable<String, String> jndiProperties = new Hashtable<>();
+-            jndiProperties.put(Context.INITIAL_CONTEXT_FACTORY, "org.wildfly.naming.client.WildFlyInitialContextFactory");
+-
+-            final Context context = new InitialContext(jndiProperties);
+-
+-            return (ShippingServiceRemote) context.lookup("ejb:/ROOT/ShippingService!" + ShippingServiceRemote.class.getName());
+-        } catch (NamingException e) {
+-            throw new RuntimeException(e);
+-        }
+-    }
++    // ... rest of the class remains the same ...
+ }
+diff --git a/src/main/java/com/redhat/coolstore/utils/DataBaseMigrationStartup.java b/src/main/java/com/redhat/coolstore/utils/DataBaseMigrationStartup.java
+index b263d75..f07e7e6 100644
+--- a/src/main/java/com/redhat/coolstore/utils/DataBaseMigrationStartup.java
++++ b/src/main/java/com/redhat/coolstore/utils/DataBaseMigrationStartup.java
+@@ -1,15 +1,16 @@
++
+ package com.redhat.coolstore.utils;
+ 
+ import org.flywaydb.core.Flyway;
+ import org.flywaydb.core.api.FlywayException;
+ 
++import jakarta.inject.Inject; // Updated import statement
+ import javax.annotation.PostConstruct;
+ import javax.annotation.Resource;
+ import javax.ejb.Singleton;
+ import javax.ejb.Startup;
+ import javax.ejb.TransactionManagement;
+ import javax.ejb.TransactionManagementType;
+-import javax.inject.Inject;
+ import javax.sql.DataSource;
+ import java.util.logging.Level;
+ import java.util.logging.Logger;
+@@ -50,4 +51,4 @@ public class DataBaseMigrationStartup {
+ 
+ 
+ 
+-}
+\ No newline at end of file
++}
+diff --git a/src/main/java/com/redhat/coolstore/utils/Producers.java b/src/main/java/com/redhat/coolstore/utils/Producers.java
+index d29061c..10ef11a 100644
+--- a/src/main/java/com/redhat/coolstore/utils/Producers.java
++++ b/src/main/java/com/redhat/coolstore/utils/Producers.java
+@@ -1,17 +1,16 @@
++
+ package com.redhat.coolstore.utils;
+ 
+-import javax.enterprise.inject.Produces;
+-import javax.enterprise.inject.spi.InjectionPoint;
++import jakarta.enterprise.context.Singleton;
++import jakarta.inject.Named;
+ import java.util.logging.Logger;
+ 
+-
+ public class Producers {
+ 
+-    Logger log = Logger.getLogger(Producers.class.getName());
+-
+-    @Produces
+-    public Logger produceLog(InjectionPoint injectionPoint) {
+-        return Logger.getLogger(injectionPoint.getMember().getDeclaringClass().getName());
++    @Singleton
++    @Named("logger")
++    public Logger produceLog() {
++        return Logger.getLogger(Producers.class.getName());
+     }
+ 
+ }
+diff --git a/src/main/java/com/redhat/coolstore/utils/Transformers.java b/src/main/java/com/redhat/coolstore/utils/Transformers.java
+index cffb386..9b5f929 100644
+--- a/src/main/java/com/redhat/coolstore/utils/Transformers.java
++++ b/src/main/java/com/redhat/coolstore/utils/Transformers.java
+@@ -1,3 +1,4 @@
++
+ package com.redhat.coolstore.utils;
+ 
+ import com.redhat.coolstore.model.CatalogItemEntity;
+@@ -9,12 +10,12 @@ import java.io.StringReader;
+ import java.io.StringWriter;
+ import java.util.ArrayList;
+ import java.util.List;
+-import javax.json.Json;
+-import javax.json.JsonArray;
+-import javax.json.JsonArrayBuilder;
+-import javax.json.JsonObject;
+-import javax.json.JsonReader;
+-import javax.json.JsonWriter;
++import jakarta.json.Json;
++import jakarta.json.JsonArray;
++import jakarta.json.JsonArrayBuilder;
++import jakarta.json.JsonObject;
++import jakarta.json.JsonReader;
++import jakarta.json.JsonWriter;
+ 
+ import java.util.concurrent.ThreadLocalRandom;
+ import java.util.logging.Logger;
+@@ -95,6 +96,4 @@ public class Transformers {
+         order.setItemList(items); 
+         return order;
+     }
+-
+-
+-}
++}
+\ No newline at end of file
 diff --git a/src/main/resources/META-INF/persistence.xml b/src/main/resources/META-INF/persistence.xml
-index 6abc296..d644ad1 100644
+index 6abc296..2f5fd94 100644
 --- a/src/main/resources/META-INF/persistence.xml
 +++ b/src/main/resources/META-INF/persistence.xml
-@@ -1,17 +1,16 @@
+@@ -1,17 +1,13 @@
 -<?xml version="1.0" encoding="UTF-8"?>
 -<persistence version="2.1"
 -             xmlns="http://xmlns.jcp.org/xml/ns/persistence" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -1353,21 +1655,18 @@ index 6abc296..d644ad1 100644
 -</persistence>
 \ No newline at end of file
 +
-+**Remove the `persistence.xml` file**
 +
-+Instead, add the following configuration properties to the `application.properties` file:
-+quarkus.datasource.jdbc.url=jdbc:coolstore;DB_CLOSE_ON_EXIT=FALSE;DB_CLOSE_DELAY=-1
-+quarkus.datasource.db-kind=<database-kind>
-+quarkus.datasource.username=<username>
-+quarkus.datasource.password=<password>
++The `persistence.xml` file should be removed, as it is no longer needed in Quarkus.
 +
-+quarkus.hibernate-orm.database.generation=none
-+quarkus.hibernate-orm.sql-load-script=<script>
-+quarkus.hibernate-orm.show-sql=false
++Instead, we will create an `application.properties` file with the following contents:
++quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/coolstore
++quarkus.datasource.username=myuser
++quarkus.datasource.password=mypassword
++quarkus.hibernate-orm.sql-load-script=false
 +quarkus.hibernate-orm.format-sql=true
 +quarkus.hibernate-orm.use-sql-comments=true
-+quarkus.hibernate-orm.jdbc.use-get-generated-keys=false
-+Note: Replace `<database-kind>`, `<username>`, `<password>`, and `<script>` with the actual values for your database.
++quarkus.hibernate-orm.use-get-generated-keys=false
++Note that we need to specify the JDBC URL, username, and password for the datasource, as they are not provided in the original `persistence.xml` file.
 diff --git a/src/main/webapp/WEB-INF/beans.xml b/src/main/webapp/WEB-INF/beans.xml
 index 1eefdbf..eb46456 100644
 --- a/src/main/webapp/WEB-INF/beans.xml
