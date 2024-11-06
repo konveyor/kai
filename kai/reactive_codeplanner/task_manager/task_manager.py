@@ -24,7 +24,7 @@ class TaskManager:
         rcm: RepoContextManager,
         seed_tasks: Optional[list[Task]] = None,
         validators: Optional[list[ValidationStep]] = None,
-        agents: Optional[list[TaskRunner]] = None,
+        task_runners: Optional[list[TaskRunner]] = None,
     ) -> None:
         self.validators: list[ValidationStep] = []
 
@@ -39,10 +39,10 @@ class TaskManager:
             self.validators.extend(validators)
             logger.debug("Validators initialized: %s", self.validators)
 
-        self.agents: list[TaskRunner] = []
-        if agents is not None:
-            self.agents.extend(agents)
-            logger.debug("Agents initialized: %s", self.agents)
+        self.task_runners: list[TaskRunner] = []
+        if task_runners is not None:
+            self.task_runners.extend(task_runners)
+            logger.debug("Agents initialized: %s", self.task_runners)
 
         self.config = config
 
@@ -69,7 +69,7 @@ class TaskManager:
         return result
 
     def get_agent_for_task(self, task: Task) -> TaskRunner:
-        for agent in self.agents:
+        for agent in self.task_runners:
             if agent.can_handle_task(task):
                 logger.debug("Agent %s can handle task %s", agent, task)
                 return agent
@@ -237,7 +237,7 @@ class TaskManager:
 
     def stop(self) -> None:
         logger.info("Stopping TaskManager.")
-        for a in self.agents:
+        for a in self.task_runners:
             if hasattr(a, "stop"):
                 a.stop()
                 logger.debug("Stopped agent: %s", a)

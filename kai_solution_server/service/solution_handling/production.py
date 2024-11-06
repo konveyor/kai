@@ -10,7 +10,7 @@ from kai.analyzer_types import remove_known_prefixes
 from kai.constants import PATH_TEMPLATES
 from kai.kai_config import SolutionProducerKind
 from kai.llm_interfacing.model_provider import ModelProvider
-from kai.reactive_codeplanner.task_runner.analyzer_lsp.task_runner import guess_language
+from kai.reactive_codeplanner.agent.analyzer_fix.agent import guess_language
 from kai_solution_server.service.incident_store.sql_types import SQLIncident
 from kai_solution_server.service.solution_handling.solution_types import Solution
 

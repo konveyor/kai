@@ -1,13 +1,3 @@
-# trunk-ignore-begin(ruff/E402)
-# This is needed because we are overriding the parser to get line numbers
-# The only way to do that, is tell it not to use the c-version of the parser
-# so that we can hook into the parser and add attributes to the element.
-import sys
-
-from kai.llm_interfacing.model_provider import ModelProvider
-
-sys.modules["_elementtree"] = None  # type: ignore[assignment]
-
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Optional, TypedDict, Union
@@ -15,6 +5,7 @@ from typing import Any, Callable, Optional, TypedDict, Union
 from langchain.prompts.chat import HumanMessagePromptTemplate
 from langchain_core.messages import SystemMessage
 
+from kai.llm_interfacing.model_provider import ModelProvider
 from kai.logging.logging import get_logger
 from kai.reactive_codeplanner.agent.api import Agent, AgentRequest, AgentResult
 from kai.reactive_codeplanner.agent.dependency_agent.api import (
@@ -29,8 +20,6 @@ from kai.reactive_codeplanner.agent.dependency_agent.util import (
     find_in_pom,
     search_fqdn,
 )
-
-# trunk-ignore-end(ruff/E402)
 
 logger = get_logger(__name__)
 
@@ -51,9 +40,9 @@ class _action:
 
 @dataclass
 class MavenDependencyResult(AgentResult):
-    final_answer: Optional[str]
-    fqdn_response: Optional[FQDNResponse]
-    find_in_pom: Optional[FindInPomResponse]
+    final_answer: Optional[str] = None
+    fqdn_response: Optional[FQDNResponse] = None
+    find_in_pom: Optional[FindInPomResponse] = None
 
 
 @dataclass
@@ -192,12 +181,12 @@ Message:{message}
 
     def execute(self, ask: AgentRequest) -> AgentResult:
         if not isinstance(ask, MavenDependencyRequest):
-            return AgentResult(encountered_errors=[], modified_files=[])
+            return AgentResult()
 
         request: MavenDependencyRequest = ask
 
         if not request.message:
-            return AgentResult(None, None)
+            return AgentResult()
 
         msg = [self.sys_msg, self.inst_msg_template.format(message=request.message)]
         fix_gen_attempts = 0
@@ -235,7 +224,7 @@ Message:{message}
             self._retries += 1
 
         if llm_response is None or fix_gen_response is None:
-            return AgentResult(encountered_errors=[], modified_files=[])
+            return AgentResult()
 
         if not maven_search:
             for a in llm_response.actions:
@@ -279,7 +268,6 @@ Message:{message}
         # and give that information to the caller.
         return MavenDependencyResult(
             encountered_errors=None,
-            modified_files=None,
             final_answer=llm_response.final_answer,
             fqdn_response=maven_search,
             find_in_pom=find_pom_lines,

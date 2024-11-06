@@ -4,9 +4,11 @@ from pathlib import Path
 
 from kai.kai_config import KaiConfig
 from kai.llm_interfacing.model_provider import ModelProvider
+from kai.reactive_codeplanner.agent.analyzer_fix.agent import AnalyzerAgent
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
 )
+from kai.reactive_codeplanner.agent.maven_compiler_fix.agent import MavenCompilerAgent
 from kai.reactive_codeplanner.task_manager.api import RpcClientConfig
 from kai.reactive_codeplanner.task_manager.task_manager import TaskManager
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.task_runner import (
@@ -105,12 +107,12 @@ def main() -> None:
         RepoContextManager(config.repo_directory),
         None,
         validators=[MavenCompileStep(config), AnalyzerLSPStep(config)],
-        agents=[
-            AnalyzerTaskRunner(model_provider),
-            MavenCompilerTaskRunner(model_provider),
+        task_runners=[
             DependencyTaskRunner(
                 MavenDependencyAgent(model_provider, config.repo_directory)
             ),
+            AnalyzerTaskRunner(AnalyzerAgent(model_provider)),
+            MavenCompilerTaskRunner(MavenCompilerAgent(model_provider=model_provider)),
         ],
     )
     logger.info("TaskManager initialized with validators and agents.")
