@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from jinja2 import Template
-from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
-
-from kai.llm_interfacing.model_provider import ModelProvider
 from kai.logging.logging import get_logger
-from kai.reactive_codeplanner.agent.reflection_agent import ReflectionTask
+from kai.reactive_codeplanner.agent.maven_compiler_fix.agent import MavenCompilerAgent
+from kai.reactive_codeplanner.agent.maven_compiler_fix.api import (
+    MavenCompilerAgentRequest,
+    MavenCompilerAgentResult,
+)
 from kai.reactive_codeplanner.task_manager.api import Task, TaskResult
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
 from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
@@ -31,15 +31,6 @@ class MavenCompilerLLMResponse(SpawningResult):
     input_file: str = ""
     input_errors: list[str] = field(default_factory=list)
 
-    def to_reflection_task(self) -> ReflectionTask:
-        return ReflectionTask(
-            file_path=self.file_path,
-            issues=set(self.input_errors),
-            reasoning=self.reasoning,
-            updated_file=self.java_file,
-            original_file=self.input_file,
-        )
-
 
 class MavenCompilerTaskRunner(TaskRunner):
     """This agent is responsible for taking a set of maven compiler issues and solving.
@@ -56,44 +47,8 @@ class MavenCompilerTaskRunner(TaskRunner):
         OtherError,
     )
 
-    system_message = SystemMessage(
-        content="""
-    I will give you compiler errors and the offending line of code, and you will need to use the file to determine how to fix them. You should only use compiler errors to determine what to fix.
-
-    Make sure that the references to any changed types are kept.
-
-    You must reason through the required changes and rewrite the Java file to make it compile. 
-
-    You will then provide an step-by-step explanation of the changes required tso that someone could recreate it in a similar situation.
-    """
-    )
-
-    chat_message_template = Template(
-        """
-    [INST]
-    ## Compile Errors
-    {{compile_errors}}
-
-    ## Input File
-    {{src_file_contents}}
-
-
-    # Output Instructions
-    Structure your output in Markdown format such as:
-
-    ## Updated Java File
-    Rewrite the java file here
-
-    ## Reasoning 
-    Write the step by step reasoning in this markdown section. If you are unsure of a step or reasoning, clearly state you are unsure and why. 
-
-    ## Additional Information (optional)
-    If you have additional details or steps that need to be performed, put it here. Say I have completed the changes when you are done explaining the reasoning[/INST]
-    """
-    )
-
-    def __init__(self, model_provider: ModelProvider) -> None:
-        self._model_provider = model_provider
+    def __init__(self, agent: MavenCompilerAgent) -> None:
+        self.agent = agent
 
     def refine_task(self, errors: list[str]) -> None:
         """We currently do not refine the tasks"""
@@ -117,69 +72,22 @@ class MavenCompilerTaskRunner(TaskRunner):
         with open(task.file) as f:
             src_file_contents = f.read()
 
-        line_of_code = src_file_contents.split("\n")[task.line]
-
-        compile_errors = f"Line of code: {line_of_code};\n{task.message}"
-
-        content = self.chat_message_template.render(
-            src_file_contents=src_file_contents, compile_errors=compile_errors
+        result = self.agent.execute(
+            MavenCompilerAgentRequest(
+                Path(task.file), src_file_contents, task.line, task.message
+            )
         )
 
-        ai_message = self._model_provider.invoke(
-            [self.system_message, HumanMessage(content=content)]
-        )
+        if not isinstance(result, MavenCompilerAgentResult):
+            return TaskResult(encountered_errors=[], modified_files=[])
 
-        resp = self.parse_llm_response(ai_message)
-        resp.file_path = task.file
-        resp.input_file = src_file_contents
-        resp.input_errors = [task.message]
+        if result.updated_file_contents is None:
+            return TaskResult(encountered_errors=[], modified_files=[])
 
         # rewrite the file, based on the java file returned
         with open(task.file, "w") as f:
-            f.write(resp.java_file)
+            f.write(result.updated_file_contents)
 
-        rcm.commit(f"MavenCompilerTaskRunner changed file {str(task.file)}", resp)
+        rcm.commit(f"MavenCompilerTaskRunner changed file {str(task.file)}", result)
 
         return TaskResult(modified_files=[Path(task.file)], encountered_errors=[])
-
-    def parse_llm_response(self, message: BaseMessage) -> MavenCompilerLLMResponse:
-        """Private method that will be used to parse the contents and get the results"""
-
-        if isinstance(message.content, list):
-            return MavenCompilerLLMResponse(
-                reasoning="", java_file="", additional_information=""
-            )
-
-        lines_of_output = message.content.splitlines()
-
-        in_java_file = False
-        in_reasoning = False
-        in_additional_details = False
-        java_file = ""
-        reasoning = ""
-        additional_details = ""
-        for line in lines_of_output:
-            if line.strip() == "## Updated Java File":
-                in_java_file = True
-                continue
-            if line.strip() == "## Reasoning":
-                in_java_file = False
-                in_reasoning = True
-                continue
-            if line.strip() == "## Additional Information (optional)":
-                in_reasoning = False
-                in_additional_details = True
-                continue
-            if in_java_file:
-                if "```java" in line or "```" in line:
-                    continue
-                java_file = "\n".join([java_file, line])
-            if in_reasoning:
-                reasoning = "\n".join([reasoning, line])
-            if in_additional_details:
-                additional_details = "\n".join([additional_details, line])
-        return MavenCompilerLLMResponse(
-            reasoning=reasoning,
-            java_file=java_file,
-            additional_information=additional_details,
-        )

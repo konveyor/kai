@@ -1,22 +1,14 @@
-# trunk-ignore-begin(ruff/E402)
-import sys
-
-sys.modules["_elementtree"] = None  # type: ignore[assignment]
-
 import os
-import xml.etree.ElementTree as ET  # trunk-ignore(bandit/B405)
 from pathlib import Path
 from typing import Any, Callable, Optional
 
 import requests
+from lxml import etree  # trunk-ignore(bandit/B410)
 
 from kai.reactive_codeplanner.agent.dependency_agent.api import (
     FindInPomResponse,
     FQDNResponse,
 )
-from kai.reactive_codeplanner.xml_helpers import LineNumberingParser
-
-# trunk-ignore-end(ruff/E402)
 
 
 def search_fqdn_query(query: str) -> Optional[FQDNResponse] | list[FQDNResponse]:
@@ -87,26 +79,22 @@ def find_in_pom(path: Path) -> Callable[[str], FindInPomResponse]:
     ## Open XML file
     ## parse XML, find the dependency node if we have group and artifact we will return start_line and end_line for the full node
     ## If we don't have group and artifact, but we have dependencies, then we will find the start of the dependecies node. start_line and end_line will be the same. The start of the dependencies.
-    tagToKwargs = {
+    tag_to_kwargs = {
         "{http://maven.apache.org/POM/4.0.0}artifactId": "artifactId",
         "{http://maven.apache.org/POM/4.0.0}groupId": "groupId",
+        "{http://maven.apache.org/POM/4.0.0}version": "version",
     }
 
     def f(code: str) -> FindInPomResponse:
-        tree = ET.parse(  # trunk-ignore(bandit/B314)
-            os.path.join(path, "pom.xml"), parser=LineNumberingParser()
-        )
+        tree = etree.parse(os.path.join(path, "pom.xml"))  # trunk-ignore(bandit/B320)
         root = tree.getroot()
-        dependencies = root.find("{http://maven.apache.org/POM/4.0.0}dependencies")
         deps = root.findall("*//{http://maven.apache.org/POM/4.0.0}dependency")
         index = code.index("keywords")
         # Remove 8 chars to get ride of keyword=
         code_string = code[index + 9 :].strip("(){}")
         ## We know when it is just an add operation, that the LLM gives us just the word dependencies
         if "dependencies" in code_string:
-            return FindInPomResponse(
-                dependencies._start_line_number, dependencies._start_line_number  # type: ignore[union-attr]
-            )
+            return FindInPomResponse(override=False)
 
         parts = code_string.split(",")
         kwargs = {}
@@ -118,17 +106,24 @@ def find_in_pom(path: Path) -> Callable[[str], FindInPomResponse]:
 
         for dep in deps:
             found = []
+            dep_dic: dict[str, str] = {}
             for child in dep:
-                key = tagToKwargs.get(child.tag)
+                key = tag_to_kwargs.get(child.tag)
                 if not key:
                     continue
-                value = kwargs[key]
-                if child.text == value:
+                if isinstance(child.text, str):
+                    dep_dic[key] = child.text
+
+            for name, value in kwargs.items():
+                if name in dep_dic and dep_dic[name] == value:
                     found.append(True)
             if len(found) == 2:
-                return FindInPomResponse(dep._start_line_number, dep._end_line_number)  # type: ignore[union-attr]
-        return FindInPomResponse(
-            dependencies._start_line_number, dependencies._start_line_number  # type: ignore[union-attr]
-        )
+                return FindInPomResponse(
+                    override=True,
+                    artifact_id=dep_dic.get("artifactId"),
+                    group_id=dep_dic.get("groupId"),
+                    version=dep_dic.get("version"),
+                )
+        return FindInPomResponse(override=False)
 
     return f

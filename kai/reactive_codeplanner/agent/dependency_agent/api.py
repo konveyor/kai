@@ -1,16 +1,13 @@
-# trunk-ignore-begin(ruff/E402)
-import sys
-
-sys.modules["_elementtree"] = None  # type: ignore[assignment]
 import json
-
-# trunk-ignore(bandit/B405)
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 
 from langchain_core.messages import HumanMessage
+from lxml import etree as ET  # trunk-ignore(bandit/B410)
 
-# trunk-ignore-end(ruff/E402)
+MAVEN_DEPENDENCY_XML_KEY = "{http://maven.apache.org/POM/4.0.0}dependency"
+MAVEN_ARTIFACT_ID_XML_KEY = "{http://maven.apache.org/POM/4.0.0}artifactId"
+MAVEN_GROUP_ID_XML_KEY = "{http://maven.apache.org/POM/4.0.0}groupId"
+MAVEN_VERSION_XML_KEY = "{http://maven.apache.org/POM/4.0.0}version"
 
 
 @dataclass
@@ -22,13 +19,13 @@ class FQDNResponse:
     def to_llm_message(self) -> HumanMessage:
         return HumanMessage(f"the result is {json.dumps(self.__dict__)}")
 
-    def to_xml_element(self) -> ET.Element:
-        parent = ET.Element("{http://maven.apache.org/POM/4.0.0}dependency")
-        artifact = ET.Element("{http://maven.apache.org/POM/4.0.0}artifactId")
+    def to_xml_element(self) -> ET._Element:
+        parent = ET.Element(MAVEN_DEPENDENCY_XML_KEY)
+        artifact = ET.Element(MAVEN_ARTIFACT_ID_XML_KEY)
         artifact.text = self.artifact_id
-        group = ET.Element("{http://maven.apache.org/POM/4.0.0}groupId")
+        group = ET.Element(MAVEN_GROUP_ID_XML_KEY)
         group.text = self.group_id
-        version = ET.Element("{http://maven.apache.org/POM/4.0.0}version")
+        version = ET.Element(MAVEN_VERSION_XML_KEY)
         version.text = self.version
         parent.append(artifact)
         parent.append(group)
@@ -38,10 +35,23 @@ class FQDNResponse:
 
 @dataclass
 class FindInPomResponse:
-    start_line: int
-    end_line: int
+    override: bool
+    group_id: str | None = None
+    artifact_id: str | None = None
+    version: str | None = None
 
     def to_llm_message(self) -> HumanMessage:
         return HumanMessage(
-            f"the start_line is {self.start_line} and end_line is {self.end_line}"
+            ## TODO: I don't think that this will work.
+            "the start_line is 1 and end_line is 2"
         )
+
+    def match_dep(self, dep: ET._Element) -> bool:
+        found = []
+        for child in dep:
+            if child.text in [self.group_id, self.artifact_id, self.version]:
+                found.append(True)
+
+        if len(found) == 3:
+            return True
+        return False
