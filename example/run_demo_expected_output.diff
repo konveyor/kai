@@ -1357,6 +1357,103 @@ index 9febd6f..71d41ed 100644
 -}
 +}
 \ No newline at end of file
+diff --git a/src/main/java/com/redhat/coolstore/service/ShippingService.java b/src/main/java/com/redhat/coolstore/service/ShippingService.java
+index c820fcd..1c25ef7 100644
+--- a/src/main/java/com/redhat/coolstore/service/ShippingService.java
++++ b/src/main/java/com/redhat/coolstore/service/ShippingService.java
+@@ -1,71 +1,52 @@
++
+ package com.redhat.coolstore.service;
+ 
+ import java.math.BigDecimal;
+ import java.math.RoundingMode;
+ 
+-import javax.ejb.Remote;
+-import javax.ejb.Stateless;
++import jakarta.ws.rs.Consumes;
++import jakarta.ws.rs.POST;
++import jakarta.ws.rs.Path;
++import jakarta.ws.rs.RequestBody;
+ 
+ import com.redhat.coolstore.model.ShoppingCart;
+ 
+-@Stateless
+-@Remote
+-public class ShippingService implements ShippingServiceRemote {
+-
+-    @Override
+-    public double calculateShipping(ShoppingCart sc) {
++@Path("/shipping")
++public class ShippingService {
+ 
++    @POST
++    @Path("/calculate")
++    @Consumes("application/json")
++    public double calculateShipping(@RequestBody ShoppingCart sc) {
+         if (sc != null) {
+-
+             if (sc.getCartItemTotal() >= 0 && sc.getCartItemTotal() < 25) {
+-
+                 return 2.99;
+-
+             } else if (sc.getCartItemTotal() >= 25 && sc.getCartItemTotal() < 50) {
+-
+                 return 4.99;
+-
+             } else if (sc.getCartItemTotal() >= 50 && sc.getCartItemTotal() < 75) {
+-
+                 return 6.99;
+-
+             } else if (sc.getCartItemTotal() >= 75 && sc.getCartItemTotal() < 100) {
+-
+                 return 8.99;
+-
+             } else if (sc.getCartItemTotal() >= 100 && sc.getCartItemTotal() < 10000) {
+-
+                 return 10.99;
+-
+             }
+-
+         }
+-
+         return 0;
+-
+     }
+ 
+-    @Override
+-    public double calculateShippingInsurance(ShoppingCart sc) {
+-
++    @POST
++    @Path("/insurance")
++    @Consumes("application/json")
++    public double calculateShippingInsurance(@RequestBody ShoppingCart sc) {
+         if (sc != null) {
+-
+             if (sc.getCartItemTotal() >= 25 && sc.getCartItemTotal() < 100) {
+-
+                 return getPercentOfTotal(sc.getCartItemTotal(), 0.02);
+-
+             } else if (sc.getCartItemTotal() >= 100 && sc.getCartItemTotal() < 500) {
+-
+                 return getPercentOfTotal(sc.getCartItemTotal(), 0.015);
+-
+             } else if (sc.getCartItemTotal() >= 500 && sc.getCartItemTotal() < 10000) {
+-
+                 return getPercentOfTotal(sc.getCartItemTotal(), 0.01);
+-
+             }
+-
+         }
+-
+         return 0;
+     }
+ 
+@@ -74,5 +55,4 @@ public class ShippingService implements ShippingServiceRemote {
+                 .setScale(2, RoundingMode.HALF_UP)
+                 .doubleValue();
+     }
+-
+ }
 diff --git a/src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java b/src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java
 index e6ee388..1722597 100644
 --- a/src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java
@@ -1594,6 +1691,22 @@ index d29061c..10ef11a 100644
      }
  
  }
+diff --git a/src/main/java/com/redhat/coolstore/utils/StartupListener.java b/src/main/java/com/redhat/coolstore/utils/StartupListener.java
+index 3b06ebb..3eecc5d 100644
+--- a/src/main/java/com/redhat/coolstore/utils/StartupListener.java
++++ b/src/main/java/com/redhat/coolstore/utils/StartupListener.java
+@@ -1,9 +1,10 @@
++
+ package com.redhat.coolstore.utils;
+ 
+ import weblogic.application.ApplicationLifecycleEvent;
+ import weblogic.application.ApplicationLifecycleListener;
+ 
+-import javax.inject.Inject;
++import jakarta.inject.Inject;
+ import java.util.logging.Logger;
+ 
+ public class StartupListener extends ApplicationLifecycleListener {
 diff --git a/src/main/java/com/redhat/coolstore/utils/Transformers.java b/src/main/java/com/redhat/coolstore/utils/Transformers.java
 index cffb386..9b5f929 100644
 --- a/src/main/java/com/redhat/coolstore/utils/Transformers.java
