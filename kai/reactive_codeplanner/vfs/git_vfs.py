@@ -10,7 +10,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Optional
 
-from kai.logging.logging import get_logger
+from kai.logging.logging import TRACE, get_logger
 from kai.reactive_codeplanner.agent.api import AgentResult
 from kai.reactive_codeplanner.agent.reflection_agent import (
     ReflectionAgent,
@@ -115,13 +115,13 @@ class RepoContextSnapshot:
             **popen_kwargs,
         }
 
-        log.debug("\033[94mexecuting: \033[0m" + " ".join(GIT + args))
+        log.debug(TRACE, "\033[94mexecuting: \033[0m" + " ".join(GIT + args))
         proc = subprocess.Popen(GIT + args, **popen_kwargs)  # trunk-ignore(bandit/B603)
         stdout, stderr = proc.communicate()
 
-        log.debug(f"\033[94mreturncode:\033[0m {proc.returncode}")
-        log.debug(f"\033[94mstdout:\033[0m\n{stdout}")
-        log.debug(f"\033[94mstderr:\033[0m\n{stderr}")
+        log.log(TRACE, f"\033[94mreturncode:\033[0m {proc.returncode}")
+        log.debug(TRACE, f"\033[94mstdout:\033[0m\n{stdout}")
+        log.debug(TRACE, f"\033[94mstderr:\033[0m\n{stderr}")
 
         return proc.returncode, stdout, stderr
 

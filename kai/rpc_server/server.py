@@ -366,10 +366,13 @@ def get_codeplan_agent_solution(
         ),
     )
 
-    server.send_notification(
-        "gitVFSUpdate",
-        GitVFSUpdateParams.from_snapshot(rcm.first_snapshot).model_dump(),
-    )
+    app.log.debug("initalized the repo context manager")
+
+    # Right now this is not usable by anything.
+    # server.send_notification(
+    #     "gitVFSUpdate",
+    #     GitVFSUpdateParams.from_snapshot(rcm.first_snapshot).model_dump(),
+    # )
 
     task_manager_config = RpcClientConfig(
         repo_directory=app.config.root_path,
@@ -384,6 +387,7 @@ def get_codeplan_agent_solution(
     )
 
     if app.analysis_validator is None:
+        app.log.debug("creating analyzer LSP Step")
         app.analysis_validator = AnalyzerLSPStep(task_manager_config)
 
     # TODO: this probaby needs to be set up on init and not in a specific call.
