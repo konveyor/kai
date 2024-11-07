@@ -225,6 +225,7 @@ class GetCodeplanAgentSolutionParams(BaseModel):
 
     max_iterations: Optional[int] = None
     max_depth: Optional[int] = None
+    max_priority: Optional[int] = None
 
 
 class GitVFSUpdateParams(BaseModel):
@@ -404,11 +405,13 @@ def get_codeplan_agent_solution(
         ],
     )
 
-    num_loops = 0
+    app.log.info(
+        f"starting code plan loop with iterations: {params.max_iterations}, max depth: {params.max_depth}, and max priority: {params.max_priority}"
+    )
     result: TaskResult
-    for task in task_manager.get_next_task(0, params.max_iterations, params.max_depth):
-        if num_loops == 2:
-            break
+    for task in task_manager.get_next_task(
+        params.max_priority, params.max_iterations, params.max_depth
+    ):
 
         app.log.debug(f"Executing task {task.__class__.__name__}: {task}")
 
@@ -420,13 +423,6 @@ def get_codeplan_agent_solution(
 
         app.log.debug(f"Executed task {task.__class__.__name__}")
         rcm.commit(f"Executed task {task.__class__.__name__}")
-
-        server.send_notification(
-            "gitVFSUpdate",
-            GitVFSUpdateParams.from_snapshot(rcm.first_snapshot).model_dump(),
-        )
-
-        num_loops += 1
 
     # FIXME: This is a hack to stop the task_manager as it's hanging trying to stop everything
     threading.Thread(target=task_manager.stop).start()
