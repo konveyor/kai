@@ -9,6 +9,7 @@ from kai.reactive_codeplanner.task_manager.api import (
     ValidationResult,
     ValidationStep,
 )
+from kai.reactive_codeplanner.task_manager.priority_queue import PriorityTaskQueue
 from kai.reactive_codeplanner.task_manager.task_manager import TaskManager
 
 
@@ -86,7 +87,7 @@ class TestTaskManager(unittest.TestCase):
             error_sequences=[
                 [parent],  # First run
                 [child1, child2],  # Second run
-                [child1],  # Third run, no new errors
+                [child2],  # Third run, no new errors
             ],
         )
         task_manager = TaskManager(
@@ -102,7 +103,7 @@ class TestTaskManager(unittest.TestCase):
             executed_tasks.append(task)
 
         self.assertEqual(len(executed_tasks), 3)
-        parent, child2, child1 = executed_tasks
+        parent, child1, child2 = executed_tasks
 
         self.assertEqual(parent.message, "ParentError")
         self.assertEqual(child2.message, "ChildError2")
@@ -229,7 +230,7 @@ class TestTaskManager(unittest.TestCase):
             error_sequences=[
                 [parent, toplevel],  # First run
                 [child1, child2, toplevel],  # Second run
-                [child1, toplevel],  # Third run, no new errors
+                [child2, toplevel],  # Third run, no new errors
                 [grandchild, toplevel],  # Fourth run
                 [toplevel],  # Fifth run, no new errors
                 [],  # Sixth run, no errors
@@ -248,27 +249,27 @@ class TestTaskManager(unittest.TestCase):
             executed_tasks.append(task)
 
         self.assertEqual(len(executed_tasks), 5)
-        parent, child2, child1, grandchild, toplevel = executed_tasks
+        parent, child1, child2, grandchild, toplevel = executed_tasks
 
         self.assertEqual(parent.message, "ParentError")
         self.assertEqual(parent.depth, 0)
         self.assertEqual(len(parent.children), 2)
 
-        self.assertEqual(child2.message, "ChildError2")
-        self.assertEqual(child2.depth, 1)
-        self.assertEqual(len(child2.children), 0)
-        self.assertEqual(parent, child2.parent)
-
         self.assertEqual(child1.message, "ChildError1")
         self.assertEqual(child1.depth, 1)
-        self.assertEqual(len(child1.children), 1)
-        self.assertEqual(child1.children[0], grandchild)
+        self.assertEqual(len(child1.children), 0)
         self.assertEqual(parent, child1.parent)
+
+        self.assertEqual(child2.message, "ChildError2")
+        self.assertEqual(child2.depth, 1)
+        self.assertEqual(child2.children[0], grandchild)
+        self.assertEqual(len(child2.children), 1)
+        self.assertEqual(parent, child2.parent)
 
         self.assertEqual(grandchild.message, "GrandchildError")
         self.assertEqual(grandchild.depth, 2)
         self.assertEqual(len(grandchild.children), 0)
-        self.assertEqual(child1, grandchild.parent)
+        self.assertEqual(child2, grandchild.parent)
 
         self.assertEqual(toplevel.message, "TopLevelError")
         self.assertEqual(toplevel.depth, 0)
@@ -358,9 +359,7 @@ class TestTaskManager(unittest.TestCase):
                 [errorlevel0],  # First run
                 [errorlevel1],  # Second run
                 [errorlevel2],  # Third run
-                [
-                    errorlevel2
-                ],  # fourth run (re-initialization since we start the task queue again)
+                [errorlevel2],  # fourth run (same since we start the task queue again)
                 [errorlevel3],  # Fifth run
                 [],  # Fifth run, no errors
             ],
@@ -402,6 +401,81 @@ class TestTaskManager(unittest.TestCase):
 
         self.assertIn((2, "ErrorLevel2"), executed_tasks)
         self.assertIn((3, "ErrorLevel3"), executed_tasks)
+
+    def test_priority_queue_order(self):
+        pq = PriorityTaskQueue()
+
+        task1 = ValidationError(
+            file="test.py", line=1, column=1, message="Task1", priority=0, children=[]
+        )
+        pq.push(task1)
+
+        task1_child1 = ValidationError(
+            file="test.py",
+            line=2,
+            column=2,
+            message="Error1OfDepth1",
+            depth=1,
+            parent=task1,
+            children=[],
+        )
+        task1.children.append(task1_child1)
+        pq.push(task1_child1)
+
+        task1_child2 = ValidationError(
+            file="test.py",
+            line=3,
+            column=3,
+            message="Error1OfDepth2",
+            depth=2,
+            parent=task1_child1,
+        )
+        task1_child1.children.append(task1_child2)
+        pq.push(task1_child2)
+
+        task2 = ValidationError(
+            file="test.py", line=4, column=4, message="Task2", priority=0, children=[]
+        )
+        pq.push(task2)
+
+        task2_child1 = ValidationError(
+            file="test.py",
+            line=5,
+            column=5,
+            message="Error2OfDepth1",
+            depth=1,
+            parent=task2,
+            children=[],
+        )
+        task2.children.append(task2_child1)
+        pq.push(task2_child1)
+
+        task2_child2 = ValidationError(
+            file="test.py",
+            line=6,
+            column=6,
+            message="Error2OfDepth2",
+            depth=2,
+            parent=task2_child1,
+        )
+        task2_child1.children.append(task2_child2)
+        pq.push(task2_child2)
+
+        executed_tasks = []
+        while pq.all_tasks():
+            print(pq)
+            executed_tasks.append(pq.pop())
+
+        # Should process by depth first
+        expected_order = [
+            task1_child2,
+            task2_child2,
+            task1_child1,
+            task2_child1,
+            task1,
+            task2,
+        ]
+        self.assertEqual(expected_order, executed_tasks)
 
 
 if __name__ == "__main__":
