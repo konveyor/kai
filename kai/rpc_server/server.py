@@ -1,4 +1,3 @@
-import threading
 import traceback
 from pathlib import Path
 from typing import Any, Optional, cast
@@ -6,7 +5,6 @@ from unittest.mock import MagicMock
 from urllib.parse import urlparse
 
 from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
 from pydantic import BaseModel
 
 from kai.analyzer_types import ExtendedIncident, Incident, RuleSet, Violation
@@ -98,9 +96,6 @@ def shutdown(
     server.shutdown_flag = True
     if app.analysis_validator is not None:
         app.analysis_validator.stop()
-    trace_provider = trace.get_tracer_provider()
-    if isinstance(trace_provider, TracerProvider):
-        trace_provider.force_flush()
 
     server.send_response(id=id, result={})
 
@@ -427,9 +422,6 @@ def get_codeplan_agent_solution(
 
         app.log.debug(f"Executed task {task.__class__.__name__}")
         rcm.commit(f"Executed task {task.__class__.__name__}")
-
-    # FIXME: This is a hack to stop the task_manager as it's hanging trying to stop everything
-    threading.Thread(target=task_manager.stop).start()
 
     diff = rcm.snapshot.diff(rcm.first_snapshot)
 

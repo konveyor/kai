@@ -22,7 +22,7 @@ tracer = trace.get_tracer("maven_validator")
 
 class MavenCompileStep(ValidationStep):
 
-    @tracer.start_as_current_span("run_validator")
+    @tracer.start_as_current_span("maven_run_validator")
     def run(self) -> ValidationResult:
         maven_output = run_maven(self.config.repo_directory)
         errors: Sequence[ValidationError] = parse_maven_output(maven_output)

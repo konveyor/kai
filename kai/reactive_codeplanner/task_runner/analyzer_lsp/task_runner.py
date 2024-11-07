@@ -63,6 +63,10 @@ class AnalyzerTaskRunner(TaskRunner):
                 modified_files=[],
             )
 
+        current_span = trace.get_current_span()
+        current_span.add_event("task_result", attributes={"result": f"{result}"})
+        logger.debug(f"got result from agent for task: {task} -- {result}")
+
         if result.file_to_modify is None:
             return TaskResult(
                 encountered_errors=["file to modify was not returned"],
@@ -78,5 +82,7 @@ class AnalyzerTaskRunner(TaskRunner):
             return TaskResult(
                 modified_files=[result.file_to_modify], encountered_errors=[]
             )
+        else:
+            logger.info(f"did not update file {result.file_to_modify}")
 
         return TaskResult(modified_files=[], encountered_errors=[])

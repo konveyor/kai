@@ -225,7 +225,11 @@ class JsonRpcServer(threading.Thread):
             self.log = log
 
     def stop(self) -> None:
+        self.log.log(TRACE, "JsonRpcServer shutdown flag")
         self.shutdown_flag = True
+        self.log.info("JsonRpcServer stopping")
+        self.jsonrpc_stream.close()
+        self.log.info("JsonRpcServer stoped")
 
     def run(self) -> None:
         self.log.debug("Server thread started")
@@ -277,6 +281,7 @@ class JsonRpcServer(threading.Thread):
                     span.add_event("received_unknown", attributes={"message": f"{msg}"})
                     self.log.error(f"Unknown message type: {type(msg)}")
 
+        self.log.debug("No longer waiting for messages, closing stream")
         self.jsonrpc_stream.close()
 
     def send_request(
@@ -286,10 +291,14 @@ class JsonRpcServer(threading.Thread):
             params = params.model_dump()
 
         tracer = trace.get_tracer("json_rpc")
-        with tracer.start_as_current_span("send_request"):
+        with tracer.start_as_current_span("send_request") as span:
             self.log.log(TRACE, "Sending request: %s", method)
             current_id = self.next_id
             self.next_id += 1
+            span.add_event(
+                "request",
+                attributes={"request": f"id: {current_id} -- {method} -- {params}"},
+            )
             cond = threading.Condition()
             self.event_dict[current_id] = cond
 
@@ -299,11 +308,13 @@ class JsonRpcServer(threading.Thread):
             )
 
             if self.shutdown_flag:
+                span.add_event("shutdown")
                 cond.release()
                 return None
 
             if not cond.wait(self.request_timeout):
                 cond.release()
+                span.add_event("timeout")
                 return JsonRpcError(
                     code=JsonRpcErrorCode.InternalError,
                     message="Timeout waiting for response",
@@ -311,7 +322,11 @@ class JsonRpcServer(threading.Thread):
             cond.release()
 
             self.event_dict.pop(current_id)
-            return self.response_dict.pop(current_id)
+            res = self.response_dict.pop(current_id)
+            span.add_event(
+                "response", attributes={"id": current_id, "response": f"{res}"}
+            )
+            return res
 
     def send_notification(
         self,

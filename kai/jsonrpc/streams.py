@@ -1,6 +1,8 @@
 import json
 import threading
 from abc import ABC, abstractmethod
+from concurrent import futures
+from concurrent.futures import CancelledError
 from io import BufferedReader, BufferedWriter
 from typing import Any, Optional
 
@@ -44,9 +46,18 @@ class JsonRpcStream(ABC):
         self.json_dumps_kwargs = json_dumps_kwargs
         self.json_loads_kwargs = json_loads_kwargs
 
-    def close(self) -> None:
-        self.recv_file.close()
-        self.send_file.close()
+    def close(self) -> None:  # trunk-ignore(ruff/B027)
+        pass
+        # The only thing that this has is the pipes for std in and std out
+        # but the recv() methods have blocking I/O on readline
+        # because of this we can not close the PIPEs because the read lock
+        # stays open forever, and we have a deadlock.
+        # We may be able in the future to rewrite readline with a non blocking i/o
+        # by keeping a pointer to the last read index, seeking past that index to see if
+        # more data is in the pipe and when it is, to seek til we get the new line
+        # then read that many bytes.
+        # For now, the thread approach works, because we terminate the server command
+        # which will close the streams, sending a EOF, and that stops readline.
 
     @abstractmethod
     def send(self, msg: JsonRpcRequest | JsonRpcResponse) -> None: ...
@@ -194,31 +205,42 @@ class BareJsonStream(JsonRpcStream):
             self.send_file.write(json_req.encode())
             self.send_file.flush()
 
+    def readline(self) -> bytes | None:
+        try:
+            return self.recv_file.readline()
+        except CancelledError:
+            self.log.info("cancelling readline")
+            raise
+
     def recv(self) -> JsonRpcError | JsonRpcRequest | JsonRpcResponse | None:
         with self.recv_lock:
             if self.recv_file.closed:
                 return None
 
-            result = self.recv_file.readline()
+            with futures.ThreadPoolExecutor(1, "readline") as executor:
+                self.readline_task = executor.submit(self.readline)
 
-            # EOF
-            if not result:
-                return None
+                try:
+                    result = self.readline_task.result()
+                    # EOF
+                    if not result:
+                        return None
 
-            try:
-                msg, idx = self.decoder.raw_decode(result.decode("utf-8"))
-                self.log.log(TRACE, "recv msg: %s", msg)
-                if "method" in msg:
-                    return JsonRpcRequest.model_validate(msg)
-                else:
-                    return JsonRpcResponse.model_validate(msg)
-            except json.JSONDecodeError as e:
-                return JsonRpcError(
-                    code=JsonRpcErrorCode.ParseError,
-                    message=f"Invalid JSON: {e}",
-                )
-            except Exception as e:
-                return JsonRpcError(
-                    code=JsonRpcErrorCode.ParseError,
-                    message=f"Unknown parsing error: {e}",
-                )
+                    msg, idx = self.decoder.raw_decode(result.decode("utf-8"))
+                    self.log.log(TRACE, "recv msg: %s", msg)
+                    if "method" in msg:
+                        return JsonRpcRequest.model_validate(msg)
+                    else:
+                        return JsonRpcResponse.model_validate(msg)
+                except json.JSONDecodeError as e:
+                    return JsonRpcError(
+                        code=JsonRpcErrorCode.ParseError,
+                        message=f"Invalid JSON: {e}",
+                    )
+                except Exception as e:
+                    return JsonRpcError(
+                        code=JsonRpcErrorCode.ParseError,
+                        message=f"Unknown parsing error: {e}",
+                    )
+                except CancelledError:
+                    return None

@@ -1,6 +1,7 @@
 # Need to initialize this before we start getting the tracer in the other files on import
 import argparse
 import logging as core_logging
+import multiprocessing
 import os
 import sys
 from io import BufferedReader, BufferedWriter
@@ -80,4 +81,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     main()

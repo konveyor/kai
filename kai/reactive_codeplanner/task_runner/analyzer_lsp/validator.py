@@ -53,7 +53,7 @@ class AnalyzerLSPStep(ValidationStep):
         if config.dep_open_source_labels_path is not None:
             args.append("-depOpenSourceLabelsFile")
             args.append(str(config.dep_open_source_labels_path))
-        rpc_server = subprocess.Popen(
+        self.rpc_server = subprocess.Popen(
             args,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -62,22 +62,24 @@ class AnalyzerLSPStep(ValidationStep):
         # trunk-ignore-end(bandit/B603)
 
         self.stderr_logging_thread = threading.Thread(
-            target=log_stderr, args=(rpc_server.stderr,)
+            target=log_stderr, args=(self.rpc_server.stderr,)
         )
+        self.stderr_logging_thread.daemon = True
         self.stderr_logging_thread.start()
 
         self.rpc = JsonRpcServer(
             json_rpc_stream=BareJsonStream(
-                cast(BufferedReader, rpc_server.stdout),
-                cast(BufferedWriter, rpc_server.stdin),
+                cast(BufferedReader, self.rpc_server.stdout),
+                cast(BufferedWriter, self.rpc_server.stdin),
             ),
             request_timeout=4 * 60,
+            log=logger,
         )
         self.rpc.start()
 
         super().__init__(config)
 
-    @tracer.start_as_current_span("run_validation")
+    @tracer.start_as_current_span("analyzer_run_validation")
     def run(self) -> ValidationResult:
         logger.debug("Running analyzer-lsp")
 
@@ -172,5 +174,9 @@ class AnalyzerLSPStep(ValidationStep):
         return validation_errors
 
     def stop(self) -> None:
-        self.stderr_logging_thread.join()
-        self.rpc.stop()
+        logger.info("stopping analyzer")
+        # This should really call the a shutdown method for the server
+        # then wait for the process to be finished
+        self.rpc_server.terminate()
+        # self.rpc.stop()
+        logger.info("ending analyzer stop")

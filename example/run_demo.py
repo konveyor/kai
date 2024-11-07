@@ -123,10 +123,10 @@ def initialize_rpc_server(
     finally:
         # send shutdown
         response = rpc_server.send_request("shutdown", params={})
-        log.info(f"shutdown resposne -- {response}")
-        # rpc_subprocess.terminate()
-        rpc_subprocess.wait()
+        log.debug(f"shutdown resposne -- {response}")
         log.info("Stopping RPC Server")
+        rpc_subprocess.wait()
+        log.info("Stoped RPC Server")
         rpc_server.stop()
 
 
@@ -167,6 +167,7 @@ def process_file(
     params = GetCodeplanAgentSolutionParams(
         file_path=file_path,
         incidents=incidents,
+        max_priority=0,
         max_depth=1,
         max_iterations=1,
     )
