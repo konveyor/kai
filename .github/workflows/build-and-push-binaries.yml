@@ -9,7 +9,7 @@ on:
         description: Upload binaries to the most recent release
       pattern:
         type: string
-        default: 'v*'
+        default: "v*"
         description: Pick from tags matching this pattern
       pre_release:
         type: boolean
@@ -43,7 +43,7 @@ jobs:
       - uses: actions/setup-java@v3
         with:
           distribution: "oracle"
-          java-version: '17'
+          java-version: "17"
 
       - id: release_info
         uses: joutvhu/get-release@v1
@@ -57,11 +57,11 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: "1.23"
           check-latest: true
 
       - name: Set up venv (windows)
@@ -105,14 +105,14 @@ jobs:
           git config --global user.name "Konveyor CI"
           git clone https://github.com/konveyor/rulesets
           mv ./rulesets/default/generated ./example/analysis/rulesets
-          
+
           cat << EOF > ./example/config.toml
           [models]
           provider = "${{ matrix.models.provider }}"
           [models.args]
           model_id = "${{ matrix.models.model_id }}"
           EOF
-          
+
           if [[ -n "${{ matrix.models.max_new_tokens }}" ]]; then
           cat << EOF >> ./example/config.toml
           parameters.max_new_tokens = ${{ matrix.models.max_new_tokens }}
@@ -120,7 +120,7 @@ jobs:
           fi
 
       - name: Run e2e test
-        if: matrix.runs_on.os == 'ubuntu-latest' 
+        if: matrix.runs_on.os == 'ubuntu-latest'
         run: |
           which python
           cd example
@@ -137,38 +137,36 @@ jobs:
         env:
           PATH: ${{ env.PATH }}
           GENAI_KEY: "BWAHAHA"
-      
-#   Tasks below will only happen when this action is dispatched to publish a release.
 
       - name: lowercase runner.os (linux & mac)
-        if: matrix.runs_on.os != 'windows-latest' && github.event_name == 'workflow_dispatch'
+        if: matrix.runs_on.os != 'windows-latest'
         run: |
           echo "OS=`echo ${{ runner.os }} | tr '[:upper:]' '[:lower:]'`" >>${GITHUB_ENV}
 
       - name: lowercase runner.os (windows)
-        if: matrix.runs_on.os == 'windows-latest' && github.event_name == 'workflow_dispatch'
+        if: matrix.runs_on.os == 'windows-latest'
         run: |
           $os_string = "${{ runner.os }}"
           $lowercase_os_string = $os_string.ToLower() 
           echo "OS=$lowercase_os_string" >> $env:GITHUB_ENV
 
       - name: Identify OS Arch (linux & mac)
-        if: matrix.runs_on.os != 'windows-latest' && github.event_name == 'workflow_dispatch'
+        if: matrix.runs_on.os != 'windows-latest'
         run: |
           echo "OS_ARCH=$(uname -m)" >>${GITHUB_ENV}
 
       - name: Identify OS Arch (windows)
-        if: matrix.runs_on.os == 'windows-latest' && github.event_name == 'workflow_dispatch'
+        if: matrix.runs_on.os == 'windows-latest'
         run: |
           echo "OS_ARCH=$(uname -m)" >> $env:GITHUB_ENV
 
       - name: Archive binaries (linux & mac)
-        if: matrix.runs_on.os != 'windows-latest' && github.event_name == 'workflow_dispatch'
+        if: matrix.runs_on.os != 'windows-latest'
         run: |
           zip -j kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip dist/kai-rpc-server kai_analyzer_rpc/kai-analyzer-rpc
 
       - name: Archive binaries (windows)
-        if: matrix.runs_on.os == 'windows-latest' && github.event_name == 'workflow_dispatch'
+        if: matrix.runs_on.os == 'windows-latest'
         run: |
           mv kai_analyzer_rpc\kai-analyzer-rpc kai_analyzer_rpc\kai-analyzer-rpc.exe
           $filesToInclude = "dist\kai-rpc-server.exe", "kai_analyzer_rpc\kai-analyzer-rpc.exe"
@@ -184,3 +182,10 @@ jobs:
           asset_path: kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip
           asset_name: kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip
           asset_content_type: application/zip
+
+      - name: Upload binaries as artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kai-rpc-server-${{ env.OS }}-${{ env.OS_ARCH }}.zip
+          path: kai-rpc-server-${{ env.OS }}-${{ env.OS_ARCH }}.zip
