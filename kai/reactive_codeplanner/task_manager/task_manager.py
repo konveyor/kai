@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Generator, Optional
 
@@ -63,10 +64,13 @@ class TaskManager:
         logger.info("Executing task: %s", task)
         agent = self.get_agent_for_task(task)
         logger.info("Agent selected for task: %s", agent)
+
+        result: TaskResult
         try:
-            result: TaskResult = agent.execute_task(self.rcm, task)
+            result = agent.execute_task(self.rcm, task)
         except Exception as e:
-            logger.info(f"unable to run agent execute: {e}")
+            logger.error("Unhandled exception executing task %s: %e", task, e)
+            result = TaskResult(encountered_errors=[e], modified_files=[])
 
         logger.debug("Task execution result: %s", result)
         return result
@@ -96,21 +100,53 @@ class TaskManager:
         logger.info("Running validators.")
         validation_tasks: list[Task] = []
 
-        for validator in self.validators:
+        def run_validator(validator):
             logger.debug("Running validator: %s", validator)
-            result = validator.run()
-            logger.debug("Validator result: %s", result)
-            if not result.passed:
-                validation_tasks.extend(result.errors)
-                logger.info(
-                    "Found %d new tasks from validator %s",
-                    len(result.errors),
+            try:
+                result = validator.run()
+                return validator, result
+            except Exception as e:
+                logger.error(
+                    "Validator %s failed to execute with an unhandled error: %s",
                     validator,
+                    e,
                 )
-                logger.debug("Validator %s found errors: %s", validator, result.errors)
+                return validator, None
+
+        with ThreadPoolExecutor() as executor:
+            # Submit all validators to the executor
+            future_to_validator = {
+                executor.submit(run_validator, v): v for v in self.validators
+            }
+
+            # Process results as they complete
+            for future in as_completed(future_to_validator):
+                validator = future_to_validator[future]
+                try:
+                    validator, result = future.result()
+                    if result is None:
+                        continue  # Skip if the validator failed
+
+                    logger.debug("Validator result: %s", result)
+                    if not result.passed:
+                        validation_tasks.extend(result.errors)
+                        logger.info(
+                            "Found %d tasks from validator %s",
+                            len(result.errors),
+                            validator,
+                        )
+                        logger.debug(
+                            "Validator %s found errors: %s", validator, result.errors
+                        )
+                except Exception as e:
+                    logger.error(
+                        "Exception occurred while processing validator %s: %s",
+                        validator,
+                        e,
+                    )
 
         self._validators_are_stale = False
-        logger.info("Found %d new tasks from validators", len(validation_tasks))
+        logger.info("Found %d tasks from validators", len(validation_tasks))
         logger.debug("Validators are up to date.")
         return validation_tasks
 
@@ -155,7 +191,8 @@ class TaskManager:
 
         new_tasks = self.run_validators()
         for task in new_tasks:
-            self.priority_queue.push(task)
+            if not self.should_skip_task(task):
+                self.priority_queue.push(task)
 
     def handle_new_tasks_after_processing(self, task: Task) -> None:
         logger.info("Handling new tasks after processing task: %s", task)
@@ -201,16 +238,13 @@ class TaskManager:
                 child_task.parent = task
                 child_task.depth = task.depth + 1
                 task.children.append(child_task)
-                self.priority_queue.push(child_task)
+                if not self.should_skip_task(child_task):
+                    self.priority_queue.push(child_task)
             except ValueError as e:
                 logger.error(f"Error adding child task: {e}")
 
     def should_skip_task(self, task: Task) -> bool:
-        skip = (
-            task in self.processed_tasks
-            or task in self.ignored_tasks
-            and not all([self.should_skip_task(child) for child in task.children])
-        )
+        skip = task in self.processed_tasks or task in self.ignored_tasks
         logger.debug("Should skip task %s: %s", task, skip)
         return skip
 
@@ -230,9 +264,8 @@ class TaskManager:
         logger.info("Handling ignored task: %s", task)
         task.retry_count += 1
         if task.retry_count < task.max_retries:
-            task.priority += 1
             logger.debug(
-                "Task %s failed (retry count: %s), decreasing priority and attempting to add back to stack",
+                "Task %s failed (retry count: %s), adding back to stack",
                 task,
                 task.retry_count,
             )
