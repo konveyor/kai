@@ -27,7 +27,7 @@ class PriorityTaskQueue:
             self.task_stacks[priority] = []
             logger.debug("Created new task stack for priority %s.", priority)
         self.task_stacks[priority].append(task)
-        self.task_stacks[priority].sort(reverse=True)
+        self.task_stacks[priority].sort()
         logger.debug("Task %s added to priority %s stack.", task, priority)
 
     def pop(self) -> Task:
@@ -64,57 +64,3 @@ class PriorityTaskQueue:
 
     def all_tasks(self) -> set[Task]:
         return set().union(*self.task_stacks.values())
-
-    def __str__(self) -> str:
-        queue_tasks_set = self.all_tasks()
-        top_level_tasks = set(task.oldest_ancestor() for task in queue_tasks_set)
-        visited: set[Task] = set()
-
-        lines = []
-        for task in top_level_tasks:
-            lines.extend(
-                self._stringify_tasks(
-                    task,
-                    indent=0,
-                    visited=visited,
-                    queue_tasks_set=queue_tasks_set,
-                )
-            )
-        return "\n".join(lines)
-
-    def _stringify_tasks(
-        self,
-        task: Task,
-        indent: int,
-        visited: set[Task],
-        queue_tasks_set: set[Task],
-    ) -> list[str]:
-        lines = []
-        if task in visited:
-            logger.debug(
-                "%s%s(...)  # Already printed",
-                "  " * indent,
-                task.__class__.__name__,
-            )
-            return []
-        visited.add(task)
-
-        status = "" if task in queue_tasks_set else "  # solved"
-        prefix = ""
-        if task.depth > 0:
-            prefix = "|" + "-" * indent
-
-        lines.append(
-            f"{prefix}{task}(priority={task.priority}, depth={task.depth}){status}"
-        )
-
-        for child in task.children:
-            lines.extend(
-                self._stringify_tasks(
-                    child,
-                    indent=indent + 1,
-                    visited=visited,
-                    queue_tasks_set=queue_tasks_set,
-                )
-            )
-        return lines
