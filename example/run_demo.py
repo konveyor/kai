@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import contextlib
-import logging
 import os
 import subprocess  # trunk-ignore(bandit/B404)
 import sys
@@ -9,6 +8,11 @@ from io import BufferedReader, BufferedWriter
 from pathlib import Path
 from typing import Generator, cast
 
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from pydantic import BaseModel
 
 # Ensure that we have 'kai' in our import path
@@ -18,14 +22,12 @@ from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcResponse
 from kai.jsonrpc.streams import BareJsonStream
 from kai.kai_config import KaiConfig
-from kai.logging.logging import formatter
+from kai.logging.logging import get_logger, init_logging_from_config
 from kai.rpc_server.server import (
     GetCodeplanAgentSolutionParams,
     KaiRpcApplication,
     KaiRpcApplicationConfig,
 )
-
-KAI_LOG = logging.getLogger("run_demo")
 
 SERVER_URL = "http://0.0.0.0:8080"
 APP_NAME = "coolstore"
@@ -36,7 +38,9 @@ ANALYSIS_RPC_PATH = Path(".", "analysis", "kai-analyzer-rpc")
 ANALYSIS_RULES_PATH = Path(".", "analysis", "rulesets")
 ANALYSIS_DEP_LABELS_FILE = Path(".", "analysis", "maven.default.index")
 RPC_BINARY_PATH = Path(".", "analysis", "kai-rpc-server")
+TRACING_ENABLED = "ENABLE_TRACING"
 
+KAI_LOG = get_logger("run_demo")
 
 # TODOs
 # 1) Add ConfigFile to tweak the server URL and rulesets/violations
@@ -60,9 +64,11 @@ def pre_flight_checks() -> None:
 
 
 @contextlib.contextmanager
-def initialize_rpc_server() -> Generator[JsonRpcServer, None, None]:
-    kai_config = KaiConfig.model_validate_filepath("config.toml")
+def initialize_rpc_server(
+    kai_config: KaiConfig,
+) -> Generator[JsonRpcServer, None, None]:
 
+    log = get_logger("client")
     config = KaiRpcApplicationConfig(
         process_id=None,
         root_path=SAMPLE_APP_DIR,
@@ -78,11 +84,13 @@ def initialize_rpc_server() -> Generator[JsonRpcServer, None, None]:
     )
 
     rpc_subprocess = subprocess.Popen(  # trunk-ignore(bandit/B603)
-        [RPC_BINARY_PATH],
+        [RPC_BINARY_PATH, "-c", "config.toml"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         env=os.environ,
     )
+
+    log.info(rpc_subprocess.args)
 
     app = KaiRpcApplication()
 
@@ -90,9 +98,11 @@ def initialize_rpc_server() -> Generator[JsonRpcServer, None, None]:
         json_rpc_stream=BareJsonStream(
             cast(BufferedReader, rpc_subprocess.stdout),
             cast(BufferedWriter, rpc_subprocess.stdin),
+            log=log,
         ),
         app=app,
         request_timeout=240,
+        log=log,
     )
     rpc_server.start()
 
@@ -111,8 +121,12 @@ def initialize_rpc_server() -> Generator[JsonRpcServer, None, None]:
             )
         yield rpc_server
     finally:
-        rpc_subprocess.terminate()
+        # send shutdown
+        response = rpc_server.send_request("shutdown", params={})
+        log.debug(f"shutdown resposne -- {response}")
+        log.info("Stopping RPC Server")
         rpc_subprocess.wait()
+        log.info("Stoped RPC Server")
         rpc_server.stop()
 
 
@@ -144,14 +158,16 @@ def process_file(
     num_impacted_files: int,
     count: int,
 ) -> str:
-    start = time.time()
-    KAI_LOG.info(
-        f"File #{count} of {num_impacted_files} - Processing {file_path} which has {len(incidents)} incidents."
-    )
+    with trace.get_tracer("demo_tracer").start_as_current_span("process_file"):
+        start = time.time()
+        KAI_LOG.info(
+            f"File #{count} of {num_impacted_files} - Processing {file_path} which has {len(incidents)} incidents."
+        )
 
     params = GetCodeplanAgentSolutionParams(
         file_path=file_path,
         incidents=incidents,
+        max_priority=0,
         max_depth=1,
         max_iterations=1,
     )
@@ -176,45 +192,56 @@ def process_file(
 
 
 def run_demo(report: Report, server: JsonRpcServer) -> None:
-    impacted_files = report.get_impacted_files()
-    num_impacted_files = len(impacted_files)
+    with trace.get_tracer("demo_tracer").start_as_current_span("run_demo"):
+        impacted_files = report.get_impacted_files()
+        num_impacted_files = len(impacted_files)
 
-    total_incidents = sum(len(incidents) for incidents in impacted_files.values())
-    print(f"{num_impacted_files} files with a total of {total_incidents} incidents.")
-
-    for count, (file_path, incidents) in enumerate(impacted_files.items(), 1):
-        for incident in incidents:
-            incident.uri = os.path.join(SAMPLE_APP_DIR, file_path)
-
-        process_file(
-            server=server,
-            incidents=incidents,
-            file_path=SAMPLE_APP_DIR / file_path,
-            count=count,
-            num_impacted_files=num_impacted_files,
+        total_incidents = sum(len(incidents) for incidents in impacted_files.values())
+        print(
+            f"{num_impacted_files} files with a total of {total_incidents} incidents."
         )
+
+        for count, (file_path, incidents) in enumerate(impacted_files.items(), 1):
+            for incident in incidents:
+                incident.uri = os.path.join(SAMPLE_APP_DIR, file_path)
+
+            process_file(
+                server=server,
+                incidents=incidents,
+                file_path=SAMPLE_APP_DIR / file_path,
+                count=count,
+                num_impacted_files=num_impacted_files,
+            )
 
 
 def main() -> None:
-    console_handler = logging.StreamHandler(sys.stderr)
-    console_handler.setFormatter(formatter)
-    # logging.getLogger("jsonrpc").setLevel(logging.CRITICAL)
-    KAI_LOG.addHandler(console_handler)
-    KAI_LOG.setLevel(logging.DEBUG)
-
+    kai_config = KaiConfig.model_validate_filepath("config.toml")
+    init_logging_from_config(kai_config)
     start = time.time()
+
+    tracer_provider: TracerProvider | None = None
+    if TRACING_ENABLED in os.environ:
+        resource = Resource(attributes={SERVICE_NAME: "demo"})
+        tracer_provider = TracerProvider(resource=resource)
+        tracer_provider.add_span_processor(
+            span_processor=BatchSpanProcessor(OTLPSpanExporter())
+        )
+        trace.set_tracer_provider(tracer_provider=tracer_provider)
 
     coolstore_analysis_dir = "./analysis/coolstore/output.yaml"
     report = Report.load_report_from_file(coolstore_analysis_dir)
     try:
         pre_flight_checks()
-        with initialize_rpc_server() as server:
+        with initialize_rpc_server(kai_config=kai_config) as server:
             run_demo(report, server)
         KAI_LOG.info(
             f"Total time to process '{coolstore_analysis_dir}' was {time.time()-start}s"
         )
     except Exception as e:
         KAI_LOG.error(f"Error running demo - {e}")
+
+    if tracer_provider is not None:
+        tracer_provider.force_flush()
 
 
 if __name__ == "__main__":

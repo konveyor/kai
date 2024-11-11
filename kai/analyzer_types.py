@@ -94,6 +94,7 @@ class Violation(BaseModel):
     It may have many different incidents throughout the codebase.
     """
 
+    id: str = ""
     # Description text description about the violation
     description: str = ""
 
