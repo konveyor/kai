@@ -9,6 +9,7 @@ from kai.reactive_codeplanner.task_manager.api import (
     RpcClientConfig,
     Task,
     TaskResult,
+    ValidationResult,
     ValidationStep,
 )
 from kai.reactive_codeplanner.task_manager.priority_queue import PriorityTaskQueue
@@ -70,7 +71,7 @@ class TaskManager:
             result = agent.execute_task(self.rcm, task)
         except Exception as e:
             logger.error("Unhandled exception executing task %s: %e", task, e)
-            result = TaskResult(encountered_errors=[e], modified_files=[])
+            result = TaskResult(encountered_errors=[str(e)], modified_files=[])
 
         logger.debug("Task execution result: %s", result)
         return result
@@ -100,7 +101,9 @@ class TaskManager:
         logger.info("Running validators.")
         validation_tasks: list[Task] = []
 
-        def run_validator(validator):
+        def run_validator(
+            validator: ValidationStep,
+        ) -> tuple[ValidationStep, Optional[ValidationResult]]:
             logger.debug("Running validator: %s", validator)
             try:
                 result = validator.run()
