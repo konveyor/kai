@@ -4,7 +4,7 @@ import unittest
 
 from kai.constants import PATH_TEST_DATA
 from kai.kai_config import KaiConfig
-from kai.logging.logging import TRACE, KaiLogger, get_logger, init_logging_from_config
+from kai.logging.logging import KaiLogger, get_logger, init_logging_from_config
 
 
 class TestLogging(unittest.TestCase):
@@ -15,7 +15,7 @@ class TestLogging(unittest.TestCase):
 
         from kai.logging.logging import log as base_logger
 
-        self.assertEqual(log.getEffectiveLevel(), TRACE)
+        self.assertEqual(log.getEffectiveLevel(), logging.DEBUG)
         self.assertTrue(isinstance(log, KaiLogger))
         self.assertEqual(log.configLogLevel, logging.DEBUG)
         self.assertEqual(base_logger.filters, log.filters)
@@ -48,12 +48,12 @@ class TestLogging(unittest.TestCase):
         test_second_log = get_logger("child2")
 
         self.assertTrue(isinstance(test_first_log, KaiLogger))
-        self.assertTrue(test_first_log.level, base_logger.level)
-        self.assertTrue(test_first_log.configLogLevel, base_logger.level)
-        self.assertEqual(test_first_log.filters, base_logger.filters)
-        self.assertEqual(test_first_log.handlers, base_logger.handlers)
+        self.assertEqual(test_first_log.level, logging.NOTSET)
+        self.assertEqual(test_first_log.configLogLevel, base_logger.level)
+        self.assertEqual(test_first_log.filters.__len__(), 0)
+        self.assertEqual(test_first_log.handlers.__len__(), 0)
         self.assertTrue(isinstance(test_second_log, KaiLogger))
-        self.assertTrue(test_second_log.level, base_logger.level)
-        self.assertTrue(test_second_log.configLogLevel, base_logger.level)
-        self.assertEqual(test_second_log.filters, base_logger.filters)
-        self.assertEqual(test_second_log.handlers, base_logger.handlers)
+        self.assertEqual(test_second_log.level, logging.NOTSET)
+        self.assertEqual(test_second_log.configLogLevel, base_logger.level)
+        self.assertEqual(test_second_log.filters.__len__(), 0)
+        self.assertEqual(test_second_log.handlers.__len__(), 0)

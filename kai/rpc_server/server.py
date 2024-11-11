@@ -1,22 +1,19 @@
-import logging
-import sys
-import threading
 import traceback
 from pathlib import Path
 from typing import Any, Optional, cast
 from unittest.mock import MagicMock
 from urllib.parse import urlparse
 
+from opentelemetry import trace
 from pydantic import BaseModel
 
 from kai.analyzer_types import ExtendedIncident, Incident, RuleSet, Violation
 from kai.jsonrpc.core import JsonRpcApplication, JsonRpcServer
-from kai.jsonrpc.logs import JsonRpcLoggingHandler
 from kai.jsonrpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcId
 from kai.jsonrpc.util import CamelCaseBaseModel
 from kai.kai_config import KaiConfigModels, SolutionConsumerKind
 from kai.llm_interfacing.model_provider import ModelProvider
-from kai.logging.logging import TRACE, formatter, get_logger
+from kai.logging.logging import KaiLogger, get_logger
 from kai.reactive_codeplanner.agent.analyzer_fix.agent import AnalyzerAgent
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
@@ -40,6 +37,8 @@ from kai.reactive_codeplanner.task_runner.dependency.task_runner import (
     DependencyTaskRunner,
 )
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager, RepoContextSnapshot
+
+tracer = trace.get_tracer("kai_application")
 
 
 class KaiRpcApplicationConfig(CamelCaseBaseModel):
@@ -82,6 +81,7 @@ ERROR_NOT_INITIALIZED = JsonRpcError(
 
 
 @app.add_request(method="echo")
+@tracer.start_as_current_span("echo")
 def echo(
     app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
@@ -89,16 +89,19 @@ def echo(
 
 
 @app.add_request(method="shutdown")
+@tracer.start_as_current_span("shutdown")
 def shutdown(
     app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
     server.shutdown_flag = True
     if app.analysis_validator is not None:
         app.analysis_validator.stop()
+
     server.send_response(id=id, result={})
 
 
 @app.add_request(method="exit")
+@tracer.start_as_current_span("exit")
 def exit(
     app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
@@ -111,11 +114,13 @@ def exit(
 # NOTE(shawn-hurley): would it ever make sense to have the server
 # "re-initialized" or would you just shutdown and restart the process?
 @app.add_request(method="initialize")
+@tracer.start_as_current_span("initialize")
 def initialize(
     app: KaiRpcApplication,
     server: JsonRpcServer,
     id: JsonRpcId,
     params: KaiRpcApplicationConfig,
+    log: Optional[KaiLogger] = None,
 ) -> None:
     if app.initialized:
         server.send_response(
@@ -142,29 +147,6 @@ def initialize(
             app.config.analyzer_lsp_rules_path.resolve()
         )
 
-        app.log.setLevel(TRACE)
-        app.log.handlers.clear()
-        app.log.filters.clear()
-
-        stderr_handler = logging.StreamHandler(sys.stderr)
-        stderr_handler.setLevel(TRACE)
-        stderr_handler.setFormatter(formatter)
-        app.log.addHandler(stderr_handler)
-
-        notify_handler = JsonRpcLoggingHandler(server)
-        notify_handler.setLevel(app.config.log_level)
-        notify_handler.setFormatter(formatter)
-        app.log.addHandler(notify_handler)
-
-        if app.config.file_log_level and app.config.log_dir_path:
-            log_file = app.config.log_dir_path / "kai_rpc.log"
-            log_file.parent.mkdir(parents=True, exist_ok=True)
-
-            file_handler = logging.FileHandler(log_file)
-            file_handler.setLevel(app.config.file_log_level)
-            file_handler.setFormatter(formatter)
-            app.log.addHandler(file_handler)
-
         app.analysis_validator = AnalyzerLSPStep(
             RpcClientConfig(
                 repo_directory=app.config.root_path,
@@ -179,6 +161,9 @@ def initialize(
             )
         )
 
+        app.log = get_logger("application_logger")
+        if log is not None:
+            app.log = log
         app.log.info(f"Initialized with config: {app.config}")
 
     except Exception:
@@ -199,6 +184,7 @@ def initialize(
 # NOTE(shawn-hurley): I would just as soon make this another initialize call
 # rather than a separate endpoint. but open to others feedback.
 @app.add_request(method="setConfig")
+@tracer.start_as_current_span("set_config")
 def set_config(
     app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
@@ -234,6 +220,7 @@ class GetCodeplanAgentSolutionParams(BaseModel):
 
     max_iterations: Optional[int] = None
     max_depth: Optional[int] = None
+    max_priority: Optional[int] = None
 
 
 class GitVFSUpdateParams(BaseModel):
@@ -310,6 +297,7 @@ def test_rcm(
 
 
 @app.add_request(method="getCodeplanAgentSolution")
+@tracer.start_as_current_span("get_codeplan_solution")
 def get_codeplan_agent_solution(
     app: KaiRpcApplication,
     server: JsonRpcServer,
@@ -320,7 +308,7 @@ def get_codeplan_agent_solution(
     # seed the task manager with these violations
     # get the task with priority 0 and do the whole thingy
 
-    app.log.info(f"get_codeplan_agent_solution: {params}")
+    app.log.debug(f"get_codeplan_agent_solution: {params}")
     if not app.initialized:
         server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
         return
@@ -330,6 +318,7 @@ def get_codeplan_agent_solution(
     try:
         model_provider = ModelProvider(app.config.model_provider, app.config.demo_mode)
     except Exception as e:
+        app.log.error(f"unable to get model provider {e.__str__()}")
         server.send_response(
             id=id,
             error=JsonRpcError(
@@ -352,6 +341,7 @@ def get_codeplan_agent_solution(
                 priority=0,
                 incident=Incident(**incident.model_dump()),
                 violation=Violation(
+                    id=incident.violation_name or "",
                     description=incident.violation_description or "",
                     category=incident.violation_category,
                     labels=incident.violation_labels,
@@ -363,6 +353,7 @@ def get_codeplan_agent_solution(
             )
         )
 
+    app.log.info(f"get_codeplan_agent_solution: {seed_tasks}")
     rcm = RepoContextManager(
         project_root=app.config.root_path,
         reflection_agent=ReflectionAgent(
@@ -370,10 +361,13 @@ def get_codeplan_agent_solution(
         ),
     )
 
-    server.send_notification(
-        "gitVFSUpdate",
-        GitVFSUpdateParams.from_snapshot(rcm.first_snapshot).model_dump(),
-    )
+    app.log.debug("initalized the repo context manager")
+
+    # Right now this is not usable by anything.
+    # server.send_notification(
+    #     "gitVFSUpdate",
+    #     GitVFSUpdateParams.from_snapshot(rcm.first_snapshot).model_dump(),
+    # )
 
     task_manager_config = RpcClientConfig(
         repo_directory=app.config.root_path,
@@ -388,8 +382,11 @@ def get_codeplan_agent_solution(
     )
 
     if app.analysis_validator is None:
+        app.log.debug("creating analyzer LSP Step")
         app.analysis_validator = AnalyzerLSPStep(task_manager_config)
 
+    # TODO: this probaby needs to be set up on init and not in a specific call.
+    # this may mean that we need to re-think seed tasks or maybe validators and task_runners should be sharable across task managers.
     task_manager = TaskManager(
         config=task_manager_config,
         rcm=rcm,
@@ -407,11 +404,13 @@ def get_codeplan_agent_solution(
         ],
     )
 
-    num_loops = 0
+    app.log.info(
+        f"starting code plan loop with iterations: {params.max_iterations}, max depth: {params.max_depth}, and max priority: {params.max_priority}"
+    )
     result: TaskResult
-    for task in task_manager.get_next_task(0, params.max_iterations, params.max_depth):
-        if num_loops == 2:
-            break
+    for task in task_manager.get_next_task(
+        params.max_priority, params.max_iterations, params.max_depth
+    ):
 
         app.log.debug(f"Executing task {task.__class__.__name__}: {task}")
 
@@ -423,16 +422,6 @@ def get_codeplan_agent_solution(
 
         app.log.debug(f"Executed task {task.__class__.__name__}")
         rcm.commit(f"Executed task {task.__class__.__name__}")
-
-        server.send_notification(
-            "gitVFSUpdate",
-            GitVFSUpdateParams.from_snapshot(rcm.first_snapshot).model_dump(),
-        )
-
-        num_loops += 1
-
-    # FIXME: This is a hack to stop the task_manager as it's hanging trying to stop everything
-    threading.Thread(target=task_manager.stop).start()
 
     diff = rcm.snapshot.diff(rcm.first_snapshot)
 

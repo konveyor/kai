@@ -107,6 +107,7 @@ jobs:
           mv ./rulesets/default/generated ./example/analysis/rulesets
 
           cat << EOF > ./example/config.toml
+          log_level = "info"
           [models]
           provider = "${{ matrix.models.provider }}"
           [models.args]
@@ -118,6 +119,7 @@ jobs:
           parameters.max_new_tokens = ${{ matrix.models.max_new_tokens }}
           EOF
           fi
+          cat ./example/config.toml
 
       - name: Run e2e test
         if: matrix.runs_on.os == 'ubuntu-latest'
@@ -129,10 +131,11 @@ jobs:
           cd coolstore
           changed_files_count=$(git diff --name-only | wc -l)
           if (( changed_files_count == 26 )); then
+            echo "Tests passed"
+            exit 0
+          else
             echo "Tests failed"
             exit 1
-          else
-            echo "Tests passed"
           fi
         env:
           PATH: ${{ env.PATH }}

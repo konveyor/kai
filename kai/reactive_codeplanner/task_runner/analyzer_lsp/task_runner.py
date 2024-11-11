@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from opentelemetry import trace
+
 from kai.logging.logging import get_logger
 from kai.reactive_codeplanner.agent.analyzer_fix.agent import AnalyzerAgent
 from kai.reactive_codeplanner.agent.analyzer_fix.api import (
@@ -12,6 +14,7 @@ from kai.reactive_codeplanner.task_runner.api import TaskRunner
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
 
 logger = get_logger(__name__)
+tracer = trace.get_tracer("analyzer_task_runner")
 
 
 class AnalyzerTaskRunner(TaskRunner):
@@ -36,6 +39,7 @@ class AnalyzerTaskRunner(TaskRunner):
         """Will determine if the task if a MavenCompilerError, and if we can handle these issues."""
         return isinstance(task, AnalyzerRuleViolation)
 
+    @tracer.start_as_current_span("analyzer_execute_task")
     def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
         """This will be responsible for getting the full file from LLM and updating the file on disk"""
 
@@ -59,6 +63,10 @@ class AnalyzerTaskRunner(TaskRunner):
                 modified_files=[],
             )
 
+        current_span = trace.get_current_span()
+        current_span.add_event("task_result", attributes={"result": f"{result}"})
+        logger.debug(f"got result from agent for task: {task} -- {result}")
+
         if result.file_to_modify is None:
             return TaskResult(
                 encountered_errors=["file to modify was not returned"],
@@ -74,5 +82,7 @@ class AnalyzerTaskRunner(TaskRunner):
             return TaskResult(
                 modified_files=[result.file_to_modify], encountered_errors=[]
             )
+        else:
+            logger.info(f"did not update file {result.file_to_modify}")
 
         return TaskResult(modified_files=[], encountered_errors=[])

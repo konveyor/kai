@@ -23,8 +23,6 @@ class AnalyzerRuleViolation(ValidationError):
 
     __repr__ = __str__
 
-    # TODO: Define a new hash function?
-
 
 class AnalyzerDependencyRuleViolation(AnalyzerRuleViolation):
     """The same as a AnalyzerRuleValidation but higher priority and used by the dependency task_runner"""

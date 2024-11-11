@@ -1,8 +1,8 @@
 import argparse
 import functools
-import logging
 import os
 import subprocess  # trunk-ignore(bandit/B404)
+import tempfile
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -10,7 +10,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Optional
 
-from kai.logging.logging import get_logger
+from kai.logging.logging import TRACE, get_logger
 from kai.reactive_codeplanner.agent.api import AgentResult
 from kai.reactive_codeplanner.agent.reflection_agent import (
     ReflectionAgent,
@@ -18,11 +18,6 @@ from kai.reactive_codeplanner.agent.reflection_agent import (
 )
 
 log = get_logger(__name__)
-log.setLevel(logging.INFO)
-formatter = logging.Formatter("[%(levelname)s] %(message)s")
-handler = logging.StreamHandler()
-handler.setFormatter(formatter)
-log.addHandler(handler)
 
 
 class SpawningResult(ABC):
@@ -36,6 +31,7 @@ class SpawningResult(ABC):
 @dataclass(frozen=True)
 class RepoContextSnapshot:
     work_tree: Path  # project root
+    snapshot_work_dir: Path  # .kai directory where all the repos live
     git_dir: Path
     git_sha: str
 
@@ -115,18 +111,20 @@ class RepoContextSnapshot:
             **popen_kwargs,
         }
 
-        log.debug("\033[94mexecuting: \033[0m" + " ".join(GIT + args))
+        log.log(TRACE, "\033[94mexecuting: \033[0m" + " ".join(GIT + args))
         proc = subprocess.Popen(GIT + args, **popen_kwargs)  # trunk-ignore(bandit/B603)
         stdout, stderr = proc.communicate()
 
-        log.debug(f"\033[94mreturncode:\033[0m {proc.returncode}")
-        log.debug(f"\033[94mstdout:\033[0m\n{stdout}")
-        log.debug(f"\033[94mstderr:\033[0m\n{stderr}")
+        log.log(TRACE, f"\033[94mreturncode:\033[0m {proc.returncode}")
+        log.log(TRACE, f"\033[94mstdout:\033[0m\n{stdout}")
+        log.log(TRACE, f"\033[94mstderr:\033[0m\n{stderr}")
 
         return proc.returncode, stdout, stderr
 
     @staticmethod
-    def initialize(work_tree: Path, msg: str | None = None) -> "RepoContextSnapshot":
+    def initialize(
+        git_work_tree: Path, snapshot_work_dir: Path, msg: str | None = None
+    ) -> "RepoContextSnapshot":
         """
         Creates a new git repo in the given work_tree, and returns a
         GitVFSSnapshot.
@@ -134,15 +132,15 @@ class RepoContextSnapshot:
         if msg is None:
             msg = "Initial commit"
 
-        work_tree = work_tree.resolve()
-        kai_dir = work_tree / ".kai"
-        kai_dir.mkdir(exist_ok=True)
-        git_dir = kai_dir / f".git-{datetime.now(timezone.utc).isoformat()}"
+        git_work_tree = git_work_tree.resolve()
+        snapshot_work_dir.mkdir(exist_ok=True)
+        git_dir = snapshot_work_dir / f".git-{datetime.now(timezone.utc).isoformat()}"
 
         # Snapshot is immutable, so we create a temporary snapshot to get the
         # git sha of the initial commit
         tmp_snapshot = RepoContextSnapshot(
-            work_tree=work_tree,
+            work_tree=git_work_tree,
+            snapshot_work_dir=snapshot_work_dir,
             git_dir=git_dir,
             git_sha="",
         )
@@ -152,12 +150,13 @@ class RepoContextSnapshot:
             raise Exception(f"Failed to initialize git repository: {stderr}")
 
         with open(git_dir / "info" / "exclude", "a") as f:
-            f.write(f"/{str(kai_dir.name)}\n")
+            f.write(f"/{str(snapshot_work_dir.name)}\n")
 
         tmp_snapshot = tmp_snapshot.commit(msg)
 
         return RepoContextSnapshot(
-            work_tree=work_tree,
+            work_tree=git_work_tree,
+            snapshot_work_dir=snapshot_work_dir,
             git_dir=git_dir,
             git_sha=tmp_snapshot.git_sha,
             parent=None,
@@ -191,6 +190,7 @@ class RepoContextSnapshot:
 
         result = RepoContextSnapshot(
             work_tree=self.work_tree,
+            snapshot_work_dir=self.snapshot_work_dir,
             git_dir=self.git_dir,
             git_sha=stdout.strip(),
             parent=self,
@@ -220,9 +220,17 @@ class RepoContextManager:
         project_root: Path,
         reflection_agent: Optional[ReflectionAgent] = None,
         initial_msg: str | None = None,
+        snapshot_work_dir: Path | None = None,
     ):
+        if snapshot_work_dir is None:
+            snapshot_work_dir = Path(tempfile.TemporaryDirectory(delete=False).name)
+
         self.project_root = project_root
-        self.snapshot = RepoContextSnapshot.initialize(project_root, initial_msg)
+        self.snapshot = RepoContextSnapshot.initialize(
+            project_root,
+            snapshot_work_dir,
+            initial_msg,
+        )
         self.first_snapshot = self.snapshot
         self.reflection_agent = reflection_agent
 

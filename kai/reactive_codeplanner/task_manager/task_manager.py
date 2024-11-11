@@ -140,6 +140,11 @@ class TaskManager:
 
             logger.info("Yielding task: %s", task)
             yield task
+            # Once we yield the task, if we are at max_iterations we shouldn't re-run
+            # validators.
+            if max_iterations is not None and iterations >= max_iterations:
+                # kill the loop, no more iterations allowed
+                return
             self.handle_new_tasks_after_processing(task)
 
     def initialize_priority_queue(self) -> None:
