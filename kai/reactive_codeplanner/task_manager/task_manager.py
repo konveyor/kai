@@ -65,7 +65,7 @@ class TaskManager:
         logger.info("Agent selected for task: %s", agent)
         result: TaskResult = agent.execute_task(self.rcm, task)
 
-        logger.debug("Task execution result: %s", result)
+        logger.info("Task execution result: %s", result)
         return result
 
     def get_agent_for_task(self, task: Task) -> TaskRunner:
