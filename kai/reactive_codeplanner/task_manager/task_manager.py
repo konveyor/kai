@@ -187,11 +187,6 @@ class TaskManager:
                 # kill the loop, no more iterations allowed
                 return
             self.handle_new_tasks_after_processing(task)
-            # if len(self.priority_queue.all_tasks()) == 0:
-            #     for task in self.ignored_tasks:
-            #         task.retry_count = 0
-            #         self.priority_queue.push(task)
-            #     self.ignored_tasks = []
 
     def initialize_priority_queue(self) -> None:
         logger.info("Initializing task stacks.")

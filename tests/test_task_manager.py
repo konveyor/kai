@@ -9,7 +9,6 @@ from kai.reactive_codeplanner.task_manager.api import (
     ValidationResult,
     ValidationStep,
 )
-from kai.reactive_codeplanner.task_manager.priority_queue import PriorityTaskQueue
 from kai.reactive_codeplanner.task_manager.task_manager import TaskManager
 
 
