@@ -22,7 +22,6 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from pydantic.v1.utils import deep_update
 
-from kai.constants import PATH_LLM_CACHE
 from kai.kai_config import KaiConfigModels
 from kai.logging.logging import get_logger
 
