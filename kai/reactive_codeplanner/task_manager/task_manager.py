@@ -94,8 +94,7 @@ class TaskManager:
                 logger.debug("File %s marked as unprocessed.", file_path)
 
         if len(result.encountered_errors) > 0:
-            logger.warning("Encountered errors: %s", result.encountered_errors)
-            raise NotImplementedError("What should we do with errors?")
+            logger.error("Encountered errors: %s", result.encountered_errors)
 
     def run_validators(self) -> list[Task]:
         logger.info("Running validators.")
