@@ -54,6 +54,7 @@ def main() -> None:
         logging.init_logging_from_config(config)
 
     log = logging.get_logger("kai-rpc-logger")
+    log.info(f"using config: {config}")
 
     if TRACING_ENABLED in os.environ:
         tracer_provider.add_span_processor(

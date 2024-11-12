@@ -8,6 +8,7 @@ from opentelemetry import trace
 from pydantic import BaseModel
 
 from kai.analyzer_types import ExtendedIncident, Incident, RuleSet, Violation
+from kai.constants import PATH_LLM_CACHE
 from kai.jsonrpc.core import JsonRpcApplication, JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcId
 from kai.jsonrpc.util import CamelCaseBaseModel
@@ -54,6 +55,7 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
     file_log_level: Optional[str] = None
     log_dir_path: Optional[Path] = None
     demo_mode: bool = False
+    cache_dir: Optional[Path]
 
     analyzer_lsp_lsp_path: Path
     analyzer_lsp_rpc_path: Path
@@ -146,6 +148,10 @@ def initialize(
         app.config.analyzer_lsp_rules_path = (
             app.config.analyzer_lsp_rules_path.resolve()
         )
+        if app.config.cache_dir is not None:
+            app.config.cache_dir = app.config.cache_dir.resolve()
+        else:
+            app.config.cache_dir = Path(PATH_LLM_CACHE)
 
         app.analysis_validator = AnalyzerLSPStep(
             RpcClientConfig(
@@ -316,7 +322,9 @@ def get_codeplan_agent_solution(
     app.config = cast(KaiRpcApplicationConfig, app.config)
 
     try:
-        model_provider = ModelProvider(app.config.model_provider, app.config.demo_mode)
+        model_provider = ModelProvider(
+            app.config.model_provider, app.config.demo_mode, app.config.cache_dir
+        )
     except Exception as e:
         app.log.error(f"unable to get model provider {e.__str__()}")
         server.send_response(

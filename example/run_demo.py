@@ -6,7 +6,7 @@ import sys
 import time
 from io import BufferedReader, BufferedWriter
 from pathlib import Path
-from typing import Generator, cast
+from typing import Generator, Optional, cast
 
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -68,6 +68,10 @@ def initialize_rpc_server(
     kai_config: KaiConfig,
 ) -> Generator[JsonRpcServer, None, None]:
 
+    cache_dir: Optional[Path] = None
+    if kai_config.cache_dir is not None:
+        cache_dir = Path(kai_config.cache_dir)
+
     log = get_logger("client")
     config = KaiRpcApplicationConfig(
         process_id=None,
@@ -76,6 +80,7 @@ def initialize_rpc_server(
         log_dir_path=Path("./logs"),
         model_provider=kai_config.models,
         demo_mode=True,
+        cache_dir=cache_dir,
         analyzer_lsp_java_bundle_path=ANALYSIS_BUNDLE_PATH,
         analyzer_lsp_lsp_path=ANALYSIS_LSP_PATH,
         analyzer_lsp_rpc_path=ANALYSIS_RPC_PATH,
