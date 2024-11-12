@@ -63,7 +63,10 @@ class TaskManager:
         logger.info("Executing task: %s", task)
         agent = self.get_agent_for_task(task)
         logger.info("Agent selected for task: %s", agent)
-        result: TaskResult = agent.execute_task(self.rcm, task)
+        try:
+            result: TaskResult = agent.execute_task(self.rcm, task)
+        except Exception as e:
+            logger.info(f"unable to run agent execute: {e}")
 
         logger.info("Task execution result: %s", result)
         return result
