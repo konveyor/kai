@@ -4,6 +4,7 @@ import datetime
 import hashlib
 import json
 import os
+from pathlib import Path
 from typing import Any, Optional
 
 from genai import Client, Credentials
@@ -29,10 +30,16 @@ LOG = get_logger(__name__)
 
 
 class ModelProvider:
-    def __init__(self, config: KaiConfigModels, demo_mode: bool = False):
+    def __init__(
+        self,
+        config: KaiConfigModels,
+        demo_mode: bool = False,
+        cache_dir: Path | None = None,
+    ):
         self.llm_retries: int = config.llm_retries
         self.llm_retry_delay: float = config.llm_retry_delay
         self.demo_mode: bool = demo_mode
+        self.cache_dir = cache_dir
 
         model_class: type[BaseChatModel]
         defaults: dict[str, Any]
@@ -191,7 +198,7 @@ class ModelProvider:
         stop: Optional[list[str]] = None,
         **kwargs: Any,
     ) -> BaseMessage:
-        if self.demo_mode:
+        if self.demo_mode and self.cache_dir is not None:
             cache_file = self.__get_cache_filename(input)
 
             LOG.debug(f"Using cache file {cache_file}")
@@ -229,11 +236,13 @@ class ModelProvider:
         return self.llm.invoke(input, config, stop=stop, **kwargs)
 
     def __get_cache_filename(self, input: LanguageModelInput) -> str:
+        if self.cache_dir is None:
+            return ""
         param_str = json.dumps(
             {"input": input, "model_id": self.model_id}, sort_keys=True, default=str
         )
         hash_value = hashlib.sha256(param_str.encode()).hexdigest()
-        dir = os.path.join(PATH_LLM_CACHE, self.model_id)
+        dir = os.path.join(self.cache_dir, self.model_id)
         os.makedirs(dir, exist_ok=True)
         return os.path.join(dir, f"{hash_value}.json")
 

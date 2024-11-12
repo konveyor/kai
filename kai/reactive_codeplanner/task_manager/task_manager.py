@@ -68,7 +68,7 @@ class TaskManager:
         except Exception as e:
             logger.info(f"unable to run agent execute: {e}")
 
-        logger.info("Task execution result: %s", result)
+        logger.debug("Task execution result: %s", result)
         return result
 
     def get_agent_for_task(self, task: Task) -> TaskRunner:

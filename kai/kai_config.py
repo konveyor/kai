@@ -1,6 +1,7 @@
 import os
 import tomllib
 from enum import StrEnum
+from pathlib import Path
 from typing import Any, Literal, Optional, Self, Union
 
 import yaml
@@ -220,6 +221,7 @@ class KaiConfig(BaseSettings):
         os.path.dirname(os.path.realpath(__file__)), "../../logs"
     )
     demo_mode: bool = False
+    cache_dir: Optional[str] = None
     trace_enabled: bool = False
 
     # Tiktoken configurations
