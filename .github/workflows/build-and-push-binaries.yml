@@ -108,6 +108,7 @@ jobs:
 
           cat << EOF > ./example/config.toml
           log_level = "info"
+          file_log_level = "debug"
           [models]
           provider = "${{ matrix.models.provider }}"
           [models.args]
@@ -136,6 +137,7 @@ jobs:
           else
             echo "Tests failed, only $changed_files_count where changed"
             git diff --name-only
+            cat logs/kai_server.log
             exit 1
           fi
         env:
