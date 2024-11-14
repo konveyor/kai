@@ -104,7 +104,7 @@ class MavenCompilerAgent(Agent):
             if in_java_file:
                 if "```java" in line or "```" in line:
                     continue
-                java_file = "\n".join([java_file, line])
+                java_file = "\n".join([java_file, line]).strip()
             if in_reasoning:
                 reasoning = "\n".join([reasoning, line])
             if in_additional_details:

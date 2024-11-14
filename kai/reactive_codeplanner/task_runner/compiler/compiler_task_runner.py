@@ -14,6 +14,8 @@ from kai.reactive_codeplanner.task_runner.api import TaskRunner
 from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
     AccessControlError,
     AnnotationError,
+    BuildError,
+    DependencyResolutionError,
     MavenCompilerError,
     OtherError,
     SyntaxError,
@@ -43,11 +45,13 @@ class MavenCompilerTaskRunner(TaskRunner):
     """
 
     handled_type = (
+        BuildError,
         SyntaxError,
         TypeMismatchError,
         AnnotationError,
         AccessControlError,
         OtherError,
+        DependencyResolutionError,
     )
 
     def __init__(self, agent: MavenCompilerAgent) -> None:
