@@ -50,10 +50,7 @@ class DependencyTaskRunner(TaskRunner):
 
     @tracer.start_as_current_span("dependency_task_execute")
     def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
-        if not isinstance(
-            task,
-            (DependencyTaskResponse, SymbolNotFoundError, PackageDoesNotExistError),
-        ):
+        if not isinstance(task, self.handled_type):
             logger.error("Unexpected task type %r", task)
             return TaskResult(encountered_errors=[], modified_files=[])
 
