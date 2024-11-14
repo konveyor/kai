@@ -27,4 +27,25 @@ load-data:
 	PYTHONPATH=$(KAI_PYTHON_PATH) python kai/service/incident_store/incident_store.py  --config_filepath ./kai/config.toml --drop_tables $(DROP_TABLES)
 
 build-kai-analyzer:
-	cd kai-analyzer && go build -o kai-analyzer main.go
+	cd kai_analyzer_rpc && go build -o kai-analyzer main.go
+
+build-kai-rpc-server:
+	pyinstaller build/build.spec
+
+set_up_run_demo:
+	mv dist/kai-rpc-server example/analysis/kai-rpc-server
+	mv kai_analyzer_rpc/kai-analyzer example/analysis/kai-analyzer-rpc 
+	
+get_analyzer_deps:
+	docker run -d --name=bundle quay.io/konveyor/jdtls-server-base:latest &&\
+    docker cp bundle:/usr/local/etc/maven.default.index ./example/analysis &&\
+    docker cp bundle:/jdtls ./example/analysis &&\
+    docker cp bundle:/jdtls/java-analyzer-bundle/java-analyzer-bundle.core/target/java-analyzer-bundle.core-1.0.0-SNAPSHOT.jar ./example/analysis/bundle.jar &&\
+    docker cp bundle:/usr/local/etc/maven.default.index ./example/analysis &&\
+	docker stop bundle &&\
+	docker rm bundle 
+
+get_rulesets:
+	cd example/analysis && git clone https://github.com/konveyor/rulesets && rm -rf example/analysis/rulesets/preview
+
+config_demo: build-kai-analyzer build-kai-rpc-server set_up_run_demo get_analyzer_deps get_rulesets
