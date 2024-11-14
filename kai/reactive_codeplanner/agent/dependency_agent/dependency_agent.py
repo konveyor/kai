@@ -311,7 +311,6 @@ Message:{message}
             if (
                 not line.strip().strip("```")  # trunk-ignore(ruff/B005)
                 or line == "```python"
-                or line == "```"
             ):
                 continue
 
@@ -354,14 +353,6 @@ Message:{message}
                         in_code = False
                         in_thought = False
                         continue
-                    case _:
-                        if code_block:
-                            actions.append(
-                                _action(code_block, thought_str, observation_str)
-                            )
-                            code_block = ""
-                            thought_str = ""
-                            observation_str = ""
 
             # TODO: There has to be a better way with python to do this.
             if in_code:

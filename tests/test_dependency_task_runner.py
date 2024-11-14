@@ -35,13 +35,8 @@ class TestDependencyTaskRunner(unittest.TestCase):
                         args={
                             "responses": responses[response_variant],
                             "sleep": None,
-                            # "parameters": {
-                            # "max_new_tokens": "2048"
-                            # },
-                            # "model_id": "meta-llama/llama-3-1-70b-instruct",
                         },
                         provider="FakeListChatModel",
-                        # provider="ChatIBMGenAI",
                     )
                 ),
                 project_base=project_base,
@@ -49,8 +44,6 @@ class TestDependencyTaskRunner(unittest.TestCase):
         )
 
     def test_package_does_not_exist_task(self) -> None:
-        load_dotenv()
-
         project_base = Path(
             ".", "tests", "test_data", "test_dependency_task_runner"
         ).absolute()
@@ -60,7 +53,7 @@ class TestDependencyTaskRunner(unittest.TestCase):
             parse_lines="'[ERROR] ./test_data/test_dependency_agent/Order.java:[8,27] package jakarta.persistence does not exist'",
             missing_package="jakarta.persistence",
             message="package jakarta.persistence does not exist",
-            file=str(project_base.joinpath("Order.java")),
+            file=str(project_base / "Order.java"),
             line=8,
             max_retries=3,
             column=27,
@@ -68,6 +61,17 @@ class TestDependencyTaskRunner(unittest.TestCase):
 
         runner = self._task_runner(project_base=project_base, response_variant=0)
 
-        result = runner.execute_task(
-            rcm=RepoContextManager(project_root=project_base), task=task
-        )
+        rcm = RepoContextManager(project_root=project_base)
+        result = runner.execute_task(rcm=rcm, task=task)
+
+        self.assertEqual(len(result.modified_files), 1)
+
+        if result.modified_files:
+            modified_pom = result.modified_files[0]
+            with open(modified_pom) as f:
+                actual_pom_contents = f.read()
+            with open(project_base / "expected_pom.xml") as f:
+                expected_pom_contents = f.read()
+            self.assertEqual(actual_pom_contents, expected_pom_contents)
+
+        rcm.reset_to_first()
