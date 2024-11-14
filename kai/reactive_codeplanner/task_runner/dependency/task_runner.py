@@ -73,7 +73,7 @@ class DependencyTaskRunner(TaskRunner):
             )
             return TaskResult(encountered_errors=[], modified_files=[])
 
-        if not maven_dep_response.fqdn_response or not maven_dep_response.find_in_pom:
+        if not maven_dep_response.fqdn_response:
             logger.info(
                 "we got a final answer, but it must have skipped steps in the LLM, we need to review the LLM call resposne %r",
                 maven_dep_response,
@@ -100,12 +100,13 @@ class DependencyTaskRunner(TaskRunner):
         ## We always need to add the new dep
         deps.append(maven_dep_response.fqdn_response.to_xml_element())
 
-        if maven_dep_response.find_in_pom.override:
-            ## we know we need to remove this dep
-            for dep in deps:
-                if maven_dep_response.find_in_pom.match_dep(dep):
-                    logger.debug("found dep %r and removing", dep)
-                    deps.remove(dep)
+        if maven_dep_response.find_in_pom is not None:
+            if maven_dep_response.find_in_pom.override:
+                ## we know we need to remove this dep
+                for dep in deps:
+                    if maven_dep_response.find_in_pom.match_dep(dep):
+                        logger.debug("found dep %r and removing", dep)
+                        deps.remove(dep)
 
         tree.write(pom, "utf-8", pretty_print=True)
         rcm.commit(

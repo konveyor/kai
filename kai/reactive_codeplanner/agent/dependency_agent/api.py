@@ -17,7 +17,9 @@ class FQDNResponse:
     version: str
 
     def to_llm_message(self) -> HumanMessage:
-        return HumanMessage(f"the result is {json.dumps(self.__dict__)}")
+        return HumanMessage(
+            f"The result for FQDN search is {json.dumps(self.__dict__)}"
+        )
 
     def to_xml_element(self) -> ET._Element:
         parent = ET.Element(MAVEN_DEPENDENCY_XML_KEY)

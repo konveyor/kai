@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional, TypedDict, Union
 
 from langchain.prompts.chat import HumanMessagePromptTemplate
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.logging.logging import get_logger
@@ -131,7 +131,7 @@ Observation: The pom.xml file is now updated setting the xml at start line with 
 
 Final Answer:
 Updated the guava to the commons-collections4 dependency
-    """
+"""
     )
 
     inst_msg_template = HumanMessagePromptTemplate.from_template(
@@ -172,10 +172,10 @@ Message:{message}
         self,
         model_provider: ModelProvider,
         project_base: Path,
-        retries: int = 1,
+        retries: int = 3,
     ) -> None:
         self._model_provider = model_provider
-        self._retries = retries
+        self._max_retries = retries
         self.child_agent = FQDNDependencySelectorAgent(model_provider=model_provider)
         self.agent_methods.update({"find_in_pom._run": find_in_pom(project_base)})
 
@@ -199,35 +199,49 @@ Message:{message}
         # no result. In this case we will want the sub agent to try and give us additional information.
         # Today, if we don't have the FQDN then we are going to skip updating for now.
 
-        while fix_gen_attempts < self._retries:
+        all_actions: list[_action] = []
+        while fix_gen_attempts < self._max_retries:
             fix_gen_attempts += 1
 
             fix_gen_response = self._model_provider.invoke(msg)
             llm_response = self.parse_llm_response(fix_gen_response.content)
-            # Break out of the while loop, if we don't have a final answer then we need to retry
-            if llm_response is None or not llm_response.final_answer:
+
+            # if we don't have a final answer, we need to retry, otherwise break
+            if llm_response is not None and llm_response.final_answer:
+                all_actions.extend(llm_response.actions)
                 break
 
-            # We do not believe that we should not continue now we have to continue after running the code that is asked to be run.
-            # The only exception to this rule, is when we actually update the file, that should be handled by the caller.
-            # This happens sometimes that the LLM will stop and wait for more information.
+            # we have to keep the chat going until we get a final answer
+            msg.append(AIMessage(content=fix_gen_response.content))
 
+            if llm_response is None or not llm_response.actions:
+                msg.append(
+                    HumanMessage(
+                        content="Please provide a complete response until at least one action to perform."
+                    )
+                )
+                continue
+
+            all_actions.extend(llm_response.actions)
+            tool_outputs: list[str] = []
             for action in llm_response.actions:
                 for method_name, method in self.agent_methods.items():
                     if method_name in action.code:
                         if callable(method):
                             method_out = method(action.code)
-                            to_llm_message = getattr(method_out, "to_llm_message", None)
-                            if callable(to_llm_message):
-                                msg.append(method_out.to_llm_message())
+                            to_llm_message: Optional[Callable[[], HumanMessage]] = (
+                                getattr(method_out, "to_llm_message", None)
+                            )
+                            if to_llm_message is not None and callable(to_llm_message):
+                                tool_outputs.append(method_out.to_llm_message().content)
 
-            self._retries += 1
+            msg.append(HumanMessage(content="\n".join(tool_outputs)))
 
         if llm_response is None or fix_gen_response is None:
             return AgentResult()
 
         if not maven_search:
-            for a in llm_response.actions:
+            for a in all_actions:
                 if "search_fqdn.run" in a.code:
                     logger.debug("running search for FQDN")
                     _search_fqdn: Callable[
@@ -254,7 +268,7 @@ Message:{message}
                         maven_search = result
 
         if not find_pom_lines:
-            for a in llm_response.actions:
+            for a in all_actions:
                 if "find_in_pom._run" in a.code:
                     logger.debug("running find in pom")
                     _find_in_pom: Optional[Callable[[str], FindInPomResponse]] = (
@@ -297,13 +311,14 @@ Message:{message}
             if (
                 not line.strip().strip("```")  # trunk-ignore(ruff/B005)
                 or line == "```python"
+                or line == "```"
             ):
                 continue
 
             parts = line.split(":")
 
             if len(parts) > 1:
-                match parts[0]:
+                match parts[0].strip():
                     case "Thought":
                         s = ":".join(parts[1:])
                         if code_block or observation_str:
@@ -328,13 +343,25 @@ Message:{message}
                         in_observation = True
                         continue
                     case "Final Answer":
-                        actions.append(
-                            _action(code_block, thought_str, observation_str)
-                        )
+                        if code_block:
+                            actions.append(
+                                _action(code_block, thought_str, observation_str)
+                            )
+                            code_block = ""
+                            thought_str = ""
+                            observation_str = ""
                         in_final_answer = True
                         in_code = False
                         in_thought = False
                         continue
+                    case _:
+                        if code_block:
+                            actions.append(
+                                _action(code_block, thought_str, observation_str)
+                            )
+                            code_block = ""
+                            thought_str = ""
+                            observation_str = ""
 
             # TODO: There has to be a better way with python to do this.
             if in_code:
@@ -357,4 +384,8 @@ Message:{message}
                     observation_str = "\n".join([observation_str, line]).strip()
                 else:
                     observation_str = line.strip()
+
+        if code_block and thought_str and observation_str:
+            actions.append(_action(code_block, thought_str, observation_str))
+
         return _llm_response(actions, final_answer)
