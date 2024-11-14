@@ -37,7 +37,7 @@ class TestMavenCompilerAgent(unittest.TestCase):
         expected = MavenCompilerAgentResult(
             file_to_modify=Path(""),
             reasoning="\n1. Frobinate the widget\n",
-            updated_file_contents="\nimport str\nimport class",
+            updated_file_contents="import str\nimport class",
             additional_information="\ntesting added info",
             original_file="",
             message="",
