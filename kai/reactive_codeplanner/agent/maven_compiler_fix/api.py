@@ -38,4 +38,5 @@ class MavenCompilerAgentResult(AgentResult, SpawningResult):
             reasoning=self.reasoning,
             updated_file_contents=self.updated_file_contents,
             original_file_contents=self.original_file,
+            background="",
         )

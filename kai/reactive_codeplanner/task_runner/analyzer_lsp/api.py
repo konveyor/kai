@@ -1,4 +1,6 @@
+import itertools
 from dataclasses import dataclass
+from functools import cached_property
 
 from kai.analyzer_types import Incident, RuleSet, Violation
 from kai.logging.logging import get_logger
@@ -28,6 +30,40 @@ class AnalyzerRuleViolation(ValidationError):
             shadowed_priority = self.__class__.priority
 
         return f"{self.__class__.__name__}<loc={self.file}:{self.line}:{self.column}, violation.id={self.violation.id}>(priority={self.priority}({shadowed_priority}), depth={self.depth}, retries={self.retry_count})"
+
+    def background(self) -> str:
+        if self.parent is not None:
+            return self.oldest_ancestor().background()
+        if self.children:
+            return f"""You are a software developer who specializes in migrating from {" and ".join(self.sources)} to {" and ".join(self.targets)}
+You attempted to solve an issue in a repository you are migrating:
+
+Location: {self.incident.uri}
+Message:
+{self.incident.message}
+
+However your solution caused additional problems elsewhere in the repository, which you are now going to solve."""
+        return ""
+
+    @cached_property
+    def sources(self) -> list[str]:
+        labels = set(
+            itertools.chain(*[v.labels for v in self.ruleset.violations.values()])
+        )
+        source_key = "konveyor.io/source="
+        return [
+            label.replace(source_key, "") for label in labels if source_key in label
+        ]
+
+    @cached_property
+    def targets(self) -> list[str]:
+        labels = set(
+            itertools.chain(*[v.labels for v in self.ruleset.violations.values()])
+        )
+        target_key = "konveyor.io/target="
+        return [
+            label.replace(target_key, "") for label in labels if target_key in label
+        ]
 
     __repr__ = __str__
 
