@@ -30,22 +30,54 @@ class PriorityTaskQueue:
         self.task_stacks[priority].sort(reverse=True)
         logger.debug("Task %s added to priority %s stack.", task, priority)
 
-    def pop(self) -> Task:
-        highest_priority = min(self.task_stacks.keys())
-        task_stack = self.task_stacks[highest_priority]
-        task = task_stack.pop()
-        logger.debug("Popped task %s from priority %s stack.", task, highest_priority)
-        if not task_stack:
-            del self.task_stacks[highest_priority]
-            logger.debug("Priority %s stack is empty and removed.", highest_priority)
-        return task
+    def pop(self, max_depth: Optional[int] = None) -> Task:
+        for priority in sorted(self.task_stacks.keys()):
+            task_stack = self.task_stacks[priority]
+            if self._stack_has_tasks_within_depth(task_stack, max_depth):
+                task = self._pop_task_within_depth(task_stack, max_depth)
+                logger.debug(
+                    "Popped task %s from priority %s stack with max_depth %s.",
+                    task,
+                    priority,
+                    max_depth,
+                )
+                if not task_stack:
+                    del self.task_stacks[priority]
+                    logger.debug("Priority %s stack is empty and removed.", priority)
+                return task
+        if max_depth is not None:
+            raise IndexError(
+                f"No tasks available within the specified max_depth of {max_depth}"
+            )
+        raise IndexError("Pop from empty PriorityTaskQueue")
+
+    def _pop_task_within_depth(
+        self, task_stack: list[Task], max_depth: Optional[int]
+    ) -> Task:
+        for idx in reversed(range(len(task_stack))):
+            task = task_stack[idx]
+            if max_depth is None or task.depth <= max_depth:
+                return task_stack.pop(idx)
+        raise IndexError(
+            f"No tasks in the stack meet the depth requirement of {max_depth}"
+        )
 
     def has_tasks_within_depth(self, max_depth: Optional[int]) -> bool:
-        for task_stack in self.task_stacks.values():
-            for task in task_stack:
-                if max_depth is None or task.depth <= max_depth:
-                    return True
-        return False
+        if max_depth is None:
+            return len(self.all_tasks()) > 0
+        return any(
+            [
+                self._stack_has_tasks_within_depth(s, max_depth)
+                for s in self.task_stacks.values()
+            ]
+        )
+
+    def _stack_has_tasks_within_depth(
+        self, stack: list[Task], depth: Optional[int]
+    ) -> bool:
+        if depth is None:
+            return len(stack) > 0
+        return any([task.depth <= depth for task in stack])
 
     def remove(self, task: Task) -> None:
         for priority_level in list(self.task_stacks.keys()):
@@ -99,13 +131,19 @@ class PriorityTaskQueue:
             return []
         visited.add(task)
 
-        status = "" if task in queue_tasks_set else "  # solved"
+        if task in queue_tasks_set:
+            status = ""
+        elif task.retry_count == task.max_retries:
+            status = "Ignored: "
+        else:
+            status = "Solved: "
+
         prefix = ""
         if task.depth > 0:
             prefix = "|" + "-" * indent
 
         lines.append(
-            f"{prefix}{task}(priority={task.priority}, depth={task.depth}){status}"
+            f"{prefix}{status}{task}(priority={task.priority}, depth={task.depth}, retries={task.retry_count})"
         )
 
         for child in task.children:

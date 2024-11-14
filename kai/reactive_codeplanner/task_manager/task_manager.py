@@ -166,7 +166,7 @@ class TaskManager:
                 # kill the loop, no more iterations allowed
                 return
             iterations += 1
-            task = self.priority_queue.pop()
+            task = self.priority_queue.pop(max_depth=max_depth)
             if (
                 max_priority is not None
                 and task.oldest_ancestor().priority > max_priority

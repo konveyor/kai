@@ -134,18 +134,33 @@ def main() -> None:
 
         # Measure result supply time
         start_supply_time = time.time()
-        task_manager.supply_result(result)
+        try:
+            task_manager.supply_result(result)
+        except Exception as e:
+            logger.error("Failed to supply result %s: %s", result, e)
         supply_time = time.time() - start_supply_time
         logger.info("PERFORMANCE: %.6f seconds to supply result", supply_time)
 
+        logger.info("QUEUE_STATE: START")
         try:
             queue_state = str(task_manager.priority_queue)
+            for line in queue_state.splitlines():
+                logger.info(f"QUEUE_STATE: {line}")
         except Exception as e:
             logger.error(f"QUEUE_STATE: {e}")
-        logger.info("QUEUE_STATE: START")
-        for line in queue_state.splitlines():
-            logger.info(f"QUEUE_STATE: {line}")
         logger.info("QUEUE_STATE: END")
+        logger.info("QUEUE_STATE: SUCCESSFUL_TASKS: START")
+        for task in task_manager.processed_tasks:
+            logger.info(
+                f"QUEUE_STATE: SUCCESSFUL_TASKS: {task}(priority={task.priority}, depth={task.depth}, retries={task.retry_count})"
+            )
+        logger.info("QUEUE_STATE: SUCCESSFUL_TASKS: END")
+        logger.info("QUEUE_STATE: IGNORED_TASKS: START")
+        for task in task_manager.ignored_tasks:
+            logger.info(
+                f"QUEUE_STATE: IGNORED_TASKS: {task}(priority={task.priority}, depth={task.depth}, retries={task.retry_count})"
+            )
+        logger.info("QUEUE_STATE: IGNORED_TASKS: END")
     task_manager.stop()
     logger.info("Codeplan execution completed.")
 
