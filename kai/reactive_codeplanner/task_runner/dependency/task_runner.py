@@ -85,7 +85,7 @@ class DependencyTaskRunner(TaskRunner):
         )
         pom = os.path.join(os.path.join(rcm.project_root, "pom.xml"))
         # Needed to remove ns0:
-        ET.register_namespace("", "http://maven.apache.org/POM/4.0.0")
+        # ET.register_namespace("", "http://maven.apache.org/POM/4.0.0")
         tree = ET.parse(pom)  # trunk-ignore(bandit/B320)
         if tree is None:
             return TaskResult(modified_files=[], encountered_errors=[])
@@ -108,7 +108,7 @@ class DependencyTaskRunner(TaskRunner):
                         logger.debug("found dep %r and removing", dep)
                         deps.remove(dep)
 
-        tree.write(pom, "utf-8", pretty_print=True)
+        tree.write(file=pom, encoding="utf-8", pretty_print=True)
         rcm.commit(
             f"DependencyTaskRunner changed file {str(pom)}",
             None,
