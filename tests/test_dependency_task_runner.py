@@ -1,8 +1,6 @@
 import unittest
 from pathlib import Path
 
-from dotenv import load_dotenv
-
 from kai.kai_config import KaiConfigModels
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
