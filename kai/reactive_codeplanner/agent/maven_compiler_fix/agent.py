@@ -2,16 +2,19 @@ from jinja2 import Template
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
 from kai.llm_interfacing.model_provider import ModelProvider
+from kai.logging.logging import get_logger
 from kai.reactive_codeplanner.agent.api import Agent, AgentRequest, AgentResult
 from kai.reactive_codeplanner.agent.maven_compiler_fix.api import (
     MavenCompilerAgentRequest,
     MavenCompilerAgentResult,
 )
 
+logger = get_logger(__name__)
+
 
 class MavenCompilerAgent(Agent):
-    system_message = SystemMessage(
-        content="""
+    system_message_template = Template(
+        """{{ background }}
     I will give you compiler errors and the offending line of code, and you will need to use the file to determine how to fix them. You should only use compiler errors to determine what to fix.
 
     Make sure that the references to any changed types are kept.
@@ -54,6 +57,10 @@ class MavenCompilerAgent(Agent):
         if not isinstance(ask, MavenCompilerAgentRequest):
             return AgentResult()
 
+        system_message = SystemMessage(
+            content=self.system_message_template.render(background=ask.background)
+        )
+
         line_of_code = ask.file_contents.split("\n")[ask.line_number]
 
         compile_errors = f"Line of code: {line_of_code};\n{ask.message}"
@@ -62,7 +69,7 @@ class MavenCompilerAgent(Agent):
         )
 
         ai_message = self.model_provider.invoke(
-            [self.system_message, HumanMessage(content=content)]
+            [system_message, HumanMessage(content=content)]
         )
 
         resp = self.parse_llm_response(ai_message)
