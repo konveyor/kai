@@ -48,7 +48,7 @@ class DependencyTaskRunner(TaskRunner):
     def can_handle_task(self, task: Task) -> bool:
         return isinstance(task, self.handled_type)
 
-    @tracer.start_as_current_span("dependency_task_execute")
+    @tracer.start_as_current_span("dependency_task_execute")  # type:ignore
     def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
         if not isinstance(task, self.handled_type):
             logger.error("Unexpected task type %r", task)
@@ -59,7 +59,9 @@ class DependencyTaskRunner(TaskRunner):
             msg = f"Maven Compiler Error:\n{task.message}"
 
         maven_dep_response = self._agent.execute(
-            MavenDependencyRequest(Path(task.file), task, msg)
+            MavenDependencyRequest(
+                file_path=Path(task.file), task=task, message=msg, background=task.background()
+            )
         )
         logger.info("got mvn dep response: %r", maven_dep_response)
 

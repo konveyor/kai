@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Optional
 
 from kai.cache import CachePathResolver, TaskBasedPathResolver
 from kai.reactive_codeplanner.task_manager.api import Task
@@ -10,6 +11,7 @@ from kai.reactive_codeplanner.task_manager.api import Task
 class AgentRequest:
     file_path: Path
     task: Task
+    background: Optional[str] = None
     cache_path_resolver: CachePathResolver = field(init=False)
 
     def __post_init__(self) -> None:

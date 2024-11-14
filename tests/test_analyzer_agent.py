@@ -40,6 +40,7 @@ class TestAnalyzerAgent(unittest.TestCase):
                 sources=[],
                 targets=[],
                 task=task,
+                background="",
             )
         )
         print(result)
@@ -71,6 +72,7 @@ class TestAnalyzerAgent(unittest.TestCase):
             MavenDependencyRequest(
                 Path(""),
                 task=ValidationError(message="test", file="test", column=1, line=10),
+                background="",
             )
         )
         print(result)

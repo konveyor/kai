@@ -102,6 +102,7 @@ Searched dependencies:
                     query=query,
                     times=ask.times + 1,
                     task=ask.task,
+                    background=ask.background,
                 )
             )
         if isinstance(response, list):

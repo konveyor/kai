@@ -1,3 +1,4 @@
+import itertools
 from dataclasses import dataclass
 from functools import cached_property
 from typing import Any
@@ -86,6 +87,16 @@ class AnalyzerRuleViolation(ValidationError):
         ]
         target.sort()
         return target
+    
+    def background(self) -> str:
+        if self.parent is not None:
+            return self.oldest_ancestor().background()
+        if self.children:
+            return f"""You attempted to solve an issue in a repository you are migrating:
+Message:
+{self.incident.message}
+However your solution caused additional problems elsewhere in the repository, which you are now going to solve."""
+        return ""
 
     @cached_property
     def incident_message(self) -> list[str]:

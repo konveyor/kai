@@ -13,8 +13,8 @@ logger = get_logger(__name__)
 
 
 class MavenCompilerAgent(Agent):
-    system_message = SystemMessage(
-        content="""
+    system_message_template = Template(
+        """{{ background }}
     I will give you compiler errors and the offending line of code, and you will need to use the file to determine how to fix them. You should only use compiler errors to determine what to fix.
 
     Make sure that the references to any changed types are kept.
@@ -64,6 +64,10 @@ class MavenCompilerAgent(Agent):
                 "unable to  split file contents and get line from linenumber"
             )
             return MavenCompilerAgentResult()
+        
+        system_message = SystemMessage(
+            content=self.system_message_template.render(background=ask.background)
+        )
 
         compile_errors = f"Line of code: {line_of_code};\n{ask.message}"
         content = self.chat_message_template.render(
@@ -71,7 +75,7 @@ class MavenCompilerAgent(Agent):
         )
 
         ai_message = self.model_provider.invoke(
-            [self.system_message, HumanMessage(content=content)],
+            [system_message, HumanMessage(content=content)],
             ask.cache_path_resolver,
         )
 

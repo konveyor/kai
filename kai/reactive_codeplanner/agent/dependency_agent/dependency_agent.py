@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Optional, TypedDict, Union
 
+from jinja2 import Template
 from langchain.prompts.chat import HumanMessagePromptTemplate
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
@@ -53,10 +54,10 @@ class _llm_response:
 
 class MavenDependencyAgent(Agent):
 
-    sys_msg = SystemMessage(
+    system_message_template = Template(
         """
 You are an excellent java developer focused on updating dependencies in a maven `pom.xml` file. 
-
+{{ background }}
 ### Guidelines:
 1  Only use the provided and predefined functions as the functions. Do not use any other functions.
 2 always search for the fqdn for the dependency to be added or updated
@@ -190,7 +191,13 @@ Message:
         if not request.message:
             return AgentResult()
 
-        msg = [self.sys_msg, self.inst_msg_template.format(message=request.message)]
+        system_message = SystemMessage(
+            content=self.system_message_template.render(background=ask.background)
+        )
+
+        content = self.inst_msg_template.format(message=request.message)
+
+        msg = [system_message, content]
         fix_gen_attempts = 0
         llm_response: Optional[_llm_response] = None
         maven_search: Optional[FQDNResponse] = None
@@ -262,6 +269,7 @@ Message:
                                 a.code,
                                 query=[],
                                 times=0,
+                                background=ask.background,
                             )
                         )
                         if r.response is not None and isinstance(r.response, list):

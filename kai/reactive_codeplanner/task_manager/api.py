@@ -67,6 +67,10 @@ class Task:
 
         return f"{class_name}<" + ", ".join(field_strings) + ">"
 
+    def background(self) -> str:
+        """Used by Agents to provide context when solving child issues"""
+        raise NotImplementedError
+
     __repr__ = __str__
 
 
@@ -129,6 +133,12 @@ class ValidationError(Task):
             shadowed_priority = self.__class__.priority
 
         return f"{self.__class__.__name__}<loc={self.file}:{self.line}:{self.column}, message={self.message}>(priority={self.priority}({shadowed_priority}), depth={self.depth}, retries={self.retry_count})"
+
+    def background(self) -> str:
+        """Used by Agents to provide context when solving child issues"""
+        if self.parent is None:
+            return ""
+        return self.oldest_ancestor().background()
 
     __repr__ = __str__
 

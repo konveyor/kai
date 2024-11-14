@@ -32,6 +32,7 @@ class AnalyzerAgent(Agent):
     system_message_template = Template(
         """
     You are an experienced {{ language }} developer, who specializes in migrating code from {{ source }} to {{ target }}
+    {{ background }}
     """
     )
 
@@ -123,6 +124,7 @@ If you have any additional details or steps that need to be performed, put it he
                 language=language,
                 source=source,
                 target=target,
+                background=ask.background,
             )
         )
 

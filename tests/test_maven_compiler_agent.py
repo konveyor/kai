@@ -40,6 +40,7 @@ class TestMavenCompilerAgent(unittest.TestCase):
                 line_number=0,
                 message="",
                 task=MavenCompilerError(file="test", line=1, column=1, message="test"),
+                background="",
             )
         )
         print(result)
@@ -93,6 +94,7 @@ class TestMavenCompilerAgent(unittest.TestCase):
                         )
                     ],
                 ),
+                background="",
             )
         )
         print(result)

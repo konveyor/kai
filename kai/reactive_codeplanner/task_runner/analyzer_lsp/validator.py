@@ -47,7 +47,7 @@ class AnalyzerLSPStep(ValidationStep):
         self.incident_selector = config.incident_selector or ""
         super().__init__(config)
 
-    @tracer.start_as_current_span("analyzer_run_validation")
+    @tracer.start_as_current_span("analyzer_run_validation")  # type:ignore
     def run(self, scoped_paths: Optional[list[Path]] = None) -> ValidationResult:
         logger.debug("Running analyzer-lsp")
 

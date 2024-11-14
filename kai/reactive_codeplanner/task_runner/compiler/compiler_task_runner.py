@@ -69,7 +69,7 @@ class MavenCompilerTaskRunner(TaskRunner):
         """Will determine if the task if a MavenCompilerError, and if we can handle these issues."""
         return isinstance(task, self.handled_type)
 
-    @tracer.start_as_current_span("maven_execute_task")
+    @tracer.start_as_current_span("maven_execute_task")  # type:ignore
     def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
         """This will be responsible for getting the full file from LLM and updating the file on disk"""
 
@@ -82,11 +82,12 @@ class MavenCompilerTaskRunner(TaskRunner):
 
         result = self.agent.execute(
             MavenCompilerAgentRequest(
-                Path(task.file),
-                task,
-                src_file_contents,
-                task.line,
-                task.compiler_error_message(),
+                file_path=Path(task.file),
+                task=task,
+                file_contents=src_file_contents,
+                line_number=task.line,
+                message=task.compiler_error_message(),
+                background=task.background(),
             )
         )
 

@@ -195,6 +195,7 @@ def main() -> None:
             task_manager.supply_result(result)
         except Exception as e:
             logger.error("Failed to supply result %s: %s", result, e)
+
         supply_time = time.time() - start_supply_time
         logger.info("PERFORMANCE: %.6f seconds to supply result", supply_time)
 
