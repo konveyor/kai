@@ -23,7 +23,10 @@ from kai.reactive_codeplanner.agent.maven_compiler_fix.agent import MavenCompile
 from kai.reactive_codeplanner.agent.reflection_agent import ReflectionAgent
 from kai.reactive_codeplanner.task_manager.api import RpcClientConfig, Task, TaskResult
 from kai.reactive_codeplanner.task_manager.task_manager import TaskManager
-from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import AnalyzerRuleViolation
+from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import (
+    AnalyzerDependencyRuleViolation,
+    AnalyzerRuleViolation,
+)
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.task_runner import (
     AnalyzerTaskRunner,
 )
@@ -340,8 +343,12 @@ def get_codeplan_agent_solution(
     seed_tasks: list[Task] = []
 
     for incident in params.incidents:
+
+        class_to_use = AnalyzerRuleViolation
+        if "pom.xml" in incident.uri:
+            class_to_use = AnalyzerDependencyRuleViolation
         seed_tasks.append(
-            AnalyzerRuleViolation(
+            class_to_use(
                 file=urlparse(incident.uri).path,
                 line=incident.line_number,
                 column=-1,  # Not contained within report?
