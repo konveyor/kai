@@ -1,4 +1,4 @@
-# Kai Demo
+# Kai Demo (August 2024)
 
 Konveyor AI (kai) is Konveyor's approach to easing modernization of application
 source code to a new target by leveraging LLMs with guidance from static code
