@@ -84,8 +84,6 @@ class DependencyTaskRunner(TaskRunner):
             "we are now updating the pom based %s", maven_dep_response.final_answer
         )
         pom = os.path.join(os.path.join(rcm.project_root, "pom.xml"))
-        # Needed to remove ns0:
-        # ET.register_namespace("", "http://maven.apache.org/POM/4.0.0")
         tree = ET.parse(pom)  # trunk-ignore(bandit/B320)
         if tree is None:
             return TaskResult(modified_files=[], encountered_errors=[])
