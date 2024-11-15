@@ -1,9 +1,8 @@
-# Requires
+# Coolstore Quarkus Example
 
-- Kai backend to be running locally
-  - You can see [docs/getting_started.md](/docs/getting_started.md) for guidance
+See [Demo Guide](./demo.md) to follow a guided example in this directory.
 
-## To run this demo client
+## To run this demo client (quickstart)
 
 1. `fetch.sh` - Ensures that needed source code for the demo app is fetched
 1. `source ../env/bin/activate`
