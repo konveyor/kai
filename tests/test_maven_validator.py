@@ -15,7 +15,7 @@ from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
 
 class TestParseMavenOutput(unittest.TestCase):
 
-    def test_no_errors(self):
+    def test_no_errors(self) -> None:
         # Test case where Maven runs successfully without errors
         maven_output = """
 [INFO] Scanning for projects...
@@ -27,7 +27,7 @@ class TestParseMavenOutput(unittest.TestCase):
         errors = parse_maven_output(maven_output, rc)
         self.assertEqual(len(errors), 0, "Expected no errors for successful build.")
 
-    def test_symbol_not_found_error(self):
+    def test_symbol_not_found_error(self) -> None:
         # Test case for 'cannot find symbol' error
         maven_output = """
 [ERROR] COMPILATION ERROR :
@@ -49,7 +49,7 @@ class TestParseMavenOutput(unittest.TestCase):
         self.assertEqual(error.missing_symbol, "variable x")
         self.assertEqual(error.symbol_location, "class MyClass")
 
-    def test_package_does_not_exist_error(self):
+    def test_package_does_not_exist_error(self) -> None:
         # Test case for 'package does not exist' error
         maven_output = """
 [ERROR] COMPILATION ERROR :
@@ -68,7 +68,7 @@ class TestParseMavenOutput(unittest.TestCase):
         self.assertEqual(error.column, 8)
         self.assertEqual(error.missing_package, "com.example.missing")
 
-    def test_syntax_error(self):
+    def test_syntax_error(self) -> None:
         # Test case for syntax error
         maven_output = """
 [ERROR] COMPILATION ERROR :
@@ -86,7 +86,7 @@ class TestParseMavenOutput(unittest.TestCase):
         self.assertEqual(error.line, 20)
         self.assertEqual(error.column, 5)
 
-    def test_type_mismatch_error(self):
+    def test_type_mismatch_error(self) -> None:
         # Test case for type mismatch error
         maven_output = """
 [ERROR] COMPILATION ERROR :
@@ -107,7 +107,7 @@ class TestParseMavenOutput(unittest.TestCase):
             error.message, "incompatible types: String cannot be converted to int"
         )
 
-    def test_access_control_error(self):
+    def test_access_control_error(self) -> None:
         # Test case for access control error
         maven_output = """
 [ERROR] COMPILATION ERROR :
@@ -127,7 +127,7 @@ class TestParseMavenOutput(unittest.TestCase):
         self.assertEqual(error.column, 10)
         self.assertEqual(error.inaccessible_class, "com.example.PrivateClass")
 
-    def test_build_error(self):
+    def test_build_error(self) -> None:
         # Test case for a build error
         maven_output = """
 [ERROR] Some problems were encountered while processing the POMs:
@@ -146,7 +146,7 @@ class TestParseMavenOutput(unittest.TestCase):
         self.assertEqual(error.column, 15)
         self.assertTrue("Non-parseable POM" in error.message)
 
-    def test_multiple_identical_build_errors(self):
+    def test_multiple_identical_build_errors(self) -> None:
         # Test case where the same build error appears multiple times
         maven_output = """
 [ERROR] Some problems were encountered while processing the POMs:
@@ -167,7 +167,7 @@ class TestParseMavenOutput(unittest.TestCase):
         self.assertEqual(error.line, 5)
         self.assertEqual(error.column, 20)
 
-    def test_failsafe_mechanism(self):
+    def test_failsafe_mechanism(self) -> None:
         # Test case where rc != 0 but no errors are parsed, triggering the failsafe
         maven_output = """
 [INFO] Scanning for projects...
@@ -191,7 +191,7 @@ class TestParseMavenOutput(unittest.TestCase):
         self.assertEqual(error.message, "Unknown error occurred during Maven build.")
         self.assertIn("BUILD FAILURE", error.details[0])
 
-    def test_unhandled_error(self):
+    def test_unhandled_error(self) -> None:
         # Test case for an error that doesn't match any known patterns
         maven_output = """
 [ERROR] COMPILATION ERROR :
@@ -210,7 +210,7 @@ class TestParseMavenOutput(unittest.TestCase):
         self.assertEqual(error.column, 20)
         self.assertEqual(error.message, "unexpected error: unknown reason")
 
-    def test_multiple_errors(self):
+    def test_multiple_errors(self) -> None:
         # Test case with multiple different errors
         maven_output = """
 [ERROR] COMPILATION ERROR :
@@ -241,7 +241,7 @@ class TestParseMavenOutput(unittest.TestCase):
         self.assertEqual(error2.column, 8)
         self.assertEqual(error2.missing_package, "com.example.missing")
 
-    def test_duplicate_compilation_errors(self):
+    def test_duplicate_compilation_errors(self) -> None:
         # Test case with duplicate compilation errors
         maven_output = """
 [ERROR] COMPILATION ERROR :
@@ -269,7 +269,7 @@ class TestParseMavenOutput(unittest.TestCase):
         self.assertEqual(error.missing_symbol, "class MissingClass")
         self.assertEqual(error.symbol_location, "package com.example")
 
-    def test_maven_not_installed(self):
+    def test_maven_not_installed(self) -> None:
         # Test case where Maven is not installed
         maven_output = ""
         rc = -1
@@ -282,7 +282,7 @@ class TestParseMavenOutput(unittest.TestCase):
         self.assertEqual(error.file, "unknown file")
         self.assertEqual(error.message, "Unknown error occurred during Maven build.")
 
-    def test_compile_error_with_details(self):
+    def test_compile_error_with_details(self) -> None:
         # Test case with compilation error including detailed messages
         maven_output = """
 [ERROR] COMPILATION ERROR :
@@ -315,7 +315,7 @@ class TestParseMavenOutput(unittest.TestCase):
         self.assertEqual(error2.missing_symbol, "variable undefinedVar")
         self.assertEqual(error2.symbol_location, "class ComplexError")
 
-    def test_error_with_no_line_column(self):
+    def test_error_with_no_line_column(self) -> None:
         # Test case where the error line does not contain line and column numbers
         maven_output = """
 [ERROR] COMPILATION ERROR :
@@ -339,7 +339,7 @@ class TestParseMavenOutput(unittest.TestCase):
         self.assertEqual(error.column, -1)
         self.assertEqual(error.missing_symbol, "class UnknownClass")
 
-    def test_build_error_with_multiple_projects(self):
+    def test_build_error_with_multiple_projects(self) -> None:
         # Test case with build errors in a multi-module project
         maven_output = """
 [ERROR] Some problems were encountered while processing the POMs:
@@ -359,7 +359,7 @@ class TestParseMavenOutput(unittest.TestCase):
         self.assertEqual(error.column, 13)
         self.assertIn("Non-resolvable parent POM", error.message)
 
-    def test_dependency_resolution_error(self):
+    def test_dependency_resolution_error(self) -> None:
         maven_output = """
     [INFO] Scanning for projects...
     [INFO]
@@ -394,6 +394,22 @@ class TestParseMavenOutput(unittest.TestCase):
         self.assertEqual(error.project, "monolith")
         self.assertEqual(error.goal, "")
         self.assertIn("Could not resolve dependencies", error.message)
+
+    def test_bad_pom_error(self) -> None:
+        mvn_output = """
+[INFO] Scanning for projects...
+[ERROR] [ERROR] Some problems were encountered while processing the POMs:
+[FATAL] Non-parseable POM /kai/example/coolstore/pom.xml: processing instruction can not have PITarget with reserved xml name (position: START_DOCUMENT seen \n\n<?xml ... @3:7)  @ line 3, column 7
+ @ 
+[ERROR] The build could not read 1 project -> [Help 1]
+[ERROR]   
+[ERROR]   The project  (/kai/example/coolstore/pom.xml) has 1 error
+[ERROR]     Non-parseable POM /kai/example/coolstore/pom.xml: processing instruction can not have PITarget with reserved xml name (position: START_DOCUMENT seen \n\n<?xml ... @3:7)  @ line 3, column 7 -> [Help 2]
+[ERROR] 
+"""
+        errors = parse_maven_output(mvn_output, rc=1)
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0].file, "/kai/example/coolstore/pom.xml")
 
 
 if __name__ == "__main__":

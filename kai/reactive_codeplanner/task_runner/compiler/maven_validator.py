@@ -236,6 +236,8 @@ def parse_build_errors(
                 error.details.extend(details)
                 errors.append(error)
                 continue
+            else:
+                i += 1
         else:
             # Skip lines until we match a project line
             i += 1
