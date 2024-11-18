@@ -35,7 +35,7 @@ SAMPLE_APP_DIR = Path("coolstore")
 ANALYSIS_BUNDLE_PATH = Path(".", "analysis", "bundle.jar")
 ANALYSIS_LSP_PATH = Path(".", "analysis", "jdtls", "bin", "jdtls")
 ANALYSIS_RPC_PATH = Path(".", "analysis", "kai-analyzer-rpc")
-ANALYSIS_RULES_PATH = Path(".", "analysis", "rulesets")
+ANALYSIS_RULES_PATH = Path(".", "analysis", "rulesets", "default", "generated")
 ANALYSIS_DEP_LABELS_FILE = Path(".", "analysis", "maven.default.index")
 RPC_BINARY_PATH = Path(".", "analysis", "kai-rpc-server")
 TRACING_ENABLED = "ENABLE_TRACING"
@@ -106,7 +106,10 @@ def initialize_rpc_server(
             log=log,
         ),
         app=app,
-        request_timeout=240,
+        # TODO(fabianvf): when bumping the iterations/depth/priority, it can increase
+        # execution time significantly. We need to add some kind of keepalive signal or
+        # something to prevent a low timeout from killing a properly working request.
+        request_timeout=6000,
         log=log,
     )
     rpc_server.start()
@@ -125,6 +128,8 @@ def initialize_rpc_server(
                 f"Failed to initialize RPC server - {response.code} {response.message}"
             )
         yield rpc_server
+    except Exception as e:
+        log.error("Failed to initialize the server:", e)
     finally:
         # send shutdown
         response = rpc_server.send_request("shutdown", params={})
@@ -173,11 +178,13 @@ def process_file(
         file_path=file_path,
         incidents=incidents,
         max_priority=0,
-        max_depth=1,
-        max_iterations=1,
+        max_depth=0,
+        max_iterations=len(incidents),
     )
 
+    KAI_LOG.debug(f"Request is: {params.model_dump()}")
     response = server.send_request("getCodeplanAgentSolution", params.model_dump())
+    KAI_LOG.debug(f"Response is: {response}")
 
     if isinstance(response, JsonRpcError) or response is None:
         return f"Failed to generate fix for file {params.file_path} - {response.message if response is not None else None}"

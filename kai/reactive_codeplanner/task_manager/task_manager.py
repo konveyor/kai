@@ -53,13 +53,28 @@ class TaskManager:
         self.rcm = rcm
 
         if seed_tasks:
-            for task in seed_tasks:
-                # Seed tasks are assumed to be of the highest priority
-                task.priority = 0
-                self.priority_queue.push(task)
-                logger.info("Seed task %s added to stack.", task)
+            self.set_seed_tasks(*seed_tasks)
 
         logger.info("TaskManager initialized.")
+
+    def set_seed_tasks(self, *tasks: Task) -> None:
+        # Clear existing seed tasks
+        existing_tasks = self.priority_queue.task_stacks.get(0, [])
+        for task in existing_tasks:
+            self.priority_queue.remove(task)
+            # Reset priority to default
+            if task.parent:
+                ancestor = task.oldest_ancestor()
+                ancestor.priority = ancestor.__class__.priority
+            else:
+                task.priority = task.__class__.priority
+            # Now add them back to the queue so they aren't mistakenly detected as children
+            self.priority_queue.push(task)
+
+        for task in tasks:
+            task.priority = 0
+            self.priority_queue.push(task)
+            logger.info("Seed task %s added to stack.", task)
 
     def execute_task(self, task: Task) -> TaskResult:
         logger.info("Executing task: %s", task)
@@ -155,17 +170,11 @@ class TaskManager:
     def get_next_task(
         self,
         max_priority: Optional[int] = None,
-        max_iterations: Optional[int] = None,
         max_depth: Optional[int] = None,
     ) -> Generator[Task, Any, None]:
         self.initialize_priority_queue()
-        iterations = 0
 
         while self.priority_queue.has_tasks_within_depth(max_depth):
-            if max_iterations is not None and iterations >= max_iterations:
-                # kill the loop, no more iterations allowed
-                return
-            iterations += 1
             task = self.priority_queue.pop(max_depth=max_depth)
             if (
                 max_priority is not None
@@ -181,11 +190,6 @@ class TaskManager:
 
             logger.info("Yielding task: %s", task)
             yield task
-            # Once we yield the task, if we are at max_iterations we shouldn't re-run
-            # validators.
-            if max_iterations is not None and iterations >= max_iterations:
-                # kill the loop, no more iterations allowed
-                return
             self.handle_new_tasks_after_processing(task)
 
     def initialize_priority_queue(self) -> None:
