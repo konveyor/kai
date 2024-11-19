@@ -46,6 +46,6 @@ get_analyzer_deps:
 	docker rm bundle 
 
 get_rulesets:
-	cd example/analysis && git clone https://github.com/konveyor/rulesets && rm -rf example/analysis/rulesets/preview
+	cd example/analysis && git clone https://github.com/konveyor/rulesets && rm -rf rulesets/preview
 
 config_demo: build-kai-analyzer build-kai-rpc-server set_up_run_demo get_analyzer_deps get_rulesets
