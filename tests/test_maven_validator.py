@@ -24,7 +24,10 @@ class TestParseMavenOutput(unittest.TestCase):
 [INFO] ------------------------------------------------------------------------
 """
         rc = 0
-        errors = parse_maven_output(maven_output, rc)
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(maven_output, rc)
+        )
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         self.assertEqual(len(errors), 0, "Expected no errors for successful build.")
 
     def test_symbol_not_found_error(self) -> None:
@@ -39,7 +42,10 @@ class TestParseMavenOutput(unittest.TestCase):
 [ERROR] BUILD FAILURE
 """
         rc = 1
-        errors = parse_maven_output(maven_output, rc)
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(maven_output, rc)
+        )
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         self.assertEqual(len(errors), 1, "Expected one error.")
         error = errors[0]
         self.assertIsInstance(error, SymbolNotFoundError)
@@ -59,7 +65,10 @@ class TestParseMavenOutput(unittest.TestCase):
 [ERROR] BUILD FAILURE
 """
         rc = 1
-        errors = parse_maven_output(maven_output, rc)
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(maven_output, rc)
+        )
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         self.assertEqual(len(errors), 1, "Expected one error.")
         error = errors[0]
         self.assertIsInstance(error, PackageDoesNotExistError)
@@ -78,7 +87,10 @@ class TestParseMavenOutput(unittest.TestCase):
 [ERROR] BUILD FAILURE
 """
         rc = 1
-        errors = parse_maven_output(maven_output, rc)
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(maven_output, rc)
+        )
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         self.assertEqual(len(errors), 1, "Expected one error.")
         error = errors[0]
         self.assertIsInstance(error, SyntaxError)
@@ -96,7 +108,10 @@ class TestParseMavenOutput(unittest.TestCase):
 [ERROR] BUILD FAILURE
 """
         rc = 1
-        errors = parse_maven_output(maven_output, rc)
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(maven_output, rc)
+        )
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         self.assertEqual(len(errors), 1, "Expected one error.")
         error = errors[0]
         self.assertIsInstance(error, TypeMismatchError)
@@ -118,7 +133,10 @@ class TestParseMavenOutput(unittest.TestCase):
 [ERROR] BUILD FAILURE
 """
         rc = 1
-        errors = parse_maven_output(maven_output, rc)
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(maven_output, rc)
+        )
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         self.assertEqual(len(errors), 1, "Expected one error.")
         error = errors[0]
         self.assertIsInstance(error, AccessControlError)
@@ -137,7 +155,10 @@ class TestParseMavenOutput(unittest.TestCase):
 [ERROR]     Non-parseable POM /path/to/pom.xml: expected start tag not found @ line 3, column 15 -> [Help 2]
 """
         rc = 1
-        errors = parse_maven_output(maven_output, rc)
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(maven_output, rc)
+        )
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         self.assertEqual(len(errors), 1, "Expected one build error.")
         error = errors[0]
         self.assertIsInstance(error, BuildError)
@@ -156,7 +177,10 @@ class TestParseMavenOutput(unittest.TestCase):
 [ERROR]     Non-parseable POM /path/to/pom.xml: invalid content @ line 5, column 20 -> [Help 2]
 """
         rc = 1
-        errors = parse_maven_output(maven_output, rc)
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(maven_output, rc)
+        )
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         # Assuming deduplication is implemented in parse_maven_output
         self.assertEqual(
             len(errors), 1, "Expected one unique build error despite duplicates."
@@ -179,7 +203,10 @@ class TestParseMavenOutput(unittest.TestCase):
 [ERROR] -> [Help 1]
 """
         rc = 1
-        errors = parse_maven_output(maven_output, rc)
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(maven_output, rc)
+        )
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         self.assertEqual(
             len(errors), 1, "Expected one error due to failsafe mechanism."
         )
@@ -201,7 +228,10 @@ class TestParseMavenOutput(unittest.TestCase):
 [ERROR] BUILD FAILURE
 """
         rc = 1
-        errors = parse_maven_output(maven_output, rc)
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(maven_output, rc)
+        )
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         self.assertEqual(len(errors), 1, "Expected one error.")
         error = errors[0]
         self.assertIsInstance(error, OtherError)
@@ -223,7 +253,10 @@ class TestParseMavenOutput(unittest.TestCase):
 [ERROR] BUILD FAILURE
 """
         rc = 1
-        errors = parse_maven_output(maven_output, rc)
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(maven_output, rc)
+        )
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         self.assertEqual(len(errors), 2, "Expected two errors.")
         # First error
         error1 = errors[0]
@@ -256,7 +289,10 @@ class TestParseMavenOutput(unittest.TestCase):
 [ERROR] BUILD FAILURE
 """
         rc = 1
-        errors = parse_maven_output(maven_output, rc)
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(maven_output, rc)
+        )
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         # Assuming deduplication is implemented
         self.assertEqual(
             len(errors), 1, "Expected one unique error despite duplicates."
@@ -273,7 +309,10 @@ class TestParseMavenOutput(unittest.TestCase):
         # Test case where Maven is not installed
         maven_output = ""
         rc = -1
-        errors = parse_maven_output(maven_output, rc)
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(maven_output, rc)
+        )
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         self.assertEqual(
             len(errors), 1, "Expected one error due to Maven not being installed."
         )
@@ -295,7 +334,10 @@ class TestParseMavenOutput(unittest.TestCase):
 [ERROR] BUILD FAILURE
 """
         rc = 1
-        errors = parse_maven_output(maven_output, rc)
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(maven_output, rc)
+        )
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         self.assertEqual(len(errors), 2, "Expected two errors.")
         # First error
         error1 = errors[0]
@@ -326,7 +368,10 @@ class TestParseMavenOutput(unittest.TestCase):
 [ERROR] BUILD FAILURE
 """
         rc = 1
-        errors = parse_maven_output(maven_output, rc)
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(maven_output, rc)
+        )
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         # Since the error_pattern requires line and column, this error may not be parsed.
         # Adjust the regex pattern if needed.
         self.assertEqual(
@@ -349,7 +394,10 @@ class TestParseMavenOutput(unittest.TestCase):
 [ERROR]     Non-resolvable parent POM for com.example:module1:1.0-SNAPSHOT: Could not find artifact com.example:parent:pom:1.0-SNAPSHOT and 'parent.relativePath' points at wrong local POM @ line 5, column 13 -> [Help 2]
 """
         rc = 1
-        errors = parse_maven_output(maven_output, rc)
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(maven_output, rc)
+        )
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         # Assuming deduplication is implemented
         self.assertEqual(len(errors), 1, "Expected one unique build error.")
         error = errors[0]
@@ -384,7 +432,10 @@ class TestParseMavenOutput(unittest.TestCase):
     [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/DependencyResolutionException
     """
         rc = 1
-        errors = parse_maven_output(maven_output, rc)
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(maven_output, rc)
+        )
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         self.assertEqual(len(errors), 1, "Expected one dependency resolution error.")
         error = errors[0]
         self.assertIsInstance(error, DependencyResolutionError)
@@ -407,7 +458,10 @@ class TestParseMavenOutput(unittest.TestCase):
 [ERROR]     Non-parseable POM /kai/example/coolstore/pom.xml: processing instruction can not have PITarget with reserved xml name (position: START_DOCUMENT seen \n\n<?xml ... @3:7)  @ line 3, column 7 -> [Help 2]
 [ERROR] 
 """
-        errors = parse_maven_output(mvn_output, rc=1)
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(mvn_output, rc=1)
+        )
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         self.assertEqual(len(errors), 1)
         self.assertEqual(errors[0].file, "/kai/example/coolstore/pom.xml")
 
