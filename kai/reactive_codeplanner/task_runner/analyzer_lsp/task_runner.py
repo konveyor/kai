@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 
 from opentelemetry import trace
 
@@ -8,10 +9,11 @@ from kai.reactive_codeplanner.agent.analyzer_fix.api import (
     AnalyzerFixRequest,
     AnalyzerFixResponse,
 )
+from kai.reactive_codeplanner.agent.reflection_agent import ReflectionTask
 from kai.reactive_codeplanner.task_manager.api import Task, TaskResult
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import AnalyzerRuleViolation
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
-from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
+from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager, SpawningResult
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer("analyzer_task_runner")
@@ -78,7 +80,15 @@ class AnalyzerTaskRunner(TaskRunner):
             with open(result.file_to_modify, "w") as f:
                 f.write(result.updated_file_content)
 
-            rcm.commit(f"AnalyzerTaskRunner changed file {str(task.file)}", None)
+            rcm.commit(
+                f"AnalyzerTaskRunner changed file {str(task.file)}",
+                AnalyzerTaskSpawningResult(
+                    issues=[task.incident.message],
+                    file_path=Path(task.file),
+                    original_contents=src_file_contents,
+                    updated_contents=result.updated_file_content,
+                ),
+            )
             return TaskResult(
                 modified_files=[result.file_to_modify], encountered_errors=[]
             )
@@ -86,3 +96,25 @@ class AnalyzerTaskRunner(TaskRunner):
             logger.info(f"did not update file {result.file_to_modify}")
 
         return TaskResult(modified_files=[], encountered_errors=[])
+
+
+class AnalyzerTaskSpawningResult(SpawningResult):
+    def __init__(
+        self,
+        original_contents: str,
+        updated_contents: str,
+        file_path: Path,
+        issues: list[str],
+    ) -> None:
+        self.original_file_contents: str = original_contents
+        self.updated_file_contents: str = updated_contents
+        self.file_path: Path = file_path
+        self.issues: list[str] = issues
+
+    def to_reflection_task(self) -> Optional[ReflectionTask]:
+        return ReflectionTask(
+            file_path=self.file_path,
+            original_file_contents=self.original_file_contents,
+            updated_file_contents=self.updated_file_contents,
+            issues=self.issues,
+        )

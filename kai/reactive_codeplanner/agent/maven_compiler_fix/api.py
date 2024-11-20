@@ -36,6 +36,6 @@ class MavenCompilerAgentResult(AgentResult, SpawningResult):
             file_path=self.file_to_modify,
             issues=set(self.message),
             reasoning=self.reasoning,
-            updated_file=self.updated_file_contents,
-            original_file=self.original_file,
+            updated_file_contents=self.updated_file_contents,
+            original_file_contents=self.original_file,
         )

@@ -1,63 +1,64 @@
 import json
 import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
-import tree_sitter as ts
-import tree_sitter_java as tsj
 from langchain.prompts.chat import (
     AIMessagePromptTemplate,
     HumanMessagePromptTemplate,
     SystemMessagePromptTemplate,
 )
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage
 
 from kai.llm_interfacing.model_provider import ModelProvider
+from kai.logging.logging import TRACE, get_logger
 from kai.reactive_codeplanner.agent.api import Agent, AgentRequest, AgentResult
 from kai.reactive_codeplanner.agent.ast_diff.parser import Language, extract_ast_info
+
+logger = get_logger(__name__)
 
 
 @dataclass
 class ReflectionTask(AgentRequest):
-    """TODO (pgaikwad): We shouldn't need this class. this is a stop-gap solution as Task is mostly unknown atm"""
-
     # contents of input file prior to invoking previous agent
-    original_file: str = ""
+    original_file_contents: str
     # contents of updated file produced by previous agent
-    updated_file: str = ""
+    updated_file_contents: str
+    # a list of issues originally identified in the file
+    issues: list[str]
     # reasoning produced by previous agent
     reasoning: str = ""
-    # a list of issues originally identified in the file
-    issues: set[str] = field(default_factory=set)
     # a keyword describing target technology to act as a hint to agent
     target_technology: str = "Quarkus"
+    # keyword describing overall application's language
+    app_language: str = "Java"
 
 
 class ReflectionAgent(Agent):
     """Reflection agent reflects on LLM responses of different agents"""
 
-    msg_sys_reflect = SystemMessage(
-        content="""You are a senior engineer with extensive experience in developing enterprise Java applications. 
-You are helping migrate old Java applications to a newer technology.
-A junior engineer has updated a Java file in an application to migrate it to a newer technology.
+    msg_templ_sys_reflect = SystemMessagePromptTemplate.from_template(
+        """You are a senior engineer with extensive experience in developing enterprise {app_language} applications.
+You are helping migrate old {app_language} applications to a newer technology.
+A junior engineer has updated a {source_file_language} file in an application to migrate it to a newer technology.
 Use your best judgement to analyze the input data and review the changes.
 """
     )
 
     msg_templ_sys_fix = SystemMessagePromptTemplate.from_template(
-        """You are a senior engineer well versed in Java.
-You have extensive experience in migrating enterprise Java applications to newer Java technologies.
-You are overseeing a migration of an enterprise Java application to {target_technology}.
+        """You are a senior engineer well versed in {app_language}.
+You have extensive experience in migrating enterprise {app_language} applications to newer technologies.
+You are overseeing a migration of an enterprise {app_language} application to {target_technology}.
 You will be given an input file, and a list of migration issues identified in the file.
 Fix all the issues described and generate an updated file.
 """
     )
 
     msg_templ_user_reflect = HumanMessagePromptTemplate.from_template(
-        """You will be given a list of migration issues found in an old Java file in JSON format.
-Instead of the Java files themselves, you will be given a difference between old file and the new file in JSON format.
+        """You will be given a list of migration issues found in an old {source_file_language} file in JSON format.
+Instead of the {source_file_language} files themselves, you will be given a difference between old file and the new file in JSON format.
 The difference is constructed by comparing ASTs of the two files. The JSON keys are self-explanatory.
 
 You will analyze the differences expressed in JSON format to create a mental picture of the old source code and the new.
@@ -67,7 +68,7 @@ You will also look for any new changes that were not originally mentioned in the
 You will also spot any changes that suggest a change in the original functionality.
 If you find an issue that's not fixed, briefly describe why you think the issue is not fixed in 1-2 lines.
 If you find unnecessary changes, point those out too.
-Be precise in pointing out issues that are not fixed.
+Be precise in pointing out issues that are not fixed. If you find the changes satisfactory, output the word "TERMINATE".
 
 ## Issues identified in the input file
 
@@ -79,8 +80,34 @@ Be precise in pointing out issues that are not fixed.
 """
     )
 
+    msg_templ_user_reflect_no_diff = HumanMessagePromptTemplate.from_template(
+        """A junior engineer has updated a {source_file_language} file in order to migrate it to a newer technology.
+You will be given the original file and the updated file.
+Use your best judgement to understand if the updated file fixes the issues originally described.
+Make sure that the file is valid and does not omit any code unrelated to the issues fixed.
+We are expected to have full content in the updated file. Provide brief summary of your review.
+If there are no changes detected and you find the file satisfactory, only output the word "TERMINATE".
+
+## Issues identified in the input file
+
+{issues}
+
+## Original File
+
+```
+{original_content}
+```
+
+## Updated File
+
+```
+{updated_content}
+```
+"""
+    )
+
     msg_templ_user_fix = HumanMessagePromptTemplate.from_template(
-        """Before attempting to migrate the code to Quarkus reason through what changes are required and why.
+        """Before attempting to migrate the code to {target_technology} reason through what changes are required and why.
 Pay attention to changes you make and impacts to external dependencies in the pom.xml as well as changes to imports we need to consider.
 Remember when updating or adding annotations that the class must be imported.
 As you make changes that impact the pom.xml or imports, be sure you explain what needs to be updated.
@@ -92,14 +119,14 @@ Structure your output in Markdown format such as:
 Write the step by step reasoning in this markdown section. If you are unsure of a step or reasoning, clearly state you are unsure and why.
 
 ## Updated File
-```{language}
-// Write the updated file for Quarkus in this section. If the file should be removed, make the content of the updated file a comment explaining it should be removed.
+```{source_file_language}
+// Write the updated file in this section. If the file should be removed, make the content of the updated file a comment explaining it should be removed.
 ```
 Here's the input information:
 
 ## Input file
 
-```{language}
+```{source_file_language}
 {input_file}
 ```
 
@@ -116,7 +143,7 @@ Here's the input information:
 
 ## Updated file
 
-```{language}
+```{source_file_language}
 {updated_file}
 ```
 """
@@ -127,12 +154,10 @@ Here's the input information:
         model_provider: ModelProvider,
         iterations: int = 1,
         retries: int = 1,
-        silent: bool = True,
     ) -> None:
         self._model_provider = model_provider
         self._iterations = iterations
         self._retries = retries
-        self._silent = silent
 
     def execute(self, task: AgentRequest) -> AgentResult:
         if not isinstance(task, ReflectionTask):
@@ -144,86 +169,120 @@ Here's the input information:
 
         language = {
             ".java": Language.Java,
+            ".xml": Language.XML,
         }.get(file_ext.lower(), None)
 
-        issues = json.dumps({"issues": list(reflection_task.issues)}, indent=4)
+        issues = json.dumps({"issues": list(set(reflection_task.issues))}, indent=4)
 
         diff = self._get_diff(
-            reflection_task.original_file, reflection_task.updated_file, language
+            reflection_task.original_file_contents,
+            reflection_task.updated_file_contents,
+            language,
         )
 
-        if language is None or not diff or not reflection_task.issues:
+        if language is None or not reflection_task.issues:
+            logger.log(TRACE, "There is nothing to reflect on")
             return AgentResult()
 
         # initiate chats
         chat_fix_gen = [
             self.msg_templ_sys_fix.format(
-                target_technology=reflection_task.target_technology
+                app_language=reflection_task.app_language,
+                target_technology=reflection_task.target_technology,
             ),
             self.msg_templ_user_fix.format(
-                language=language,
-                input_file=reflection_task.original_file,
+                source_file_language=language,
+                input_file=reflection_task.original_file_contents,
                 issues=issues,
+                target_technology=reflection_task.target_technology,
             ),
             self.msg_templ_ai_fix.format(
-                language=language,
-                updated_file=reflection_task.updated_file,
+                source_file_language=language,
+                updated_file=reflection_task.updated_file_contents,
                 reasoning=reflection_task.reasoning,
             ),
         ]
+
         chat_reflect = [
-            self.msg_sys_reflect,
-            self.msg_templ_user_reflect.format(
-                issues=issues,
-                diff=json.dumps(diff, indent=4),
-            ),
+            self.msg_templ_sys_reflect.format(
+                app_language=reflection_task.app_language,
+                source_file_language=language,
+            )
         ]
+
+        # when we couldn't determine diff, we fallback to general reflection
+        if not diff:
+            chat_reflect.append(
+                self.msg_templ_user_reflect_no_diff.format(
+                    source_file_language=language,
+                    updated_content=reflection_task.updated_file_contents,
+                    original_content=reflection_task.original_file_contents,
+                    issues=issues,
+                )
+            )
+        else:
+            chat_reflect.append(
+                self.msg_templ_user_reflect.format(
+                    issues=issues,
+                    diff=json.dumps(diff, indent=4),
+                    source_file_language=language,
+                ),
+            )
 
         modified_files = []
         # run agent loop
         curr_iter = 0
-        last_updated_file_contents = reflection_task.updated_file
+        last_updated_file_contents = reflection_task.updated_file_contents
         while curr_iter < self._iterations:
             curr_iter += 1
             try:
-                self._out(to="reflection", frm="user", msg=chat_reflect[-1].content)
                 reflection_response = self._model_provider.invoke(chat_reflect)
-                self._out(
-                    to="fix-gen", frm="reflection", msg=reflection_response.content
-                )
                 chat_reflect.append(AIMessage(content=reflection_response.content))
                 chat_fix_gen.append(HumanMessage(content=reflection_response.content))
                 fix_gen_attempts = 0
                 updated_file_contents = None
                 fix_gen_response = None
+                if "TERMINATE" in reflection_response.content:
+                    logger.log(
+                        TRACE, "Reflection determined no further changes necessary"
+                    )
+                    return AgentResult()
                 while fix_gen_attempts < self._retries:
                     fix_gen_attempts += 1
                     fix_gen_response = self._model_provider.invoke(chat_fix_gen)
-                    self._out(
-                        to="reflection", frm="fix-gen", msg=fix_gen_response.content
-                    )
                     updated_file_contents = self._parse_llm_response(
                         fix_gen_response.content
                     )
                     if updated_file_contents:
                         break
                 if updated_file_contents is None or fix_gen_response is None:
+                    logger.log(TRACE, "Invalid reflection response received")
                     return AgentResult()
+                last_updated_file_contents = updated_file_contents
                 chat_fix_gen.append(AIMessage(content=fix_gen_response.content))
                 diff = self._get_diff(
                     last_updated_file_contents, updated_file_contents, language
                 )
                 if not diff:
-                    return AgentResult()
-                last_updated_file_contents = updated_file_contents
-                chat_reflect.append(
-                    self.msg_templ_user_reflect.format(
-                        issues=issues, diff=json.dumps(diff)
+                    chat_reflect.append(
+                        self.msg_templ_user_reflect_no_diff.format(
+                            source_file_language=language,
+                            updated_content=reflection_task.updated_file_contents,
+                            original_content=reflection_task.original_file_contents,
+                            issues=issues,
+                        )
                     )
-                )
+                else:
+                    chat_reflect.append(
+                        self.msg_templ_user_reflect.format(
+                            issues=issues,
+                            diff=json.dumps(diff),
+                            source_file_language=language,
+                        )
+                    )
             except Exception as e:
-                self._out(to="user", frm="agent", msg=f"error occurred: {str(e)}")
-                return AgentResult()
+                logger.debug(f"Failed to generate reflection response {str(e)}")
+                return AgentResult(encountered_errors=[str(e)])
 
         # commit the result here
         if last_updated_file_contents:
@@ -231,20 +290,21 @@ Here's the input information:
             with open(reflection_task.file_path, "w+") as f:
                 f.write(last_updated_file_contents)
 
-        return AgentResult()
+        return AgentResult(file_to_modify=reflection_task.file_path)
 
     def _get_diff(
         self, original_content: str, updated_content: str, language: Language | None
     ) -> dict[str, Any]:
         if not language:
             return {}
-        parser = ts.Parser(ts.Language(tsj.language()))
-        original_file_summary = extract_ast_info(
-            parser.parse(original_content.encode("utf-8")), language=language
-        )
-        updated_file_summary = extract_ast_info(
-            parser.parse(updated_content.encode("utf-8")), language=language
-        )
+        try:
+            original_file_summary = extract_ast_info(
+                original_content, language=language
+            )
+            updated_file_summary = extract_ast_info(updated_content, language=language)
+        except Exception as e:
+            logger.error(f"Failed to generate AST diff for reflection - {str(e)}")
+            return {}
         if not original_file_summary or not updated_file_summary:
             # this is a case where we will fallback to some
             # other metric for reflection, but right now all
@@ -270,19 +330,3 @@ Here's the input information:
         if not match_updated_file:
             return None
         return match_updated_file.group(1).strip()
-
-    def _out(self, to: str, frm: str, msg: str | list[str | dict[Any, Any]]) -> None:
-        if not self._silent:
-            print(f"{'*'*10}({frm} -> {to})\n\n{msg}\n")
-
-
-# def reflection_task_from_agent_output(output: Any) -> ReflectionTask:
-#     match output:
-#         case MavenCompilerLLMResponse():
-#             return ReflectionTask(
-#                 file_path=output.file_path,
-#                 issues=set(output.input_errors),
-#                 original_file=output.input_file,
-#                 reasoning=output.reasoning,
-#                 updated_file=output.java_file,
-#             )

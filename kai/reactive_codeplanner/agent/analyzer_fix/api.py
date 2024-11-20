@@ -14,3 +14,4 @@ class AnalyzerFixRequest(AgentRequest):
 class AnalyzerFixResponse(AgentResult):
     updated_file_content: str | None = None
     additional_information: str | None = None
+    reasoning: str | None = None
