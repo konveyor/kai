@@ -4,12 +4,13 @@ import re
 import subprocess  # trunk-ignore(bandit/B404)
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Sequence, Type
+from typing import Optional, Type
 
 from opentelemetry import trace
 
 from kai.logging.logging import get_logger
 from kai.reactive_codeplanner.task_manager.api import (
+    RpcClientConfig,
     ValidationError,
     ValidationResult,
     ValidationStep,
@@ -22,12 +23,29 @@ tracer = trace.get_tracer("maven_validator")
 
 class MavenCompileStep(ValidationStep):
 
+    def __init__(self, config: RpcClientConfig) -> None:
+        super().__init__(config)
+        self.last_compilation_errors: list[MavenCompilerError] = []
+
     @tracer.start_as_current_span("maven_run_validator")
     def run(self) -> ValidationResult:
         rc, maven_output, pom_file_path = run_maven(self.config.repo_directory)
-        errors: Sequence[ValidationError] = parse_maven_output(
-            maven_output, rc, str(pom_file_path)
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(maven_output, rc, str(pom_file_path))
         )
+        # Build/dependency/other errors prevent the compilation errors from being reported
+        # But we still want to return them so they aren't mistakenly marked as solved.
+        if (
+            build_errors or dependency_errors or catchall_errors
+        ) and not compilation_errors:
+            compilation_errors = self.last_compilation_errors
+            logger.info(
+                f"Returning {len(self.last_compilation_errors)} cached compilation errors until the POM is valid"
+            )
+        else:
+            self.last_compilation_errors = compilation_errors
+            logger.debug("Setting the maven cache")
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         return ValidationResult(passed=not errors, errors=errors)
 
 
@@ -161,38 +179,54 @@ def classify_error(message: str) -> Type[MavenCompilerError]:
 
 def parse_maven_output(
     output: str, rc: int, pom_file_path: Optional[str] = None
-) -> Sequence[MavenCompilerError]:
+) -> tuple[
+    list[MavenCompilerError],
+    list[MavenCompilerError],
+    list[MavenCompilerError],
+    list[OtherError],
+]:
     """
     Parses the Maven output and returns a list of MavenCompilerError instances.
     """
     lines = output.splitlines()
-    errors: list[MavenCompilerError] = []
     i = 0
+    build_errors = []
+    dependency_errors = []
+    compilation_errors = []
+    catchall_errors = []
     while i < len(lines):
         line = lines[i]
         if "[ERROR] Some problems were encountered while processing the POMs:" in line:
-            i, build_errors = parse_build_errors(lines, i + 1, pom_file_path)
-            errors.extend(build_errors)
+            i, new_build_errors = parse_build_errors(lines, i + 1, pom_file_path)
+            build_errors.extend(new_build_errors)
             continue
         elif "[ERROR] COMPILATION ERROR :" in line:
-            i, compilation_errors = parse_compilation_errors(lines, i)
-            errors.extend(compilation_errors)
+            i, new_compilation_errors = parse_compilation_errors(lines, i)
+            compilation_errors.extend(new_compilation_errors)
             continue
         elif "[ERROR] Failed to execute goal" in line:
             error, new_index = parse_dependency_resolution_error(
                 lines, i, pom_file_path
             )
             if error:
-                errors.append(error)
+                dependency_errors.append(error)
                 i = new_index
                 continue
             else:
                 i += 1
         else:
             i += 1
-    if rc != 0 and not errors:
-        errors.append(catchall(output))
-    return deduplicate_errors(errors)
+    if rc != 0 and not any([build_errors, dependency_errors, compilation_errors]):
+        catchall_error = catchall(output)
+        if catchall_error:
+            catchall_errors.append(catchall_error)
+
+    return (
+        deduplicate_errors(build_errors),
+        deduplicate_errors(dependency_errors),
+        deduplicate_errors(compilation_errors),
+        catchall_errors,
+    )
 
 
 def parse_build_errors(
@@ -462,7 +496,11 @@ if __name__ == "__main__":
     rc, maven_output, pom_file_path = run_maven(Path(args.source_directory))
 
     results: dict[str, list[MavenCompilerError]] = {}
-    for error in parse_maven_output(maven_output, rc, str(pom_file_path)):
+    build_errors, dependency_errors, compilation_errors, catchall_errors = (
+        parse_maven_output(maven_output, rc, str(pom_file_path))
+    )
+    errors = build_errors + dependency_errors + compilation_errors + catchall_errors
+    for error in errors:
         if not results.get(error.file):
             results[error.file] = [error]
         else:
