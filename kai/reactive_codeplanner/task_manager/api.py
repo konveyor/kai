@@ -48,9 +48,15 @@ class Task:
         # Lower priority number means higher priority
         # For same priority, higher depth means process children first (DFS)
         # For same priority and depth, rely on creation order just to make it deterministic
-        return (-self.depth, self.priority, self.creation_order) < (
+        return (
+            -self.depth,
+            self.priority,
+            self.__class__.priority,
+            self.creation_order,
+        ) < (
             -other.depth,
             other.priority,
+            other.__class__.priority,
             other.creation_order,
         )
 
