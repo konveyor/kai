@@ -116,7 +116,13 @@ class ValidationError(Task):
         return False
 
     def __str__(self) -> str:
-        return f"{self.__class__.__name__}<loc={self.file}:{self.line}:{self.column}, message={self.message}>"
+        shadowed_priority: int
+        if self.parent:
+            shadowed_priority = self.oldest_ancestor().priority
+        else:
+            shadowed_priority = self.__class__.priority
+
+        return f"{self.__class__.__name__}<loc={self.file}:{self.line}:{self.column}, message={self.message}>(priority={self.priority}({shadowed_priority}), depth={self.depth}, retries={self.retry_count})"
 
     __repr__ = __str__
 

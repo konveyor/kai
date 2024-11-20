@@ -70,7 +70,7 @@ class TaskManager:
         try:
             result = agent.execute_task(self.rcm, task)
         except Exception as e:
-            logger.error("Unhandled exception executing task %s: %e", task, e)
+            logger.exception("Unhandled exception executing task %s", task)
             result = TaskResult(encountered_errors=[str(e)], modified_files=[])
 
         logger.debug("Task execution result: %s", result)
@@ -107,11 +107,9 @@ class TaskManager:
             try:
                 result = validator.run()
                 return validator, result
-            except Exception as e:
-                logger.error(
-                    "Validator %s failed to execute with an unhandled error: %s",
-                    validator,
-                    e,
+            except Exception:
+                logger.exception(
+                    "Validator %s failed to execute with an unhandled error:", validator
                 )
                 return validator, None
 
@@ -140,11 +138,9 @@ class TaskManager:
                         logger.debug(
                             "Validator %s found errors: %s", validator, result.errors
                         )
-                except Exception as e:
-                    logger.error(
-                        "Exception occurred while processing validator %s: %s",
-                        validator,
-                        e,
+                except Exception:
+                    logger.exception(
+                        "Exception occurred while processing validator %s:", validator
                     )
 
         self._validators_are_stale = False
@@ -242,8 +238,8 @@ class TaskManager:
                 task.children.append(child_task)
                 if not self.should_skip_task(child_task):
                     self.priority_queue.push(child_task)
-            except ValueError as e:
-                logger.error(f"Error adding child task: {e}")
+            except ValueError:
+                logger.exception("Error adding child task")
 
     def should_skip_task(self, task: Task) -> bool:
         skip = task in self.processed_tasks or task in self.ignored_tasks
@@ -254,12 +250,16 @@ class TaskManager:
         if task2 is None:
             return False
         same = task2 == task1
-        logger.debug("Task %s is same to prior task %s: %s", task1, task2, same)
+        if same:
+            logger.debug("Task %s is same to prior task %s: %s", task1, task2, same)
         # TODO(fabianvf): Give tasks the ability to provide a specific fuzzy equals function?
         similar = False
         if hasattr(task1, "fuzzy_equals"):
             similar = task1.fuzzy_equals(task2, offset=2)
-        logger.debug("Task %s is similar to prior task %s: %s", task1, task2, similar)
+        if similar:
+            logger.debug(
+                "Task %s is similar to prior task %s: %s", task1, task2, similar
+            )
         return same or similar
 
     def handle_ignored_task(self, task: Task) -> None:

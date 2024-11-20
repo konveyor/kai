@@ -103,7 +103,7 @@ class PriorityTaskQueue:
         visited: set[Task] = set()
 
         lines = []
-        for task in top_level_tasks:
+        for task in sorted(top_level_tasks, reverse=True):
             lines.extend(
                 self._stringify_tasks(
                     task,
@@ -142,9 +142,7 @@ class PriorityTaskQueue:
         if task.depth > 0:
             prefix = "|" + "-" * indent
 
-        lines.append(
-            f"{prefix}{status}{task}(priority={task.priority}, depth={task.depth}, retries={task.retry_count})"
-        )
+        lines.append(f"{prefix}{status}{task}")
 
         for child in task.children:
             lines.extend(

@@ -19,7 +19,12 @@ class AnalyzerRuleViolation(ValidationError):
     priority: int = 2
 
     def __str__(self) -> str:
-        return f"{self.__class__.__name__}<loc={self.file}:{self.line}:{self.column}, message={self.violation.description}>"
+        if self.parent:
+            shadowed_priority = self.oldest_ancestor().priority
+        else:
+            shadowed_priority = self.__class__.priority
+
+        return f"{self.__class__.__name__}<loc={self.file}:{self.line}:{self.column}, message={self.violation.description}>(priority={self.priority}({shadowed_priority}), depth={self.depth}, retries={self.retry_count})"
 
     __repr__ = __str__
 
