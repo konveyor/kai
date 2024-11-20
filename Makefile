@@ -49,3 +49,17 @@ get_rulesets:
 	cd example/analysis && git clone https://github.com/konveyor/rulesets && rm -rf rulesets/preview
 
 config_demo: build-kai-analyzer build-kai-rpc-server set_up_run_demo get_analyzer_deps get_rulesets
+
+run_demo:
+	cd example && python run_demo.py
+
+run_debug_driver:
+	PYTHONPATH=$(KAI_PYTHON_PATH) python kai/reactive_codeplanner/main.py \
+						 example/config.toml \
+						 example/coolstore \
+						 example/analysis/rulesets/default/generated \
+						 example/analysis/kai-analyzer-rpc \
+						 example/analysis/jdtls/bin/jdtls \
+						 example/analysis/bundle.jar \
+						 "(konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee || konveyor.io/target=jakarta-ee8 || konveyor.io/target=jakarta-ee9 || konveyor.io/target=cloud-readiness)" \
+						 ""
