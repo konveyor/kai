@@ -13,14 +13,30 @@ class PriorityTaskQueue:
 
     def push(self, task: Task) -> None:
         for priority_level, task_stack in self.task_stacks.items():
-            if task in task_stack:
-                logger.debug(
-                    "Task %s already exists in priority %s stack. Existing task takes precedence.",
-                    task,
-                    priority_level,
-                )
-                # Existing task takes precedence; do not add or modify
-                return
+            try:
+                idx = task_stack.index(task)
+                existing_task = task_stack[idx]
+                if existing_task.priority > task.priority:
+                    # Accept the new priority level
+                    existing_task.priority = task.priority
+                    # Overwrite with the existing task since it could carry history with it
+                    task = task_stack.pop(idx)
+                    logger.debug(
+                        "Task %s already exists in priority %s stack. New task takes precedence.",
+                        task,
+                        priority_level,
+                    )
+                    break
+                else:
+                    logger.debug(
+                        "Task %s already exists in priority %s stack. Existing task takes precedence.",
+                        task,
+                        priority_level,
+                    )
+                    # Existing task takes precedence; do not add or modify
+                    return
+            except ValueError:
+                continue
 
         priority = task.oldest_ancestor().priority
         if priority not in self.task_stacks:

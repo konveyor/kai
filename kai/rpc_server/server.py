@@ -1,6 +1,15 @@
 import traceback
 from pathlib import Path
-from typing import Any, Optional, cast
+from typing import (
+    Any,
+    Callable,
+    Generator,
+    Optional,
+    ParamSpec,
+    TypedDict,
+    TypeVar,
+    cast,
+)
 from unittest.mock import MagicMock
 from urllib.parse import urlparse
 
@@ -21,7 +30,7 @@ from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
 )
 from kai.reactive_codeplanner.agent.maven_compiler_fix.agent import MavenCompilerAgent
 from kai.reactive_codeplanner.agent.reflection_agent import ReflectionAgent
-from kai.reactive_codeplanner.task_manager.api import RpcClientConfig, Task, TaskResult
+from kai.reactive_codeplanner.task_manager.api import RpcClientConfig, Task
 from kai.reactive_codeplanner.task_manager.task_manager import TaskManager
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import (
     AnalyzerDependencyRuleViolation,
@@ -75,6 +84,8 @@ class KaiRpcApplication(JsonRpcApplication):
         self.config: Optional[KaiRpcApplicationConfig] = None
         self.log = get_logger("kai_rpc_application")
         self.analysis_validator: Optional[AnalyzerLSPStep] = None
+        self.task_manager: Optional[TaskManager] = None
+        self.rcm: Optional[RepoContextManager] = None
 
 
 app = KaiRpcApplication()
@@ -143,6 +154,10 @@ def initialize(
         app.config.root_path = app.config.root_path.resolve()
         if app.config.log_dir_path:
             app.config.log_dir_path = app.config.log_dir_path.resolve()
+        if app.config.analyzer_lsp_dep_labels_path:
+            app.config.analyzer_lsp_dep_labels_path = (
+                app.config.analyzer_lsp_dep_labels_path.resolve()
+            )
         app.config.analyzer_lsp_rpc_path = app.config.analyzer_lsp_rpc_path.resolve()
         app.config.analyzer_lsp_java_bundle_path = (
             app.config.analyzer_lsp_java_bundle_path.resolve()
@@ -156,24 +171,62 @@ def initialize(
         else:
             app.config.cache_dir = Path(PATH_LLM_CACHE)
 
-        app.analysis_validator = AnalyzerLSPStep(
-            RpcClientConfig(
-                repo_directory=app.config.root_path,
-                analyzer_lsp_server_binary=app.config.analyzer_lsp_rpc_path,
-                rules_directory=app.config.analyzer_lsp_rules_path,
-                analyzer_lsp_path=app.config.analyzer_lsp_lsp_path,
-                analyzer_java_bundle_path=app.config.analyzer_lsp_java_bundle_path,
-                label_selector="konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee",
-                incident_selector=None,
-                included_paths=None,
-                dep_open_source_labels_path=app.config.analyzer_lsp_dep_labels_path,
+        try:
+            model_provider = ModelProvider(
+                app.config.model_provider, app.config.demo_mode, app.config.cache_dir
             )
+        except Exception as e:
+            app.log.error("unable to get model provider:", e)
+            raise
+
+        app.log.info(f"Initialized with config: {app.config}")
+
+        internal_config = RpcClientConfig(
+            repo_directory=app.config.root_path,
+            analyzer_lsp_server_binary=app.config.analyzer_lsp_rpc_path,
+            rules_directory=app.config.analyzer_lsp_rules_path,
+            analyzer_lsp_path=app.config.analyzer_lsp_lsp_path,
+            analyzer_java_bundle_path=app.config.analyzer_lsp_java_bundle_path,
+            label_selector="konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee",
+            incident_selector=None,
+            included_paths=None,
+            dep_open_source_labels_path=app.config.analyzer_lsp_dep_labels_path,
         )
 
-        app.log = get_logger("application_logger")
-        if log is not None:
-            app.log = log
-        app.log.info(f"Initialized with config: {app.config}")
+        app.rcm = RepoContextManager(
+            project_root=app.config.root_path,
+            reflection_agent=ReflectionAgent(
+                model_provider=model_provider, iterations=1, retries=3
+            ),
+        )
+
+        app.log.debug("initalized the repo context manager")
+
+        # Right now this is not usable by anything.
+        # server.send_notification(
+        #     "gitVFSUpdate",
+        #     GitVFSUpdateParams.from_snapshot(rcm.first_snapshot).model_dump(),
+        # )
+
+        if app.analysis_validator is None:
+            app.log.debug("creating analyzer LSP Step")
+            app.analysis_validator = AnalyzerLSPStep(internal_config)
+
+        app.task_manager = TaskManager(
+            config=internal_config,
+            rcm=app.rcm,
+            validators=[
+                MavenCompileStep(internal_config),
+                app.analysis_validator,
+            ],
+            task_runners=[
+                AnalyzerTaskRunner(AnalyzerAgent(model_provider)),
+                MavenCompilerTaskRunner(MavenCompilerAgent(model_provider)),
+                DependencyTaskRunner(
+                    MavenDependencyAgent(model_provider, app.config.root_path)
+                ),
+            ],
+        )
 
     except Exception:
         server.send_response(
@@ -313,140 +366,140 @@ def get_codeplan_agent_solution(
     id: JsonRpcId,
     params: GetCodeplanAgentSolutionParams,
 ) -> None:
-    # create a set of AnalyzerRuleViolations
-    # seed the task manager with these violations
-    # get the task with priority 0 and do the whole thingy
-
-    app.log.debug(f"get_codeplan_agent_solution: {params}")
-    if not app.initialized:
-        server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
-        return
-
-    app.config = cast(KaiRpcApplicationConfig, app.config)
-
     try:
-        model_provider = ModelProvider(
-            app.config.model_provider, app.config.demo_mode, app.config.cache_dir
+        # create a set of AnalyzerRuleViolations
+        # seed the task manager with these violations
+        # get the task with priority 0 and do the whole thingy
+
+        app.log.debug(f"get_codeplan_agent_solution: {params}")
+        if not app.initialized or not app.task_manager or not app.rcm:
+            server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
+            return
+
+        app.config = cast(KaiRpcApplicationConfig, app.config)
+
+        # Data for AnalyzerRuleViolation should probably take an ExtendedIncident
+        seed_tasks: list[Task] = []
+
+        for incident in params.incidents:
+
+            class_to_use = AnalyzerRuleViolation
+            if "pom.xml" in incident.uri:
+                class_to_use = AnalyzerDependencyRuleViolation
+            seed_tasks.append(
+                class_to_use(
+                    file=urlparse(incident.uri).path,
+                    line=incident.line_number,
+                    column=-1,  # Not contained within report?
+                    message=incident.message,
+                    priority=0,
+                    incident=Incident(**incident.model_dump()),
+                    violation=Violation(
+                        id=incident.violation_name or "",
+                        description=incident.violation_description or "",
+                        category=incident.violation_category,
+                        labels=incident.violation_labels,
+                    ),
+                    ruleset=RuleSet(
+                        name=incident.ruleset_name,
+                        description=incident.ruleset_description or "",
+                    ),
+                )
+            )
+        app.task_manager.set_seed_tasks(*seed_tasks)
+
+        app.log.info(f"get_codeplan_agent_solution: {seed_tasks}")
+
+        app.log.info(
+            f"starting code plan loop with iterations: {params.max_iterations}, max depth: {params.max_depth}, and max priority: {params.max_priority}"
         )
-    except Exception as e:
-        app.log.error(f"unable to get model provider {e.__str__()}")
+        next_task_fn = scoped_task_fn(
+            params.max_iterations, app.task_manager.get_next_task
+        )
+
+        class OverallResult(TypedDict):
+            encountered_errors: list[str]
+            modified_files: list[str]
+            diff: str
+
+        overall_result: OverallResult = {
+            "encountered_errors": [],
+            "modified_files": [],
+            "diff": "",
+        }
+
+        for task in next_task_fn(params.max_priority, params.max_depth):
+            app.log.debug(f"Executing task {task.__class__.__name__}: {task}")
+
+            result = app.task_manager.execute_task(task)
+
+            app.log.debug(f"Task {task.__class__.__name__} result: {result}")
+
+            app.task_manager.supply_result(result)
+
+            app.log.debug(f"Executed task {task.__class__.__name__}")
+            app.rcm.commit(f"Executed task {task.__class__.__name__}")
+
+            overall_result["encountered_errors"].extend(
+                [str(e) for e in result.encountered_errors]
+            )
+            overall_result["modified_files"].extend(
+                [str(f) for f in result.modified_files]
+            )
+
+            app.log.debug(result)
+            app.log.debug("QUEUE_STATE: START")
+            try:
+                queue_state = str(app.task_manager.priority_queue)
+                for line in queue_state.splitlines():
+                    app.log.debug(f"QUEUE_STATE: {line}")
+            except Exception as e:
+                app.log.error(f"QUEUE_STATE: {e}")
+            app.log.debug("QUEUE_STATE: END")
+            app.log.debug("QUEUE_STATE: SUCCESSFUL_TASKS: START")
+            for task in app.task_manager.processed_tasks:
+                app.log.debug(
+                    f"QUEUE_STATE: SUCCESSFUL_TASKS: {task}(priority={task.priority}, depth={task.depth}, retries={task.retry_count})"
+                )
+            app.log.debug("QUEUE_STATE: SUCCESSFUL_TASKS: END")
+            app.log.debug("QUEUE_STATE: IGNORED_TASKS: START")
+            for task in app.task_manager.ignored_tasks:
+                app.log.debug(
+                    f"QUEUE_STATE: IGNORED_TASKS: {task}(priority={task.priority}, depth={task.depth}, retries={task.retry_count})"
+                )
+            app.log.debug("QUEUE_STATE: IGNORED_TASKS: END")
+
+        diff = app.rcm.snapshot.diff(app.rcm.first_snapshot)
+        overall_result["diff"] = diff[1] + diff[2]
+        app.rcm.reset_to_first()
         server.send_response(
             id=id,
-            error=JsonRpcError(
-                code=JsonRpcErrorCode.InternalError,
-                message=str(e),
-            ),
+            result=dict(overall_result),
         )
-        return
+    except Exception as e:
+        app.log.error(e)
+        raise
 
-    # Data for AnalyzerRuleViolation should probably take an ExtendedIncident
-    seed_tasks: list[Task] = []
 
-    for incident in params.incidents:
+P = ParamSpec("P")
+R = TypeVar("R")
 
-        class_to_use = AnalyzerRuleViolation
-        if "pom.xml" in incident.uri:
-            class_to_use = AnalyzerDependencyRuleViolation
-        seed_tasks.append(
-            class_to_use(
-                file=urlparse(incident.uri).path,
-                line=incident.line_number,
-                column=-1,  # Not contained within report?
-                message=incident.message,
-                priority=0,
-                incident=Incident(**incident.model_dump()),
-                violation=Violation(
-                    id=incident.violation_name or "",
-                    description=incident.violation_description or "",
-                    category=incident.violation_category,
-                    labels=incident.violation_labels,
-                ),
-                ruleset=RuleSet(
-                    name=incident.ruleset_name,
-                    description=incident.ruleset_description or "",
-                ),
-            )
-        )
 
-    app.log.info(f"get_codeplan_agent_solution: {seed_tasks}")
-    rcm = RepoContextManager(
-        project_root=app.config.root_path,
-        reflection_agent=ReflectionAgent(
-            model_provider=model_provider, iterations=1, retries=3
-        ),
-    )
+def scoped_task_fn(
+    max_iterations: Optional[int], next_task_fn: Callable[P, Generator[R, Any, None]]
+) -> Callable[P, Generator[R, Any, None]]:
+    log = get_logger("fn_selection")
+    if max_iterations is None:
+        log.debug("No max_iterations, returning default get_next_task")
+        return next_task_fn
 
-    app.log.debug("initalized the repo context manager")
+    def inner(*args: P.args, **kwargs: P.kwargs) -> Generator[R, Any, None]:
+        log.info(f"In inner {args}, {kwargs}")
+        generator = next_task_fn(*args, **kwargs)
+        for i in range(max_iterations):
+            log.info(f"Yielding on iteration {i}")
+            yield next(generator)
 
-    # Right now this is not usable by anything.
-    # server.send_notification(
-    #     "gitVFSUpdate",
-    #     GitVFSUpdateParams.from_snapshot(rcm.first_snapshot).model_dump(),
-    # )
+    log.debug("Returning the iteration-scoped get_next_task function")
 
-    task_manager_config = RpcClientConfig(
-        repo_directory=app.config.root_path,
-        analyzer_lsp_server_binary=app.config.analyzer_lsp_rpc_path,
-        rules_directory=app.config.analyzer_lsp_rules_path,
-        analyzer_lsp_path=app.config.analyzer_lsp_lsp_path,
-        analyzer_java_bundle_path=app.config.analyzer_lsp_java_bundle_path,
-        label_selector="konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee",
-        incident_selector=None,
-        included_paths=None,
-        dep_open_source_labels_path=app.config.analyzer_lsp_dep_labels_path,
-    )
-
-    if app.analysis_validator is None:
-        app.log.debug("creating analyzer LSP Step")
-        app.analysis_validator = AnalyzerLSPStep(task_manager_config)
-
-    # TODO: this probaby needs to be set up on init and not in a specific call.
-    # this may mean that we need to re-think seed tasks or maybe validators and task_runners should be sharable across task managers.
-    task_manager = TaskManager(
-        config=task_manager_config,
-        rcm=rcm,
-        seed_tasks=seed_tasks,
-        validators=[
-            MavenCompileStep(task_manager_config),
-            app.analysis_validator,
-        ],
-        task_runners=[
-            AnalyzerTaskRunner(AnalyzerAgent(model_provider)),
-            MavenCompilerTaskRunner(MavenCompilerAgent(model_provider)),
-            DependencyTaskRunner(
-                MavenDependencyAgent(model_provider, app.config.root_path)
-            ),
-        ],
-    )
-
-    app.log.info(
-        f"starting code plan loop with iterations: {params.max_iterations}, max depth: {params.max_depth}, and max priority: {params.max_priority}"
-    )
-    result: TaskResult
-    for task in task_manager.get_next_task(
-        params.max_priority, params.max_iterations, params.max_depth
-    ):
-
-        app.log.debug(f"Executing task {task.__class__.__name__}: {task}")
-
-        result = task_manager.execute_task(task)
-
-        app.log.debug(f"Task {task.__class__.__name__} result: {result}")
-
-        task_manager.supply_result(result)
-
-        app.log.debug(f"Executed task {task.__class__.__name__}")
-        rcm.commit(f"Executed task {task.__class__.__name__}")
-
-    diff = rcm.snapshot.diff(rcm.first_snapshot)
-
-    rcm.reset_to_first()
-
-    server.send_response(
-        id=id,
-        result={
-            "encountered_errors": [str(e) for e in result.encountered_errors],
-            "modified_files": [str(f) for f in result.modified_files],
-            "diff": diff[1] + diff[2],
-        },
-    )
+    return inner
