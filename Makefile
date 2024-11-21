@@ -32,11 +32,13 @@ build-kai-analyzer:
 build-kai-rpc-server:
 	pyinstaller --clean build/build.spec
 
-set_up_run_demo:
-	mv dist/kai-rpc-server example/analysis/kai-rpc-server
-	mv kai_analyzer_rpc/kai-analyzer example/analysis/kai-analyzer-rpc
+build-binaries: build-kai-analyzer build-kai-rpc-server
 
-get_analyzer_deps:
+set-binaries-demo: build-binaries
+	mv dist/kai-rpc-server example/analysis/kai-rpc-server
+	mv kai_analyzer_rpc/kai-analyzer example/analysis/kai-analyzer-rpc 
+	
+get-analyzer-deps:
 	docker run -d --name=bundle quay.io/konveyor/jdtls-server-base:latest &&\
     docker cp bundle:/usr/local/etc/maven.default.index ./example/analysis &&\
     docker cp bundle:/jdtls ./example/analysis &&\
@@ -47,8 +49,6 @@ get_analyzer_deps:
 
 get_rulesets:
 	(cd example/analysis && git clone https://github.com/konveyor/rulesets); rm -rf example/analysis/rulesets/preview
-
-config_demo: build-kai-analyzer build-kai-rpc-server set_up_run_demo get_analyzer_deps get_rulesets
 
 run_demo:
 	cd example && python run_demo.py
@@ -63,3 +63,5 @@ run_debug_driver:
 						 example/analysis/bundle.jar \
 						 "(konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee || konveyor.io/target=jakarta-ee8 || konveyor.io/target=jakarta-ee9 || konveyor.io/target=cloud-readiness)" \
 						 ""
+
+config_demo: set-binaries-demo get_analyzer_deps get_rulesets

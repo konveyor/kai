@@ -1,7 +1,10 @@
 from dataclasses import dataclass
 
 from kai.analyzer_types import Incident, RuleSet, Violation
-from kai.reactive_codeplanner.task_manager.api import ValidationError
+from kai.logging.logging import get_logger
+from kai.reactive_codeplanner.task_manager.api import Task, ValidationError
+
+logger = get_logger(__name__)
 
 
 @dataclass(eq=False, kw_only=True)
@@ -27,6 +30,20 @@ class AnalyzerRuleViolation(ValidationError):
         return f"{self.__class__.__name__}<loc={self.file}:{self.line}:{self.column}, message={self.violation.description}>(priority={self.priority}({shadowed_priority}), depth={self.depth}, retries={self.retry_count})"
 
     __repr__ = __str__
+
+    def fuzzy_equals(self, error2: Task, offset: int = 1) -> bool:
+        if not isinstance(error2, AnalyzerRuleViolation):
+            return False
+
+        if (
+            self.ruleset.name == error2.ruleset.name
+            and self.incident.message == error2.incident.message
+            and self.file == error2.file
+        ):
+            logger.info("should match on line numbers %s -- %s", self.line, error2.line)
+            return True
+
+        return False
 
 
 class AnalyzerDependencyRuleViolation(AnalyzerRuleViolation):

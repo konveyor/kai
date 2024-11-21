@@ -28,7 +28,7 @@ class MavenCompileStep(ValidationStep):
         self.last_compilation_errors: list[MavenCompilerError] = []
 
     @tracer.start_as_current_span("maven_run_validator")
-    def run(self) -> ValidationResult:
+    def run(self, scoped_paths: Optional[list[Path]]) -> ValidationResult:
         rc, maven_output, pom_file_path = run_maven(self.config.repo_directory)
         build_errors, dependency_errors, compilation_errors, catchall_errors = (
             parse_maven_output(maven_output, rc, str(pom_file_path))

@@ -2,7 +2,7 @@ import subprocess  # trunk-ignore(bandit/B404)
 import threading
 from io import BufferedReader, BufferedWriter
 from pathlib import Path
-from typing import IO, cast
+from typing import IO, Optional, cast
 
 from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcResponse
@@ -68,13 +68,20 @@ class AnalyzerLSP:
         logger.debug("analyzer rpc server started")
 
     def run_analyzer_lsp(
-        self, label_selector: str, included_paths: list[str], incident_selector: str
+        self, 
+        label_selector: str, 
+        included_paths: list[str], 
+        incident_selector: str, 
+        scoped_paths: Optional[list[Path]] = None,
     ) -> JsonRpcResponse | JsonRpcError | None:
         request_params = {
             "label_selector": label_selector,
             "included_paths": included_paths,
             "incident_selector": incident_selector,
         }
+
+        if scoped_paths is not None:
+            request_params["included_paths"] = [str(p) for p in scoped_paths]
 
         logger.debug("Sending request to analyzer-lsp")
         logger.debug("Request params: %s", request_params)

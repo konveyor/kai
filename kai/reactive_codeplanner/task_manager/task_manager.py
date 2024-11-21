@@ -49,6 +49,7 @@ class TaskManager:
         self.config = config
 
         self._validators_are_stale = True
+        self._stale_validated_files: list[Path] = []
 
         self.rcm = rcm
 
@@ -105,6 +106,7 @@ class TaskManager:
         for file_path in result.modified_files:
             if file_path not in self.unprocessed_files:
                 self.unprocessed_files.append(file_path)
+                self._stale_validated_files.append(file_path)
                 self._validators_are_stale = True
                 logger.debug("File %s marked as unprocessed.", file_path)
 
@@ -120,7 +122,10 @@ class TaskManager:
         ) -> tuple[ValidationStep, Optional[ValidationResult]]:
             logger.debug("Running validator: %s", validator)
             try:
-                result = validator.run()
+                scoped_paths: Optional[list[Path]] = None
+                if len(self._stale_validated_files) > 0:
+                    scoped_paths = self._stale_validated_files
+                result = validator.run(scoped_paths=scoped_paths)
                 return validator, result
             except Exception:
                 logger.exception(
@@ -158,6 +163,7 @@ class TaskManager:
                         "Exception occurred while processing validator %s:", validator
                     )
 
+        self._stale_validated_files = []
         self._validators_are_stale = False
         logger.info("Found %d tasks from validators", len(validation_tasks))
         logger.debug("Validators are up to date.")
@@ -206,6 +212,19 @@ class TaskManager:
         tasks_in_queue = self.priority_queue.all_tasks()
         resolved_tasks = tasks_in_queue - unprocessed_new_tasks
         logger.debug("Resolved tasks to remove from stacks: %s", resolved_tasks)
+
+        similar_non_resolved_tasks = set(
+            [
+                t
+                for t in resolved_tasks
+                for u in unprocessed_new_tasks
+                if self.is_similar_to_task(t, u)
+            ]
+        )
+
+        if similar_non_resolved_tasks:
+            for t in similar_non_resolved_tasks:
+                resolved_tasks.remove(t)
 
         # Remove resolved tasks from the stacks and mark them as processed
         for resolved_task in resolved_tasks:
@@ -260,10 +279,10 @@ class TaskManager:
         similar = False
         if hasattr(task1, "fuzzy_equals"):
             similar = task1.fuzzy_equals(task2, offset=2)
-        if similar:
-            logger.debug(
-                "Task %s is similar to prior task %s: %s", task1, task2, similar
-            )
+            if similar:
+                logger.debug(
+                    "Task %s is similar to prior task %s: %s", task1, task2, similar
+                )
         return same or similar
 
     def handle_ignored_task(self, task: Task) -> None:

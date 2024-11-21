@@ -102,7 +102,7 @@ class MavenCompilerAgent(Agent):
                 in_additional_details = True
                 continue
             if in_java_file:
-                if "```java" in line or "```" in line:
+                if "```java" in line or "```" in line or line == "\n":
                     continue
                 java_file = "\n".join([java_file, line]).strip()
             if in_reasoning:

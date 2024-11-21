@@ -52,8 +52,9 @@ class AnalyzerTaskRunner(TaskRunner):
         with open(task.file) as f:
             src_file_contents = f.read()
 
+        logger.info(f"file -- {task.file}")
         agent_request = AnalyzerFixRequest(
-            file_path=Path(task.file),
+            file_path=Path(task.file).absolute(),
             file_content=src_file_contents,
             incidents=[task.incident],
         )
@@ -67,7 +68,9 @@ class AnalyzerTaskRunner(TaskRunner):
 
         current_span = trace.get_current_span()
         current_span.add_event("task_result", attributes={"result": f"{result}"})
-        logger.debug(f"got result from agent for task: {task} -- {result}")
+        logger.debug(
+            f"got result from agent for task: {task} -- {result} -- file: {task.file}"
+        )
 
         if result.file_to_modify is None:
             return TaskResult(
@@ -78,7 +81,7 @@ class AnalyzerTaskRunner(TaskRunner):
         # rewrite the file, based on the java file returned
         if result.updated_file_content:
             with open(result.file_to_modify, "w") as f:
-                f.write(result.updated_file_content)
+                f.write(result.updated_file_content.strip())
 
             rcm.commit(
                 f"AnalyzerTaskRunner changed file {str(task.file)}",

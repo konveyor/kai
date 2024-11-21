@@ -1,4 +1,9 @@
 from typing import IO, Any, cast
+import subprocess  # trunk-ignore(bandit/B404)
+import threading
+from io import BufferedReader, BufferedWriter
+from pathlib import Path
+from typing import IO, Any, Optional, cast
 from urllib.parse import urlparse
 
 from opentelemetry import trace
@@ -42,7 +47,7 @@ class AnalyzerLSPStep(ValidationStep):
         super().__init__(config)
 
     @tracer.start_as_current_span("analyzer_run_validation")
-    def run(self) -> ValidationResult:
+    def run(self, scoped_paths: Optional[list[Path]]) -> ValidationResult:
         logger.debug("Running analyzer-lsp")
 
         # TODO(djzager): should these be arguments?
@@ -50,6 +55,7 @@ class AnalyzerLSPStep(ValidationStep):
             label_selector=self.label_selector,
             included_paths=self.included_paths,
             incident_selector=self.incident_selector,
+            scoped_paths=scoped_paths,
         )
 
         # TODO: Possibly add messages to the results
@@ -99,12 +105,15 @@ class AnalyzerLSPStep(ValidationStep):
         for _k, v in r.rulesets.items():
             for _vk, vio in v.violations.items():
                 for i in vio.incidents:
+                    if i.line_number < 0:
+                        continue
                     class_to_use = AnalyzerRuleViolation
                     if "pom.xml" in i.uri:
                         class_to_use = AnalyzerDependencyRuleViolation
+
                     validation_errors.append(
                         class_to_use(
-                            file=urlparse(i.uri).path.lstrip("/"),
+                            file=urlparse(i.uri).path,
                             line=i.line_number,
                             column=-1,
                             message=i.message,

@@ -131,7 +131,7 @@ If you have any additional details or steps that need to be performed, put it he
         resp = self.parse_llm_response(aimessage)
         return AnalyzerFixResponse(
             encountered_errors=[],
-            file_to_modify=ask.file_path,
+            file_to_modify=ask.file_path.absolute(),
             reasoning=resp.reasoning,
             additional_information=resp.addional_information,
             updated_file_content=resp.java_file,

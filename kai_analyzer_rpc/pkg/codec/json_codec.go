@@ -51,30 +51,30 @@ type codec struct {
 }
 
 func (c *codec) WriteRequest(r *rpc.Request, v any) error {
-	c.logger.V(3).Info("write request", "request", r, "value", v)
+	c.logger.V(7).Info("write request", "request", r, "value", v)
 	err := c.ClientCodec.WriteRequest(r, v)
-	c.logger.V(3).Info("finished request header", "err", err, "request", r)
+	c.logger.V(7).Info("finished request header", "err", err, "request", r)
 	return err
 }
 
 func (c *codec) ReadRequestHeader(r *rpc.Request) error {
-	c.logger.V(3).Info("read request header", "request", r)
+	c.logger.V(7).Info("read request header", "request", r)
 	err := c.ServerCodec.ReadRequestHeader(r)
-	c.logger.V(3).Info("finished request header", "err", err, "request", r)
+	c.logger.V(7).Info("finished request header", "err", err, "request", r)
 	return err
 }
 
 func (c *codec) ReadRequestBody(r any) error {
-	c.logger.V(3).Info("read request body", "request", r)
+	c.logger.V(7).Info("read request body", "request", r)
 	err := c.ServerCodec.ReadRequestBody(r)
-	c.logger.V(3).Info("finished request body", "err", err, "request", r)
+	c.logger.V(7).Info("finished request body", "err", err, "request", r)
 	return err
 }
 
 func (c *codec) WriteResponse(r *rpc.Response, v any) error {
-	c.logger.V(3).Info("writing response", "response", r, "object", v)
+	c.logger.V(7).Info("writing response", "response", r, "object", v)
 	err := c.ServerCodec.WriteResponse(r, v)
-	c.logger.V(3).Info("finished write response", "err", err)
+	c.logger.V(7).Info("finished write response", "err", err)
 	return err
 }
 
@@ -185,7 +185,7 @@ func (c *serverCodec) ReadRequestBody(x any) error {
 var null = json.RawMessage([]byte("null"))
 
 func (c *serverCodec) WriteResponse(r *rpc.Response, x any) error {
-	c.logger.Info("writing response", "id", r.Seq, "pending", c.pending)
+	c.logger.V(7).Info("writing response", "id", r.Seq, "pending", c.pending)
 	c.mutex.Lock()
 	b, ok := c.pending[r.Seq]
 	if !ok {
