@@ -66,9 +66,9 @@ You will compare the analyzed data with the list of issues and identify which of
 Issues often describe the expected change that needs to happen. You will use your best judgement to identify whether the issue is fixed as described.
 You will also look for any new changes that were not originally mentioned in the issues.
 You will also spot any changes that suggest a change in the original functionality.
-If you find an issue that's not fixed, briefly describe why you think the issue is not fixed in 1-2 lines.
-If you find unnecessary changes, point those out too.
-Be precise in pointing out issues that are not fixed. If you find the changes satisfactory, output the word "TERMINATE".
+If you find an issue that's not fixed, briefly describe why you think the issue is not fixed in 1-2 lines. If you find unnecessary changes, point those out too.
+Be precise in pointing out issues that are not fixed.
+If you find the changes satisfactory, clearly output the word "TERMINATE" in your response.
 
 ## Issues identified in the input file
 
@@ -82,15 +82,12 @@ Be precise in pointing out issues that are not fixed. If you find the changes sa
 
     msg_templ_user_reflect_no_diff = HumanMessagePromptTemplate.from_template(
         """A junior engineer has updated a {source_file_language} file in order to migrate it to a newer technology.
-You will be given the original file and the updated file.
-Use your best judgement to understand if the updated file fixes the issues originally described.
-Make sure that the file is valid and does not omit any code unrelated to the issues fixed.
-We are expected to have full content in the updated file. Provide brief summary of your review.
-If there are no changes detected and you find the file satisfactory, only output the word "TERMINATE".
-
-## Issues identified in the input file
-
-{issues}
+The updated file usually updates the original file to make it suitable for the newer technology.
+However, it sometimes only contains only the change and not the whole file.
+Use your best judgement to understand if the migrated file is complete and does not omit other content from original file.
+It is not important what changes are made but the file has to be complete and valid.
+If you find that the file is valid, only output the word "TERMINATE".
+If the file is complete and valid, ask the junior engineer to provide a complete file. Do not output the word TERMINATE when file is incomplete or invalid.
 
 ## Original File
 
@@ -106,12 +103,161 @@ If there are no changes detected and you find the file satisfactory, only output
 """
     )
 
+    no_diff_reflection_solved_examples = [
+        msg_templ_user_reflect_no_diff.format(
+            source_file_language="xml",
+            original_content="""<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.example</groupId>
+    <artifactId>sample-project</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>Sample Project</name>
+    <url>http://example.com</url>
+
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>javax</groupId>
+            <artifactId>javaee-web-api</artifactId>
+            <version>7.0</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+</project>
+""",
+            updated_content="""<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.example</groupId>
+    <artifactId>sample-project</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>Sample Project</name>
+    <url>http://example.com</url>
+
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <!-- Updated the dependency from javax to jakarta -->
+        <dependency>
+            <groupId>jakarta.platform</groupId>
+            <artifactId>jakarta.jakartaee-api</artifactId>
+            <version>8.0.0</version>
+            <scope>provided</scope>
+         </dependency>
+    </dependencies>
+</project>
+""",
+        ),
+        AIMessage("The file is complete and valid. TERMINATE."),
+        msg_templ_user_reflect_no_diff.format(
+            source_file_language="xml",
+            original_content="""<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.example</groupId>
+    <artifactId>sample-project</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>Sample Project</name>
+    <url>http://example.com</url>
+
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>javax</groupId>
+            <artifactId>javaee-web-api</artifactId>
+            <version>7.0</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+</project>
+""",
+            updated_content="""<dependencies>
+<!-- Updated the dependency from javax to jakarta -->
+    <dependency>
+        <groupId>jakarta.platform</groupId>
+        <artifactId>jakarta.jakartaee-api</artifactId>
+        <version>8.0.0</version>
+        <scope>provided</scope>
+    </dependency>
+</dependencies>
+""",
+        ),
+        AIMessage("Please provide a complete response."),
+        msg_templ_user_reflect_no_diff.format(
+            source_file_language="java",
+            original_content="""package com.example;
+
+import jakarta.ejb.Stateful;
+import java.util.ArrayList;
+import java.util.List;
+
+@Stateful
+public class ShoppingCartBean {
+    private List<String> items;
+
+    public ShoppingCartBean() {
+        items = new ArrayList<>();
+    }
+
+    public void addItem(String item) {
+        items.add(item);
+    }
+
+    public void removeItem(String item) {
+        items.remove(item);
+    }
+
+    public List<String> getItems() {
+        return items;
+    }
+}
+""",
+            updated_content="""package com.example;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import java.util.ArrayList;
+import java.util.List;
+
+// Updated the @Stateful annotation to @ApplicationScoped
+@ApplicationScoped
+// rest of the file remains the same
+""",
+        ),
+        AIMessage(
+            "The updated file has code omitted and isn't complete. Please provide a complete response."
+        ),
+    ]
+
     msg_templ_user_fix = HumanMessagePromptTemplate.from_template(
         """Before attempting to migrate the code to {target_technology} reason through what changes are required and why.
 Pay attention to changes you make and impacts to external dependencies in the pom.xml as well as changes to imports we need to consider.
 Remember when updating or adding annotations that the class must be imported.
 As you make changes that impact the pom.xml or imports, be sure you explain what needs to be updated.
-After you have shared your step by step thinking, provide a full output of the updated file.
+After you have shared your step by step thinking, provide a full output of the updated file. If there are no changes to be made, output the original file as-is.
 If you are given a feedback, address all the concerns raised in feedback and respond with an updated file.
 Structure your output in Markdown format such as:
 
@@ -120,7 +266,7 @@ Write the step by step reasoning in this markdown section. If you are unsure of 
 
 ## Updated File
 ```{source_file_language}
-// Write the updated file in this section. If the file should be removed, make the content of the updated file a comment explaining it should be removed.
+// Write the updated file in this section. Output the entire file.
 ```
 Here's the input information:
 
@@ -179,7 +325,6 @@ Here's the input information:
             reflection_task.updated_file_contents,
             language,
         )
-
         if language is None or not reflection_task.issues:
             logger.log(TRACE, "There is nothing to reflect on")
             return AgentResult()
