@@ -34,7 +34,7 @@ class MavenCompilerAgentResult(AgentResult, SpawningResult):
 
         return ReflectionTask(
             file_path=self.file_to_modify,
-            issues=set(self.message),
+            issues=[self.message],
             reasoning=self.reasoning,
             updated_file_contents=self.updated_file_contents,
             original_file_contents=self.original_file,
