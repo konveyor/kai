@@ -20,7 +20,7 @@ sys.path.append("../../")
 from kai.analyzer_types import ExtendedIncident, Report
 from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcResponse
-from kai.jsonrpc.streams import BareJsonStream
+from kai.jsonrpc.streams import LspStyleStream
 from kai.kai_config import KaiConfig
 from kai.logging.logging import get_logger, init_logging_from_config
 from kai.rpc_server.server import (
@@ -100,10 +100,9 @@ def initialize_rpc_server(
     app = KaiRpcApplication()
 
     rpc_server = JsonRpcServer(
-        json_rpc_stream=BareJsonStream(
+        json_rpc_stream=LspStyleStream(
             cast(BufferedReader, rpc_subprocess.stdout),
             cast(BufferedWriter, rpc_subprocess.stdin),
-            log=log,
         ),
         app=app,
         # TODO(fabianvf): when bumping the iterations/depth/priority, it can increase

@@ -66,6 +66,23 @@ class JsonRpcStream(ABC):
     def recv(self) -> JsonRpcError | JsonRpcRequest | JsonRpcResponse | None: ...
 
 
+def dump_json_no_infinite_recursion(msg: JsonRpcRequest | JsonRpcResponse) -> str:
+    if not isinstance(msg, JsonRpcRequest) or msg.method != "logMessage":
+        return msg.model_dump_json()
+    else:
+        log_msg = msg.model_copy()
+        if log_msg.params is None:
+            log_msg.params = {}
+        elif isinstance(log_msg.params, dict):
+            if "message" in log_msg.params:
+                log_msg.params["message"] = "<omitted>"
+        elif isinstance(log_msg.params, BaseModel):
+            if hasattr(log_msg.params, "message"):
+                log_msg.params.message = "<omitted>"
+
+        return log_msg.model_dump_json()
+
+
 class LspStyleStream(JsonRpcStream):
     """
     Standard LSP-style stream for JSON-RPC communication. This uses HTTP-style
@@ -78,14 +95,12 @@ class LspStyleStream(JsonRpcStream):
 
     def send(self, msg: JsonRpcRequest | JsonRpcResponse) -> None:
         json_str = msg.model_dump_json()
-        json_req = f"Content-Length: {len(json_str)}\r\n\r\n{json_str}"
+        json_req = f"Content-Length: {len(json_str.encode('utf-8'))}\r\n\r\n{json_str}"
 
-        # Prevent infinite recursion
-        if isinstance(msg, JsonRpcRequest) and msg.method != "logMessage":
-            log.log(TRACE, "Sending request: %s", json_req)
+        log.log(TRACE, "Sending request: %s", dump_json_no_infinite_recursion(msg))
 
         with self.send_lock:
-            self.send_file.write(json_req.encode())
+            self.send_file.write(json_req.encode("utf-8"))
             self.send_file.flush()
 
     def recv(self) -> JsonRpcError | JsonRpcRequest | JsonRpcResponse | None:
@@ -185,21 +200,7 @@ class BareJsonStream(JsonRpcStream):
     def send(self, msg: JsonRpcRequest | JsonRpcResponse) -> None:
         json_req = f"{msg.model_dump_json()}\n"
 
-        # Prevent infinite recursion
-        if not isinstance(msg, JsonRpcRequest) or msg.method != "logMessage":
-            self.log.log(TRACE, "send: %s", json_req)
-        else:
-            log_msg = msg.model_copy()
-            if log_msg.params is None:
-                log_msg.params = {}
-            elif isinstance(log_msg.params, dict):
-                if "message" in log_msg.params:
-                    log_msg.params["message"] = "<omitted>"
-            elif isinstance(log_msg.params, BaseModel):
-                if hasattr(log_msg.params, "message"):
-                    log_msg.params.message = "<omitted>"
-
-            self.log.log(TRACE, f"send: {log_msg.model_dump_json()}")
+        log.log(TRACE, "Sending request: %s", dump_json_no_infinite_recursion(msg))
 
         with self.send_lock:
             self.send_file.write(json_req.encode())

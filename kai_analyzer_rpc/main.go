@@ -23,7 +23,7 @@ func main() {
 	depOpenSourceLabelsFile := flag.String("depOpenSourceLabelsFile", "", "Path to the dep open source labels file")
 
 	// TODO(djzager): We should do verbosity type argument(s)
-	logLevel := slog.LevelInfo
+	logLevel := slog.LevelDebug
 
 	flag.Parse()
 	// In the future add cobra for flags maybe

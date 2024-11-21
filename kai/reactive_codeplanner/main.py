@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Generator
 
 import kai.logging.logging as logging
+from kai.analyzer import AnalyzerLSP
 from kai.kai_config import KaiConfig
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.logging.logging import init_logging_from_config
@@ -106,11 +107,23 @@ def main() -> None:
     init_logging_from_config(kai_config)
     model_provider = ModelProvider(kai_config.models)
 
+    analyzer = AnalyzerLSP(
+        analyzer_lsp_server_binary=Path(args.analyzer_lsp_server_binary),
+        repo_directory=Path(args.source_directory),
+        rules_directory=Path(args.rules_directory),
+        analyzer_lsp_path=Path(args.analyzer_lsp_path),
+        analyzer_java_bundle_path=Path(args.analyzer_lsp_java_bundle),
+        dep_open_source_labels_path=Path(),
+    )
+
     task_manager = TaskManager(
         config,
         RepoContextManager(config.repo_directory),
         None,
-        validators=[MavenCompileStep(config), AnalyzerLSPStep(config)],
+        validators=[
+            MavenCompileStep(config),
+            AnalyzerLSPStep(config=config, analyzer=analyzer),
+        ],
         task_runners=[
             DependencyTaskRunner(
                 MavenDependencyAgent(model_provider, config.repo_directory)

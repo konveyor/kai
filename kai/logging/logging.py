@@ -96,10 +96,6 @@ def setup_file_handler(
     file_handler.setLevel(log_level)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
-    if not silent:
-        print(
-            f"File logging for '{logger.name}' is set to level '{log_level}' writing to file: '{log_file_path}'"
-        )
 
 
 def init_logging(
