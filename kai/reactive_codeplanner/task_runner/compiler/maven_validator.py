@@ -257,13 +257,17 @@ def parse_build_errors(
 
         if matched_project:
             # Only parse build errors after matching a project line
-            build_error = match_build_error(line, file_path)
+            build_error, build_error_pattern = match_build_error(line, file_path)
             if build_error:
                 error = build_error
                 # Collect details if any
                 details = []
                 i += 1
-                while i < len(lines) and lines[i].startswith("[ERROR]     "):
+                while (
+                    i < len(lines)
+                    and lines[i].startswith("[ERROR]     ")
+                    and not build_error_pattern.match(lines[i])
+                ):
                     detail_line = lines[i].replace("[ERROR]     ", "", 1).strip()
                     details.append(detail_line)
                     i += 1
@@ -356,7 +360,9 @@ def is_section_end(line: str) -> bool:
     )
 
 
-def match_build_error(line: str, file_path: str) -> Optional[MavenCompilerError]:
+def match_build_error(
+    line: str, file_path: str
+) -> tuple[Optional[MavenCompilerError], re.Pattern[str]]:
     """
     Matches a build error line and returns a BuildError instance.
     """
@@ -379,8 +385,8 @@ def match_build_error(line: str, file_path: str) -> Optional[MavenCompilerError]
             message=message,
             details=[],
         )
-        return error
-    return None
+        return error, build_error_pattern
+    return None, build_error_pattern
 
 
 def parse_error_line(
