@@ -26,18 +26,23 @@ run-konveyor-importer:
 load-data:
 	PYTHONPATH=$(KAI_PYTHON_PATH) python kai/service/incident_store/incident_store.py  --config_filepath ./kai/config.toml --drop_tables $(DROP_TABLES)
 
+# This will build the kai-analyzer-rpc binary for serving the analysis over RPC.
 build-kai-analyzer:
 	cd kai_analyzer_rpc && go build -o kai-analyzer main.go
 
+# This will build the kai rpc server, which serves the code plan loop over RPC.
 build-kai-rpc-server:
 	pyinstaller --clean build/build.spec
 
+# This will build both binaries for kai, the kai-analyzer-rpc and the kai-rpc-server
 build-binaries: build-kai-analyzer build-kai-rpc-server
 
+# This will build the binaries in build-binaries and then move them to the correct location for run_demo.py
 set-binaries-demo: build-binaries
 	mv dist/kai-rpc-server example/analysis/kai-rpc-server
 	mv kai_analyzer_rpc/kai-analyzer example/analysis/kai-analyzer-rpc 
 	
+# This will set up the demo run, with all the things that you need for run_demo.py
 get-analyzer-deps:
 	docker run -d --name=bundle quay.io/konveyor/jdtls-server-base:latest &&\
     docker cp bundle:/usr/local/etc/maven.default.index ./example/analysis &&\
@@ -47,8 +52,9 @@ get-analyzer-deps:
 	docker stop bundle &&\
 	docker rm bundle
 
+# This will get the rulesets and set them to be used by run_demo.py
 get_rulesets:
-	(cd example/analysis && git clone https://github.com/konveyor/rulesets); rm -rf example/analysis/rulesets/preview
+	(cd example/analysis && rm -rf rulesets && git clone https://github.com/konveyor/rulesets); rm -rf example/analysis/rulesets/preview
 
 run_demo:
 	cd example && python run_demo.py
@@ -64,4 +70,5 @@ run_debug_driver:
 						 "(konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee || konveyor.io/target=jakarta-ee8 || konveyor.io/target=jakarta-ee9 || konveyor.io/target=cloud-readiness)" \
 						 ""
 
+# This will run all the things that you need to do, to configure the demo.
 config_demo: set-binaries-demo get_analyzer_deps get_rulesets
