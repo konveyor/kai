@@ -21,7 +21,7 @@ class MockValidationStep(ValidationStep):
         self.error_sequences = error_sequences
         self.run_count = 0
 
-    def run(self, scoped_paths: Optional[list[str]]) -> ValidationResult:
+    def run(self, scoped_paths: Optional[list[str]] = None) -> ValidationResult:
         if self.run_count < len(self.error_sequences):
             errors = self.error_sequences[self.run_count]
         else:

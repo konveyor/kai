@@ -214,7 +214,7 @@ def run_demo(report: Report, server: JsonRpcServer) -> None:
         for count, (file_path, incidents) in enumerate(impacted_files.items(), 1):
             for incident in incidents:
                 incident.uri = os.path.join(SAMPLE_APP_DIR, file_path)
-                incident.uri = Path(incident.uri).absolute().__str__()
+                incident.uri = os.path.abspath(Path(incident.uri))
 
             process_file(
                 server=server,

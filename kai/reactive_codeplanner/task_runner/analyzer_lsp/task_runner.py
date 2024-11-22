@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -54,7 +55,7 @@ class AnalyzerTaskRunner(TaskRunner):
 
         logger.info(f"file -- {task.file}")
         agent_request = AnalyzerFixRequest(
-            file_path=Path(task.file).absolute(),
+            file_path=Path(os.path.abspath(task.file)),
             file_content=src_file_contents,
             incidents=[task.incident],
         )

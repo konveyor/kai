@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional, cast
 
 from jinja2 import Template
@@ -131,7 +132,7 @@ If you have any additional details or steps that need to be performed, put it he
         resp = self.parse_llm_response(aimessage)
         return AnalyzerFixResponse(
             encountered_errors=[],
-            file_to_modify=ask.file_path.absolute(),
+            file_to_modify=Path(os.path.abspath(ask.file_path)),
             reasoning=resp.reasoning,
             additional_information=resp.addional_information,
             updated_file_content=resp.java_file,
