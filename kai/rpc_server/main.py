@@ -17,7 +17,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 import kai.logging.logging as logging
 from kai.jsonrpc.core import JsonRpcServer
-from kai.jsonrpc.streams import BareJsonStream
+from kai.jsonrpc.streams import LspStyleStream
 from kai.kai_config import KaiConfig
 from kai.rpc_server.server import app
 
@@ -66,10 +66,9 @@ def main() -> None:
     # simply IO[bytes], rather than as BufferedReader and BufferedWriter for
     # some reason, at least on my machine.
     rpc_server = JsonRpcServer(
-        json_rpc_stream=BareJsonStream(
+        json_rpc_stream=LspStyleStream(
             cast(BufferedReader, sys.stdin.buffer),
             cast(BufferedWriter, sys.stdout.buffer),
-            log=log,
         ),
         app=app,
         log=log,

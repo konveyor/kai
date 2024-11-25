@@ -83,7 +83,6 @@ def setup_file_handler(
     log_file_name: str,
     log_dir: str,
     log_level: str | int = "DEBUG",
-    silent: bool = False,
 ) -> None:
     # Ensure any needed log directories exist
     log_dir = process_log_dir_replacements(log_dir)
@@ -96,10 +95,6 @@ def setup_file_handler(
     file_handler.setLevel(log_level)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
-    if not silent:
-        print(
-            f"File logging for '{logger.name}' is set to level '{log_level}' writing to file: '{log_file_path}'"
-        )
 
 
 def init_logging(

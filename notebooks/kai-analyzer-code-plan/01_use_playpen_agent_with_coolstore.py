@@ -34,9 +34,10 @@ print(temp_dir)
 
 
 from pathlib import Path
+from kai.analyzer import AnalyzerLSP
 from kai.reactive_codeplanner.task_manager.api import RpcClientConfig
 from kai.reactive_codeplanner.task_manager.task_manager import TaskManager
-from kai.reactive_codeplanner.task_runner.analyzer_lsp.validator import AnalyzerLSPStep, AnalyzerLSPStep
+from kai.reactive_codeplanner.task_runner.analyzer_lsp.validator import AnalyzerLSPStep 
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.task_runner import AnalyzerTaskRunner
 from kai.reactive_codeplanner.task_runner.compiler.maven_validator import MavenCompileStep
 from kai.reactive_codeplanner.task_runner.compiler.compiler_task_runner import MavenCompilerTaskRunner
@@ -120,13 +121,23 @@ seed_task = AnalyzerRuleViolation(
     ruleset=ruleset,
 )
 
+analyzer =  AnalyzerLSP(
+    analyzer_lsp_server_binary=config.analyzer_lsp_server_binary,
+    repo_directory=config.repo_directory,
+    rules_directory=config.rules_directory,
+    analyzer_lsp_path=config.analyzer_lsp_path,
+    analyzer_java_bundle_path=config.analyzer_java_bundle_path,
+    dep_open_source_labels_path=config.dep_open_source_labels_path
+    or Path(),
+)
+
 # TODO: Use seed_tasks argument to supply initial task to the task_manager
 task_manager = TaskManager(
         config,
         rcm,
         [seed_task],
         # TODO: Set up with maven as well?
-        validators=[AnalyzerLSPStep(config), MavenCompileStep(config)],
+        validators=[AnalyzerLSPStep(config=config, analyzer=analyzer), MavenCompileStep(config)],
         # Agents are really task_runners
         task_runners=[anayzer_task_runner, maven_compiler_task_runner, dependency_task_runner],
     )

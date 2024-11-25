@@ -108,6 +108,7 @@ func (a *Analyzer) Analyze(args Args, response *Response) error {
 		}
 		selectors = append(selectors, selector)
 	}
+	a.Logger.Info("Have selectors", "selectors", selectors)
 
 	// This will already wait
 	rulesets := a.engine.RunRules(context.Background(), a.ruleSets, selectors...)

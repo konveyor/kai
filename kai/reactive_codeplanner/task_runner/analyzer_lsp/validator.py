@@ -1,16 +1,12 @@
-import subprocess  # trunk-ignore(bandit/B404)
-import threading
-from io import BufferedReader, BufferedWriter
 from typing import IO, Any, cast
 from urllib.parse import urlparse
 
 from opentelemetry import trace
 from pydantic import BaseModel
 
+from kai.analyzer import AnalyzerLSP
 from kai.analyzer_types import Report
-from kai.jsonrpc.core import JsonRpcServer
-from kai.jsonrpc.models import JsonRpcError, JsonRpcResponse
-from kai.jsonrpc.streams import BareJsonStream
+from kai.jsonrpc.models import JsonRpcError
 from kai.logging.logging import TRACE, get_logger
 from kai.reactive_codeplanner.task_manager.api import (
     RpcClientConfig,
@@ -34,56 +30,27 @@ def log_stderr(stderr: IO[bytes]) -> None:
 
 
 class AnalyzerLSPStep(ValidationStep):
-    def __init__(self, config: RpcClientConfig) -> None:
-        """This will start and analyzer-lsp jsonrpc server"""
-        # trunk-ignore-begin(bandit/B603)
-        args: list[str] = [
-            str(config.analyzer_lsp_server_binary),
-            "-source-directory",
-            str(config.repo_directory),
-            "-rules-directory",
-            str(config.rules_directory),
-            "-lspServerPath",
-            str(config.analyzer_lsp_path),
-            "-bundles",
-            str(config.analyzer_java_bundle_path),
-            "-log-file",
-            "./kai-analyzer.log",
-        ]
-        if config.dep_open_source_labels_path is not None:
-            args.append("-depOpenSourceLabelsFile")
-            args.append(str(config.dep_open_source_labels_path))
-        self.rpc_server = subprocess.Popen(
-            args,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        # trunk-ignore-end(bandit/B603)
+    label_selector: str
+    included_paths: list[str]
+    incident_selector: str
 
-        self.stderr_logging_thread = threading.Thread(
-            target=log_stderr, args=(self.rpc_server.stderr,)
-        )
-        self.stderr_logging_thread.daemon = True
-        self.stderr_logging_thread.start()
-
-        self.rpc = JsonRpcServer(
-            json_rpc_stream=BareJsonStream(
-                cast(BufferedReader, self.rpc_server.stdout),
-                cast(BufferedWriter, self.rpc_server.stdin),
-            ),
-            request_timeout=4 * 60,
-            log=logger,
-        )
-        self.rpc.start()
-
+    def __init__(self, config: RpcClientConfig, analyzer: AnalyzerLSP) -> None:
+        self.analyzerLSP = analyzer
+        self.label_selector = config.label_selector or ""
+        self.included_paths = config.included_paths or []
+        self.incident_selector = config.incident_selector or ""
         super().__init__(config)
 
     @tracer.start_as_current_span("analyzer_run_validation")
     def run(self) -> ValidationResult:
         logger.debug("Running analyzer-lsp")
 
-        analyzer_output = self.__run_analyzer_lsp()
+        # TODO(djzager): should these be arguments?
+        analyzer_output = self.analyzerLSP.run_analyzer_lsp(
+            label_selector=self.label_selector,
+            included_paths=self.included_paths,
+            incident_selector=self.incident_selector,
+        )
 
         # TODO: Possibly add messages to the results
         ValidationResult(
@@ -113,30 +80,6 @@ class AnalyzerLSPStep(ValidationStep):
         errors = self.__parse_analyzer_lsp_output(analyzer_output.result)
         return ValidationResult(
             passed=not errors, errors=cast(list[ValidationError], errors)
-        )
-
-    def __run_analyzer_lsp(self) -> JsonRpcResponse | JsonRpcError | None:
-        request_params = {
-            "label_selector": "konveyor.io/target=quarkus konveyor.io/target=jakarta-ee",
-            "included_paths": [],
-            "incident_selector": "",
-        }
-
-        if self.config.label_selector is not None:
-            request_params["label_selector"] = self.config.label_selector
-
-        if self.config.included_paths is not None:
-            request_params["included_paths"] = self.config.included_paths
-
-        if self.config.incident_selector is not None:
-            request_params["incident_selector"] = self.config.incident_selector
-
-        logger.debug("Sending request to analyzer-lsp")
-        logger.debug("Request params: %s", request_params)
-
-        return self.rpc.send_request(
-            "analysis_engine.Analyze",
-            params=[request_params],
         )
 
     def __parse_analyzer_lsp_output(
@@ -172,11 +115,3 @@ class AnalyzerLSPStep(ValidationStep):
                     )
 
         return validation_errors
-
-    def stop(self) -> None:
-        logger.info("stopping analyzer")
-        # This should really call the a shutdown method for the server
-        # then wait for the process to be finished
-        self.rpc_server.terminate()
-        # self.rpc.stop()
-        logger.info("ending analyzer stop")

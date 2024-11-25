@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 from opentelemetry import trace
 from pydantic import BaseModel
 
+from kai.analyzer import AnalyzerLSP
 from kai.analyzer_types import ExtendedIncident, Incident, RuleSet, Violation
 from kai.constants import PATH_LLM_CACHE
 from kai.jsonrpc.core import JsonRpcApplication, JsonRpcServer
@@ -77,6 +78,8 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
 
 
 class KaiRpcApplication(JsonRpcApplication):
+    analyzer: AnalyzerLSP
+
     def __init__(self) -> None:
         super().__init__()
 
@@ -110,9 +113,8 @@ def shutdown(
     app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
     server.shutdown_flag = True
-    if app.analysis_validator is not None:
-        app.analysis_validator.stop()
-
+    if app.analyzer is not None:
+        app.analyzer.stop()
     server.send_response(id=id, result={})
 
 
@@ -122,8 +124,8 @@ def exit(
     app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
     server.shutdown_flag = True
-    if app.analysis_validator is not None:
-        app.analysis_validator.stop()
+    if app.analyzer is not None:
+        app.analyzer.stop()
     server.send_response(id=id, result={})
 
 
@@ -181,6 +183,16 @@ def initialize(
 
         app.log.info(f"Initialized with config: {app.config}")
 
+        app.analyzer = AnalyzerLSP(
+            analyzer_lsp_server_binary=app.config.analyzer_lsp_rpc_path,
+            repo_directory=app.config.root_path,
+            rules_directory=app.config.analyzer_lsp_rules_path,
+            analyzer_lsp_path=app.config.analyzer_lsp_lsp_path,
+            analyzer_java_bundle_path=app.config.analyzer_lsp_java_bundle_path,
+            dep_open_source_labels_path=app.config.analyzer_lsp_dep_labels_path
+            or Path(),
+        )
+
         internal_config = RpcClientConfig(
             repo_directory=app.config.root_path,
             analyzer_lsp_server_binary=app.config.analyzer_lsp_rpc_path,
@@ -210,7 +222,7 @@ def initialize(
 
         if app.analysis_validator is None:
             app.log.debug("creating analyzer LSP Step")
-            app.analysis_validator = AnalyzerLSPStep(internal_config)
+            app.analysis_validator = AnalyzerLSPStep(internal_config, app.analyzer)
 
         app.task_manager = TaskManager(
             config=internal_config,
@@ -259,6 +271,66 @@ def set_config(
     app.initialized = False
     try:
         initialize.func(app, server, id, KaiRpcApplicationConfig.model_validate(params))
+    except Exception as e:
+        server.send_response(
+            id=id,
+            error=JsonRpcError(
+                code=JsonRpcErrorCode.InternalError,
+                message=str(e),
+            ),
+        )
+
+
+@app.add_request(method="analysis_engine.Analyze")
+def analyze(
+    app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
+) -> None:
+    if not app.initialized:
+        server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
+        return
+
+    try:
+        analyzer_output = app.analyzer.run_analyzer_lsp(
+            label_selector=params.get("label_selector", ""),
+            included_paths=params.get("included_paths", []),
+            incident_selector=params.get("incident_selector", ""),
+        )
+
+        if isinstance(analyzer_output, JsonRpcError):
+            server.send_response(
+                id=id,
+                error=JsonRpcError(
+                    code=JsonRpcErrorCode.InternalError,
+                    message=analyzer_output.message,
+                ),
+            )
+            return
+
+        if analyzer_output is None:
+            server.send_response(
+                id=id,
+                error=JsonRpcError(
+                    code=JsonRpcErrorCode.UnknownErrorCode,
+                    message="Analyzer output is unexpectedly empty",
+                ),
+            )
+            return
+
+        if analyzer_output.result is None:
+            server.send_response(
+                id=id,
+                error=JsonRpcError(
+                    code=JsonRpcErrorCode.UnknownErrorCode,
+                    message="Analysis result unexpectedly empty",
+                ),
+            )
+            return
+
+        if isinstance(analyzer_output.result, BaseModel):
+            server.send_response(id=id, result=analyzer_output.result.model_dump())
+            return
+
+        server.send_response(id=id, result=analyzer_output.result)
     except Exception as e:
         server.send_response(
             id=id,
