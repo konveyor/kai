@@ -229,7 +229,7 @@ class JsonRpcServer(threading.Thread):
         self.shutdown_flag = True
         self.log.info("JsonRpcServer stopping")
         self.jsonrpc_stream.close()
-        self.log.info("JsonRpcServer stoped")
+        self.log.info("JsonRpcServer stopped")
 
     def run(self) -> None:
         self.log.debug("Server thread started")
@@ -241,7 +241,7 @@ class JsonRpcServer(threading.Thread):
             if msg is None:
                 self.log.info("Server quit")
                 break
-            with tracer.start_as_current_span("recieved_message") as span:
+            with tracer.start_as_current_span("received_message") as span:
                 if isinstance(msg, JsonRpcError):
                     span.add_event(
                         "rpc_error_receiving_message", attributes={"message": f"{msg}"}
