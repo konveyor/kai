@@ -87,6 +87,13 @@ def main() -> None:
         type=Path,
     )
 
+    parser.add_argument(
+        "dep_open_source_labels_path",
+        default="",
+        help="Path to the opensource labels for depenencies file",
+        type=Path,
+    )
+
     args = parser.parse_args()
 
     config = RpcClientConfig(
@@ -113,7 +120,7 @@ def main() -> None:
         rules_directory=Path(args.rules_directory),
         analyzer_lsp_path=Path(args.analyzer_lsp_path),
         analyzer_java_bundle_path=Path(args.analyzer_lsp_java_bundle),
-        dep_open_source_labels_path=Path(),
+        dep_open_source_labels_path=Path(args.dep_open_source_labels_path),
     )
 
     task_manager = TaskManager(

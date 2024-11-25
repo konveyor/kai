@@ -83,7 +83,6 @@ def setup_file_handler(
     log_file_name: str,
     log_dir: str,
     log_level: str | int = "DEBUG",
-    silent: bool = False,
 ) -> None:
     # Ensure any needed log directories exist
     log_dir = process_log_dir_replacements(log_dir)
