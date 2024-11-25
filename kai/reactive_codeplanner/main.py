@@ -12,6 +12,7 @@ from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
 )
 from kai.reactive_codeplanner.agent.maven_compiler_fix.agent import MavenCompilerAgent
+from kai.reactive_codeplanner.agent.reflection_agent import ReflectionAgent
 from kai.reactive_codeplanner.task_manager.api import RpcClientConfig, Task
 from kai.reactive_codeplanner.task_manager.task_manager import TaskManager
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.task_runner import (
@@ -108,7 +109,10 @@ def main() -> None:
 
     task_manager = TaskManager(
         config,
-        RepoContextManager(config.repo_directory),
+        RepoContextManager(
+            config.repo_directory,
+            reflection_agent=ReflectionAgent(model_provider=model_provider),
+        ),
         None,
         validators=[MavenCompileStep(config), AnalyzerLSPStep(config)],
         task_runners=[
