@@ -105,10 +105,7 @@ def initialize_rpc_server(
             cast(BufferedWriter, rpc_subprocess.stdin),
         ),
         app=app,
-        # TODO(fabianvf): when bumping the iterations/depth/priority, it can increase
-        # execution time significantly. We need to add some kind of keepalive signal or
-        # something to prevent a low timeout from killing a properly working request.
-        request_timeout=6000,
+        request_timeout=None,
         log=log,
     )
     rpc_server.start()
@@ -185,6 +182,8 @@ def process_file(
     response = server.send_request("getCodeplanAgentSolution", params.model_dump())
     KAI_LOG.debug(f"Response is: {response}")
 
+    KAI_LOG.info("got response for code plan solution: %s", response)
+
     if isinstance(response, JsonRpcError) or response is None:
         return f"Failed to generate fix for file {params.file_path} - {response.message if response is not None else None}"
     elif isinstance(response, JsonRpcError) and response.error is not None:
@@ -215,6 +214,7 @@ def run_demo(report: Report, server: JsonRpcServer) -> None:
         for count, (file_path, incidents) in enumerate(impacted_files.items(), 1):
             for incident in incidents:
                 incident.uri = os.path.join(SAMPLE_APP_DIR, file_path)
+                incident.uri = os.path.abspath(Path(incident.uri))
 
             process_file(
                 server=server,

@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	extjava "github.com/konveyor/analyzer-lsp/external-providers/java-external-provider/pkg/java_external_provider"
 	"github.com/konveyor/analyzer-lsp/provider"
-	extjava "github.com/shawn-hurley/java-external-provider/pkg/java_external_provider"
 )
 
 type InternalProviderClient struct {
@@ -15,7 +15,9 @@ type InternalProviderClient struct {
 
 func NewInternalProviderClient(ctx context.Context, log logr.Logger, contextLines int, location, lspServerPath, bundles, depOpenSourceLabelsFile string) (provider.InternalProviderClient, error) {
 	// Create JavaProvider From external provider
-	p := extjava.NewJavaProvider(log, "java", contextLines)
+	p := extjava.NewJavaProvider(log, "java", contextLines, provider.Config{
+		Name: "java",
+	})
 	log.Info("logger", "v", p)
 	providerConfig := map[string]interface{}{
 		"lspServerName": "java",

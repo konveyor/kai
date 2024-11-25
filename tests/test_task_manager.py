@@ -1,4 +1,5 @@
 import unittest
+from typing import Optional
 
 # Import classes from your codebase
 from kai.reactive_codeplanner.task_manager.api import (
@@ -20,7 +21,7 @@ class MockValidationStep(ValidationStep):
         self.error_sequences = error_sequences
         self.run_count = 0
 
-    def run(self) -> ValidationResult:
+    def run(self, scoped_paths: Optional[list[str]] = None) -> ValidationResult:
         if self.run_count < len(self.error_sequences):
             errors = self.error_sequences[self.run_count]
         else:

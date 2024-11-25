@@ -1,6 +1,7 @@
 import unittest
 from pathlib import Path
 
+from kai.constants import PATH_KAI
 from kai.kai_config import KaiConfigModels
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.reactive_codeplanner.agent.analyzer_fix.agent import AnalyzerAgent
@@ -30,12 +31,12 @@ class TestAnalyzerAgent(unittest.TestCase):
 
         agent = AnalyzerAgent(model_provider=model_provider)
         result = agent.execute(
-            AnalyzerFixRequest(file_path=Path(""), file_content="", incidents="")
+            AnalyzerFixRequest(file_path=Path(PATH_KAI), file_content="", incidents="")
         )
         print(result)
         expected = AnalyzerFixResponse(
             encountered_errors=[],
-            file_to_modify=Path(""),
+            file_to_modify=Path(PATH_KAI),
             reasoning="\n1. Frobinate the widget\n",
             updated_file_content="\nimport str\nimport class",
             additional_information="\ntesting added info",

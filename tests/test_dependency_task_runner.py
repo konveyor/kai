@@ -1,3 +1,4 @@
+import os
 import unittest
 from pathlib import Path
 
@@ -43,8 +44,10 @@ class TestDependencyTaskRunner(unittest.TestCase):
 
     def test_package_does_not_exist_task(self) -> None:
         project_base = Path(
-            ".", "tests", "test_data", "test_dependency_task_runner"
-        ).absolute()
+            os.path.abspath(
+                Path(".", "tests", "test_data", "test_dependency_task_runner")
+            )
+        )
 
         task = PackageDoesNotExistError(
             priority=1,

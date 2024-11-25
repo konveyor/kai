@@ -94,7 +94,7 @@ class MavenCompilerTaskRunner(TaskRunner):
 
         # rewrite the file, based on the java file returned
         with open(task.file, "w") as f:
-            f.write(result.updated_file_contents)
+            f.write(result.updated_file_contents.lstrip())
 
         rcm.commit(f"MavenCompilerTaskRunner changed file {str(task.file)}", result)
 

@@ -157,5 +157,5 @@ class ValidationStep(ABC):
         self.config = RpcClientConfig
 
     @abstractmethod
-    def run(self) -> ValidationResult:
+    def run(self, scoped_paths: Optional[list[Path]]) -> ValidationResult:
         pass
