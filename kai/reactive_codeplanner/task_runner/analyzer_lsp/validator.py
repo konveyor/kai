@@ -1,7 +1,3 @@
-from typing import IO, Any, cast
-import subprocess  # trunk-ignore(bandit/B404)
-import threading
-from io import BufferedReader, BufferedWriter
 from pathlib import Path
 from typing import IO, Any, Optional, cast
 from urllib.parse import urlparse

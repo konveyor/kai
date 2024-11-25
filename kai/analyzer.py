@@ -68,10 +68,10 @@ class AnalyzerLSP:
         logger.debug("analyzer rpc server started")
 
     def run_analyzer_lsp(
-        self, 
-        label_selector: str, 
-        included_paths: list[str], 
-        incident_selector: str, 
+        self,
+        label_selector: str,
+        included_paths: list[str],
+        incident_selector: str,
         scoped_paths: Optional[list[Path]] = None,
     ) -> JsonRpcResponse | JsonRpcError | None:
         request_params = {
