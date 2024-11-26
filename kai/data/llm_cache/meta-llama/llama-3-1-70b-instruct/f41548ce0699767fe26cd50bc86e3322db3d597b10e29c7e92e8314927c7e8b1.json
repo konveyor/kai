@@ -14,7 +14,7 @@
       "type": "constructor",
       "id": ["langchain", "schema", "messages", "HumanMessage"],
       "kwargs": {
-        "content": "\n    I will give you a JavaEE file for which I want to take one step towards migrating to Quarkus.\n\nI will provide you with static source code analysis information highlighting an issue which needs to be addressed.\n\nI will also provide you with an example of how a similar issue was solved in the past via a solved example.\n\nYou can refer to the solved example for a pattern of how to update the input Java EE file to Quarkus.\n\nFix only the problem described. Other problems will be solved in subsequent steps so it is unnecessary to handle them now.\n\nBefore attempting to migrate the code to Quarkus reason through what changes are required and why.\n\nPay attention to changes you make and impacts to external dependencies in the pom.xml as well as changes to imports we need to consider.\n\nRemember when updating or adding annotations that the class must be imported.\n\nAs you make changes that impact the pom.xml or imports, be sure you explain what needs to be updated.\n\nAfter you have shared your step by step thinking, provide a full output of the updated file.\n\n# Input information\n\n## Input File\n\nFile name: \"CartEndpoint.java\"\nSource file contents:\n```java\npackage com.redhat.coolstore.rest;\n\nimport java.io.Serializable;\nimport java.util.ArrayList;\nimport java.util.HashMap;\nimport java.util.List;\nimport java.util.Map;\n\nimport javax.enterprise.context.SessionScoped;\nimport javax.inject.Inject;\nimport javax.ws.rs.DELETE;\nimport javax.ws.rs.GET;\nimport javax.ws.rs.POST;\nimport javax.ws.rs.Path;\nimport javax.ws.rs.PathParam;\nimport javax.ws.rs.Produces;\nimport javax.ws.rs.core.MediaType;\n\nimport com.redhat.coolstore.model.Product;\nimport com.redhat.coolstore.model.ShoppingCart;\nimport com.redhat.coolstore.model.ShoppingCartItem;\nimport com.redhat.coolstore.service.ShoppingCartService;\n\n@SessionScoped\n@Path(\"/cart\")\npublic class CartEndpoint implements Serializable {\n\n\tprivate static final long serialVersionUID = -7227732980791688773L;\n\n\t@Inject\n\tprivate ShoppingCartService shoppingCartService;\n\n\t@GET\n\t@Path(\"/{cartId}\")\n\t@Produces(MediaType.APPLICATION_JSON)\n\tpublic ShoppingCart getCart(@PathParam(\"cartId\") String cartId) {\n\t\treturn shoppingCartService.getShoppingCart(cartId);\n\t}\n\n\t@POST\n\t@Path(\"/checkout/{cartId}\")\n\t@Produces(MediaType.APPLICATION_JSON)\n\tpublic ShoppingCart checkout(@PathParam(\"cartId\") String cartId) {\n\t\treturn shoppingCartService.checkOutShoppingCart(cartId);\n\t}\n\n\t@POST\n\t@Path(\"/{cartId}/{itemId}/{quantity}\")\n\t@Produces(MediaType.APPLICATION_JSON)\n\tpublic ShoppingCart add(@PathParam(\"cartId\") String cartId,\n\t\t\t\t\t\t\t@PathParam(\"itemId\") String itemId,\n\t\t\t\t\t\t\t@PathParam(\"quantity\") int quantity) throws Exception {\n\t\tShoppingCart cart = shoppingCartService.getShoppingCart(cartId);\n\n\t\tProduct product = shoppingCartService.getProduct(itemId);\n\n\t\tShoppingCartItem sci = new ShoppingCartItem();\n\t\tsci.setProduct(product);\n\t\tsci.setQuantity(quantity);\n\t\tsci.setPrice(product.getPrice());\n\t\tcart.addShoppingCartItem(sci);\n\n\t\ttry {\n\t\t\tshoppingCartService.priceShoppingCart(cart);\n\t\t\tcart.setShoppingCartItemList(dedupeCartItems(cart.getShoppingCartItemList()));\n\t\t} catch (Exception ex) {\n\t\t\tcart.removeShoppingCartItem(sci);\n\t\t\tthrow ex;\n\t\t}\n\n\t\treturn cart;\n\t}\n\n\t@POST\n\t@Path(\"/{cartId}/{tmpId}\")\n\t@Produces(MediaType.APPLICATION_JSON)\n\tpublic ShoppingCart set(@PathParam(\"cartId\") String cartId,\n\t\t\t\t\t\t\t@PathParam(\"tmpId\") String tmpId) throws Exception {\n\n\t\tShoppingCart cart = shoppingCartService.getShoppingCart(cartId);\n\t\tShoppingCart tmpCart = shoppingCartService.getShoppingCart(tmpId);\n\n\t\tif (tmpCart != null) {\n\t\t\tcart.resetShoppingCartItemList();\n\t\t\tcart.setShoppingCartItemList(tmpCart.getShoppingCartItemList());\n\t\t}\n\n\t\ttry {\n\t\t\tshoppingCartService.priceShoppingCart(cart);\n\t\t\tcart.setShoppingCartItemList(dedupeCartItems(cart.getShoppingCartItemList()));\n\t\t} catch (Exception ex) {\n\t\t\tthrow ex;\n\t\t}\n\n\t\treturn cart;\n\t}\n\n\t@DELETE\n\t@Path(\"/{cartId}/{itemId}/{quantity}\")\n\t@Produces(MediaType.APPLICATION_JSON)\n\tpublic ShoppingCart delete(@PathParam(\"cartId\") String cartId,\n\t\t\t\t\t\t\t   @PathParam(\"itemId\") String itemId,\n\t\t\t\t\t\t\t   @PathParam(\"quantity\") int quantity) throws Exception {\n\n\t\tList<ShoppingCartItem> toRemoveList = new ArrayList<>();\n\n\t\tShoppingCart cart = shoppingCartService.getShoppingCart(cartId);\n\n\t\tcart.getShoppingCartItemList().stream()\n\t\t\t\t.filter(sci -> sci.getProduct().getItemId().equals(itemId))\n\t\t\t\t.forEach(sci -> {\n\t\t\t\t\tif (quantity >= sci.getQuantity()) {\n\t\t\t\t\t\ttoRemoveList.add(sci);\n\t\t\t\t\t} else {\n\t\t\t\t\t\tsci.setQuantity(sci.getQuantity() - quantity);\n\t\t\t\t\t}\n\t\t\t\t});\n\n\t\ttoRemoveList.forEach(cart::removeShoppingCartItem);\n\n\t\tshoppingCartService.priceShoppingCart(cart);\n\t\treturn cart;\n\t}\n\n\n\n\tprivate List<ShoppingCartItem> dedupeCartItems(List<ShoppingCartItem> cartItems) {\n\t\tList<ShoppingCartItem> result = new ArrayList<>();\n\t\tMap<String, Integer> quantityMap = new HashMap<>();\n\t\tfor (ShoppingCartItem sci : cartItems) {\n\t\t\tif (quantityMap.containsKey(sci.getProduct().getItemId())) {\n\t\t\t\tquantityMap.put(sci.getProduct().getItemId(), quantityMap.get(sci.getProduct().getItemId()) + sci.getQuantity());\n\t\t\t} else {\n\t\t\t\tquantityMap.put(sci.getProduct().getItemId(), sci.getQuantity());\n\t\t\t}\n\t\t}\n\n\t\tfor (String itemId : quantityMap.keySet()) {\n\t\t\tProduct p = shoppingCartService.getProduct(itemId);\n\t\t\tShoppingCartItem newItem = new ShoppingCartItem();\n\t\t\tnewItem.setQuantity(quantityMap.get(itemId));\n\t\t\tnewItem.setPrice(p.getPrice());\n\t\t\tnewItem.setProduct(p);\n\t\t\tresult.add(newItem);\n\t\t}\n\t\treturn result;\n\t}\n}\n\n```\n\n## Issues\n\n\n### incident 0\nincident to fix: \"Replace the `javax.enterprise` import statement with `jakarta.enterprise`\"\nLine number: 9\n\n\n\n# Output Instructions\nStructure your output in Markdown format such as:\n\n## Reasoning\nWrite the step by step reasoning in this markdown section. If you are unsure of a step or reasoning, clearly state you are unsure and why.\n\n## Updated Java File\n```java\n// Write the updated file for Quarkus in this section. If the file should be removed, make the content of the updated file a comment explaining it should be removed.\n```\n\n## Additional Information (optional)\n\nIf you have any additional details or steps that need to be performed, put it here.\n\n    ",
+        "content": "\n    I will give you a JavaEE file for which I want to take one step towards migrating to Quarkus.\n\nI will provide you with static source code analysis information highlighting an issue which needs to be addressed.\n\nI will also provide you with an example of how a similar issue was solved in the past via a solved example.\n\nYou can refer to the solved example for a pattern of how to update the input Java EE file to Quarkus.\n\nFix only the problem described. Other problems will be solved in subsequent steps so it is unnecessary to handle them now.\n\nBefore attempting to migrate the code to Quarkus reason through what changes are required and why.\n\nPay attention to changes you make and impacts to external dependencies in the pom.xml as well as changes to imports we need to consider.\n\nRemember when updating or adding annotations that the class must be imported.\n\nAs you make changes that impact the pom.xml or imports, be sure you explain what needs to be updated.\n\nAfter you have shared your step by step thinking, provide a full output of the updated file.\n\n# Input information\n\n## Input File\n\nFile name: \"ShoppingCartService.java\"\nSource file contents:\n```java\npackage com.redhat.coolstore.service;\n\nimport java.util.Hashtable;\nimport java.util.logging.Logger;\n\nimport javax.ejb.Stateful;\nimport javax.inject.Inject;\nimport javax.naming.Context;\nimport javax.naming.InitialContext;\nimport javax.naming.NamingException;\n\nimport com.redhat.coolstore.model.Product;\nimport com.redhat.coolstore.model.ShoppingCart;\nimport com.redhat.coolstore.model.ShoppingCartItem;\n\n@Stateful\npublic class ShoppingCartService  {\n\n    @Inject\n    Logger log;\n\n    @Inject\n    ProductService productServices;\n\n    @Inject\n    PromoService ps;\n\n\n    @Inject\n    ShoppingCartOrderProcessor shoppingCartOrderProcessor;\n\n    private ShoppingCart cart  = new ShoppingCart(); //Each user can have multiple shopping carts (tabbed browsing)\n\n   \n\n    public ShoppingCartService() {\n    }\n\n    public ShoppingCart getShoppingCart(String cartId) {\n        return cart;\n    }\n\n    public ShoppingCart checkOutShoppingCart(String cartId) {\n        ShoppingCart cart = this.getShoppingCart(cartId);\n      \n        log.info(\"Sending  order: \");\n        shoppingCartOrderProcessor.process(cart);\n   \n        cart.resetShoppingCartItemList();\n        priceShoppingCart(cart);\n        return cart;\n    }\n\n    public void priceShoppingCart(ShoppingCart sc) {\n\n        if (sc != null) {\n\n            initShoppingCartForPricing(sc);\n\n            if (sc.getShoppingCartItemList() != null && sc.getShoppingCartItemList().size() > 0) {\n\n                ps.applyCartItemPromotions(sc);\n\n                for (ShoppingCartItem sci : sc.getShoppingCartItemList()) {\n\n                    sc.setCartItemPromoSavings(\n                            sc.getCartItemPromoSavings() + sci.getPromoSavings() * sci.getQuantity());\n                    sc.setCartItemTotal(sc.getCartItemTotal() + sci.getPrice() * sci.getQuantity());\n\n                }\n\n                sc.setShippingTotal(lookupShippingServiceRemote().calculateShipping(sc));\n\n                if (sc.getCartItemTotal() >= 25) {\n                    sc.setShippingTotal(sc.getShippingTotal()\n                            + lookupShippingServiceRemote().calculateShippingInsurance(sc));\n                }\n\n            }\n\n            ps.applyShippingPromotions(sc);\n\n            sc.setCartTotal(sc.getCartItemTotal() + sc.getShippingTotal());\n\n        }\n\n    }\n\n    private void initShoppingCartForPricing(ShoppingCart sc) {\n\n        sc.setCartItemTotal(0);\n        sc.setCartItemPromoSavings(0);\n        sc.setShippingTotal(0);\n        sc.setShippingPromoSavings(0);\n        sc.setCartTotal(0);\n\n        for (ShoppingCartItem sci : sc.getShoppingCartItemList()) {\n            Product p = getProduct(sci.getProduct().getItemId());\n            //if product exist\n            if (p != null) {\n                sci.setProduct(p);\n                sci.setPrice(p.getPrice());\n            }\n\n            sci.setPromoSavings(0);\n        }\n\n    }\n\n    public Product getProduct(String itemId) {\n        return productServices.getProductByItemId(itemId);\n    }\n\n\tprivate static ShippingServiceRemote lookupShippingServiceRemote() {\n        try {\n            final Hashtable<String, String> jndiProperties = new Hashtable<>();\n            jndiProperties.put(Context.INITIAL_CONTEXT_FACTORY, \"org.wildfly.naming.client.WildFlyInitialContextFactory\");\n\n            final Context context = new InitialContext(jndiProperties);\n\n            return (ShippingServiceRemote) context.lookup(\"ejb:/ROOT/ShippingService!\" + ShippingServiceRemote.class.getName());\n        } catch (NamingException e) {\n            throw new RuntimeException(e);\n        }\n    }\n}\n\n```\n\n## Issues\n\n\n### incident 0\nincident to fix: \"Stateful EJBs can be converted to a CDI bean by replacing the `@Stateful` annotation with a bean-defining annotation\n that encompasses the appropriate scope (e.g., `@ApplicationScoped`). `@Stateful` EJBs often translate to `@SessionScoped`\n beans (a scope which requires activating the `quarkus-undertow` extension), but the appropriate scope may differ based\n on your application architecture. Review your application's requirements to determine the appropriate scope.\n\n Note that it is recommended, as a good practice, to keep state external from the service in Quarkus.\"\nLine number: 16\n\n\n\n# Output Instructions\nStructure your output in Markdown format such as:\n\n## Reasoning\nWrite the step by step reasoning in this markdown section. If you are unsure of a step or reasoning, clearly state you are unsure and why.\n\n## Updated Java File\n```java\n// Write the updated file for Quarkus in this section. If the file should be removed, make the content of the updated file a comment explaining it should be removed.\n```\n\n## Additional Information (optional)\n\nIf you have any additional details or steps that need to be performed, put it here.\n\n    ",
         "type": "human"
       }
     }
@@ -24,22 +24,22 @@
     "type": "constructor",
     "id": ["langchain", "schema", "messages", "AIMessage"],
     "kwargs": {
-      "content": " # Reasoning\n\nThe issue to fix is the import statement `javax.enterprise` which needs to be replaced with `jakarta.enterprise`. This is because Quarkus uses Jakarta EE, which has replaced the `javax` namespace with `jakarta`.\n\nTo fix this issue, we need to update the import statement at line 9 from `javax.enterprise.context.SessionScoped` to `jakarta.enterprise.context.SessionScoped`.\n\nAdditionally, we need to update the `pom.xml` file to include the Jakarta EE dependencies instead of the Java EE dependencies.\n\n## Updated Java File\n```java\npackage com.redhat.coolstore.rest;\n\nimport java.io.Serializable;\nimport java.util.ArrayList;\nimport java.util.HashMap;\nimport java.util.List;\nimport java.util.Map;\n\nimport jakarta.enterprise.context.SessionScoped;\nimport jakarta.inject.Inject;\nimport jakarta.ws.rs.DELETE;\nimport jakarta.ws.rs.GET;\nimport jakarta.ws.rs.POST;\nimport jakarta.ws.rs.Path;\nimport jakarta.ws.rs.PathParam;\nimport jakarta.ws.rs.Produces;\nimport jakarta.ws.rs.core.MediaType;\n\nimport com.redhat.coolstore.model.Product;\nimport com.redhat.coolstore.model.ShoppingCart;\nimport com.redhat.coolstore.model.ShoppingCartItem;\nimport com.redhat.coolstore.service.ShoppingCartService;\n\n@SessionScoped\n@Path(\"/cart\")\npublic class CartEndpoint implements Serializable {\n\n\tprivate static final long serialVersionUID = -7227732980791688773L;\n\n\t@Inject\n\tprivate ShoppingCartService shoppingCartService;\n\n\t@GET\n\t@Path(\"/{cartId}\")\n\t@Produces(MediaType.APPLICATION_JSON)\n\tpublic ShoppingCart getCart(@PathParam(\"cartId\") String cartId) {\n\t\treturn shoppingCartService.getShoppingCart(cartId);\n\t}\n\n\t@POST\n\t@Path(\"/checkout/{cartId}\")\n\t@Produces(MediaType.APPLICATION_JSON)\n\tpublic ShoppingCart checkout(@PathParam(\"cartId\") String cartId) {\n\t\treturn shoppingCartService.checkOutShoppingCart(cartId);\n\t}\n\n\t@POST\n\t@Path(\"/{cartId}/{itemId}/{quantity}\")\n\t@Produces(MediaType.APPLICATION_JSON)\n\tpublic ShoppingCart add(@PathParam(\"cartId\") String cartId,\n\t\t\t\t\t\t\t@PathParam(\"itemId\") String itemId,\n\t\t\t\t\t\t\t@PathParam(\"quantity\") int quantity) throws Exception {\n\t\tShoppingCart cart = shoppingCartService.getShoppingCart(cartId);\n\n\t\tProduct product = shoppingCartService.getProduct(itemId);\n\n\t\tShoppingCartItem sci = new ShoppingCartItem();\n\t\tsci.setProduct(product);\n\t\tsci.setQuantity(quantity);\n\t\tsci.setPrice(product.getPrice());\n\t\tcart.addShoppingCartItem(sci);\n\n\t\ttry {\n\t\t\tshoppingCartService.priceShoppingCart(cart);\n\t\t\tcart.setShoppingCartItemList(dedupeCartItems(cart.getShoppingCartItemList()));\n\t\t} catch (Exception ex) {\n\t\t\tcart.removeShoppingCartItem(sci);\n\t\t\tthrow ex;\n\t\t}\n\n\t\treturn cart;\n\t}\n\n\t@POST\n\t@Path(\"/{cartId}/{tmpId}\")\n\t@Produces(MediaType.APPLICATION_JSON)\n\tpublic ShoppingCart set(@PathParam(\"cartId\") String cartId,\n\t\t\t\t\t\t\t@PathParam(\"tmpId\") String tmpId) throws Exception {\n\n\t\tShoppingCart cart = shoppingCartService.getShoppingCart(cartId);\n\t\tShoppingCart tmpCart = shoppingCartService.getShoppingCart(tmpId);\n\n\t\tif (tmpCart != null) {\n\t\t\tcart.resetShoppingCartItemList();\n\t\t\tcart.setShoppingCartItemList(tmpCart.getShoppingCartItemList());\n\t\t}\n\n\t\ttry {\n\t\t\tshoppingCartService.priceShoppingCart(cart);\n\t\t\tcart.setShoppingCartItemList(dedupeCartItems(cart.getShoppingCartItemList()));\n\t\t} catch (Exception ex) {\n\t\t\tthrow ex;\n\t\t}\n\n\t\treturn cart;\n\t}\n\n\t@DELETE\n\t@Path(\"/{cartId}/{itemId}/{quantity}\")\n\t@Produces(MediaType.APPLICATION_JSON)\n\tpublic ShoppingCart delete(@PathParam(\"cartId\") String cartId,\n\t\t\t\t\t\t\t   @PathParam(\"itemId\") String itemId,\n\t\t\t\t\t\t\t   @PathParam(\"quantity\") int quantity) throws Exception {\n\n\t\tList<ShoppingCartItem> toRemoveList = new ArrayList<>();\n\n\t\tShoppingCart cart = shoppingCartService.getShoppingCart(cartId);\n\n\t\tcart.getShoppingCartItemList().stream()\n\t\t\t\t.filter(sci -> sci.getProduct().getItemId().equals(itemId))\n\t\t\t\t.forEach(sci -> {\n\t\t\t\t\tif (quantity >= sci.getQuantity()) {\n\t\t\t\t\t\ttoRemoveList.add(sci);\n\t\t\t\t\t} else {\n\t\t\t\t\t\tsci.setQuantity(sci.getQuantity() - quantity);\n\t\t\t\t\t}\n\t\t\t\t});\n\n\t\ttoRemoveList.forEach(cart::removeShoppingCartItem);\n\n\t\tshoppingCartService.priceShoppingCart(cart);\n\t\treturn cart;\n\t}\n\n\n\n\tprivate List<ShoppingCartItem> dedupeCartItems(List<ShoppingCartItem> cartItems) {\n\t\tList<ShoppingCartItem> result = new ArrayList<>();\n\t\tMap<String, Integer> quantityMap = new HashMap<>();\n\t\tfor (ShoppingCartItem sci : cartItems) {\n\t\t\tif (quantityMap.containsKey(sci.getProduct().getItemId())) {\n\t\t\t\tquantityMap.put(sci.getProduct().getItemId(), quantityMap.get(sci.getProduct().getItemId()) + sci.getQuantity());\n\t\t\t} else {\n\t\t\t\tquantityMap.put(sci.getProduct().getItemId(), sci.getQuantity());\n\t\t\t}\n\t\t}\n\n\t\tfor (String itemId : quantityMap.keySet()) {\n\t\t\tProduct p = shoppingCartService.getProduct(itemId);\n\t\t\tShoppingCartItem newItem = new ShoppingCartItem();\n\t\t\tnewItem.setQuantity(quantityMap.get(itemId));\n\t\t\tnewItem.setPrice(p.getPrice());\n\t\t\tnewItem.setProduct(p);\n\t\t\tresult.add(newItem);\n\t\t}\n\t\treturn result;\n\t}\n}\n```\n\n## Additional Information\nThe `pom.xml` file needs to be updated to include the Jakarta EE dependencies instead of the Java EE dependencies. The specific changes will depend on the current dependencies in the `pom.xml` file.",
+      "content": " ## Reasoning\n\nTo migrate the `ShoppingCartService` class from Java EE to Quarkus, we need to address the issue with the `@Stateful` annotation. In Quarkus, we can replace `@Stateful` with a CDI bean-defining annotation that encompasses the appropriate scope.\n\nSince `@Stateful` EJBs often translate to `@SessionScoped` beans, we will replace `@Stateful` with `@SessionScoped`. However, we need to ensure that the `quarkus-undertow` extension is activated in the `pom.xml` file to use the `@SessionScoped` annotation.\n\nHere are the steps to update the code:\n\n1. Replace the `@Stateful` annotation with `@SessionScoped`.\n2. Add the `@SessionScoped` import statement.\n3. Ensure that the `quarkus-undertow` extension is activated in the `pom.xml` file.\n\n## Updated Java File\n```java\npackage com.redhat.coolstore.service;\n\nimport java.util.Hashtable;\nimport java.util.logging.Logger;\n\nimport javax.enterprise.context.SessionScoped;\nimport javax.inject.Inject;\nimport javax.naming.Context;\nimport javax.naming.InitialContext;\nimport javax.naming.NamingException;\n\nimport com.redhat.coolstore.model.Product;\nimport com.redhat.coolstore.model.ShoppingCart;\nimport com.redhat.coolstore.model.ShoppingCartItem;\n\n@SessionScoped\npublic class ShoppingCartService  {\n\n    @Inject\n    Logger log;\n\n    @Inject\n    ProductService productServices;\n\n    @Inject\n    PromoService ps;\n\n\n    @Inject\n    ShoppingCartOrderProcessor shoppingCartOrderProcessor;\n\n    private ShoppingCart cart  = new ShoppingCart(); //Each user can have multiple shopping carts (tabbed browsing)\n\n   \n\n    public ShoppingCartService() {\n    }\n\n    public ShoppingCart getShoppingCart(String cartId) {\n        return cart;\n    }\n\n    public ShoppingCart checkOutShoppingCart(String cartId) {\n        ShoppingCart cart = this.getShoppingCart(cartId);\n      \n        log.info(\"Sending  order: \");\n        shoppingCartOrderProcessor.process(cart);\n   \n        cart.resetShoppingCartItemList();\n        priceShoppingCart(cart);\n        return cart;\n    }\n\n    public void priceShoppingCart(ShoppingCart sc) {\n\n        if (sc != null) {\n\n            initShoppingCartForPricing(sc);\n\n            if (sc.getShoppingCartItemList() != null && sc.getShoppingCartItemList().size() > 0) {\n\n                ps.applyCartItemPromotions(sc);\n\n                for (ShoppingCartItem sci : sc.getShoppingCartItemList()) {\n\n                    sc.setCartItemPromoSavings(\n                            sc.getCartItemPromoSavings() + sci.getPromoSavings() * sci.getQuantity());\n                    sc.setCartItemTotal(sc.getCartItemTotal() + sci.getPrice() * sci.getQuantity());\n\n                }\n\n                sc.setShippingTotal(lookupShippingServiceRemote().calculateShipping(sc));\n\n                if (sc.getCartItemTotal() >= 25) {\n                    sc.setShippingTotal(sc.getShippingTotal()\n                            + lookupShippingServiceRemote().calculateShippingInsurance(sc));\n                }\n\n            }\n\n            ps.applyShippingPromotions(sc);\n\n            sc.setCartTotal(sc.getCartItemTotal() + sc.getShippingTotal());\n\n        }\n\n    }\n\n    private void initShoppingCartForPricing(ShoppingCart sc) {\n\n        sc.setCartItemTotal(0);\n        sc.setCartItemPromoSavings(0);\n        sc.setShippingTotal(0);\n        sc.setShippingPromoSavings(0);\n        sc.setCartTotal(0);\n\n        for (ShoppingCartItem sci : sc.getShoppingCartItemList()) {\n            Product p = getProduct(sci.getProduct().getItemId());\n            //if product exist\n            if (p != null) {\n                sci.setProduct(p);\n                sci.setPrice(p.getPrice());\n            }\n\n            sci.setPromoSavings(0);\n        }\n\n    }\n\n    public Product getProduct(String itemId) {\n        return productServices.getProductByItemId(itemId);\n    }\n\n\tprivate static ShippingServiceRemote lookupShippingServiceRemote() {\n        try {\n            final Hashtable<String, String> jndiProperties = new Hashtable<>();\n            jndiProperties.put(Context.INITIAL_CONTEXT_FACTORY, \"org.wildfly.naming.client.WildFlyInitialContextFactory\");\n\n            final Context context = new InitialContext(jndiProperties);\n\n            return (ShippingServiceRemote) context.lookup(\"ejb:/ROOT/ShippingService!\" + ShippingServiceRemote.class.getName());\n        } catch (NamingException e) {\n            throw new RuntimeException(e);\n        }\n    }\n}\n```\n\n## Additional Information\n\nTo complete the migration, ensure that the `quarkus-undertow` extension is activated in the `pom.xml` file by adding the following dependency:\n\n```xml\n<dependency>\n    <groupId>io.quarkus</groupId>\n    <artifactId>quarkus-undertow</artifactId>\n</dependency>\n```\n\nThis will enable the use of the `@SessionScoped` annotation in the `ShoppingCartService` class.",
       "response_metadata": {
         "model_name": "meta-llama/llama-3-1-70b-instruct",
         "token_usage": {
-          "prompt_tokens": 1416,
-          "completion_tokens": 1173,
-          "total_tokens": 2589,
-          "input_token_count": 1416,
-          "generated_token_count": 1173
+          "prompt_tokens": 1239,
+          "completion_tokens": 1017,
+          "total_tokens": 2256,
+          "input_token_count": 1239,
+          "generated_token_count": 1017
         },
         "meta": {
-          "conversation_id": "7651327a-3aea-44ea-8e3e-b4b6d83a468f",
-          "id": "7fdc3ac6-bc29-4c97-a629-45fad4a44341",
+          "conversation_id": "319a8b03-080c-48f3-9d78-94a63b5edf2d",
+          "id": "e4805b0f-0081-4c8d-90e9-ae176edcae2a",
           "model_id": "meta-llama/llama-3-1-70b-instruct"
         },
-        "generated_token_count": 1173,
+        "generated_token_count": 1017,
         "input_token_count": 0,
         "input_tokens": [
           {
@@ -790,10 +790,13 @@
             "text": "\u0120\""
           },
           {
+            "text": "Shopping"
+          },
+          {
             "text": "Cart"
           },
           {
-            "text": "Endpoint"
+            "text": "Service"
           },
           {
             "text": ".java"
@@ -844,7 +847,7 @@
             "text": "store"
           },
           {
-            "text": ".rest"
+            "text": ".service"
           },
           {
             "text": ";\u010a\u010a"
@@ -856,10 +859,13 @@
             "text": "\u0120java"
           },
           {
-            "text": ".io"
+            "text": ".util"
           },
           {
-            "text": ".Serializable"
+            "text": ".Has"
+          },
+          {
+            "text": "htable"
           },
           {
             "text": ";\u010a"
@@ -874,52 +880,10 @@
             "text": ".util"
           },
           {
-            "text": ".ArrayList"
+            "text": ".logging"
           },
           {
-            "text": ";\u010a"
-          },
-          {
-            "text": "import"
-          },
-          {
-            "text": "\u0120java"
-          },
-          {
-            "text": ".util"
-          },
-          {
-            "text": ".HashMap"
-          },
-          {
-            "text": ";\u010a"
-          },
-          {
-            "text": "import"
-          },
-          {
-            "text": "\u0120java"
-          },
-          {
-            "text": ".util"
-          },
-          {
-            "text": ".List"
-          },
-          {
-            "text": ";\u010a"
-          },
-          {
-            "text": "import"
-          },
-          {
-            "text": "\u0120java"
-          },
-          {
-            "text": ".util"
-          },
-          {
-            "text": ".Map"
+            "text": ".Logger"
           },
           {
             "text": ";\u010a\u010a"
@@ -931,16 +895,13 @@
             "text": "\u0120javax"
           },
           {
-            "text": ".enterprise"
+            "text": ".ejb"
           },
           {
-            "text": ".context"
+            "text": ".State"
           },
           {
-            "text": ".Session"
-          },
-          {
-            "text": "Scoped"
+            "text": "ful"
           },
           {
             "text": ";\u010a"
@@ -967,31 +928,13 @@
             "text": "\u0120javax"
           },
           {
-            "text": ".ws"
+            "text": ".n"
           },
           {
-            "text": ".rs"
+            "text": "aming"
           },
           {
-            "text": ".DELETE"
-          },
-          {
-            "text": ";\u010a"
-          },
-          {
-            "text": "import"
-          },
-          {
-            "text": "\u0120javax"
-          },
-          {
-            "text": ".ws"
-          },
-          {
-            "text": ".rs"
-          },
-          {
-            "text": ".GET"
+            "text": ".Context"
           },
           {
             "text": ";\u010a"
@@ -1003,31 +946,16 @@
             "text": "\u0120javax"
           },
           {
-            "text": ".ws"
+            "text": ".n"
           },
           {
-            "text": ".rs"
+            "text": "aming"
           },
           {
-            "text": ".POST"
+            "text": ".Initial"
           },
           {
-            "text": ";\u010a"
-          },
-          {
-            "text": "import"
-          },
-          {
-            "text": "\u0120javax"
-          },
-          {
-            "text": ".ws"
-          },
-          {
-            "text": ".rs"
-          },
-          {
-            "text": ".Path"
+            "text": "Context"
           },
           {
             "text": ";\u010a"
@@ -1039,58 +967,19 @@
             "text": "\u0120javax"
           },
           {
-            "text": ".ws"
+            "text": ".n"
           },
           {
-            "text": ".rs"
+            "text": "aming"
           },
           {
-            "text": ".Path"
+            "text": ".N"
           },
           {
-            "text": "Param"
+            "text": "aming"
           },
           {
-            "text": ";\u010a"
-          },
-          {
-            "text": "import"
-          },
-          {
-            "text": "\u0120javax"
-          },
-          {
-            "text": ".ws"
-          },
-          {
-            "text": ".rs"
-          },
-          {
-            "text": ".Produ"
-          },
-          {
-            "text": "ces"
-          },
-          {
-            "text": ";\u010a"
-          },
-          {
-            "text": "import"
-          },
-          {
-            "text": "\u0120javax"
-          },
-          {
-            "text": ".ws"
-          },
-          {
-            "text": ".rs"
-          },
-          {
-            "text": ".core"
-          },
-          {
-            "text": ".MediaType"
+            "text": "Exception"
           },
           {
             "text": ";\u010a\u010a"
@@ -1195,70 +1084,19 @@
             "text": "CartItem"
           },
           {
-            "text": ";\u010a"
-          },
-          {
-            "text": "import"
-          },
-          {
-            "text": "\u0120com"
-          },
-          {
-            "text": ".red"
-          },
-          {
-            "text": "hat"
-          },
-          {
-            "text": ".c"
-          },
-          {
-            "text": "ool"
-          },
-          {
-            "text": "store"
-          },
-          {
-            "text": ".service"
-          },
-          {
-            "text": ".Sh"
-          },
-          {
-            "text": "opping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "Service"
-          },
-          {
             "text": ";\u010a\u010a"
           },
           {
             "text": "@"
           },
           {
-            "text": "Session"
+            "text": "State"
           },
           {
-            "text": "Scoped"
+            "text": "ful"
           },
           {
             "text": "\u010a"
-          },
-          {
-            "text": "@Path"
-          },
-          {
-            "text": "(\"/"
-          },
-          {
-            "text": "cart"
-          },
-          {
-            "text": "\")\u010a"
           },
           {
             "text": "public"
@@ -1267,604 +1105,118 @@
             "text": "\u0120class"
           },
           {
-            "text": "\u0120Cart"
+            "text": "\u0120ShoppingCart"
           },
           {
-            "text": "Endpoint"
+            "text": "Service"
           },
           {
-            "text": "\u0120implements"
-          },
-          {
-            "text": "\u0120Serializable"
+            "text": "\u0120"
           },
           {
             "text": "\u0120{\u010a\u010a"
           },
           {
-            "text": "\u0109private"
+            "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120static"
+            "text": "\u0120@"
           },
           {
-            "text": "\u0120final"
+            "text": "Inject"
           },
           {
-            "text": "\u0120long"
+            "text": "\u010a"
           },
           {
-            "text": "\u0120serialVersionUID"
+            "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120="
+            "text": "\u0120Logger"
           },
           {
-            "text": "\u0120-"
-          },
-          {
-            "text": "722"
-          },
-          {
-            "text": "773"
-          },
-          {
-            "text": "298"
-          },
-          {
-            "text": "079"
-          },
-          {
-            "text": "168"
-          },
-          {
-            "text": "877"
-          },
-          {
-            "text": "3"
-          },
-          {
-            "text": "L"
+            "text": "\u0120log"
           },
           {
             "text": ";\u010a\u010a"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "@Inject"
+            "text": "\u0120@"
           },
           {
-            "text": "\u010a"
-          },
-          {
-            "text": "\u0109private"
-          },
-          {
-            "text": "\u0120ShoppingCart"
-          },
-          {
-            "text": "Service"
-          },
-          {
-            "text": "\u0120shopping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "Service"
-          },
-          {
-            "text": ";\u010a\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "@"
-          },
-          {
-            "text": "GET"
+            "text": "Inject"
           },
           {
             "text": "\u010a"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "@Path"
-          },
-          {
-            "text": "(\"/{"
-          },
-          {
-            "text": "cart"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": "}\")\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "@"
-          },
-          {
-            "text": "Produces"
-          },
-          {
-            "text": "(MediaType"
-          },
-          {
-            "text": ".APPLICATION"
-          },
-          {
-            "text": "_JSON"
-          },
-          {
-            "text": ")\u010a"
-          },
-          {
-            "text": "\u0109public"
-          },
-          {
-            "text": "\u0120ShoppingCart"
-          },
-          {
-            "text": "\u0120get"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "(@"
-          },
-          {
-            "text": "PathParam"
-          },
-          {
-            "text": "(\""
-          },
-          {
-            "text": "cart"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": "\")"
-          },
-          {
-            "text": "\u0120String"
-          },
-          {
-            "text": "\u0120cart"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": ")"
-          },
-          {
-            "text": "\u0120{\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109return"
-          },
-          {
-            "text": "\u0120shopping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "Service"
-          },
-          {
-            "text": ".get"
-          },
-          {
-            "text": "Shopping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "(cart"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": ");\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "}\u010a\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "@"
-          },
-          {
-            "text": "POST"
-          },
-          {
-            "text": "\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "@Path"
-          },
-          {
-            "text": "(\"/"
-          },
-          {
-            "text": "checkout"
-          },
-          {
-            "text": "/{"
-          },
-          {
-            "text": "cart"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": "}\")\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "@"
-          },
-          {
-            "text": "Produces"
-          },
-          {
-            "text": "(MediaType"
-          },
-          {
-            "text": ".APPLICATION"
-          },
-          {
-            "text": "_JSON"
-          },
-          {
-            "text": ")\u010a"
-          },
-          {
-            "text": "\u0109public"
-          },
-          {
-            "text": "\u0120ShoppingCart"
-          },
-          {
-            "text": "\u0120checkout"
-          },
-          {
-            "text": "(@"
-          },
-          {
-            "text": "PathParam"
-          },
-          {
-            "text": "(\""
-          },
-          {
-            "text": "cart"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": "\")"
-          },
-          {
-            "text": "\u0120String"
-          },
-          {
-            "text": "\u0120cart"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": ")"
-          },
-          {
-            "text": "\u0120{\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109return"
-          },
-          {
-            "text": "\u0120shopping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "Service"
-          },
-          {
-            "text": ".check"
-          },
-          {
-            "text": "Out"
-          },
-          {
-            "text": "Shopping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "(cart"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": ");\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "}\u010a\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "@"
-          },
-          {
-            "text": "POST"
-          },
-          {
-            "text": "\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "@Path"
-          },
-          {
-            "text": "(\"/{"
-          },
-          {
-            "text": "cart"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": "}/{"
-          },
-          {
-            "text": "itemId"
-          },
-          {
-            "text": "}/{"
-          },
-          {
-            "text": "quantity"
-          },
-          {
-            "text": "}\")\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "@"
-          },
-          {
-            "text": "Produces"
-          },
-          {
-            "text": "(MediaType"
-          },
-          {
-            "text": ".APPLICATION"
-          },
-          {
-            "text": "_JSON"
-          },
-          {
-            "text": ")\u010a"
-          },
-          {
-            "text": "\u0109public"
-          },
-          {
-            "text": "\u0120ShoppingCart"
-          },
-          {
-            "text": "\u0120add"
-          },
-          {
-            "text": "(@"
-          },
-          {
-            "text": "PathParam"
-          },
-          {
-            "text": "(\""
-          },
-          {
-            "text": "cart"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": "\")"
-          },
-          {
-            "text": "\u0120String"
-          },
-          {
-            "text": "\u0120cart"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": ",\u010a"
-          },
-          {
-            "text": "\u0109\u0109\u0109\u0109\u0109\u0109"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "@Path"
-          },
-          {
-            "text": "Param"
-          },
-          {
-            "text": "(\""
-          },
-          {
-            "text": "itemId"
-          },
-          {
-            "text": "\")"
-          },
-          {
-            "text": "\u0120String"
-          },
-          {
-            "text": "\u0120itemId"
-          },
-          {
-            "text": ",\u010a"
-          },
-          {
-            "text": "\u0109\u0109\u0109\u0109\u0109\u0109"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "@Path"
-          },
-          {
-            "text": "Param"
-          },
-          {
-            "text": "(\""
-          },
-          {
-            "text": "quantity"
-          },
-          {
-            "text": "\")"
-          },
-          {
-            "text": "\u0120int"
-          },
-          {
-            "text": "\u0120quantity"
-          },
-          {
-            "text": ")"
-          },
-          {
-            "text": "\u0120throws"
-          },
-          {
-            "text": "\u0120Exception"
-          },
-          {
-            "text": "\u0120{\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "Shopping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "\u0120cart"
-          },
-          {
-            "text": "\u0120="
-          },
-          {
-            "text": "\u0120shopping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "Service"
-          },
-          {
-            "text": ".get"
-          },
-          {
-            "text": "Shopping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "(cart"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": ");\u010a\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "Product"
+            "text": "\u0120ProductService"
           },
           {
             "text": "\u0120product"
           },
           {
-            "text": "\u0120="
+            "text": "Services"
+          },
+          {
+            "text": ";\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120@"
+          },
+          {
+            "text": "Inject"
+          },
+          {
+            "text": "\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120Promo"
+          },
+          {
+            "text": "Service"
+          },
+          {
+            "text": "\u0120ps"
+          },
+          {
+            "text": ";\u010a\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120@"
+          },
+          {
+            "text": "Inject"
+          },
+          {
+            "text": "\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120ShoppingCart"
+          },
+          {
+            "text": "Order"
+          },
+          {
+            "text": "Processor"
           },
           {
             "text": "\u0120shopping"
@@ -1873,31 +1225,28 @@
             "text": "Cart"
           },
           {
-            "text": "Service"
+            "text": "Order"
           },
           {
-            "text": ".getProduct"
+            "text": "Processor"
           },
           {
-            "text": "(itemId"
+            "text": ";\u010a\u010a"
           },
           {
-            "text": ");\u010a\u010a"
+            "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120private"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120ShoppingCart"
           },
           {
-            "text": "Shopping"
+            "text": "\u0120cart"
           },
           {
-            "text": "CartItem"
-          },
-          {
-            "text": "\u0120sci"
+            "text": "\u0120"
           },
           {
             "text": "\u0120="
@@ -1909,439 +1258,85 @@
             "text": "\u0120ShoppingCart"
           },
           {
-            "text": "Item"
+            "text": "();"
           },
           {
-            "text": "();\u010a"
+            "text": "\u0120//"
           },
           {
-            "text": "\u0109"
+            "text": "Each"
           },
           {
-            "text": "\u0109s"
+            "text": "\u0120user"
           },
           {
-            "text": "ci"
+            "text": "\u0120can"
           },
           {
-            "text": ".set"
+            "text": "\u0120have"
           },
           {
-            "text": "Product"
+            "text": "\u0120multiple"
           },
           {
-            "text": "(product"
+            "text": "\u0120shopping"
           },
           {
-            "text": ");\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109s"
-          },
-          {
-            "text": "ci"
-          },
-          {
-            "text": ".set"
-          },
-          {
-            "text": "Quantity"
-          },
-          {
-            "text": "(quantity"
-          },
-          {
-            "text": ");\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109s"
-          },
-          {
-            "text": "ci"
-          },
-          {
-            "text": ".set"
-          },
-          {
-            "text": "Price"
-          },
-          {
-            "text": "(product"
-          },
-          {
-            "text": ".getPrice"
-          },
-          {
-            "text": "());\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109c"
-          },
-          {
-            "text": "art"
-          },
-          {
-            "text": ".add"
-          },
-          {
-            "text": "Shopping"
-          },
-          {
-            "text": "CartItem"
-          },
-          {
-            "text": "(s"
-          },
-          {
-            "text": "ci"
-          },
-          {
-            "text": ");\u010a\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109try"
-          },
-          {
-            "text": "\u0120{\u010a"
-          },
-          {
-            "text": "\u0109\u0109"
-          },
-          {
-            "text": "\u0109sh"
-          },
-          {
-            "text": "opping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "Service"
-          },
-          {
-            "text": ".price"
-          },
-          {
-            "text": "Shopping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "(cart"
-          },
-          {
-            "text": ");\u010a"
-          },
-          {
-            "text": "\u0109\u0109"
-          },
-          {
-            "text": "\u0109c"
-          },
-          {
-            "text": "art"
-          },
-          {
-            "text": ".set"
-          },
-          {
-            "text": "Shopping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "ItemList"
-          },
-          {
-            "text": "(d"
-          },
-          {
-            "text": "edu"
-          },
-          {
-            "text": "pe"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "Items"
-          },
-          {
-            "text": "(cart"
-          },
-          {
-            "text": ".get"
-          },
-          {
-            "text": "Shopping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "ItemList"
-          },
-          {
-            "text": "()));\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "}"
-          },
-          {
-            "text": "\u0120catch"
+            "text": "\u0120carts"
           },
           {
             "text": "\u0120("
           },
           {
-            "text": "Exception"
+            "text": "tab"
           },
           {
-            "text": "\u0120ex"
+            "text": "bed"
           },
           {
-            "text": ")"
+            "text": "\u0120browsing"
           },
           {
-            "text": "\u0120{\u010a"
+            "text": ")\u010a\u010a"
           },
           {
-            "text": "\u0109\u0109"
+            "text": "\u0120\u0120\u0120\u010a\u010a"
           },
           {
-            "text": "\u0109c"
+            "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "art"
-          },
-          {
-            "text": ".remove"
-          },
-          {
-            "text": "Shopping"
-          },
-          {
-            "text": "CartItem"
-          },
-          {
-            "text": "(s"
-          },
-          {
-            "text": "ci"
-          },
-          {
-            "text": ");\u010a"
-          },
-          {
-            "text": "\u0109\u0109"
-          },
-          {
-            "text": "\u0109throw"
-          },
-          {
-            "text": "\u0120ex"
-          },
-          {
-            "text": ";\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "}\u010a\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109return"
-          },
-          {
-            "text": "\u0120cart"
-          },
-          {
-            "text": ";\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "}\u010a\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "@"
-          },
-          {
-            "text": "POST"
-          },
-          {
-            "text": "\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "@Path"
-          },
-          {
-            "text": "(\"/{"
-          },
-          {
-            "text": "cart"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": "}/{"
-          },
-          {
-            "text": "tmp"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": "}\")\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "@"
-          },
-          {
-            "text": "Produces"
-          },
-          {
-            "text": "(MediaType"
-          },
-          {
-            "text": ".APPLICATION"
-          },
-          {
-            "text": "_JSON"
-          },
-          {
-            "text": ")\u010a"
-          },
-          {
-            "text": "\u0109public"
+            "text": "\u0120public"
           },
           {
             "text": "\u0120ShoppingCart"
           },
           {
-            "text": "\u0120set"
+            "text": "Service"
           },
           {
-            "text": "(@"
+            "text": "()"
           },
           {
-            "text": "PathParam"
+            "text": "\u0120{\u010a"
           },
           {
-            "text": "(\""
+            "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "cart"
+            "text": "\u0120}\u010a\u010a"
           },
           {
-            "text": "Id"
+            "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "\")"
+            "text": "\u0120public"
           },
           {
-            "text": "\u0120String"
+            "text": "\u0120ShoppingCart"
           },
           {
-            "text": "\u0120cart"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": ",\u010a"
-          },
-          {
-            "text": "\u0109\u0109\u0109\u0109\u0109\u0109"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "@Path"
-          },
-          {
-            "text": "Param"
-          },
-          {
-            "text": "(\""
-          },
-          {
-            "text": "tmp"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": "\")"
-          },
-          {
-            "text": "\u0120String"
-          },
-          {
-            "text": "\u0120tmp"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": ")"
-          },
-          {
-            "text": "\u0120throws"
-          },
-          {
-            "text": "\u0120Exception"
-          },
-          {
-            "text": "\u0120{\u010a\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109"
+            "text": "\u0120get"
           },
           {
             "text": "Shopping"
@@ -2350,19 +1345,88 @@
             "text": "Cart"
           },
           {
+            "text": "(String"
+          },
+          {
+            "text": "\u0120cart"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ")"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120return"
+          },
+          {
+            "text": "\u0120cart"
+          },
+          {
+            "text": ";\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120public"
+          },
+          {
+            "text": "\u0120ShoppingCart"
+          },
+          {
+            "text": "\u0120check"
+          },
+          {
+            "text": "Out"
+          },
+          {
+            "text": "Shopping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "(String"
+          },
+          {
+            "text": "\u0120cart"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ")"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120ShoppingCart"
+          },
+          {
             "text": "\u0120cart"
           },
           {
             "text": "\u0120="
           },
           {
-            "text": "\u0120shopping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "Service"
+            "text": "\u0120this"
           },
           {
             "text": ".get"
@@ -2383,25 +1447,37 @@
             "text": ");\u010a"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u010a"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "Shopping"
+            "text": "\u0120log"
           },
           {
-            "text": "Cart"
+            "text": ".info"
           },
           {
-            "text": "\u0120tmp"
+            "text": "(\""
           },
           {
-            "text": "Cart"
+            "text": "Sending"
           },
           {
-            "text": "\u0120="
+            "text": "\u0120"
+          },
+          {
+            "text": "\u0120order"
+          },
+          {
+            "text": ":"
+          },
+          {
+            "text": "\u0120\");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
             "text": "\u0120shopping"
@@ -2410,61 +1486,28 @@
             "text": "Cart"
           },
           {
-            "text": "Service"
+            "text": "Order"
           },
           {
-            "text": ".get"
+            "text": "Processor"
           },
           {
-            "text": "Shopping"
+            "text": ".process"
           },
           {
-            "text": "Cart"
+            "text": "(cart"
           },
           {
-            "text": "(tmp"
+            "text": ");\u010a"
           },
           {
-            "text": "Id"
+            "text": "\u0120\u0120\u0120\u010a"
           },
           {
-            "text": ");\u010a\u010a"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109if"
-          },
-          {
-            "text": "\u0120("
-          },
-          {
-            "text": "tmp"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "\u0120!="
-          },
-          {
-            "text": "\u0120null"
-          },
-          {
-            "text": ")"
-          },
-          {
-            "text": "\u0120{\u010a"
-          },
-          {
-            "text": "\u0109\u0109"
-          },
-          {
-            "text": "\u0109c"
-          },
-          {
-            "text": "art"
+            "text": "\u0120cart"
           },
           {
             "text": ".reset"
@@ -2482,82 +1525,10 @@
             "text": "();\u010a"
           },
           {
-            "text": "\u0109\u0109"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0109c"
-          },
-          {
-            "text": "art"
-          },
-          {
-            "text": ".set"
-          },
-          {
-            "text": "Shopping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "ItemList"
-          },
-          {
-            "text": "(tmp"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": ".get"
-          },
-          {
-            "text": "Shopping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "ItemList"
-          },
-          {
-            "text": "());\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "}\u010a\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109try"
-          },
-          {
-            "text": "\u0120{\u010a"
-          },
-          {
-            "text": "\u0109\u0109"
-          },
-          {
-            "text": "\u0109sh"
-          },
-          {
-            "text": "opping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "Service"
-          },
-          {
-            "text": ".price"
+            "text": "\u0120price"
           },
           {
             "text": "Shopping"
@@ -2572,112 +1543,10 @@
             "text": ");\u010a"
           },
           {
-            "text": "\u0109\u0109"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0109c"
-          },
-          {
-            "text": "art"
-          },
-          {
-            "text": ".set"
-          },
-          {
-            "text": "Shopping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "ItemList"
-          },
-          {
-            "text": "(d"
-          },
-          {
-            "text": "edu"
-          },
-          {
-            "text": "pe"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "Items"
-          },
-          {
-            "text": "(cart"
-          },
-          {
-            "text": ".get"
-          },
-          {
-            "text": "Shopping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "ItemList"
-          },
-          {
-            "text": "()));\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "}"
-          },
-          {
-            "text": "\u0120catch"
-          },
-          {
-            "text": "\u0120("
-          },
-          {
-            "text": "Exception"
-          },
-          {
-            "text": "\u0120ex"
-          },
-          {
-            "text": ")"
-          },
-          {
-            "text": "\u0120{\u010a"
-          },
-          {
-            "text": "\u0109\u0109"
-          },
-          {
-            "text": "\u0109throw"
-          },
-          {
-            "text": "\u0120ex"
-          },
-          {
-            "text": ";\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "}\u010a\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109return"
+            "text": "\u0120return"
           },
           {
             "text": "\u0120cart"
@@ -2686,220 +1555,76 @@
             "text": ";\u010a"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "}\u010a\u010a"
+            "text": "\u0120}\u010a\u010a"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "@"
+            "text": "\u0120public"
           },
           {
-            "text": "DELETE"
+            "text": "\u0120void"
           },
           {
-            "text": "\u010a"
+            "text": "\u0120price"
           },
           {
-            "text": "\u0109"
+            "text": "Shopping"
           },
           {
-            "text": "@Path"
+            "text": "Cart"
           },
           {
-            "text": "(\"/{"
+            "text": "("
           },
           {
-            "text": "cart"
+            "text": "Shopping"
           },
           {
-            "text": "Id"
+            "text": "Cart"
           },
           {
-            "text": "}/{"
-          },
-          {
-            "text": "itemId"
-          },
-          {
-            "text": "}/{"
-          },
-          {
-            "text": "quantity"
-          },
-          {
-            "text": "}\")\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "@"
-          },
-          {
-            "text": "Produces"
-          },
-          {
-            "text": "(MediaType"
-          },
-          {
-            "text": ".APPLICATION"
-          },
-          {
-            "text": "_JSON"
-          },
-          {
-            "text": ")\u010a"
-          },
-          {
-            "text": "\u0109public"
-          },
-          {
-            "text": "\u0120ShoppingCart"
-          },
-          {
-            "text": "\u0120delete"
-          },
-          {
-            "text": "(@"
-          },
-          {
-            "text": "PathParam"
-          },
-          {
-            "text": "(\""
-          },
-          {
-            "text": "cart"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": "\")"
-          },
-          {
-            "text": "\u0120String"
-          },
-          {
-            "text": "\u0120cart"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": ",\u010a"
-          },
-          {
-            "text": "\u0109\u0109\u0109\u0109\u0109\u0109\u0109\u0120\u0120"
-          },
-          {
-            "text": "\u0120@"
-          },
-          {
-            "text": "PathParam"
-          },
-          {
-            "text": "(\""
-          },
-          {
-            "text": "itemId"
-          },
-          {
-            "text": "\")"
-          },
-          {
-            "text": "\u0120String"
-          },
-          {
-            "text": "\u0120itemId"
-          },
-          {
-            "text": ",\u010a"
-          },
-          {
-            "text": "\u0109\u0109\u0109\u0109\u0109\u0109\u0109\u0120\u0120"
-          },
-          {
-            "text": "\u0120@"
-          },
-          {
-            "text": "PathParam"
-          },
-          {
-            "text": "(\""
-          },
-          {
-            "text": "quantity"
-          },
-          {
-            "text": "\")"
-          },
-          {
-            "text": "\u0120int"
-          },
-          {
-            "text": "\u0120quantity"
+            "text": "\u0120sc"
           },
           {
             "text": ")"
-          },
-          {
-            "text": "\u0120throws"
-          },
-          {
-            "text": "\u0120Exception"
           },
           {
             "text": "\u0120{\u010a\u010a"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0109List"
+            "text": "\u0120if"
           },
           {
-            "text": "<"
+            "text": "\u0120("
           },
           {
-            "text": "Shopping"
+            "text": "sc"
           },
           {
-            "text": "CartItem"
+            "text": "\u0120!="
           },
           {
-            "text": ">"
+            "text": "\u0120null"
           },
           {
-            "text": "\u0120to"
+            "text": ")"
           },
           {
-            "text": "Remove"
+            "text": "\u0120{\u010a\u010a"
           },
           {
-            "text": "List"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120="
-          },
-          {
-            "text": "\u0120new"
-          },
-          {
-            "text": "\u0120ArrayList"
-          },
-          {
-            "text": "<>();\u010a\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109"
+            "text": "\u0120init"
           },
           {
             "text": "Shopping"
@@ -2908,19 +1633,31 @@
             "text": "Cart"
           },
           {
-            "text": "\u0120cart"
+            "text": "For"
           },
           {
-            "text": "\u0120="
+            "text": "P"
           },
           {
-            "text": "\u0120shopping"
+            "text": "ricing"
           },
           {
-            "text": "Cart"
+            "text": "(sc"
           },
           {
-            "text": "Service"
+            "text": ");\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120if"
+          },
+          {
+            "text": "\u0120("
+          },
+          {
+            "text": "sc"
           },
           {
             "text": ".get"
@@ -2932,22 +1669,22 @@
             "text": "Cart"
           },
           {
-            "text": "(cart"
+            "text": "ItemList"
           },
           {
-            "text": "Id"
+            "text": "()"
           },
           {
-            "text": ");\u010a\u010a"
+            "text": "\u0120!="
           },
           {
-            "text": "\u0109"
+            "text": "\u0120null"
           },
           {
-            "text": "\u0109c"
+            "text": "\u0120&&"
           },
           {
-            "text": "art"
+            "text": "\u0120sc"
           },
           {
             "text": ".get"
@@ -2965,415 +1702,55 @@
             "text": "()."
           },
           {
-            "text": "stream"
-          },
-          {
-            "text": "()\u010a"
-          },
-          {
-            "text": "\u0109\u0109\u0109"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": ".filter"
-          },
-          {
-            "text": "(s"
-          },
-          {
-            "text": "ci"
-          },
-          {
-            "text": "\u0120->"
-          },
-          {
-            "text": "\u0120sci"
-          },
-          {
-            "text": ".getProduct"
-          },
-          {
-            "text": "()."
-          },
-          {
-            "text": "getItem"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": "()."
-          },
-          {
-            "text": "equals"
-          },
-          {
-            "text": "(itemId"
-          },
-          {
-            "text": "))\u010a"
-          },
-          {
-            "text": "\u0109\u0109\u0109"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": ".forEach"
-          },
-          {
-            "text": "(s"
-          },
-          {
-            "text": "ci"
-          },
-          {
-            "text": "\u0120->"
-          },
-          {
-            "text": "\u0120{\u010a"
-          },
-          {
-            "text": "\u0109\u0109\u0109\u0109"
-          },
-          {
-            "text": "\u0109if"
-          },
-          {
-            "text": "\u0120("
-          },
-          {
-            "text": "quantity"
-          },
-          {
-            "text": "\u0120>="
-          },
-          {
-            "text": "\u0120sci"
-          },
-          {
-            "text": ".get"
-          },
-          {
-            "text": "Quantity"
-          },
-          {
-            "text": "())"
-          },
-          {
-            "text": "\u0120{\u010a"
-          },
-          {
-            "text": "\u0109\u0109\u0109\u0109\u0109"
-          },
-          {
-            "text": "\u0109to"
-          },
-          {
-            "text": "Remove"
-          },
-          {
-            "text": "List"
-          },
-          {
-            "text": ".add"
-          },
-          {
-            "text": "(s"
-          },
-          {
-            "text": "ci"
-          },
-          {
-            "text": ");\u010a"
-          },
-          {
-            "text": "\u0109\u0109\u0109\u0109"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "}"
-          },
-          {
-            "text": "\u0120else"
-          },
-          {
-            "text": "\u0120{\u010a"
-          },
-          {
-            "text": "\u0109\u0109\u0109\u0109\u0109"
-          },
-          {
-            "text": "\u0109s"
-          },
-          {
-            "text": "ci"
-          },
-          {
-            "text": ".set"
-          },
-          {
-            "text": "Quantity"
-          },
-          {
-            "text": "(s"
-          },
-          {
-            "text": "ci"
-          },
-          {
-            "text": ".get"
-          },
-          {
-            "text": "Quantity"
+            "text": "size"
           },
           {
             "text": "()"
           },
           {
-            "text": "\u0120-"
+            "text": "\u0120>"
           },
           {
-            "text": "\u0120quantity"
+            "text": "\u0120"
           },
           {
-            "text": ");\u010a"
-          },
-          {
-            "text": "\u0109\u0109\u0109\u0109"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "}\u010a"
-          },
-          {
-            "text": "\u0109\u0109\u0109"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "});\u010a\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109to"
-          },
-          {
-            "text": "Remove"
-          },
-          {
-            "text": "List"
-          },
-          {
-            "text": ".forEach"
-          },
-          {
-            "text": "(cart"
-          },
-          {
-            "text": "::"
-          },
-          {
-            "text": "remove"
-          },
-          {
-            "text": "Shopping"
-          },
-          {
-            "text": "CartItem"
-          },
-          {
-            "text": ");\u010a\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109sh"
-          },
-          {
-            "text": "opping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "Service"
-          },
-          {
-            "text": ".price"
-          },
-          {
-            "text": "Shopping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "(cart"
-          },
-          {
-            "text": ");\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109return"
-          },
-          {
-            "text": "\u0120cart"
-          },
-          {
-            "text": ";\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "}\u010a\u010a\u010a\u010a"
-          },
-          {
-            "text": "\u0109private"
-          },
-          {
-            "text": "\u0120List"
-          },
-          {
-            "text": "<"
-          },
-          {
-            "text": "Shopping"
-          },
-          {
-            "text": "CartItem"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "\u0120ded"
-          },
-          {
-            "text": "upe"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "Items"
-          },
-          {
-            "text": "(List"
-          },
-          {
-            "text": "<"
-          },
-          {
-            "text": "Shopping"
-          },
-          {
-            "text": "CartItem"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "\u0120cart"
-          },
-          {
-            "text": "Items"
+            "text": "0"
           },
           {
             "text": ")"
           },
           {
-            "text": "\u0120{\u010a"
+            "text": "\u0120{\u010a\u010a"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0109List"
+            "text": "\u0120ps"
           },
           {
-            "text": "<"
-          },
-          {
-            "text": "Shopping"
+            "text": ".apply"
           },
           {
             "text": "CartItem"
           },
           {
-            "text": ">"
+            "text": "Prom"
           },
           {
-            "text": "\u0120result"
+            "text": "otions"
           },
           {
-            "text": "\u0120="
+            "text": "(sc"
           },
           {
-            "text": "\u0120new"
+            "text": ");\u010a\u010a"
           },
           {
-            "text": "\u0120ArrayList"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "<>();\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109Map"
-          },
-          {
-            "text": "<String"
-          },
-          {
-            "text": ","
-          },
-          {
-            "text": "\u0120Integer"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "\u0120quantity"
-          },
-          {
-            "text": "Map"
-          },
-          {
-            "text": "\u0120="
-          },
-          {
-            "text": "\u0120new"
-          },
-          {
-            "text": "\u0120HashMap"
-          },
-          {
-            "text": "<>();\u010a"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "\u0109for"
+            "text": "\u0120for"
           },
           {
             "text": "\u0120("
@@ -3391,124 +1768,73 @@
             "text": "\u0120:"
           },
           {
-            "text": "\u0120cart"
-          },
-          {
-            "text": "Items"
-          },
-          {
-            "text": ")"
-          },
-          {
-            "text": "\u0120{\u010a"
-          },
-          {
-            "text": "\u0109\u0109"
-          },
-          {
-            "text": "\u0109if"
-          },
-          {
-            "text": "\u0120("
-          },
-          {
-            "text": "quantity"
-          },
-          {
-            "text": "Map"
-          },
-          {
-            "text": ".containsKey"
-          },
-          {
-            "text": "(s"
-          },
-          {
-            "text": "ci"
-          },
-          {
-            "text": ".getProduct"
-          },
-          {
-            "text": "()."
-          },
-          {
-            "text": "getItem"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": "()))"
-          },
-          {
-            "text": "\u0120{\u010a"
-          },
-          {
-            "text": "\u0109\u0109\u0109"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "quantity"
-          },
-          {
-            "text": "Map"
-          },
-          {
-            "text": ".put"
-          },
-          {
-            "text": "(s"
-          },
-          {
-            "text": "ci"
-          },
-          {
-            "text": ".getProduct"
-          },
-          {
-            "text": "()."
-          },
-          {
-            "text": "getItem"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": "(),"
-          },
-          {
-            "text": "\u0120quantity"
-          },
-          {
-            "text": "Map"
+            "text": "\u0120sc"
           },
           {
             "text": ".get"
           },
           {
-            "text": "(s"
+            "text": "Shopping"
           },
           {
-            "text": "ci"
+            "text": "Cart"
           },
           {
-            "text": ".getProduct"
-          },
-          {
-            "text": "()."
-          },
-          {
-            "text": "getItem"
-          },
-          {
-            "text": "Id"
+            "text": "ItemList"
           },
           {
             "text": "())"
+          },
+          {
+            "text": "\u0120{\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120sc"
+          },
+          {
+            "text": ".set"
+          },
+          {
+            "text": "CartItem"
+          },
+          {
+            "text": "Prom"
+          },
+          {
+            "text": "oS"
+          },
+          {
+            "text": "avings"
+          },
+          {
+            "text": "(\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120sc"
+          },
+          {
+            "text": ".get"
+          },
+          {
+            "text": "CartItem"
+          },
+          {
+            "text": "Prom"
+          },
+          {
+            "text": "oS"
+          },
+          {
+            "text": "avings"
+          },
+          {
+            "text": "()"
           },
           {
             "text": "\u0120+"
@@ -3520,40 +1846,574 @@
             "text": ".get"
           },
           {
+            "text": "Prom"
+          },
+          {
+            "text": "oS"
+          },
+          {
+            "text": "avings"
+          },
+          {
+            "text": "()"
+          },
+          {
+            "text": "\u0120*"
+          },
+          {
+            "text": "\u0120sci"
+          },
+          {
+            "text": ".get"
+          },
+          {
             "text": "Quantity"
           },
           {
             "text": "());\u010a"
           },
           {
-            "text": "\u0109\u0109"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120sc"
           },
           {
-            "text": "}"
+            "text": ".set"
           },
           {
-            "text": "\u0120else"
+            "text": "CartItem"
+          },
+          {
+            "text": "Total"
+          },
+          {
+            "text": "(sc"
+          },
+          {
+            "text": ".get"
+          },
+          {
+            "text": "CartItem"
+          },
+          {
+            "text": "Total"
+          },
+          {
+            "text": "()"
+          },
+          {
+            "text": "\u0120+"
+          },
+          {
+            "text": "\u0120sci"
+          },
+          {
+            "text": ".getPrice"
+          },
+          {
+            "text": "()"
+          },
+          {
+            "text": "\u0120*"
+          },
+          {
+            "text": "\u0120sci"
+          },
+          {
+            "text": ".get"
+          },
+          {
+            "text": "Quantity"
+          },
+          {
+            "text": "());\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120sc"
+          },
+          {
+            "text": ".set"
+          },
+          {
+            "text": "Shipping"
+          },
+          {
+            "text": "Total"
+          },
+          {
+            "text": "("
+          },
+          {
+            "text": "lookup"
+          },
+          {
+            "text": "Shipping"
+          },
+          {
+            "text": "Service"
+          },
+          {
+            "text": "Remote"
+          },
+          {
+            "text": "()."
+          },
+          {
+            "text": "calculate"
+          },
+          {
+            "text": "Shipping"
+          },
+          {
+            "text": "(sc"
+          },
+          {
+            "text": "));\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120if"
+          },
+          {
+            "text": "\u0120("
+          },
+          {
+            "text": "sc"
+          },
+          {
+            "text": ".get"
+          },
+          {
+            "text": "CartItem"
+          },
+          {
+            "text": "Total"
+          },
+          {
+            "text": "()"
+          },
+          {
+            "text": "\u0120>="
+          },
+          {
+            "text": "\u0120"
+          },
+          {
+            "text": "25"
+          },
+          {
+            "text": ")"
           },
           {
             "text": "\u0120{\u010a"
           },
           {
-            "text": "\u0109\u0109\u0109"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120sc"
           },
           {
-            "text": "quantity"
+            "text": ".set"
           },
           {
-            "text": "Map"
+            "text": "Shipping"
           },
           {
-            "text": ".put"
+            "text": "Total"
+          },
+          {
+            "text": "(sc"
+          },
+          {
+            "text": ".get"
+          },
+          {
+            "text": "Shipping"
+          },
+          {
+            "text": "Total"
+          },
+          {
+            "text": "()\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120+"
+          },
+          {
+            "text": "\u0120lookup"
+          },
+          {
+            "text": "Shipping"
+          },
+          {
+            "text": "Service"
+          },
+          {
+            "text": "Remote"
+          },
+          {
+            "text": "()."
+          },
+          {
+            "text": "calculate"
+          },
+          {
+            "text": "Shipping"
+          },
+          {
+            "text": "Insurance"
+          },
+          {
+            "text": "(sc"
+          },
+          {
+            "text": "));\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120ps"
+          },
+          {
+            "text": ".apply"
+          },
+          {
+            "text": "Shipping"
+          },
+          {
+            "text": "Prom"
+          },
+          {
+            "text": "otions"
+          },
+          {
+            "text": "(sc"
+          },
+          {
+            "text": ");\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120sc"
+          },
+          {
+            "text": ".set"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "Total"
+          },
+          {
+            "text": "(sc"
+          },
+          {
+            "text": ".get"
+          },
+          {
+            "text": "CartItem"
+          },
+          {
+            "text": "Total"
+          },
+          {
+            "text": "()"
+          },
+          {
+            "text": "\u0120+"
+          },
+          {
+            "text": "\u0120sc"
+          },
+          {
+            "text": ".get"
+          },
+          {
+            "text": "Shipping"
+          },
+          {
+            "text": "Total"
+          },
+          {
+            "text": "());\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120private"
+          },
+          {
+            "text": "\u0120void"
+          },
+          {
+            "text": "\u0120init"
+          },
+          {
+            "text": "Shopping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "For"
+          },
+          {
+            "text": "P"
+          },
+          {
+            "text": "ricing"
+          },
+          {
+            "text": "("
+          },
+          {
+            "text": "Shopping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "\u0120sc"
+          },
+          {
+            "text": ")"
+          },
+          {
+            "text": "\u0120{\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120sc"
+          },
+          {
+            "text": ".set"
+          },
+          {
+            "text": "CartItem"
+          },
+          {
+            "text": "Total"
+          },
+          {
+            "text": "("
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120sc"
+          },
+          {
+            "text": ".set"
+          },
+          {
+            "text": "CartItem"
+          },
+          {
+            "text": "Prom"
+          },
+          {
+            "text": "oS"
+          },
+          {
+            "text": "avings"
+          },
+          {
+            "text": "("
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120sc"
+          },
+          {
+            "text": ".set"
+          },
+          {
+            "text": "Shipping"
+          },
+          {
+            "text": "Total"
+          },
+          {
+            "text": "("
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120sc"
+          },
+          {
+            "text": ".set"
+          },
+          {
+            "text": "Shipping"
+          },
+          {
+            "text": "Prom"
+          },
+          {
+            "text": "oS"
+          },
+          {
+            "text": "avings"
+          },
+          {
+            "text": "("
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120sc"
+          },
+          {
+            "text": ".set"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "Total"
+          },
+          {
+            "text": "("
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": ");\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120for"
+          },
+          {
+            "text": "\u0120("
+          },
+          {
+            "text": "Shopping"
+          },
+          {
+            "text": "CartItem"
+          },
+          {
+            "text": "\u0120sci"
+          },
+          {
+            "text": "\u0120:"
+          },
+          {
+            "text": "\u0120sc"
+          },
+          {
+            "text": ".get"
+          },
+          {
+            "text": "Shopping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "ItemList"
+          },
+          {
+            "text": "())"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120Product"
+          },
+          {
+            "text": "\u0120p"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120getProduct"
           },
           {
             "text": "(s"
@@ -3574,172 +2434,73 @@
             "text": "Id"
           },
           {
-            "text": "(),"
-          },
-          {
-            "text": "\u0120sci"
-          },
-          {
-            "text": ".get"
-          },
-          {
-            "text": "Quantity"
-          },
-          {
             "text": "());\u010a"
           },
           {
-            "text": "\u0109\u0109"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120//"
           },
           {
-            "text": "}\u010a"
+            "text": "if"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120product"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120exist"
           },
           {
-            "text": "}\u010a\u010a"
+            "text": "\u010a"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0109for"
+            "text": "\u0120if"
           },
           {
             "text": "\u0120("
           },
           {
-            "text": "String"
+            "text": "p"
           },
           {
-            "text": "\u0120itemId"
+            "text": "\u0120!="
           },
           {
-            "text": "\u0120:"
+            "text": "\u0120null"
           },
           {
-            "text": "\u0120quantity"
-          },
-          {
-            "text": "Map"
-          },
-          {
-            "text": ".keySet"
-          },
-          {
-            "text": "())"
+            "text": ")"
           },
           {
             "text": "\u0120{\u010a"
           },
           {
-            "text": "\u0109\u0109"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0109"
-          },
-          {
-            "text": "Product"
-          },
-          {
-            "text": "\u0120p"
-          },
-          {
-            "text": "\u0120="
-          },
-          {
-            "text": "\u0120shopping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "Service"
-          },
-          {
-            "text": ".getProduct"
-          },
-          {
-            "text": "(itemId"
-          },
-          {
-            "text": ");\u010a"
-          },
-          {
-            "text": "\u0109\u0109"
-          },
-          {
-            "text": "\u0109"
-          },
-          {
-            "text": "Shopping"
-          },
-          {
-            "text": "CartItem"
-          },
-          {
-            "text": "\u0120newItem"
-          },
-          {
-            "text": "\u0120="
-          },
-          {
-            "text": "\u0120new"
-          },
-          {
-            "text": "\u0120ShoppingCart"
-          },
-          {
-            "text": "Item"
-          },
-          {
-            "text": "();\u010a"
-          },
-          {
-            "text": "\u0109\u0109"
-          },
-          {
-            "text": "\u0109new"
-          },
-          {
-            "text": "Item"
+            "text": "\u0120sci"
           },
           {
             "text": ".set"
           },
           {
-            "text": "Quantity"
+            "text": "Product"
           },
           {
-            "text": "(quantity"
+            "text": "(p"
           },
           {
-            "text": "Map"
+            "text": ");\u010a"
           },
           {
-            "text": ".get"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "(itemId"
-          },
-          {
-            "text": "));\u010a"
-          },
-          {
-            "text": "\u0109\u0109"
-          },
-          {
-            "text": "\u0109new"
-          },
-          {
-            "text": "Item"
+            "text": "\u0120sci"
           },
           {
             "text": ".set"
@@ -3757,70 +2518,448 @@
             "text": "());\u010a"
           },
           {
-            "text": "\u0109\u0109"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0109new"
+            "text": "\u0120}\u010a\u010a"
           },
           {
-            "text": "Item"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120sci"
           },
           {
             "text": ".set"
           },
           {
-            "text": "Product"
+            "text": "Prom"
           },
           {
-            "text": "(p"
+            "text": "oS"
           },
           {
-            "text": ");\u010a"
+            "text": "avings"
           },
           {
-            "text": "\u0109\u0109"
+            "text": "("
           },
           {
-            "text": "\u0109result"
-          },
-          {
-            "text": ".add"
-          },
-          {
-            "text": "(new"
-          },
-          {
-            "text": "Item"
+            "text": "0"
           },
           {
             "text": ");\u010a"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120}\u010a\u010a"
           },
           {
-            "text": "}\u010a"
+            "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120}\u010a\u010a"
           },
           {
-            "text": "\u0109return"
+            "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120result"
+            "text": "\u0120public"
           },
           {
-            "text": ";\u010a"
+            "text": "\u0120Product"
           },
           {
-            "text": "\u0109"
+            "text": "\u0120getProduct"
           },
           {
-            "text": "}\u010a"
+            "text": "(String"
+          },
+          {
+            "text": "\u0120itemId"
+          },
+          {
+            "text": ")"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120return"
+          },
+          {
+            "text": "\u0120product"
+          },
+          {
+            "text": "Services"
+          },
+          {
+            "text": ".getProduct"
+          },
+          {
+            "text": "By"
+          },
+          {
+            "text": "ItemId"
+          },
+          {
+            "text": "(itemId"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a\u010a"
+          },
+          {
+            "text": "\u0109private"
+          },
+          {
+            "text": "\u0120static"
+          },
+          {
+            "text": "\u0120Shipping"
+          },
+          {
+            "text": "Service"
+          },
+          {
+            "text": "Remote"
+          },
+          {
+            "text": "\u0120lookup"
+          },
+          {
+            "text": "Shipping"
+          },
+          {
+            "text": "Service"
+          },
+          {
+            "text": "Remote"
+          },
+          {
+            "text": "()"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120try"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120final"
+          },
+          {
+            "text": "\u0120Hashtable"
+          },
+          {
+            "text": "<String"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120String"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "\u0120j"
+          },
+          {
+            "text": "nd"
+          },
+          {
+            "text": "i"
+          },
+          {
+            "text": "Properties"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120new"
+          },
+          {
+            "text": "\u0120Hashtable"
+          },
+          {
+            "text": "<>();\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120j"
+          },
+          {
+            "text": "nd"
+          },
+          {
+            "text": "i"
+          },
+          {
+            "text": "Properties"
+          },
+          {
+            "text": ".put"
+          },
+          {
+            "text": "(Context"
+          },
+          {
+            "text": ".IN"
+          },
+          {
+            "text": "IT"
+          },
+          {
+            "text": "IAL"
+          },
+          {
+            "text": "_CONTEXT"
+          },
+          {
+            "text": "_FACTORY"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "org"
+          },
+          {
+            "text": ".w"
+          },
+          {
+            "text": "ild"
+          },
+          {
+            "text": "fly"
+          },
+          {
+            "text": ".n"
+          },
+          {
+            "text": "aming"
+          },
+          {
+            "text": ".client"
+          },
+          {
+            "text": ".W"
+          },
+          {
+            "text": "ild"
+          },
+          {
+            "text": "Fly"
+          },
+          {
+            "text": "Initial"
+          },
+          {
+            "text": "Context"
+          },
+          {
+            "text": "Factory"
+          },
+          {
+            "text": "\");\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120final"
+          },
+          {
+            "text": "\u0120Context"
+          },
+          {
+            "text": "\u0120context"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120new"
+          },
+          {
+            "text": "\u0120Initial"
+          },
+          {
+            "text": "Context"
+          },
+          {
+            "text": "(j"
+          },
+          {
+            "text": "nd"
+          },
+          {
+            "text": "i"
+          },
+          {
+            "text": "Properties"
+          },
+          {
+            "text": ");\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120return"
+          },
+          {
+            "text": "\u0120("
+          },
+          {
+            "text": "Shipping"
+          },
+          {
+            "text": "Service"
+          },
+          {
+            "text": "Remote"
+          },
+          {
+            "text": ")"
+          },
+          {
+            "text": "\u0120context"
+          },
+          {
+            "text": ".lookup"
+          },
+          {
+            "text": "(\""
+          },
+          {
+            "text": "ej"
+          },
+          {
+            "text": "b"
+          },
+          {
+            "text": ":/"
+          },
+          {
+            "text": "ROOT"
+          },
+          {
+            "text": "/"
+          },
+          {
+            "text": "Shipping"
+          },
+          {
+            "text": "Service"
+          },
+          {
+            "text": "!\""
+          },
+          {
+            "text": "\u0120+"
+          },
+          {
+            "text": "\u0120Shipping"
+          },
+          {
+            "text": "Service"
+          },
+          {
+            "text": "Remote"
+          },
+          {
+            "text": ".class"
+          },
+          {
+            "text": ".getName"
+          },
+          {
+            "text": "());\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}"
+          },
+          {
+            "text": "\u0120catch"
+          },
+          {
+            "text": "\u0120("
+          },
+          {
+            "text": "Naming"
+          },
+          {
+            "text": "Exception"
+          },
+          {
+            "text": "\u0120e"
+          },
+          {
+            "text": ")"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120throw"
+          },
+          {
+            "text": "\u0120new"
+          },
+          {
+            "text": "\u0120RuntimeException"
+          },
+          {
+            "text": "(e"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
           },
           {
             "text": "}\u010a\u010a"
@@ -3871,7 +3010,49 @@
             "text": "\u0120\""
           },
           {
-            "text": "Replace"
+            "text": "State"
+          },
+          {
+            "text": "ful"
+          },
+          {
+            "text": "\u0120E"
+          },
+          {
+            "text": "JB"
+          },
+          {
+            "text": "s"
+          },
+          {
+            "text": "\u0120can"
+          },
+          {
+            "text": "\u0120be"
+          },
+          {
+            "text": "\u0120converted"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120CD"
+          },
+          {
+            "text": "I"
+          },
+          {
+            "text": "\u0120bean"
+          },
+          {
+            "text": "\u0120by"
+          },
+          {
+            "text": "\u0120replacing"
           },
           {
             "text": "\u0120the"
@@ -3880,40 +3061,328 @@
             "text": "\u0120`"
           },
           {
-            "text": "javax"
+            "text": "@"
           },
           {
-            "text": ".enterprise"
+            "text": "State"
+          },
+          {
+            "text": "ful"
           },
           {
             "text": "`"
           },
           {
-            "text": "\u0120import"
-          },
-          {
-            "text": "\u0120statement"
+            "text": "\u0120annotation"
           },
           {
             "text": "\u0120with"
           },
           {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120bean"
+          },
+          {
+            "text": "-def"
+          },
+          {
+            "text": "ining"
+          },
+          {
+            "text": "\u0120annotation"
+          },
+          {
+            "text": "\u010a"
+          },
+          {
+            "text": "\u0120that"
+          },
+          {
+            "text": "\u0120encompasses"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120appropriate"
+          },
+          {
+            "text": "\u0120scope"
+          },
+          {
+            "text": "\u0120("
+          },
+          {
+            "text": "e"
+          },
+          {
+            "text": ".g"
+          },
+          {
+            "text": ".,"
+          },
+          {
             "text": "\u0120`"
           },
           {
-            "text": "jak"
+            "text": "@"
           },
           {
-            "text": "arta"
+            "text": "Application"
           },
           {
-            "text": ".enterprise"
+            "text": "Scoped"
+          },
+          {
+            "text": "`)."
+          },
+          {
+            "text": "\u0120`"
+          },
+          {
+            "text": "@"
+          },
+          {
+            "text": "State"
+          },
+          {
+            "text": "ful"
           },
           {
             "text": "`"
           },
           {
-            "text": "\"\u010a"
+            "text": "\u0120E"
+          },
+          {
+            "text": "JB"
+          },
+          {
+            "text": "s"
+          },
+          {
+            "text": "\u0120often"
+          },
+          {
+            "text": "\u0120translate"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120`"
+          },
+          {
+            "text": "@"
+          },
+          {
+            "text": "Session"
+          },
+          {
+            "text": "Scoped"
+          },
+          {
+            "text": "`\u010a"
+          },
+          {
+            "text": "\u0120beans"
+          },
+          {
+            "text": "\u0120("
+          },
+          {
+            "text": "a"
+          },
+          {
+            "text": "\u0120scope"
+          },
+          {
+            "text": "\u0120which"
+          },
+          {
+            "text": "\u0120requires"
+          },
+          {
+            "text": "\u0120activating"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120`"
+          },
+          {
+            "text": "qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": "-"
+          },
+          {
+            "text": "und"
+          },
+          {
+            "text": "ert"
+          },
+          {
+            "text": "ow"
+          },
+          {
+            "text": "`"
+          },
+          {
+            "text": "\u0120extension"
+          },
+          {
+            "text": "),"
+          },
+          {
+            "text": "\u0120but"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120appropriate"
+          },
+          {
+            "text": "\u0120scope"
+          },
+          {
+            "text": "\u0120may"
+          },
+          {
+            "text": "\u0120differ"
+          },
+          {
+            "text": "\u0120based"
+          },
+          {
+            "text": "\u010a"
+          },
+          {
+            "text": "\u0120on"
+          },
+          {
+            "text": "\u0120your"
+          },
+          {
+            "text": "\u0120application"
+          },
+          {
+            "text": "\u0120architecture"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "\u0120Review"
+          },
+          {
+            "text": "\u0120your"
+          },
+          {
+            "text": "\u0120application"
+          },
+          {
+            "text": "'s"
+          },
+          {
+            "text": "\u0120requirements"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120determine"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120appropriate"
+          },
+          {
+            "text": "\u0120scope"
+          },
+          {
+            "text": ".\u010a\u010a"
+          },
+          {
+            "text": "\u0120Note"
+          },
+          {
+            "text": "\u0120that"
+          },
+          {
+            "text": "\u0120it"
+          },
+          {
+            "text": "\u0120is"
+          },
+          {
+            "text": "\u0120recommended"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120as"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120good"
+          },
+          {
+            "text": "\u0120practice"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120keep"
+          },
+          {
+            "text": "\u0120state"
+          },
+          {
+            "text": "\u0120external"
+          },
+          {
+            "text": "\u0120from"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120service"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120Qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": ".\"\u010a"
           },
           {
             "text": "Line"
@@ -3928,7 +3397,7 @@
             "text": "\u0120"
           },
           {
-            "text": "9"
+            "text": "16"
           },
           {
             "text": "\u010a\u010a\u010a\u010a"
@@ -4557,17 +4026,17 @@
           {
             "flagged": true,
             "position": {
-              "end": 1239,
+              "end": 1246,
               "start": 1209
             },
-            "score": 0.13212953507900238,
+            "score": 0.13677217066287994,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 1261,
-              "start": 1240
+              "end": 1268,
+              "start": 1247
             },
             "score": 0.1307024210691452,
             "success": true
@@ -4575,8 +4044,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 1269,
-              "start": 1262
+              "end": 1276,
+              "start": 1269
             },
             "score": 0.14054611325263977,
             "success": true
@@ -4584,71 +4053,17 @@
           {
             "flagged": true,
             "position": {
-              "end": 1304,
-              "start": 1270
+              "end": 1314,
+              "start": 1277
             },
-            "score": 0.13376203179359436,
+            "score": 0.13084466755390167,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 1305,
-              "start": 1305
-            },
-            "score": 0.1295555830001831,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1334,
-              "start": 1306
-            },
-            "score": 0.134917750954628,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1362,
-              "start": 1335
-            },
-            "score": 0.13029175996780396,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1388,
-              "start": 1363
-            },
-            "score": 0.1327037513256073,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1411,
-              "start": 1389
-            },
-            "score": 0.13070032000541687,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1433,
-              "start": 1412
-            },
-            "score": 0.1309303343296051,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1434,
-              "start": 1434
+              "end": 1315,
+              "start": 1315
             },
             "score": 0.1295555830001831,
             "success": true
@@ -4656,17 +4071,44 @@
           {
             "flagged": true,
             "position": {
-              "end": 1481,
-              "start": 1435
+              "end": 1343,
+              "start": 1316
             },
-            "score": 0.12955252826213837,
+            "score": 0.13141576945781708,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 1509,
-              "start": 1482
+              "end": 1376,
+              "start": 1344
+            },
+            "score": 0.13215318322181702,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1377,
+              "start": 1377
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1404,
+              "start": 1378
+            },
+            "score": 0.13046777248382568,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1432,
+              "start": 1405
             },
             "score": 0.13182677328586578,
             "success": true
@@ -4674,80 +4116,44 @@
           {
             "flagged": true,
             "position": {
-              "end": 1536,
-              "start": 1510
+              "end": 1461,
+              "start": 1433
             },
-            "score": 0.13247008621692657,
+            "score": 0.12958918511867523,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 1560,
-              "start": 1537
+              "end": 1497,
+              "start": 1462
             },
-            "score": 0.13327866792678833,
+            "score": 0.12978477776050568,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 1585,
-              "start": 1561
+              "end": 1534,
+              "start": 1498
             },
-            "score": 0.12893562018871307,
+            "score": 0.13208262622356415,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 1610,
-              "start": 1586
+              "end": 1535,
+              "start": 1535
             },
-            "score": 0.1310381442308426,
+            "score": 0.1295555830001831,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 1640,
-              "start": 1611
-            },
-            "score": 0.1337493509054184,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1669,
-              "start": 1641
-            },
-            "score": 0.13275106251239777,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1704,
-              "start": 1670
-            },
-            "score": 0.13053372502326965,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1705,
-              "start": 1705
-            },
-            "score": 0.1295555979013443,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1748,
-              "start": 1706
+              "end": 1578,
+              "start": 1536
             },
             "score": 0.13703909516334534,
             "success": true
@@ -4755,8 +4161,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 1796,
-              "start": 1749
+              "end": 1626,
+              "start": 1579
             },
             "score": 0.1341712474822998,
             "success": true
@@ -4764,8 +4170,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 1848,
-              "start": 1797
+              "end": 1678,
+              "start": 1627
             },
             "score": 0.1389779895544052,
             "success": true
@@ -4773,17 +4179,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 1905,
-              "start": 1849
-            },
-            "score": 0.13285735249519348,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1906,
-              "start": 1906
+              "end": 1679,
+              "start": 1679
             },
             "score": 0.1295555830001831,
             "success": true
@@ -4791,35 +4188,26 @@
           {
             "flagged": true,
             "position": {
-              "end": 1921,
-              "start": 1907
+              "end": 1689,
+              "start": 1680
             },
-            "score": 0.12727440893650055,
+            "score": 0.12442318350076675,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 1936,
-              "start": 1922
+              "end": 1725,
+              "start": 1690
             },
-            "score": 0.13210336863994598,
+            "score": 0.13590362668037415,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 1988,
-              "start": 1937
-            },
-            "score": 0.13874800503253937,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1989,
-              "start": 1989
+              "end": 1726,
+              "start": 1726
             },
             "score": 0.1295555830001831,
             "success": true
@@ -4827,17 +4215,152 @@
           {
             "flagged": true,
             "position": {
-              "end": 2058,
-              "start": 1990
+              "end": 1738,
+              "start": 1727
             },
-            "score": 0.13761930167675018,
+            "score": 0.13187219202518463,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 2059,
-              "start": 2059
+              "end": 1754,
+              "start": 1739
+            },
+            "score": 0.13118542730808258,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1755,
+              "start": 1755
+            },
+            "score": 0.1295555680990219,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1767,
+              "start": 1756
+            },
+            "score": 0.13187219202518463,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1803,
+              "start": 1768
+            },
+            "score": 0.13014492392539978,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1804,
+              "start": 1804
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1816,
+              "start": 1805
+            },
+            "score": 0.13187219202518463,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1837,
+              "start": 1817
+            },
+            "score": 0.13053525984287262,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1838,
+              "start": 1838
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1839,
+              "start": 1839
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1851,
+              "start": 1840
+            },
+            "score": 0.13187219202518463,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1910,
+              "start": 1852
+            },
+            "score": 0.1350335031747818,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1911,
+              "start": 1911
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2027,
+              "start": 1912
+            },
+            "score": 0.13626113533973694,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2028,
+              "start": 2028
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2032,
+              "start": 2029
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2033,
+              "start": 2033
             },
             "score": 0.1295555830001831,
             "success": true
@@ -4846,295 +4369,25 @@
             "flagged": true,
             "position": {
               "end": 2068,
-              "start": 2060
+              "start": 2034
             },
-            "score": 0.13187219202518463,
+            "score": 0.13232272863388062,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 2118,
+              "end": 2074,
               "start": 2069
             },
-            "score": 0.13107068836688995,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2119,
-              "start": 2119
-            },
-            "score": 0.1295555830001831,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2125,
-              "start": 2120
-            },
-            "score": 0.13203918933868408,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2145,
-              "start": 2126
-            },
-            "score": 0.1356249749660492,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2184,
-              "start": 2146
-            },
-            "score": 0.13612808287143707,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2251,
-              "start": 2185
-            },
-            "score": 0.1327950358390808,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2305,
-              "start": 2252
-            },
-            "score": 0.13555242121219635,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2308,
-              "start": 2306
-            },
-            "score": 0.13449959456920624,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2309,
-              "start": 2309
-            },
-            "score": 0.1295555979013443,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2316,
-              "start": 2310
-            },
-            "score": 0.1302899271249771,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2345,
-              "start": 2317
-            },
-            "score": 0.14281661808490753,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2384,
-              "start": 2346
-            },
-            "score": 0.13612808287143707,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2452,
-              "start": 2385
-            },
-            "score": 0.13410697877407074,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2511,
-              "start": 2453
-            },
-            "score": 0.13426728546619415,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2514,
-              "start": 2512
-            },
             "score": 0.13449960947036743,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 2515,
-              "start": 2515
-            },
-            "score": 0.1295555979013443,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2522,
-              "start": 2516
-            },
-            "score": 0.1302899271249771,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2562,
-              "start": 2523
-            },
-            "score": 0.15011902153491974,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2601,
-              "start": 2563
-            },
-            "score": 0.13612808287143707,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2662,
-              "start": 2602
-            },
-            "score": 0.13155290484428406,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2705,
-              "start": 2663
-            },
-            "score": 0.13465780019760132,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2768,
-              "start": 2706
-            },
-            "score": 0.16383974254131317,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2835,
-              "start": 2769
-            },
-            "score": 0.1356104463338852,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2836,
-              "start": 2836
-            },
-            "score": 0.1295555979013443,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2896,
-              "start": 2837
-            },
-            "score": 0.14543288946151733,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2897,
-              "start": 2897
-            },
-            "score": 0.1295555979013443,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2946,
-              "start": 2898
-            },
-            "score": 0.14018242061138153,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2973,
-              "start": 2947
-            },
-            "score": 0.1400284469127655,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3002,
-              "start": 2974
-            },
-            "score": 0.14186617732048035,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3038,
-              "start": 3003
-            },
-            "score": 0.14408668875694275,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3071,
-              "start": 3039
-            },
-            "score": 0.15556751191616058,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3072,
-              "start": 3072
+              "end": 2075,
+              "start": 2075
             },
             "score": 0.1295555830001831,
             "success": true
@@ -5142,80 +4395,17 @@
           {
             "flagged": true,
             "position": {
-              "end": 3080,
-              "start": 3073
+              "end": 2132,
+              "start": 2076
             },
-            "score": 0.14390107989311218,
+            "score": 0.1377248913049698,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 3128,
-              "start": 3081
-            },
-            "score": 0.1367478221654892,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3210,
-              "start": 3129
-            },
-            "score": 0.1397005319595337,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3237,
-              "start": 3211
-            },
-            "score": 0.13890375196933746,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3274,
-              "start": 3238
-            },
-            "score": 0.2601107060909271,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3287,
-              "start": 3275
-            },
-            "score": 0.1344795525074005,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3291,
-              "start": 3288
-            },
-            "score": 0.13449960947036743,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3292,
-              "start": 3292
-            },
-            "score": 0.1295555830001831,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3307,
-              "start": 3293
+              "end": 2153,
+              "start": 2133
             },
             "score": 0.1343441754579544,
             "success": true
@@ -5223,8 +4413,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 3310,
-              "start": 3308
+              "end": 2159,
+              "start": 2154
             },
             "score": 0.13449960947036743,
             "success": true
@@ -5232,8 +4422,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 3311,
-              "start": 3311
+              "end": 2160,
+              "start": 2160
             },
             "score": 0.1295555830001831,
             "success": true
@@ -5241,107 +4431,62 @@
           {
             "flagged": true,
             "position": {
-              "end": 3318,
-              "start": 3312
+              "end": 2222,
+              "start": 2161
             },
-            "score": 0.1302899271249771,
+            "score": 0.13563835620880127,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 3346,
-              "start": 3319
+              "end": 2280,
+              "start": 2223
             },
-            "score": 0.14462807774543762,
+            "score": 0.13668863475322723,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 3385,
-              "start": 3347
+              "end": 2287,
+              "start": 2281
             },
-            "score": 0.13612808287143707,
+            "score": 0.1295555830001831,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 3446,
-              "start": 3386
+              "end": 2325,
+              "start": 2288
             },
-            "score": 0.13094529509544373,
+            "score": 0.1270337998867035,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 3506,
-              "start": 3447
+              "end": 2375,
+              "start": 2326
             },
-            "score": 0.15578211843967438,
+            "score": 0.13711673021316528,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 3507,
-              "start": 3507
+              "end": 2379,
+              "start": 2376
             },
-            "score": 0.1295555979013443,
+            "score": 0.1295555830001831,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 3574,
-              "start": 3508
-            },
-            "score": 0.1356104463338852,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3643,
-              "start": 3575
-            },
-            "score": 0.14165671169757843,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3644,
-              "start": 3644
-            },
-            "score": 0.1295555979013443,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3659,
-              "start": 3645
-            },
-            "score": 0.16672077775001526,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3669,
-              "start": 3660
-            },
-            "score": 0.17935782670974731,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3706,
-              "start": 3670
+              "end": 2421,
+              "start": 2380
             },
             "score": 0.14902186393737793,
             "success": true
@@ -5349,17 +4494,26 @@
           {
             "flagged": true,
             "position": {
-              "end": 3774,
-              "start": 3707
+              "end": 2454,
+              "start": 2422
             },
-            "score": 0.14710265398025513,
+            "score": 0.13838712871074677,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 3778,
-              "start": 3775
+              "end": 2475,
+              "start": 2455
+            },
+            "score": 0.1343441754579544,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2481,
+              "start": 2476
             },
             "score": 0.13449960947036743,
             "success": true
@@ -5367,8 +4521,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 3779,
-              "start": 3779
+              "end": 2482,
+              "start": 2482
             },
             "score": 0.1295555979013443,
             "success": true
@@ -5376,53 +4530,170 @@
           {
             "flagged": true,
             "position": {
-              "end": 3787,
-              "start": 3780
+              "end": 2535,
+              "start": 2483
             },
-            "score": 0.14390107989311218,
+            "score": 0.15037371218204498,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 3835,
-              "start": 3788
+              "end": 2536,
+              "start": 2536
             },
-            "score": 0.1367478221654892,
+            "score": 0.1295555979013443,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 3917,
-              "start": 3836
+              "end": 2552,
+              "start": 2537
             },
-            "score": 0.1397005319595337,
+            "score": 0.13569872081279755,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 3944,
-              "start": 3918
+              "end": 2562,
+              "start": 2553
             },
-            "score": 0.13890375196933746,
+            "score": 0.17935782670974731,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 3957,
-              "start": 3945
+              "end": 2563,
+              "start": 2563
             },
-            "score": 0.1344795525074005,
+            "score": 0.1295555979013443,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 3961,
-              "start": 3958
+              "end": 2607,
+              "start": 2564
+            },
+            "score": 0.13440179824829102,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2608,
+              "start": 2608
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2654,
+              "start": 2609
+            },
+            "score": 0.15299184620380402,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2707,
+              "start": 2655
+            },
+            "score": 0.2342877984046936,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2708,
+              "start": 2708
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2756,
+              "start": 2709
+            },
+            "score": 0.14643150568008423,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2757,
+              "start": 2757
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2833,
+              "start": 2758
+            },
+            "score": 0.1464400589466095,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2834,
+              "start": 2834
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2882,
+              "start": 2835
+            },
+            "score": 0.15063872933387756,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2985,
+              "start": 2883
+            },
+            "score": 0.1425744593143463,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3086,
+              "start": 2986
+            },
+            "score": 0.14770828187465668,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3087,
+              "start": 3087
+            },
+            "score": 0.1295555979013443,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3105,
+              "start": 3088
             },
             "score": 0.13449960947036743,
             "success": true
@@ -5430,206 +4701,305 @@
           {
             "flagged": true,
             "position": {
-              "end": 3962,
-              "start": 3962
+              "end": 3106,
+              "start": 3106
+            },
+            "score": 0.1295555979013443,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3196,
+              "start": 3107
+            },
+            "score": 0.14561469852924347,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3197,
+              "start": 3197
+            },
+            "score": 0.1295555979013443,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3248,
+              "start": 3198
+            },
+            "score": 0.19199492037296295,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3310,
+              "start": 3249
+            },
+            "score": 0.16711783409118652,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3403,
+              "start": 3311
+            },
+            "score": 0.140100359916687,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3421,
+              "start": 3404
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3422,
+              "start": 3422
             },
             "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3436,
+              "start": 3423
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3437,
+              "start": 3437
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3481,
+              "start": 3438
+            },
+            "score": 0.13809216022491455,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3482,
+              "start": 3482
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3558,
+              "start": 3483
+            },
+            "score": 0.15466448664665222,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3559,
+              "start": 3559
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3569,
+              "start": 3560
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3570,
+              "start": 3570
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3576,
+              "start": 3571
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3577,
+              "start": 3577
+            },
+            "score": 0.1295555979013443,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3640,
+              "start": 3578
+            },
+            "score": 0.14113228023052216,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3641,
+              "start": 3641
+            },
+            "score": 0.1295555979013443,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3673,
+              "start": 3642
+            },
+            "score": 0.16224516928195953,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3712,
+              "start": 3674
+            },
+            "score": 0.1466616690158844,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3744,
+              "start": 3713
+            },
+            "score": 0.15133173763751984,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3783,
+              "start": 3745
+            },
+            "score": 0.13860443234443665,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3811,
+              "start": 3784
+            },
+            "score": 0.15378274023532867,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3812,
+              "start": 3812
+            },
+            "score": 0.1295555979013443,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3880,
+              "start": 3813
+            },
+            "score": 0.1464400589466095,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3946,
+              "start": 3881
+            },
+            "score": 0.15114369988441467,
             "success": true
           },
           {
             "flagged": true,
             "position": {
               "end": 3977,
-              "start": 3963
+              "start": 3947
             },
-            "score": 0.1343441754579544,
+            "score": 0.13362164795398712,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 3980,
+              "end": 3996,
               "start": 3978
             },
-            "score": 0.13449960947036743,
+            "score": 0.13504089415073395,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 3981,
-              "start": 3981
+              "end": 4006,
+              "start": 3997
             },
-            "score": 0.1295555830001831,
+            "score": 0.17935782670974731,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 3990,
-              "start": 3982
+              "end": 4041,
+              "start": 4007
             },
-            "score": 0.13111662864685059,
+            "score": 0.14468514919281006,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 4030,
-              "start": 3991
+              "end": 4085,
+              "start": 4042
             },
-            "score": 0.15011900663375854,
+            "score": 0.14639918506145477,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 4069,
-              "start": 4031
-            },
-            "score": 0.13612808287143707,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4133,
-              "start": 4070
-            },
-            "score": 0.13059672713279724,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4179,
-              "start": 4134
-            },
-            "score": 0.13465780019760132,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4245,
-              "start": 4180
-            },
-            "score": 0.16383974254131317,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4246,
-              "start": 4246
-            },
-            "score": 0.1295555979013443,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4305,
-              "start": 4247
-            },
-            "score": 0.14218364655971527,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4306,
-              "start": 4306
-            },
-            "score": 0.1295555979013443,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4373,
-              "start": 4307
-            },
-            "score": 0.1356104016304016,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4374,
-              "start": 4374
-            },
-            "score": 0.1295555830001831,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4416,
-              "start": 4375
-            },
-            "score": 0.16011078655719757,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4480,
-              "start": 4417
-            },
-            "score": 0.15028336644172668,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4502,
-              "start": 4481
-            },
-            "score": 0.14227986335754395,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4544,
-              "start": 4503
-            },
-            "score": 0.15321624279022217,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4573,
-              "start": 4545
-            },
-            "score": 0.1381247639656067,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4587,
-              "start": 4574
-            },
-            "score": 0.1429189145565033,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4640,
-              "start": 4588
-            },
-            "score": 0.14323744177818298,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4647,
-              "start": 4641
+              "end": 4099,
+              "start": 4086
             },
             "score": 0.13449960947036743,
             "success": true
@@ -5637,17 +5007,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 4655,
-              "start": 4648
-            },
-            "score": 0.1368626356124878,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4656,
-              "start": 4656
+              "end": 4100,
+              "start": 4100
             },
             "score": 0.1295555830001831,
             "success": true
@@ -5655,44 +5016,17 @@
           {
             "flagged": true,
             "position": {
-              "end": 4710,
-              "start": 4657
+              "end": 4136,
+              "start": 4101
             },
-            "score": 0.14955897629261017,
+            "score": 0.14203445613384247,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 4711,
-              "start": 4711
-            },
-            "score": 0.1295555830001831,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4758,
-              "start": 4712
-            },
-            "score": 0.1367478221654892,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4773,
-              "start": 4759
-            },
-            "score": 0.1343441754579544,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4776,
-              "start": 4774
+              "end": 4146,
+              "start": 4137
             },
             "score": 0.13449960947036743,
             "success": true
@@ -5700,8 +5034,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 4777,
-              "start": 4777
+              "end": 4147,
+              "start": 4147
             },
             "score": 0.1295555830001831,
             "success": true
@@ -5709,98 +5043,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 4778,
-              "start": 4778
-            },
-            "score": 0.1295555830001831,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4779,
-              "start": 4779
-            },
-            "score": 0.1295555830001831,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4863,
-              "start": 4780
-            },
-            "score": 0.14757512509822845,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4916,
-              "start": 4864
-            },
-            "score": 0.14270198345184326,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 4970,
-              "start": 4917
-            },
-            "score": 0.17048987746238708,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5013,
-              "start": 4971
-            },
-            "score": 0.14230376482009888,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5077,
-              "start": 5014
-            },
-            "score": 0.15368658304214478,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5195,
-              "start": 5078
-            },
-            "score": 0.14545920491218567,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5207,
-              "start": 5196
-            },
-            "score": 0.14291894435882568,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5277,
-              "start": 5208
-            },
-            "score": 0.14490573108196259,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5282,
-              "start": 5278
+              "end": 4153,
+              "start": 4148
             },
             "score": 0.13449960947036743,
             "success": true
@@ -5808,17 +5052,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 5286,
-              "start": 5283
-            },
-            "score": 0.13449960947036743,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5287,
-              "start": 5287
+              "end": 4154,
+              "start": 4154
             },
             "score": 0.1295555830001831,
             "success": true
@@ -5826,89 +5061,26 @@
           {
             "flagged": true,
             "position": {
-              "end": 5334,
-              "start": 5288
+              "end": 4201,
+              "start": 4155
             },
-            "score": 0.1381305754184723,
+            "score": 0.1352858543395996,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 5389,
-              "start": 5335
+              "end": 4260,
+              "start": 4202
             },
-            "score": 0.15037225186824799,
+            "score": 0.13537263870239258,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 5443,
-              "start": 5390
-            },
-            "score": 0.15311098098754883,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5492,
-              "start": 5444
-            },
-            "score": 0.13852396607398987,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5527,
-              "start": 5493
-            },
-            "score": 0.14092151820659637,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5553,
-              "start": 5528
-            },
-            "score": 0.13908599317073822,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5577,
-              "start": 5554
-            },
-            "score": 0.1351248025894165,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5581,
-              "start": 5578
-            },
-            "score": 0.13449960947036743,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5598,
-              "start": 5582
-            },
-            "score": 0.13215169310569763,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5601,
-              "start": 5599
+              "end": 4266,
+              "start": 4261
             },
             "score": 0.13449959456920624,
             "success": true
@@ -5916,8 +5088,125 @@
           {
             "flagged": true,
             "position": {
-              "end": 5603,
-              "start": 5602
+              "end": 4267,
+              "start": 4267
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4337,
+              "start": 4268
+            },
+            "score": 0.13189205527305603,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4351,
+              "start": 4338
+            },
+            "score": 0.14390107989311218,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4431,
+              "start": 4352
+            },
+            "score": 0.1392744779586792,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4554,
+              "start": 4432
+            },
+            "score": 0.13758696615695953,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4555,
+              "start": 4555
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4627,
+              "start": 4556
+            },
+            "score": 0.13382919132709503,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4628,
+              "start": 4628
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4715,
+              "start": 4629
+            },
+            "score": 0.13878531754016876,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4757,
+              "start": 4716
+            },
+            "score": 0.13140371441841125,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4795,
+              "start": 4758
+            },
+            "score": 0.1443008929491043,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4838,
+              "start": 4796
+            },
+            "score": 0.1480526626110077,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4848,
+              "start": 4839
+            },
+            "score": 0.13449959456920624,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4854,
+              "start": 4849
             },
             "score": 0.13449960947036743,
             "success": true
@@ -5925,17 +5214,26 @@
           {
             "flagged": true,
             "position": {
-              "end": 5604,
-              "start": 5604
+              "end": 4856,
+              "start": 4855
             },
-            "score": 0.1295555979013443,
+            "score": 0.13449960947036743,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 5608,
-              "start": 5605
+              "end": 4857,
+              "start": 4857
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4861,
+              "start": 4858
             },
             "score": 0.14512835443019867,
             "success": true
@@ -5943,44 +5241,44 @@
           {
             "flagged": true,
             "position": {
-              "end": 5609,
-              "start": 5609
+              "end": 4862,
+              "start": 4862
             },
-            "score": 0.1295555979013443,
+            "score": 0.1295555830001831,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 5619,
-              "start": 5610
+              "end": 4872,
+              "start": 4863
             },
-            "score": 0.13039730489253998,
+            "score": 0.13039731979370117,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 5620,
-              "start": 5620
+              "end": 4873,
+              "start": 4873
             },
-            "score": 0.1295555979013443,
+            "score": 0.1295555830001831,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 5621,
-              "start": 5621
+              "end": 4874,
+              "start": 4874
             },
-            "score": 0.1295555979013443,
+            "score": 0.1295555830001831,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 5636,
-              "start": 5622
+              "end": 4889,
+              "start": 4875
             },
             "score": 0.13395380973815918,
             "success": true
@@ -5988,26 +5286,107 @@
           {
             "flagged": true,
             "position": {
-              "end": 5729,
-              "start": 5637
+              "end": 5024,
+              "start": 4890
             },
-            "score": 0.13667459785938263,
+            "score": 0.14986638724803925,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 5744,
-              "start": 5730
+              "end": 5094,
+              "start": 5025
             },
-            "score": 0.12809844315052032,
+            "score": 0.1416928768157959,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 5745,
-              "start": 5745
+              "end": 5147,
+              "start": 5095
+            },
+            "score": 0.15156689286231995,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5267,
+              "start": 5148
+            },
+            "score": 0.1574016511440277,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5302,
+              "start": 5268
+            },
+            "score": 0.12827326357364655,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5377,
+              "start": 5303
+            },
+            "score": 0.1321546882390976,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5378,
+              "start": 5378
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5481,
+              "start": 5379
+            },
+            "score": 0.12992608547210693,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5497,
+              "start": 5482
+            },
+            "score": 0.1281212717294693,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5498,
+              "start": 5498
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5499,
+              "start": 5499
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5500,
+              "start": 5500
             },
             "score": 0.1295555979013443,
             "success": true
@@ -6015,8 +5394,62 @@
           {
             "flagged": true,
             "position": {
-              "end": 5746,
-              "start": 5746
+              "end": 5522,
+              "start": 5501
+            },
+            "score": 0.132502481341362,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5572,
+              "start": 5523
+            },
+            "score": 0.13186712563037872,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5573,
+              "start": 5573
+            },
+            "score": 0.1295555979013443,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5586,
+              "start": 5574
+            },
+            "score": 0.13192392885684967,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5645,
+              "start": 5587
+            },
+            "score": 0.13186180591583252,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5725,
+              "start": 5646
+            },
+            "score": 0.13391797244548798,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5726,
+              "start": 5726
             },
             "score": 0.1295555979013443,
             "success": true
@@ -6025,79 +5458,7 @@
             "flagged": true,
             "position": {
               "end": 5747,
-              "start": 5747
-            },
-            "score": 0.1295555979013443,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5769,
-              "start": 5748
-            },
-            "score": 0.132502481341362,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5819,
-              "start": 5770
-            },
-            "score": 0.13186712563037872,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5820,
-              "start": 5820
-            },
-            "score": 0.1295555979013443,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5833,
-              "start": 5821
-            },
-            "score": 0.1319238841533661,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5892,
-              "start": 5834
-            },
-            "score": 0.13186180591583252,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5972,
-              "start": 5893
-            },
-            "score": 0.13391800224781036,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5973,
-              "start": 5973
-            },
-            "score": 0.1295555979013443,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 5994,
-              "start": 5974
+              "start": 5727
             },
             "score": 0.12817129492759705,
             "success": true
@@ -6105,8 +5466,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 6002,
-              "start": 5995
+              "end": 5755,
+              "start": 5748
             },
             "score": 0.14054612815380096,
             "success": true
@@ -6114,8 +5475,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 6057,
-              "start": 6003
+              "end": 5810,
+              "start": 5756
             },
             "score": 0.13026009500026703,
             "success": true
@@ -6123,8 +5484,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 6168,
-              "start": 6058
+              "end": 5921,
+              "start": 5811
             },
             "score": 0.13014476001262665,
             "success": true
@@ -6132,8 +5493,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 6172,
-              "start": 6169
+              "end": 5925,
+              "start": 5922
             },
             "score": 0.14512835443019867,
             "success": true
@@ -6141,8 +5502,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 6173,
-              "start": 6173
+              "end": 5926,
+              "start": 5926
             },
             "score": 0.1295555979013443,
             "success": true
@@ -6150,17 +5511,17 @@
           {
             "flagged": true,
             "position": {
-              "end": 6210,
-              "start": 6174
+              "end": 5963,
+              "start": 5927
             },
-            "score": 0.13007301092147827,
+            "score": 0.13007299602031708,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 6211,
-              "start": 6211
+              "end": 5964,
+              "start": 5964
             },
             "score": 0.1295555979013443,
             "success": true
@@ -6168,8 +5529,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 6295,
-              "start": 6212
+              "end": 6048,
+              "start": 5965
             },
             "score": 0.1291486769914627,
             "success": true
@@ -6177,8 +5538,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 6296,
-              "start": 6296
+              "end": 6049,
+              "start": 6049
             },
             "score": 0.1295555979013443,
             "success": true
@@ -6186,17 +5547,17 @@
           {
             "flagged": true,
             "position": {
-              "end": 6300,
-              "start": 6297
+              "end": 6053,
+              "start": 6050
             },
-            "score": 0.1295555830001831,
+            "score": 0.1295555979013443,
             "success": true
           }
         ],
         "stop_sequence": "<|eot_id|>"
       },
       "type": "ai",
-      "id": "run-baa78960-ffab-43f5-894a-579c9d00ffda-0",
+      "id": "run-468df990-8234-4aae-bdc1-1f9f1f5ba4fa-0",
       "tool_calls": [],
       "invalid_tool_calls": []
     }
