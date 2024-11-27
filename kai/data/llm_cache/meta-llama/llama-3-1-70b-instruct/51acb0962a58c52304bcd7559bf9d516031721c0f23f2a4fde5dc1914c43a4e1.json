@@ -14,7 +14,7 @@
       "type": "constructor",
       "id": ["langchain", "schema", "messages", "HumanMessage"],
       "kwargs": {
-        "content": "\n    I will give you a JavaEE file for which I want to take one step towards migrating to Quarkus.\n\nI will provide you with static source code analysis information highlighting an issue which needs to be addressed.\n\nI will also provide you with an example of how a similar issue was solved in the past via a solved example.\n\nYou can refer to the solved example for a pattern of how to update the input Java EE file to Quarkus.\n\nFix only the problem described. Other problems will be solved in subsequent steps so it is unnecessary to handle them now.\n\nBefore attempting to migrate the code to Quarkus reason through what changes are required and why.\n\nPay attention to changes you make and impacts to external dependencies in the pom.xml as well as changes to imports we need to consider.\n\nRemember when updating or adding annotations that the class must be imported.\n\nAs you make changes that impact the pom.xml or imports, be sure you explain what needs to be updated.\n\nAfter you have shared your step by step thinking, provide a full output of the updated file.\n\n# Input information\n\n## Input File\n\nFile name: \"pom.xml\"\nSource file contents:\n```genshi\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<project \n    xmlns=\"http://maven.apache.org/POM/4.0.0\" \n    xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">\n    <modelVersion>4.0.0</modelVersion>\n    <groupId>com.redhat.coolstore</groupId>\n    <artifactId>monolith</artifactId>\n    <version>1.0.0-SNAPSHOT</version>\n    <packaging>war</packaging>\n    <name>coolstore-monolith</name>\n    <properties>\n        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>\n        <maven.build.timestamp.format>yyyyMMdd'T'HHmmss</maven.build.timestamp.format>\n        <project.encoding>UTF-8</project.encoding>\n        <maven.test.skip>true</maven.test.skip>\n    </properties>\n    <dependencies>\n        <dependency>\n            <groupId>javax</groupId>\n            <artifactId>javaee-web-api</artifactId>\n            <version>7.0</version>\n            <scope>provided</scope>\n        </dependency>\n        <dependency>\n            <groupId>javax</groupId>\n            <artifactId>javaee-api</artifactId>\n            <version>7.0</version>\n            <scope>provided</scope>\n        </dependency>\n        <dependency>\n            <groupId>org.jboss.spec.javax.jms</groupId>\n            <artifactId>jboss-jms-api_2.0_spec</artifactId>\n            <version>2.0.0.Final</version>\n        </dependency>\n        <dependency>\n            <groupId>org.flywaydb</groupId>\n            <artifactId>flyway-core</artifactId>\n            <version>4.1.2</version>\n        </dependency>\n        <dependency>\n            <groupId>org.jboss.spec.javax.rmi</groupId>\n            <artifactId>jboss-rmi-api_1.0_spec</artifactId>\n            <version>1.0.2.Final</version>\n        </dependency>\n    </dependencies>\n    <build>\n        <finalName>ROOT</finalName>\n        <plugins>\n            <plugin>\n                <artifactId>maven-compiler-plugin</artifactId>\n                <version>3.0</version>\n                <configuration>\n                    <encoding>${project.encoding}</encoding>\n                    <source>1.8</source>\n                    <target>1.8</target>\n                </configuration>\n            </plugin>\n            <plugin>\n                <groupId>org.apache.maven.plugins</groupId>\n                <artifactId>maven-war-plugin</artifactId>\n                <version>3.2.0</version>\n            </plugin>\n        </plugins>\n    </build>\n    <profiles>\n<!-- TODO: Add OpenShift profile here -->\n    </profiles>\n</project>\n\n```\n\n## Issues\n\n\n### incident 0\nincident to fix: \"The project artifact's current extension (i.e. `<packaging>` tag value) is `` but the expected value should be `jar`\"\nLine number: 9\n\n\n\n# Output Instructions\nStructure your output in Markdown format such as:\n\n## Reasoning\nWrite the step by step reasoning in this markdown section. If you are unsure of a step or reasoning, clearly state you are unsure and why.\n\n## Updated Java File\n```java\n// Write the updated file for Quarkus in this section. If the file should be removed, make the content of the updated file a comment explaining it should be removed.\n```\n\n## Additional Information (optional)\n\nIf you have any additional details or steps that need to be performed, put it here.\n\n    ",
+        "content": "\n    I will give you a JavaEE file for which I want to take one step towards migrating to Quarkus.\n\nI will provide you with static source code analysis information highlighting an issue which needs to be addressed.\n\nI will also provide you with an example of how a similar issue was solved in the past via a solved example.\n\nYou can refer to the solved example for a pattern of how to update the input Java EE file to Quarkus.\n\nFix only the problem described. Other problems will be solved in subsequent steps so it is unnecessary to handle them now.\n\nBefore attempting to migrate the code to Quarkus reason through what changes are required and why.\n\nPay attention to changes you make and impacts to external dependencies in the pom.xml as well as changes to imports we need to consider.\n\nRemember when updating or adding annotations that the class must be imported.\n\nAs you make changes that impact the pom.xml or imports, be sure you explain what needs to be updated.\n\nAfter you have shared your step by step thinking, provide a full output of the updated file.\n\n# Input information\n\n## Input File\n\nFile name: \"InventoryNotificationMDB.java\"\nSource file contents:\n```java\npackage com.redhat.coolstore.service;\n\nimport com.redhat.coolstore.model.Order;\nimport com.redhat.coolstore.utils.Transformers;\n\nimport javax.inject.Inject;\nimport javax.jms.*;\nimport javax.naming.Context;\nimport javax.naming.InitialContext;\nimport javax.naming.NamingException;\nimport javax.rmi.PortableRemoteObject;\nimport java.util.Hashtable;\n\npublic class InventoryNotificationMDB implements MessageListener {\n\n    private static final int LOW_THRESHOLD = 50;\n\n    @Inject\n    private CatalogService catalogService;\n\n    private final static String JNDI_FACTORY = \"weblogic.jndi.WLInitialContextFactory\";\n    private final static String JMS_FACTORY = \"TCF\";\n    private final static String TOPIC = \"topic/orders\";\n    private TopicConnection tcon;\n    private TopicSession tsession;\n    private TopicSubscriber tsubscriber;\n\n    public void onMessage(Message rcvMessage) {\n        TextMessage msg;\n        {\n            try {\n                System.out.println(\"received message inventory\");\n                if (rcvMessage instanceof TextMessage) {\n                    msg = (TextMessage) rcvMessage;\n                    String orderStr = msg.getBody(String.class);\n                    Order order = Transformers.jsonToOrder(orderStr);\n                    order.getItemList().forEach(orderItem -> {\n                        int old_quantity = catalogService.getCatalogItemById(orderItem.getProductId()).getInventory().getQuantity();\n                        int new_quantity = old_quantity - orderItem.getQuantity();\n                        if (new_quantity < LOW_THRESHOLD) {\n                            System.out.println(\"Inventory for item \" + orderItem.getProductId() + \" is below threshold (\" + LOW_THRESHOLD + \"), contact supplier!\");\n                        } else {\n                            orderItem.setQuantity(new_quantity);\n                        }\n                    });\n                }\n\n\n            } catch (JMSException jmse) {\n                System.err.println(\"An exception occurred: \" + jmse.getMessage());\n            }\n        }\n    }\n\n    public void init() throws NamingException, JMSException {\n        Context ctx = getInitialContext();\n        TopicConnectionFactory tconFactory = (TopicConnectionFactory) PortableRemoteObject.narrow(ctx.lookup(JMS_FACTORY), TopicConnectionFactory.class);\n        tcon = tconFactory.createTopicConnection();\n        tsession = tcon.createTopicSession(false, Session.AUTO_ACKNOWLEDGE);\n        Topic topic = (Topic) PortableRemoteObject.narrow(ctx.lookup(TOPIC), Topic.class);\n        tsubscriber = tsession.createSubscriber(topic);\n        tsubscriber.setMessageListener(this);\n        tcon.start();\n    }\n\n    public void close() throws JMSException {\n        tsubscriber.close();\n        tsession.close();\n        tcon.close();\n    }\n\n    private static InitialContext getInitialContext() throws NamingException {\n        Hashtable<String, String> env = new Hashtable<>();\n        env.put(Context.INITIAL_CONTEXT_FACTORY, JNDI_FACTORY);\n        env.put(Context.PROVIDER_URL, \"t3://localhost:7001\");\n        env.put(\"weblogic.jndi.createIntermediateContexts\", \"true\");\n        return new InitialContext(env);\n    }\n}\n```\n\n## Issues\n\n\n### incident 0\nincident to fix: \"Replace the `javax.inject` import statement with `jakarta.inject`\"\nLine number: 6\n\n\n\n# Output Instructions\nStructure your output in Markdown format such as:\n\n## Reasoning\nWrite the step by step reasoning in this markdown section. If you are unsure of a step or reasoning, clearly state you are unsure and why.\n\n## Updated Java File\n```java\n// Write the updated file for Quarkus in this section. If the file should be removed, make the content of the updated file a comment explaining it should be removed.\n```\n\n## Additional Information (optional)\n\nIf you have any additional details or steps that need to be performed, put it here.\n\n    ",
         "type": "human"
       }
     }
@@ -24,22 +24,22 @@
     "type": "constructor",
     "id": ["langchain", "schema", "messages", "AIMessage"],
     "kwargs": {
-      "content": " # Reasoning\n\nTo address the issue described in \"incident 0\", we need to update the `<packaging>` tag value from `war` to `jar`. This is because Quarkus applications are packaged as JAR files, not WAR files.\n\nHere's the step-by-step reasoning:\n\n1. Identify the `<packaging>` tag in the `pom.xml` file, which is currently set to `war`.\n2. Update the `<packaging>` tag value to `jar`, as Quarkus applications are packaged as JAR files.\n\n## Updated Java File\n```xml\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<project \n    xmlns=\"http://maven.apache.org/POM/4.0.0\" \n    xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">\n    <modelVersion>4.0.0</modelVersion>\n    <groupId>com.redhat.coolstore</groupId>\n    <artifactId>monolith</artifactId>\n    <version>1.0.0-SNAPSHOT</version>\n    <packaging>jar</packaging>\n    <name>coolstore-monolith</name>\n    <properties>\n        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>\n        <maven.build.timestamp.format>yyyyMMdd'T'HHmmss</maven.build.timestamp.format>\n        <project.encoding>UTF-8</project.encoding>\n        <maven.test.skip>true</maven.test.skip>\n    </properties>\n    <dependencies>\n        <dependency>\n            <groupId>javax</groupId>\n            <artifactId>javaee-web-api</artifactId>\n            <version>7.0</version>\n            <scope>provided</scope>\n        </dependency>\n        <dependency>\n            <groupId>javax</groupId>\n            <artifactId>javaee-api</artifactId>\n            <version>7.0</version>\n            <scope>provided</scope>\n        </dependency>\n        <dependency>\n            <groupId>org.jboss.spec.javax.jms</groupId>\n            <artifactId>jboss-jms-api_2.0_spec</artifactId>\n            <version>2.0.0.Final</version>\n        </dependency>\n        <dependency>\n            <groupId>org.flywaydb</groupId>\n            <artifactId>flyway-core</artifactId>\n            <version>4.1.2</version>\n        </dependency>\n        <dependency>\n            <groupId>org.jboss.spec.javax.rmi</groupId>\n            <artifactId>jboss-rmi-api_1.0_spec</artifactId>\n            <version>1.0.2.Final</version>\n        </dependency>\n    </dependencies>\n    <build>\n        <finalName>ROOT</finalName>\n        <plugins>\n            <plugin>\n                <artifactId>maven-compiler-plugin</artifactId>\n                <version>3.0</version>\n                <configuration>\n                    <encoding>${project.encoding}</encoding>\n                    <source>1.8</source>\n                    <target>1.8</target>\n                </configuration>\n            </plugin>\n            <plugin>\n                <groupId>org.apache.maven.plugins</groupId>\n                <artifactId>maven-war-plugin</artifactId>\n                <version>3.2.0</version>\n            </plugin>\n        </plugins>\n    </build>\n    <profiles>\n<!-- TODO: Add OpenShift profile here -->\n    </profiles>\n</project>\n```\n\n## Additional Information\nNote that this change may have implications for other parts of the project, such as the `maven-war-plugin` configuration, which may need to be updated or removed. Additionally, the `finalName` element in the `build` section may need to be updated to reflect the new packaging type. These changes will be addressed in subsequent steps.",
+      "content": "\n\n\n\n\n\n## Reasoning\nTo address the issue of replacing the `javax.inject` import statement with `jakarta.inject`, we need to understand the context of the change. The `javax.inject` package is part of the Java EE specification, while `jakarta.inject` is part of the Jakarta EE specification, which is the new name for Java EE after the transition from Oracle to the Eclipse Foundation.\n\nQuarkus, being a Jakarta EE-based framework, uses the `jakarta.inject` package for dependency injection. Therefore, we need to update the import statement to use `jakarta.inject` instead of `javax.inject`.\n\nThe line number 6 in the input file points to the import statement `import javax.inject.Inject;`. We need to replace this with `import jakarta.inject.Inject;`.\n\nAdditionally, we need to ensure that the `jakarta.inject` package is available in the project's classpath. This can be done by adding the necessary dependency to the `pom.xml` file. The dependency required is `jakarta.inject:jakarta.inject-api`.\n\n## Updated Java File\n```java\npackage com.redhat.coolstore.service;\n\nimport com.redhat.coolstore.model.Order;\nimport com.redhat.coolstore.utils.Transformers;\n\nimport jakarta.inject.Inject;\nimport javax.jms.*;\nimport javax.naming.Context;\nimport javax.naming.InitialContext;\nimport javax.naming.NamingException;\nimport javax.rmi.PortableRemoteObject;\nimport java.util.Hashtable;\n\npublic class InventoryNotificationMDB implements MessageListener {\n\n    private static final int LOW_THRESHOLD = 50;\n\n    @Inject\n    private CatalogService catalogService;\n\n    private final static String JNDI_FACTORY = \"weblogic.jndi.WLInitialContextFactory\";\n    private final static String JMS_FACTORY = \"TCF\";\n    private final static String TOPIC = \"topic/orders\";\n    private TopicConnection tcon;\n    private TopicSession tsession;\n    private TopicSubscriber tsubscriber;\n\n    public void onMessage(Message rcvMessage) {\n        TextMessage msg;\n        {\n            try {\n                System.out.println(\"received message inventory\");\n                if (rcvMessage instanceof TextMessage) {\n                    msg = (TextMessage) rcvMessage;\n                    String orderStr = msg.getBody(String.class);\n                    Order order = Transformers.jsonToOrder(orderStr);\n                    order.getItemList().forEach(orderItem -> {\n                        int old_quantity = catalogService.getCatalogItemById(orderItem.getProductId()).getInventory().getQuantity();\n                        int new_quantity = old_quantity - orderItem.getQuantity();\n                        if (new_quantity < LOW_THRESHOLD) {\n                            System.out.println(\"Inventory for item \" + orderItem.getProductId() + \" is below threshold (\" + LOW_THRESHOLD + \"), contact supplier!\");\n                        } else {\n                            orderItem.setQuantity(new_quantity);\n                        }\n                    });\n                }\n\n\n            } catch (JMSException jmse) {\n                System.err.println(\"An exception occurred: \" + jmse.getMessage());\n            }\n        }\n    }\n\n    public void init() throws NamingException, JMSException {\n        Context ctx = getInitialContext();\n        TopicConnectionFactory tconFactory = (TopicConnectionFactory) PortableRemoteObject.narrow(ctx.lookup(JMS_FACTORY), TopicConnectionFactory.class);\n        tcon = tconFactory.createTopicConnection();\n        tsession = tcon.createTopicSession(false, Session.AUTO_ACKNOWLEDGE);\n        Topic topic = (Topic) PortableRemoteObject.narrow(ctx.lookup(TOPIC), Topic.class);\n        tsubscriber = tsession.createSubscriber(topic);\n        tsubscriber.setMessageListener(this);\n        tcon.start();\n    }\n\n    public void close() throws JMSException {\n        tsubscriber.close();\n        tsession.close();\n        tcon.close();\n    }\n\n    private static InitialContext getInitialContext() throws NamingException {\n        Hashtable<String, String> env = new Hashtable<>();\n        env.put(Context.INITIAL_CONTEXT_FACTORY, JNDI_FACTORY);\n        env.put(Context.PROVIDER_URL, \"t3://localhost:7001\");\n        env.put(\"weblogic.jndi.createIntermediateContexts\", \"true\");\n        return new InitialContext(env);\n    }\n}\n```\n\n## Additional Information\nTo complete this change, the following dependency needs to be added to the `pom.xml` file:\n```xml\n<dependency>\n    <groupId>jakarta.inject</groupId>\n    <artifactId>jakarta.inject-api</artifactId>\n</dependency>\n```",
       "response_metadata": {
         "model_name": "meta-llama/llama-3-1-70b-instruct",
         "token_usage": {
-          "prompt_tokens": 1072,
-          "completion_tokens": 838,
-          "total_tokens": 1910,
-          "input_token_count": 1072,
-          "generated_token_count": 838
+          "prompt_tokens": 1027,
+          "completion_tokens": 894,
+          "total_tokens": 1921,
+          "input_token_count": 1027,
+          "generated_token_count": 894
         },
         "meta": {
-          "conversation_id": "a18015a5-11fa-4ab9-b0cf-f1818325e50c",
-          "id": "4f3b818d-f28d-4b01-a4f6-856cd1893d47",
+          "conversation_id": "5a2d0b2d-d2f9-4425-a6a6-ae106c476565",
+          "id": "ce2c81b9-4a4b-4fb1-96e6-7be7ab2b59c8",
           "model_id": "meta-llama/llama-3-1-70b-instruct"
         },
-        "generated_token_count": 838,
+        "generated_token_count": 894,
         "input_token_count": 0,
         "input_tokens": [
           {
@@ -790,10 +790,16 @@
             "text": "\u0120\""
           },
           {
-            "text": "pom"
+            "text": "Inventory"
           },
           {
-            "text": ".xml"
+            "text": "Notification"
+          },
+          {
+            "text": "MDB"
+          },
+          {
+            "text": ".java"
           },
           {
             "text": "\"\u010a"
@@ -814,343 +820,16 @@
             "text": "```"
           },
           {
-            "text": "gens"
-          },
-          {
-            "text": "hi"
+            "text": "java"
           },
           {
             "text": "\u010a"
           },
           {
-            "text": "<?"
+            "text": "package"
           },
           {
-            "text": "xml"
-          },
-          {
-            "text": "\u0120version"
-          },
-          {
-            "text": "=\""
-          },
-          {
-            "text": "1"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "0"
-          },
-          {
-            "text": "\""
-          },
-          {
-            "text": "\u0120encoding"
-          },
-          {
-            "text": "=\""
-          },
-          {
-            "text": "UTF"
-          },
-          {
-            "text": "-"
-          },
-          {
-            "text": "8"
-          },
-          {
-            "text": "\"?>\u010a"
-          },
-          {
-            "text": "<"
-          },
-          {
-            "text": "project"
-          },
-          {
-            "text": "\u0120\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120xmlns"
-          },
-          {
-            "text": "=\""
-          },
-          {
-            "text": "http"
-          },
-          {
-            "text": "://"
-          },
-          {
-            "text": "m"
-          },
-          {
-            "text": "aven"
-          },
-          {
-            "text": ".apache"
-          },
-          {
-            "text": ".org"
-          },
-          {
-            "text": "/P"
-          },
-          {
-            "text": "OM"
-          },
-          {
-            "text": "/"
-          },
-          {
-            "text": "4"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "0"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "0"
-          },
-          {
-            "text": "\""
-          },
-          {
-            "text": "\u0120\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120xmlns"
-          },
-          {
-            "text": ":x"
-          },
-          {
-            "text": "si"
-          },
-          {
-            "text": "=\""
-          },
-          {
-            "text": "http"
-          },
-          {
-            "text": "://"
-          },
-          {
-            "text": "www"
-          },
-          {
-            "text": ".w"
-          },
-          {
-            "text": "3"
-          },
-          {
-            "text": ".org"
-          },
-          {
-            "text": "/"
-          },
-          {
-            "text": "200"
-          },
-          {
-            "text": "1"
-          },
-          {
-            "text": "/XMLSchema"
-          },
-          {
-            "text": "-instance"
-          },
-          {
-            "text": "\""
-          },
-          {
-            "text": "\u0120xsi"
-          },
-          {
-            "text": ":s"
-          },
-          {
-            "text": "chema"
-          },
-          {
-            "text": "Location"
-          },
-          {
-            "text": "=\""
-          },
-          {
-            "text": "http"
-          },
-          {
-            "text": "://"
-          },
-          {
-            "text": "m"
-          },
-          {
-            "text": "aven"
-          },
-          {
-            "text": ".apache"
-          },
-          {
-            "text": ".org"
-          },
-          {
-            "text": "/P"
-          },
-          {
-            "text": "OM"
-          },
-          {
-            "text": "/"
-          },
-          {
-            "text": "4"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "0"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "0"
-          },
-          {
-            "text": "\u0120http"
-          },
-          {
-            "text": "://"
-          },
-          {
-            "text": "m"
-          },
-          {
-            "text": "aven"
-          },
-          {
-            "text": ".apache"
-          },
-          {
-            "text": ".org"
-          },
-          {
-            "text": "/x"
-          },
-          {
-            "text": "sd"
-          },
-          {
-            "text": "/m"
-          },
-          {
-            "text": "aven"
-          },
-          {
-            "text": "-"
-          },
-          {
-            "text": "4"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "0"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "0"
-          },
-          {
-            "text": ".x"
-          },
-          {
-            "text": "sd"
-          },
-          {
-            "text": "\">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "model"
-          },
-          {
-            "text": "Version"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "4"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "0"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "0"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "model"
-          },
-          {
-            "text": "Version"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "groupId"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "com"
+            "text": "\u0120com"
           },
           {
             "text": ".red"
@@ -1168,1588 +847,1816 @@
             "text": "store"
           },
           {
-            "text": "</"
+            "text": ".service"
           },
           {
-            "text": "groupId"
+            "text": ";\u010a\u010a"
           },
           {
-            "text": ">\u010a"
+            "text": "import"
           },
           {
-            "text": "\u0120\u0120\u0120"
+            "text": "\u0120com"
           },
           {
-            "text": "\u0120<"
+            "text": ".red"
           },
           {
-            "text": "artifact"
+            "text": "hat"
           },
           {
-            "text": "Id"
+            "text": ".c"
           },
           {
-            "text": ">"
-          },
-          {
-            "text": "mon"
-          },
-          {
-            "text": "olith"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "artifact"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "version"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "1"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "0"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "0"
-          },
-          {
-            "text": "-S"
-          },
-          {
-            "text": "N"
-          },
-          {
-            "text": "APSHOT"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "version"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "pack"
-          },
-          {
-            "text": "aging"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "war"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "pack"
-          },
-          {
-            "text": "aging"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "name"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "cool"
+            "text": "ool"
           },
           {
             "text": "store"
           },
           {
-            "text": "-mon"
+            "text": ".model"
           },
           {
-            "text": "olith"
+            "text": ".Order"
           },
           {
-            "text": "</"
+            "text": ";\u010a"
           },
           {
-            "text": "name"
+            "text": "import"
           },
           {
-            "text": ">\u010a"
+            "text": "\u0120com"
           },
           {
-            "text": "\u0120\u0120\u0120"
+            "text": ".red"
           },
           {
-            "text": "\u0120<"
+            "text": "hat"
           },
           {
-            "text": "properties"
+            "text": ".c"
           },
           {
-            "text": ">\u010a"
+            "text": "ool"
           },
           {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+            "text": "store"
           },
           {
-            "text": "\u0120<"
+            "text": ".utils"
           },
           {
-            "text": "project"
+            "text": ".Transform"
           },
           {
-            "text": ".build"
+            "text": "ers"
           },
           {
-            "text": ".source"
+            "text": ";\u010a\u010a"
           },
           {
-            "text": "Encoding"
+            "text": "import"
           },
           {
-            "text": ">"
+            "text": "\u0120javax"
           },
           {
-            "text": "UTF"
+            "text": ".inject"
           },
           {
-            "text": "-"
+            "text": ".Inject"
           },
           {
-            "text": "8"
+            "text": ";\u010a"
           },
           {
-            "text": "</"
+            "text": "import"
           },
           {
-            "text": "project"
-          },
-          {
-            "text": ".build"
-          },
-          {
-            "text": ".source"
-          },
-          {
-            "text": "Encoding"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "m"
-          },
-          {
-            "text": "aven"
-          },
-          {
-            "text": ".build"
-          },
-          {
-            "text": ".timestamp"
-          },
-          {
-            "text": ".format"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "yyyyMMdd"
-          },
-          {
-            "text": "'T"
-          },
-          {
-            "text": "'"
-          },
-          {
-            "text": "HH"
-          },
-          {
-            "text": "mm"
-          },
-          {
-            "text": "ss"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "m"
-          },
-          {
-            "text": "aven"
-          },
-          {
-            "text": ".build"
-          },
-          {
-            "text": ".timestamp"
-          },
-          {
-            "text": ".format"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "project"
-          },
-          {
-            "text": ".encoding"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "UTF"
-          },
-          {
-            "text": "-"
-          },
-          {
-            "text": "8"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "project"
-          },
-          {
-            "text": ".encoding"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "m"
-          },
-          {
-            "text": "aven"
-          },
-          {
-            "text": ".test"
-          },
-          {
-            "text": ".skip"
-          },
-          {
-            "text": ">true"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "m"
-          },
-          {
-            "text": "aven"
-          },
-          {
-            "text": ".test"
-          },
-          {
-            "text": ".skip"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120</"
-          },
-          {
-            "text": "properties"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "dependencies"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "dependency"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "groupId"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "javax"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "groupId"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "artifact"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "java"
-          },
-          {
-            "text": "ee"
-          },
-          {
-            "text": "-web"
-          },
-          {
-            "text": "-api"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "artifact"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "version"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "7"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "0"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "version"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "scope"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "provided"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "scope"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120</"
-          },
-          {
-            "text": "dependency"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "dependency"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "groupId"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "javax"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "groupId"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "artifact"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "java"
-          },
-          {
-            "text": "ee"
-          },
-          {
-            "text": "-api"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "artifact"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "version"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "7"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "0"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "version"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "scope"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "provided"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "scope"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120</"
-          },
-          {
-            "text": "dependency"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "dependency"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "groupId"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "org"
-          },
-          {
-            "text": ".jboss"
-          },
-          {
-            "text": ".spec"
-          },
-          {
-            "text": ".j"
-          },
-          {
-            "text": "avax"
+            "text": "\u0120javax"
           },
           {
             "text": ".jms"
           },
           {
-            "text": "</"
+            "text": ".*;\u010a"
           },
           {
-            "text": "groupId"
+            "text": "import"
           },
           {
-            "text": ">\u010a"
+            "text": "\u0120javax"
           },
           {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+            "text": ".n"
           },
           {
-            "text": "\u0120<"
+            "text": "aming"
           },
           {
-            "text": "artifact"
+            "text": ".Context"
           },
           {
-            "text": "Id"
+            "text": ";\u010a"
           },
           {
-            "text": ">j"
+            "text": "import"
           },
           {
-            "text": "boss"
+            "text": "\u0120javax"
           },
           {
-            "text": "-j"
+            "text": ".n"
           },
           {
-            "text": "ms"
+            "text": "aming"
           },
           {
-            "text": "-api"
+            "text": ".Initial"
           },
           {
-            "text": "_"
+            "text": "Context"
           },
           {
-            "text": "2"
+            "text": ";\u010a"
           },
           {
-            "text": "."
+            "text": "import"
           },
           {
-            "text": "0"
+            "text": "\u0120javax"
           },
           {
-            "text": "_spec"
+            "text": ".n"
           },
           {
-            "text": "</"
+            "text": "aming"
           },
           {
-            "text": "artifact"
+            "text": ".N"
           },
           {
-            "text": "Id"
+            "text": "aming"
           },
           {
-            "text": ">\u010a"
+            "text": "Exception"
           },
           {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+            "text": ";\u010a"
           },
           {
-            "text": "\u0120<"
+            "text": "import"
           },
           {
-            "text": "version"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "2"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "0"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "0"
-          },
-          {
-            "text": ".F"
-          },
-          {
-            "text": "inal"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "version"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120</"
-          },
-          {
-            "text": "dependency"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "dependency"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "groupId"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "org"
-          },
-          {
-            "text": ".f"
-          },
-          {
-            "text": "ly"
-          },
-          {
-            "text": "way"
-          },
-          {
-            "text": "db"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "groupId"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "artifact"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "fly"
-          },
-          {
-            "text": "way"
-          },
-          {
-            "text": "-core"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "artifact"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "version"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "4"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "1"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "2"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "version"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120</"
-          },
-          {
-            "text": "dependency"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "dependency"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "groupId"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "org"
-          },
-          {
-            "text": ".jboss"
-          },
-          {
-            "text": ".spec"
-          },
-          {
-            "text": ".j"
-          },
-          {
-            "text": "avax"
+            "text": "\u0120javax"
           },
           {
             "text": ".rmi"
           },
           {
-            "text": "</"
+            "text": ".Port"
           },
           {
-            "text": "groupId"
+            "text": "able"
           },
           {
-            "text": ">\u010a"
+            "text": "Remote"
           },
           {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+            "text": "Object"
           },
           {
-            "text": "\u0120<"
+            "text": ";\u010a"
           },
           {
-            "text": "artifact"
+            "text": "import"
           },
           {
-            "text": "Id"
+            "text": "\u0120java"
           },
           {
-            "text": ">j"
+            "text": ".util"
           },
           {
-            "text": "boss"
+            "text": ".Has"
           },
           {
-            "text": "-r"
+            "text": "htable"
           },
           {
-            "text": "mi"
+            "text": ";\u010a\u010a"
           },
           {
-            "text": "-api"
+            "text": "public"
           },
           {
-            "text": "_"
+            "text": "\u0120class"
           },
           {
-            "text": "1"
+            "text": "\u0120Inventory"
           },
           {
-            "text": "."
+            "text": "Notification"
           },
           {
-            "text": "0"
+            "text": "MDB"
           },
           {
-            "text": "_spec"
+            "text": "\u0120implements"
           },
           {
-            "text": "</"
+            "text": "\u0120Message"
           },
           {
-            "text": "artifact"
+            "text": "Listener"
           },
           {
-            "text": "Id"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "version"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "1"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "0"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "2"
-          },
-          {
-            "text": ".F"
-          },
-          {
-            "text": "inal"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "version"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120</"
-          },
-          {
-            "text": "dependency"
-          },
-          {
-            "text": ">\u010a"
+            "text": "\u0120{\u010a\u010a"
           },
           {
             "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120</"
+            "text": "\u0120private"
           },
           {
-            "text": "dependencies"
+            "text": "\u0120static"
           },
           {
-            "text": ">\u010a"
+            "text": "\u0120final"
+          },
+          {
+            "text": "\u0120int"
+          },
+          {
+            "text": "\u0120LOW"
+          },
+          {
+            "text": "_THRESHOLD"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120"
+          },
+          {
+            "text": "50"
+          },
+          {
+            "text": ";\u010a\u010a"
           },
           {
             "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120<"
+            "text": "\u0120@"
           },
           {
-            "text": "build"
+            "text": "Inject"
           },
           {
-            "text": ">\u010a"
+            "text": "\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120private"
+          },
+          {
+            "text": "\u0120Catalog"
+          },
+          {
+            "text": "Service"
+          },
+          {
+            "text": "\u0120catalog"
+          },
+          {
+            "text": "Service"
+          },
+          {
+            "text": ";\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120private"
+          },
+          {
+            "text": "\u0120final"
+          },
+          {
+            "text": "\u0120static"
+          },
+          {
+            "text": "\u0120String"
+          },
+          {
+            "text": "\u0120J"
+          },
+          {
+            "text": "ND"
+          },
+          {
+            "text": "I"
+          },
+          {
+            "text": "_FACTORY"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "web"
+          },
+          {
+            "text": "logic"
+          },
+          {
+            "text": ".j"
+          },
+          {
+            "text": "nd"
+          },
+          {
+            "text": "i"
+          },
+          {
+            "text": ".W"
+          },
+          {
+            "text": "L"
+          },
+          {
+            "text": "Initial"
+          },
+          {
+            "text": "Context"
+          },
+          {
+            "text": "Factory"
+          },
+          {
+            "text": "\";\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120private"
+          },
+          {
+            "text": "\u0120final"
+          },
+          {
+            "text": "\u0120static"
+          },
+          {
+            "text": "\u0120String"
+          },
+          {
+            "text": "\u0120J"
+          },
+          {
+            "text": "MS"
+          },
+          {
+            "text": "_FACTORY"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "TC"
+          },
+          {
+            "text": "F"
+          },
+          {
+            "text": "\";\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120private"
+          },
+          {
+            "text": "\u0120final"
+          },
+          {
+            "text": "\u0120static"
+          },
+          {
+            "text": "\u0120String"
+          },
+          {
+            "text": "\u0120TOP"
+          },
+          {
+            "text": "IC"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "topic"
+          },
+          {
+            "text": "/orders"
+          },
+          {
+            "text": "\";\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120private"
+          },
+          {
+            "text": "\u0120Topic"
+          },
+          {
+            "text": "Connection"
+          },
+          {
+            "text": "\u0120t"
+          },
+          {
+            "text": "con"
+          },
+          {
+            "text": ";\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120private"
+          },
+          {
+            "text": "\u0120Topic"
+          },
+          {
+            "text": "Session"
+          },
+          {
+            "text": "\u0120t"
+          },
+          {
+            "text": "session"
+          },
+          {
+            "text": ";\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120private"
+          },
+          {
+            "text": "\u0120Topic"
+          },
+          {
+            "text": "Subscriber"
+          },
+          {
+            "text": "\u0120t"
+          },
+          {
+            "text": "subscriber"
+          },
+          {
+            "text": ";\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120public"
+          },
+          {
+            "text": "\u0120void"
+          },
+          {
+            "text": "\u0120on"
+          },
+          {
+            "text": "Message"
+          },
+          {
+            "text": "(Message"
+          },
+          {
+            "text": "\u0120rc"
+          },
+          {
+            "text": "v"
+          },
+          {
+            "text": "Message"
+          },
+          {
+            "text": ")"
+          },
+          {
+            "text": "\u0120{\u010a"
           },
           {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120<"
+            "text": "\u0120Text"
           },
           {
-            "text": "final"
+            "text": "Message"
           },
           {
-            "text": "Name"
+            "text": "\u0120msg"
           },
           {
-            "text": ">"
-          },
-          {
-            "text": "ROOT"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "final"
-          },
-          {
-            "text": "Name"
-          },
-          {
-            "text": ">\u010a"
+            "text": ";\u010a"
           },
           {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120<"
-          },
-          {
-            "text": "plugins"
-          },
-          {
-            "text": ">\u010a"
+            "text": "\u0120{\u010a"
           },
           {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120<"
+            "text": "\u0120try"
           },
           {
-            "text": "plugin"
-          },
-          {
-            "text": ">\u010a"
+            "text": "\u0120{\u010a"
           },
           {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120<"
+            "text": "\u0120System"
           },
           {
-            "text": "artifact"
+            "text": ".out"
           },
           {
-            "text": "Id"
+            "text": ".println"
           },
           {
-            "text": ">m"
+            "text": "(\""
           },
           {
-            "text": "aven"
+            "text": "received"
           },
           {
-            "text": "-"
+            "text": "\u0120message"
           },
           {
-            "text": "compiler"
+            "text": "\u0120inventory"
           },
           {
-            "text": "-plugin"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "artifact"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": ">\u010a"
+            "text": "\");\u010a"
           },
           {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120<"
+            "text": "\u0120if"
           },
           {
-            "text": "version"
+            "text": "\u0120("
           },
           {
-            "text": ">"
+            "text": "rc"
           },
           {
-            "text": "3"
+            "text": "v"
           },
           {
-            "text": "."
+            "text": "Message"
           },
           {
-            "text": "0"
+            "text": "\u0120instanceof"
           },
           {
-            "text": "</"
+            "text": "\u0120Text"
           },
           {
-            "text": "version"
+            "text": "Message"
           },
           {
-            "text": ">\u010a"
+            "text": ")"
           },
           {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "configuration"
-          },
-          {
-            "text": ">\u010a"
+            "text": "\u0120{\u010a"
           },
           {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120<"
+            "text": "\u0120msg"
           },
           {
-            "text": "encoding"
+            "text": "\u0120="
           },
           {
-            "text": ">${"
+            "text": "\u0120("
           },
           {
-            "text": "project"
+            "text": "Text"
           },
           {
-            "text": ".encoding"
+            "text": "Message"
           },
           {
-            "text": "}</"
+            "text": ")"
           },
           {
-            "text": "encoding"
+            "text": "\u0120rc"
           },
           {
-            "text": ">\u010a"
+            "text": "v"
           },
           {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+            "text": "Message"
           },
           {
-            "text": "\u0120<"
-          },
-          {
-            "text": "source"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "1"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "8"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "source"
-          },
-          {
-            "text": ">\u010a"
+            "text": ";\u010a"
           },
           {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
+            "text": "\u0120String"
+          },
+          {
+            "text": "\u0120order"
+          },
+          {
+            "text": "Str"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120msg"
+          },
+          {
+            "text": ".getBody"
+          },
+          {
+            "text": "(String"
+          },
+          {
+            "text": ".class"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120Order"
+          },
+          {
+            "text": "\u0120order"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120Transformers"
+          },
+          {
+            "text": ".json"
+          },
+          {
+            "text": "To"
+          },
+          {
+            "text": "Order"
+          },
+          {
+            "text": "(order"
+          },
+          {
+            "text": "Str"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120order"
+          },
+          {
+            "text": ".getItem"
+          },
+          {
+            "text": "List"
+          },
+          {
+            "text": "()."
+          },
+          {
+            "text": "forEach"
+          },
+          {
+            "text": "(order"
+          },
+          {
+            "text": "Item"
+          },
+          {
+            "text": "\u0120->"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120int"
+          },
+          {
+            "text": "\u0120old"
+          },
+          {
+            "text": "_quantity"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120catalog"
+          },
+          {
+            "text": "Service"
+          },
+          {
+            "text": ".getC"
+          },
+          {
+            "text": "atalog"
+          },
+          {
+            "text": "Item"
+          },
+          {
+            "text": "ById"
+          },
+          {
+            "text": "(order"
+          },
+          {
+            "text": "Item"
+          },
+          {
+            "text": ".get"
+          },
+          {
+            "text": "ProductId"
+          },
+          {
+            "text": "())."
+          },
+          {
+            "text": "get"
+          },
+          {
+            "text": "Inventory"
+          },
+          {
+            "text": "()."
+          },
+          {
+            "text": "get"
+          },
+          {
+            "text": "Quantity"
+          },
+          {
+            "text": "();\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120int"
+          },
+          {
+            "text": "\u0120new"
+          },
+          {
+            "text": "_quantity"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120old"
+          },
+          {
+            "text": "_quantity"
+          },
+          {
+            "text": "\u0120-"
+          },
+          {
+            "text": "\u0120order"
+          },
+          {
+            "text": "Item"
+          },
+          {
+            "text": ".get"
+          },
+          {
+            "text": "Quantity"
+          },
+          {
+            "text": "();\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120if"
+          },
+          {
+            "text": "\u0120("
+          },
+          {
+            "text": "new"
+          },
+          {
+            "text": "_quantity"
+          },
+          {
             "text": "\u0120<"
           },
           {
-            "text": "target"
+            "text": "\u0120LOW"
           },
           {
-            "text": ">"
+            "text": "_THRESHOLD"
           },
           {
-            "text": "1"
+            "text": ")"
           },
           {
-            "text": "."
+            "text": "\u0120{\u010a"
           },
           {
-            "text": "8"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "</"
+            "text": "\u0120System"
           },
           {
-            "text": "target"
+            "text": ".out"
           },
           {
-            "text": ">\u010a"
+            "text": ".println"
+          },
+          {
+            "text": "(\""
+          },
+          {
+            "text": "Inventory"
+          },
+          {
+            "text": "\u0120for"
+          },
+          {
+            "text": "\u0120item"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "\u0120+"
+          },
+          {
+            "text": "\u0120order"
+          },
+          {
+            "text": "Item"
+          },
+          {
+            "text": ".get"
+          },
+          {
+            "text": "ProductId"
+          },
+          {
+            "text": "()"
+          },
+          {
+            "text": "\u0120+"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "\u0120is"
+          },
+          {
+            "text": "\u0120below"
+          },
+          {
+            "text": "\u0120threshold"
+          },
+          {
+            "text": "\u0120(\""
+          },
+          {
+            "text": "\u0120+"
+          },
+          {
+            "text": "\u0120LOW"
+          },
+          {
+            "text": "_THRESHOLD"
+          },
+          {
+            "text": "\u0120+"
+          },
+          {
+            "text": "\u0120\"),"
+          },
+          {
+            "text": "\u0120contact"
+          },
+          {
+            "text": "\u0120supplier"
+          },
+          {
+            "text": "!\");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}"
+          },
+          {
+            "text": "\u0120else"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120order"
+          },
+          {
+            "text": "Item"
+          },
+          {
+            "text": ".set"
+          },
+          {
+            "text": "Quantity"
+          },
+          {
+            "text": "(new"
+          },
+          {
+            "text": "_quantity"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120});\u010a"
           },
           {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120</"
-          },
-          {
-            "text": "configuration"
-          },
-          {
-            "text": ">\u010a"
+            "text": "\u0120}\u010a\u010a\u010a"
           },
           {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120</"
+            "text": "\u0120}"
           },
           {
-            "text": "plugin"
+            "text": "\u0120catch"
           },
           {
-            "text": ">\u010a"
+            "text": "\u0120("
           },
           {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+            "text": "J"
           },
           {
-            "text": "\u0120<"
+            "text": "MS"
           },
           {
-            "text": "plugin"
+            "text": "Exception"
           },
           {
-            "text": ">\u010a"
+            "text": "\u0120jm"
           },
           {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+            "text": "se"
           },
           {
-            "text": "\u0120<"
+            "text": ")"
           },
           {
-            "text": "groupId"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "org"
-          },
-          {
-            "text": ".apache"
-          },
-          {
-            "text": ".maven"
-          },
-          {
-            "text": ".plugins"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "groupId"
-          },
-          {
-            "text": ">\u010a"
+            "text": "\u0120{\u010a"
           },
           {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120<"
+            "text": "\u0120System"
           },
           {
-            "text": "artifact"
+            "text": ".err"
           },
           {
-            "text": "Id"
+            "text": ".println"
           },
           {
-            "text": ">m"
+            "text": "(\""
           },
           {
-            "text": "aven"
+            "text": "An"
           },
           {
-            "text": "-war"
+            "text": "\u0120exception"
           },
           {
-            "text": "-plugin"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "artifact"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "version"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "3"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "2"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "0"
-          },
-          {
-            "text": "</"
-          },
-          {
-            "text": "version"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120</"
-          },
-          {
-            "text": "plugin"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120</"
-          },
-          {
-            "text": "plugins"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120</"
-          },
-          {
-            "text": "build"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120<"
-          },
-          {
-            "text": "profiles"
-          },
-          {
-            "text": ">\u010a"
-          },
-          {
-            "text": "<!--"
-          },
-          {
-            "text": "\u0120TODO"
+            "text": "\u0120occurred"
           },
           {
             "text": ":"
           },
           {
-            "text": "\u0120Add"
+            "text": "\u0120\""
           },
           {
-            "text": "\u0120Open"
+            "text": "\u0120+"
           },
           {
-            "text": "Shift"
+            "text": "\u0120jm"
           },
           {
-            "text": "\u0120profile"
+            "text": "se"
           },
           {
-            "text": "\u0120here"
+            "text": ".getMessage"
           },
           {
-            "text": "\u0120-->\u010a"
+            "text": "());\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
           },
           {
             "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120</"
+            "text": "\u0120}\u010a\u010a"
           },
           {
-            "text": "profiles"
+            "text": "\u0120\u0120\u0120"
           },
           {
-            "text": ">\u010a"
+            "text": "\u0120public"
           },
           {
-            "text": "</"
+            "text": "\u0120void"
           },
           {
-            "text": "project"
+            "text": "\u0120init"
           },
           {
-            "text": ">\u010a\u010a"
+            "text": "()"
+          },
+          {
+            "text": "\u0120throws"
+          },
+          {
+            "text": "\u0120Naming"
+          },
+          {
+            "text": "Exception"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120J"
+          },
+          {
+            "text": "MS"
+          },
+          {
+            "text": "Exception"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120Context"
+          },
+          {
+            "text": "\u0120ctx"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120get"
+          },
+          {
+            "text": "Initial"
+          },
+          {
+            "text": "Context"
+          },
+          {
+            "text": "();\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120Topic"
+          },
+          {
+            "text": "ConnectionFactory"
+          },
+          {
+            "text": "\u0120t"
+          },
+          {
+            "text": "con"
+          },
+          {
+            "text": "Factory"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120("
+          },
+          {
+            "text": "Topic"
+          },
+          {
+            "text": "ConnectionFactory"
+          },
+          {
+            "text": ")"
+          },
+          {
+            "text": "\u0120Portable"
+          },
+          {
+            "text": "Remote"
+          },
+          {
+            "text": "Object"
+          },
+          {
+            "text": ".n"
+          },
+          {
+            "text": "arrow"
+          },
+          {
+            "text": "(ctx"
+          },
+          {
+            "text": ".lookup"
+          },
+          {
+            "text": "(J"
+          },
+          {
+            "text": "MS"
+          },
+          {
+            "text": "_FACTORY"
+          },
+          {
+            "text": "),"
+          },
+          {
+            "text": "\u0120Topic"
+          },
+          {
+            "text": "ConnectionFactory"
+          },
+          {
+            "text": ".class"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120t"
+          },
+          {
+            "text": "con"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120t"
+          },
+          {
+            "text": "con"
+          },
+          {
+            "text": "Factory"
+          },
+          {
+            "text": ".create"
+          },
+          {
+            "text": "Topic"
+          },
+          {
+            "text": "Connection"
+          },
+          {
+            "text": "();\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120t"
+          },
+          {
+            "text": "session"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120t"
+          },
+          {
+            "text": "con"
+          },
+          {
+            "text": ".create"
+          },
+          {
+            "text": "Topic"
+          },
+          {
+            "text": "Session"
+          },
+          {
+            "text": "(false"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120Session"
+          },
+          {
+            "text": ".AUTO"
+          },
+          {
+            "text": "_ACK"
+          },
+          {
+            "text": "NOWLED"
+          },
+          {
+            "text": "GE"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120Topic"
+          },
+          {
+            "text": "\u0120topic"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120("
+          },
+          {
+            "text": "Topic"
+          },
+          {
+            "text": ")"
+          },
+          {
+            "text": "\u0120Portable"
+          },
+          {
+            "text": "Remote"
+          },
+          {
+            "text": "Object"
+          },
+          {
+            "text": ".n"
+          },
+          {
+            "text": "arrow"
+          },
+          {
+            "text": "(ctx"
+          },
+          {
+            "text": ".lookup"
+          },
+          {
+            "text": "(T"
+          },
+          {
+            "text": "OP"
+          },
+          {
+            "text": "IC"
+          },
+          {
+            "text": "),"
+          },
+          {
+            "text": "\u0120Topic"
+          },
+          {
+            "text": ".class"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120t"
+          },
+          {
+            "text": "subscriber"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120t"
+          },
+          {
+            "text": "session"
+          },
+          {
+            "text": ".create"
+          },
+          {
+            "text": "Subscriber"
+          },
+          {
+            "text": "(topic"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120t"
+          },
+          {
+            "text": "subscriber"
+          },
+          {
+            "text": ".setMessage"
+          },
+          {
+            "text": "Listener"
+          },
+          {
+            "text": "(this"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120t"
+          },
+          {
+            "text": "con"
+          },
+          {
+            "text": ".start"
+          },
+          {
+            "text": "();\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120public"
+          },
+          {
+            "text": "\u0120void"
+          },
+          {
+            "text": "\u0120close"
+          },
+          {
+            "text": "()"
+          },
+          {
+            "text": "\u0120throws"
+          },
+          {
+            "text": "\u0120J"
+          },
+          {
+            "text": "MS"
+          },
+          {
+            "text": "Exception"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120t"
+          },
+          {
+            "text": "subscriber"
+          },
+          {
+            "text": ".close"
+          },
+          {
+            "text": "();\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120t"
+          },
+          {
+            "text": "session"
+          },
+          {
+            "text": ".close"
+          },
+          {
+            "text": "();\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120t"
+          },
+          {
+            "text": "con"
+          },
+          {
+            "text": ".close"
+          },
+          {
+            "text": "();\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120private"
+          },
+          {
+            "text": "\u0120static"
+          },
+          {
+            "text": "\u0120Initial"
+          },
+          {
+            "text": "Context"
+          },
+          {
+            "text": "\u0120get"
+          },
+          {
+            "text": "Initial"
+          },
+          {
+            "text": "Context"
+          },
+          {
+            "text": "()"
+          },
+          {
+            "text": "\u0120throws"
+          },
+          {
+            "text": "\u0120Naming"
+          },
+          {
+            "text": "Exception"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120Hashtable"
+          },
+          {
+            "text": "<String"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120String"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "\u0120env"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120new"
+          },
+          {
+            "text": "\u0120Hashtable"
+          },
+          {
+            "text": "<>();\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120env"
+          },
+          {
+            "text": ".put"
+          },
+          {
+            "text": "(Context"
+          },
+          {
+            "text": ".IN"
+          },
+          {
+            "text": "IT"
+          },
+          {
+            "text": "IAL"
+          },
+          {
+            "text": "_CONTEXT"
+          },
+          {
+            "text": "_FACTORY"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120J"
+          },
+          {
+            "text": "ND"
+          },
+          {
+            "text": "I"
+          },
+          {
+            "text": "_FACTORY"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120env"
+          },
+          {
+            "text": ".put"
+          },
+          {
+            "text": "(Context"
+          },
+          {
+            "text": ".PRO"
+          },
+          {
+            "text": "VID"
+          },
+          {
+            "text": "ER"
+          },
+          {
+            "text": "_URL"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "t"
+          },
+          {
+            "text": "3"
+          },
+          {
+            "text": "://"
+          },
+          {
+            "text": "localhost"
+          },
+          {
+            "text": ":"
+          },
+          {
+            "text": "700"
+          },
+          {
+            "text": "1"
+          },
+          {
+            "text": "\");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120env"
+          },
+          {
+            "text": ".put"
+          },
+          {
+            "text": "(\""
+          },
+          {
+            "text": "web"
+          },
+          {
+            "text": "logic"
+          },
+          {
+            "text": ".j"
+          },
+          {
+            "text": "nd"
+          },
+          {
+            "text": "i"
+          },
+          {
+            "text": ".create"
+          },
+          {
+            "text": "Intermediate"
+          },
+          {
+            "text": "Context"
+          },
+          {
+            "text": "s"
+          },
+          {
+            "text": "\","
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "true"
+          },
+          {
+            "text": "\");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120return"
+          },
+          {
+            "text": "\u0120new"
+          },
+          {
+            "text": "\u0120Initial"
+          },
+          {
+            "text": "Context"
+          },
+          {
+            "text": "(env"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "}\u010a"
           },
           {
             "text": "``"
@@ -2797,85 +2704,43 @@
             "text": "\u0120\""
           },
           {
-            "text": "The"
-          },
-          {
-            "text": "\u0120project"
-          },
-          {
-            "text": "\u0120artifact"
-          },
-          {
-            "text": "'s"
-          },
-          {
-            "text": "\u0120current"
-          },
-          {
-            "text": "\u0120extension"
-          },
-          {
-            "text": "\u0120("
-          },
-          {
-            "text": "i"
-          },
-          {
-            "text": ".e"
-          },
-          {
-            "text": "."
-          },
-          {
-            "text": "\u0120`<"
-          },
-          {
-            "text": "pack"
-          },
-          {
-            "text": "aging"
-          },
-          {
-            "text": ">`"
-          },
-          {
-            "text": "\u0120tag"
-          },
-          {
-            "text": "\u0120value"
-          },
-          {
-            "text": ")"
-          },
-          {
-            "text": "\u0120is"
-          },
-          {
-            "text": "\u0120``"
-          },
-          {
-            "text": "\u0120but"
+            "text": "Replace"
           },
           {
             "text": "\u0120the"
           },
           {
-            "text": "\u0120expected"
+            "text": "\u0120`"
           },
           {
-            "text": "\u0120value"
+            "text": "javax"
           },
           {
-            "text": "\u0120should"
+            "text": ".inject"
           },
           {
-            "text": "\u0120be"
+            "text": "`"
+          },
+          {
+            "text": "\u0120import"
+          },
+          {
+            "text": "\u0120statement"
+          },
+          {
+            "text": "\u0120with"
           },
           {
             "text": "\u0120`"
           },
           {
-            "text": "jar"
+            "text": "jak"
+          },
+          {
+            "text": "arta"
+          },
+          {
+            "text": ".inject"
           },
           {
             "text": "`"
@@ -2896,7 +2761,7 @@
             "text": "\u0120"
           },
           {
-            "text": "9"
+            "text": "6"
           },
           {
             "text": "\u010a\u010a\u010a\u010a"
@@ -3525,17 +3390,17 @@
           {
             "flagged": true,
             "position": {
-              "end": 1229,
+              "end": 1251,
               "start": 1209
             },
-            "score": 0.1369560807943344,
+            "score": 0.14713774621486664,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 1251,
-              "start": 1230
+              "end": 1273,
+              "start": 1252
             },
             "score": 0.1307024359703064,
             "success": true
@@ -3543,665 +3408,26 @@
           {
             "flagged": true,
             "position": {
-              "end": 1261,
-              "start": 1252
+              "end": 1281,
+              "start": 1274
             },
-            "score": 0.15841905772686005,
+            "score": 0.14054611325263977,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 1263,
-              "start": 1262
+              "end": 1319,
+              "start": 1282
             },
-            "score": 0.13463552296161652,
+            "score": 0.13084466755390167,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 1298,
-              "start": 1264
-            },
-            "score": 0.14399699866771698,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1300,
-              "start": 1299
-            },
-            "score": 0.13231950998306274,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1310,
-              "start": 1301
-            },
-            "score": 0.13206055760383606,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1357,
-              "start": 1311
-            },
-            "score": 0.14737333357334137,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1515,
-              "start": 1358
-            },
-            "score": 0.15428049862384796,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1554,
-              "start": 1516
-            },
-            "score": 0.15514546632766724,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1598,
-              "start": 1555
-            },
-            "score": 0.153778538107872,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1636,
-              "start": 1599
-            },
-            "score": 0.13387735188007355,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1674,
-              "start": 1637
-            },
-            "score": 0.143919438123703,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1705,
-              "start": 1675
-            },
-            "score": 0.1458478420972824,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1741,
-              "start": 1706
-            },
-            "score": 0.1456719934940338,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1758,
-              "start": 1742
-            },
-            "score": 0.13581471145153046,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1833,
-              "start": 1759
-            },
-            "score": 0.14866840839385986,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1920,
-              "start": 1834
-            },
-            "score": 0.14643430709838867,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 1971,
-              "start": 1921
-            },
-            "score": 0.14764541387557983,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2019,
-              "start": 1972
-            },
-            "score": 0.14301565289497375,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2037,
-              "start": 2020
-            },
-            "score": 0.139417827129364,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2056,
-              "start": 2038
-            },
-            "score": 0.14394761621952057,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2077,
-              "start": 2057
-            },
-            "score": 0.1491820365190506,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2114,
-              "start": 2078
-            },
-            "score": 0.1369868665933609,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2166,
-              "start": 2115
-            },
-            "score": 0.13321122527122498,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2201,
-              "start": 2167
-            },
-            "score": 0.1445576399564743,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2237,
-              "start": 2202
-            },
-            "score": 0.1390652358531952,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2259,
-              "start": 2238
-            },
-            "score": 0.1484624594449997,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2280,
-              "start": 2260
-            },
-            "score": 0.1491820365190506,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2317,
-              "start": 2281
-            },
-            "score": 0.1369868665933609,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2365,
-              "start": 2318
-            },
-            "score": 0.1316811740398407,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2400,
-              "start": 2366
-            },
-            "score": 0.1445576399564743,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2436,
-              "start": 2401
-            },
-            "score": 0.1390652358531952,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2458,
-              "start": 2437
-            },
-            "score": 0.1484624594449997,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2479,
-              "start": 2459
-            },
-            "score": 0.1491820365190506,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2535,
-              "start": 2480
-            },
-            "score": 0.13853801786899567,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2595,
-              "start": 2536
-            },
-            "score": 0.13412337005138397,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2622,
-              "start": 2596
-            },
-            "score": 0.14312459528446198,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2638,
-              "start": 2623
-            },
-            "score": 0.14398224651813507,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2660,
-              "start": 2639
-            },
-            "score": 0.1484624594449997,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2681,
-              "start": 2661
-            },
-            "score": 0.1491820514202118,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2725,
-              "start": 2682
-            },
-            "score": 0.1374364197254181,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2774,
-              "start": 2726
-            },
-            "score": 0.1309570074081421,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2811,
-              "start": 2775
-            },
-            "score": 0.14271777868270874,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2833,
-              "start": 2812
-            },
-            "score": 0.1484624594449997,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2854,
-              "start": 2834
-            },
-            "score": 0.1491820365190506,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2910,
-              "start": 2855
-            },
-            "score": 0.13831192255020142,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2970,
-              "start": 2911
-            },
-            "score": 0.13384637236595154,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 2997,
-              "start": 2971
-            },
-            "score": 0.13886089622974396,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3013,
-              "start": 2998
-            },
-            "score": 0.14398224651813507,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3035,
-              "start": 3014
-            },
-            "score": 0.1484624594449997,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3055,
-              "start": 3036
-            },
-            "score": 0.15263797342777252,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3067,
-              "start": 3056
-            },
-            "score": 0.13515862822532654,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3103,
-              "start": 3068
-            },
-            "score": 0.1459958553314209,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3121,
-              "start": 3104
-            },
-            "score": 0.13416820764541626,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3142,
-              "start": 3122
-            },
-            "score": 0.13439910113811493,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3205,
-              "start": 3143
-            },
-            "score": 0.13930024206638336,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3244,
-              "start": 3206
-            },
-            "score": 0.14382129907608032,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3276,
-              "start": 3245
-            },
-            "score": 0.1420312374830246,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3337,
-              "start": 3277
-            },
-            "score": 0.1603131890296936,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3378,
-              "start": 3338
-            },
-            "score": 0.14096449315547943,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3419,
-              "start": 3379
-            },
-            "score": 0.1408282220363617,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3452,
-              "start": 3420
-            },
-            "score": 0.1463278979063034,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3474,
-              "start": 3453
-            },
-            "score": 0.1362575888633728,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3495,
-              "start": 3475
-            },
-            "score": 0.13439911603927612,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3555,
-              "start": 3496
-            },
-            "score": 0.149483785033226,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3613,
-              "start": 3556
-            },
-            "score": 0.15467020869255066,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3654,
-              "start": 3614
-            },
-            "score": 0.1446874886751175,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3676,
-              "start": 3655
-            },
-            "score": 0.1362575888633728,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3695,
-              "start": 3677
-            },
-            "score": 0.13573184609413147,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3708,
-              "start": 3696
-            },
-            "score": 0.13693071901798248,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3723,
-              "start": 3709
-            },
-            "score": 0.1345086693763733,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3765,
-              "start": 3724
-            },
-            "score": 0.1398303359746933,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3781,
-              "start": 3766
-            },
-            "score": 0.1369461715221405,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3792,
-              "start": 3782
-            },
-            "score": 0.13572555780410767,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3793,
-              "start": 3793
+              "end": 1320,
+              "start": 1320
             },
             "score": 0.1295555830001831,
             "success": true
@@ -4209,8 +3435,719 @@
           {
             "flagged": true,
             "position": {
-              "end": 3797,
-              "start": 3794
+              "end": 1361,
+              "start": 1321
+            },
+            "score": 0.13867981731891632,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1409,
+              "start": 1362
+            },
+            "score": 0.13039326667785645,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1410,
+              "start": 1410
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1438,
+              "start": 1411
+            },
+            "score": 0.13182677328586578,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1455,
+              "start": 1439
+            },
+            "score": 0.13084883987903595,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1458,
+              "start": 1456
+            },
+            "score": 0.1333387792110443,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1487,
+              "start": 1459
+            },
+            "score": 0.12958918511867523,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1523,
+              "start": 1488
+            },
+            "score": 0.12978477776050568,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1560,
+              "start": 1524
+            },
+            "score": 0.13208259642124176,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1599,
+              "start": 1561
+            },
+            "score": 0.13135787844657898,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1627,
+              "start": 1600
+            },
+            "score": 0.13141576945781708,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1628,
+              "start": 1628
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1695,
+              "start": 1629
+            },
+            "score": 0.13589458167552948,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1696,
+              "start": 1696
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1745,
+              "start": 1697
+            },
+            "score": 0.1340385526418686,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1746,
+              "start": 1746
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1758,
+              "start": 1747
+            },
+            "score": 0.13187219202518463,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1801,
+              "start": 1759
+            },
+            "score": 0.12888161838054657,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1802,
+              "start": 1802
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1890,
+              "start": 1803
+            },
+            "score": 0.1329641044139862,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1943,
+              "start": 1891
+            },
+            "score": 0.1304011195898056,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1999,
+              "start": 1944
+            },
+            "score": 0.1351316124200821,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2033,
+              "start": 2000
+            },
+            "score": 0.14219562709331512,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2068,
+              "start": 2034
+            },
+            "score": 0.13146859407424927,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2109,
+              "start": 2069
+            },
+            "score": 0.1278253048658371,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2110,
+              "start": 2110
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2158,
+              "start": 2111
+            },
+            "score": 0.14036491513252258,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2183,
+              "start": 2159
+            },
+            "score": 0.13357441127300262,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2193,
+              "start": 2184
+            },
+            "score": 0.14171549677848816,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2211,
+              "start": 2194
+            },
+            "score": 0.14390107989311218,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2277,
+              "start": 2212
+            },
+            "score": 0.13382725417613983,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2334,
+              "start": 2278
+            },
+            "score": 0.13992051780223846,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2386,
+              "start": 2335
+            },
+            "score": 0.13745088875293732,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2451,
+              "start": 2387
+            },
+            "score": 0.1444627195596695,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2521,
+              "start": 2452
+            },
+            "score": 0.13752444088459015,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2584,
+              "start": 2522
+            },
+            "score": 0.16968291997909546,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2717,
+              "start": 2585
+            },
+            "score": 0.14135926961898804,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2800,
+              "start": 2718
+            },
+            "score": 0.1540507674217224,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2860,
+              "start": 2801
+            },
+            "score": 0.16531507670879364,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3023,
+              "start": 2861
+            },
+            "score": 0.144217848777771,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3025,
+              "start": 3024
+            },
+            "score": 0.1345129907131195,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3058,
+              "start": 3026
+            },
+            "score": 0.14291894435882568,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3123,
+              "start": 3059
+            },
+            "score": 0.1436358541250229,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3149,
+              "start": 3124
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3173,
+              "start": 3150
+            },
+            "score": 0.1368626356124878,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3191,
+              "start": 3174
+            },
+            "score": 0.13449959456920624,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3192,
+              "start": 3192
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3193,
+              "start": 3193
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3235,
+              "start": 3194
+            },
+            "score": 0.1589391976594925,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3318,
+              "start": 3236
+            },
+            "score": 0.14439639449119568,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3332,
+              "start": 3319
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3342,
+              "start": 3333
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3348,
+              "start": 3343
+            },
+            "score": 0.13449959456920624,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3349,
+              "start": 3349
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3411,
+              "start": 3350
+            },
+            "score": 0.13960838317871094,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3454,
+              "start": 3412
+            },
+            "score": 0.1378573626279831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3608,
+              "start": 3455
+            },
+            "score": 0.14445804059505463,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3660,
+              "start": 3609
+            },
+            "score": 0.2388765513896942,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3737,
+              "start": 3661
+            },
+            "score": 0.17296244204044342,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3828,
+              "start": 3738
+            },
+            "score": 0.14074625074863434,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3884,
+              "start": 3829
+            },
+            "score": 0.1337142437696457,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3930,
+              "start": 3885
+            },
+            "score": 0.1375304013490677,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3952,
+              "start": 3931
+            },
+            "score": 0.13421432673931122,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3958,
+              "start": 3953
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3959,
+              "start": 3959
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4005,
+              "start": 3960
+            },
+            "score": 0.15425659716129303,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4034,
+              "start": 4006
+            },
+            "score": 0.12824229896068573,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4060,
+              "start": 4035
+            },
+            "score": 0.13203810155391693,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4082,
+              "start": 4061
+            },
+            "score": 0.1404416710138321,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4088,
+              "start": 4083
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4089,
+              "start": 4089
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4168,
+              "start": 4090
+            },
+            "score": 0.1336989551782608,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4227,
+              "start": 4169
+            },
+            "score": 0.13842663168907166,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4291,
+              "start": 4228
+            },
+            "score": 0.13828325271606445,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4353,
+              "start": 4292
+            },
+            "score": 0.23155266046524048,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4422,
+              "start": 4354
+            },
+            "score": 0.13546226918697357,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4462,
+              "start": 4423
+            },
+            "score": 0.13018843531608582,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4468,
+              "start": 4463
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4470,
+              "start": 4469
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4474,
+              "start": 4471
             },
             "score": 0.14512835443019867,
             "success": true
@@ -4218,8 +4155,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 3798,
-              "start": 3798
+              "end": 4475,
+              "start": 4475
             },
             "score": 0.1295555830001831,
             "success": true
@@ -4227,8 +4164,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 3808,
-              "start": 3799
+              "end": 4485,
+              "start": 4476
             },
             "score": 0.13039731979370117,
             "success": true
@@ -4236,8 +4173,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 3809,
-              "start": 3809
+              "end": 4486,
+              "start": 4486
             },
             "score": 0.1295555830001831,
             "success": true
@@ -4245,8 +4182,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 3810,
-              "start": 3810
+              "end": 4487,
+              "start": 4487
             },
             "score": 0.1295555830001831,
             "success": true
@@ -4254,8 +4191,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 3825,
-              "start": 3811
+              "end": 4502,
+              "start": 4488
             },
             "score": 0.13395380973815918,
             "success": true
@@ -4263,35 +4200,26 @@
           {
             "flagged": true,
             "position": {
-              "end": 3961,
-              "start": 3826
+              "end": 4587,
+              "start": 4503
             },
-            "score": 0.13785988092422485,
+            "score": 0.13984613120555878,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 3976,
-              "start": 3962
+              "end": 4602,
+              "start": 4588
             },
-            "score": 0.12809844315052032,
+            "score": 0.1283012181520462,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 3977,
-              "start": 3977
-            },
-            "score": 0.1295555979013443,
-            "success": true
-          },
-          {
-            "flagged": true,
-            "position": {
-              "end": 3978,
-              "start": 3978
+              "end": 4603,
+              "start": 4603
             },
             "score": 0.1295555979013443,
             "success": true
@@ -4299,8 +4227,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 3979,
-              "start": 3979
+              "end": 4604,
+              "start": 4604
             },
             "score": 0.1295555979013443,
             "success": true
@@ -4308,8 +4236,17 @@
           {
             "flagged": true,
             "position": {
-              "end": 4001,
-              "start": 3980
+              "end": 4605,
+              "start": 4605
+            },
+            "score": 0.1295555979013443,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4627,
+              "start": 4606
             },
             "score": 0.132502481341362,
             "success": true
@@ -4317,8 +4254,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 4051,
-              "start": 4002
+              "end": 4677,
+              "start": 4628
             },
             "score": 0.13186712563037872,
             "success": true
@@ -4326,8 +4263,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 4052,
-              "start": 4052
+              "end": 4678,
+              "start": 4678
             },
             "score": 0.1295555979013443,
             "success": true
@@ -4335,17 +4272,17 @@
           {
             "flagged": true,
             "position": {
-              "end": 4065,
-              "start": 4053
+              "end": 4691,
+              "start": 4679
             },
-            "score": 0.1319238841533661,
+            "score": 0.13192392885684967,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 4124,
-              "start": 4066
+              "end": 4750,
+              "start": 4692
             },
             "score": 0.13186180591583252,
             "success": true
@@ -4353,17 +4290,17 @@
           {
             "flagged": true,
             "position": {
-              "end": 4204,
-              "start": 4125
+              "end": 4830,
+              "start": 4751
             },
-            "score": 0.13391800224781036,
+            "score": 0.13391797244548798,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 4205,
-              "start": 4205
+              "end": 4831,
+              "start": 4831
             },
             "score": 0.1295555979013443,
             "success": true
@@ -4371,8 +4308,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 4226,
-              "start": 4206
+              "end": 4852,
+              "start": 4832
             },
             "score": 0.12817129492759705,
             "success": true
@@ -4380,8 +4317,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 4234,
-              "start": 4227
+              "end": 4860,
+              "start": 4853
             },
             "score": 0.14054612815380096,
             "success": true
@@ -4389,8 +4326,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 4289,
-              "start": 4235
+              "end": 4915,
+              "start": 4861
             },
             "score": 0.13026009500026703,
             "success": true
@@ -4398,8 +4335,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 4400,
-              "start": 4290
+              "end": 5026,
+              "start": 4916
             },
             "score": 0.13014476001262665,
             "success": true
@@ -4407,8 +4344,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 4404,
-              "start": 4401
+              "end": 5030,
+              "start": 5027
             },
             "score": 0.14512835443019867,
             "success": true
@@ -4416,8 +4353,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 4405,
-              "start": 4405
+              "end": 5031,
+              "start": 5031
             },
             "score": 0.1295555979013443,
             "success": true
@@ -4425,26 +4362,26 @@
           {
             "flagged": true,
             "position": {
-              "end": 4442,
-              "start": 4406
+              "end": 5068,
+              "start": 5032
             },
-            "score": 0.13007301092147827,
+            "score": 0.13007299602031708,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 4443,
-              "start": 4443
+              "end": 5069,
+              "start": 5069
             },
-            "score": 0.1295555830001831,
+            "score": 0.1295555979013443,
             "success": true
           },
           {
             "flagged": true,
             "position": {
-              "end": 4527,
-              "start": 4444
+              "end": 5153,
+              "start": 5070
             },
             "score": 0.1291486769914627,
             "success": true
@@ -4452,8 +4389,8 @@
           {
             "flagged": true,
             "position": {
-              "end": 4528,
-              "start": 4528
+              "end": 5154,
+              "start": 5154
             },
             "score": 0.1295555830001831,
             "success": true
@@ -4461,17 +4398,17 @@
           {
             "flagged": true,
             "position": {
-              "end": 4532,
-              "start": 4529
+              "end": 5158,
+              "start": 5155
             },
-            "score": 0.1295555979013443,
+            "score": 0.1295555830001831,
             "success": true
           }
         ],
         "stop_sequence": "<|eot_id|>"
       },
       "type": "ai",
-      "id": "run-141aa86b-6543-4d0c-9559-b03191826ec2-0",
+      "id": "run-466ed725-a7da-4834-949b-3c92c74d3862-0",
       "tool_calls": [],
       "invalid_tool_calls": []
     }
