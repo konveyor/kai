@@ -71,7 +71,6 @@ Source file contents:
 {% for incident in incidents %}
 ### incident {{ loop.index0 }}
 incident to fix: "{{ incident.message | safe }}"
-Line number: {{ incident.line_number }}
 {% if incident.solution_str is defined %}
 {{ incident.solution_str | safe }}
 {% endif %}
