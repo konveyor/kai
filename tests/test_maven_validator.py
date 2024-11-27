@@ -465,6 +465,22 @@ class TestParseMavenOutput(unittest.TestCase):
         self.assertEqual(len(errors), 1)
         self.assertEqual(errors[0].file, "/kai/example/coolstore/pom.xml")
 
+    def test_multiple_build_errors(self) -> None:
+        mvn_output = """[INFO] Scanning for projects...
+[ERROR] [ERROR] Some problems were encountered while processing the POMs:
+[ERROR]   The project com.redhat.coolstore:monolith:1.0.0-SNAPSHOT (/Users/pgaikwad/Projects/kai/example/coolstore/pom.xml) has 2 errors
+[ERROR]     'dependencies.dependency.version' for io.quarkus:quarkus-jakartaee-jaxrs:jar is missing. @ line 30, column 21
+[ERROR]     'dependencies.dependency.version' for io.quarkus:quarkus-jakartaee-jms:jar is missing. @ line 34, column 21
+[ERROR]
+"""
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+            parse_maven_output(mvn_output, rc=1)
+        )
+        self.assertEqual(len(build_errors), 2)
+        self.assertEqual(len(dependency_errors), 0)
+        self.assertEqual(len(compilation_errors), 0)
+        self.assertEqual(len(catchall_errors), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

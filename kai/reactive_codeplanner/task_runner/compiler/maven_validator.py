@@ -20,6 +20,10 @@ logger = get_logger(__name__)
 
 tracer = trace.get_tracer("maven_validator")
 
+BUILD_ERROR_PATTERN = re.compile(
+    r"\s*\[(ERROR|FATAL)\]\s*(.+?) @ line (\d+), column (\d+)"
+)
+
 
 class MavenCompileStep(ValidationStep):
 
@@ -263,7 +267,11 @@ def parse_build_errors(
                 # Collect details if any
                 details = []
                 i += 1
-                while i < len(lines) and lines[i].startswith("[ERROR]     "):
+                while (
+                    i < len(lines)
+                    and lines[i].startswith("[ERROR]     ")
+                    and not BUILD_ERROR_PATTERN.match(lines[i])
+                ):
                     detail_line = lines[i].replace("[ERROR]     ", "", 1).strip()
                     details.append(detail_line)
                     i += 1
@@ -360,10 +368,7 @@ def match_build_error(line: str, file_path: str) -> Optional[MavenCompilerError]
     """
     Matches a build error line and returns a BuildError instance.
     """
-    build_error_pattern = re.compile(
-        r"\s*\[(ERROR|FATAL)\]\s*(.+?) @ line (\d+), column (\d+)"
-    )
-    match = build_error_pattern.match(line)
+    match = BUILD_ERROR_PATTERN.match(line)
     if match:
         message = match.group(2).strip()
         line_number = int(match.group(3))
