@@ -178,6 +178,7 @@ started contributing, please see our [Contributor Guide](CONTRIBUTING.md).
 Refer to Konveyor's Code of Conduct
 [here](https://github.com/konveyor/community/blob/main/CODE_OF_CONDUCT.md).
 
+
 ## 📜 License
 
 This project is licensed under the Apache License 2.0 - see the
