@@ -53,22 +53,21 @@ get-analyzer-deps:
 	docker rm bundle
 
 # This will get the rulesets and set them to be used by run_demo.py
-get_rulesets:
+get-rulesets:
 	(cd example/analysis && rm -rf rulesets && git clone https://github.com/konveyor/rulesets); rm -rf example/analysis/rulesets/preview
 
 run_demo:
 	cd example && python run_demo.py
 
 run_debug_driver:
-	PYTHONPATH=$(KAI_PYTHON_PATH) python kai/reactive_codeplanner/main.py \
-						 example/config.toml \
-						 example/coolstore \
-						 example/analysis/rulesets/default/generated \
-						 example/analysis/kai-analyzer-rpc \
-						 example/analysis/jdtls/bin/jdtls \
-						 example/analysis/bundle.jar \
-						 "(konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee || konveyor.io/target=jakarta-ee8 || konveyor.io/target=jakarta-ee9 || konveyor.io/target=cloud-readiness)" \
-						 ""
+	python kai/reactive_codeplanner/main.py \
+		--kai-config example/config.toml \
+		--source-directory example/coolstore \
+		--rules-directory example/analysis/rulesets/default/generated \
+		--analyzer-lsp-server-binary example/analysis/kai-analyzer-rpc \
+		--analyzer-lsp-path example/analysis/jdtls/bin/jdtls \
+		--analyzer-lsp-java-bundle example/analysis/bundle.jar \
+		--label-selector "(konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee || konveyor.io/target=jakarta-ee8 || konveyor.io/target=jakarta-ee9 || konveyor.io/target=cloud-readiness)"
 
 # This will run all the things that you need to do, to configure the demo.
-config_demo: set-binaries-demo get_analyzer_deps get_rulesets
+config_demo: set-binaries-demo get-analyzer-deps get-rulesets
