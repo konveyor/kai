@@ -39,6 +39,7 @@ class AnalyzerRuleViolation(ValidationError):
             self.ruleset.name == error2.ruleset.name
             and self.incident.message == error2.incident.message
             and self.file == error2.file
+            and self.incident.variables == error2.incident.variables
         ):
             logger.info("should match on line numbers %s -- %s", self.line, error2.line)
             return True

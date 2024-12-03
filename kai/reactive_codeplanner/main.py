@@ -35,66 +35,81 @@ logger = logging.get_logger(__name__)
 
 
 def main() -> None:
-
     parser = argparse.ArgumentParser(
         description="Run the CodePlan loop against a project"
     )
+
     parser.add_argument(
-        "kai_config",
+        "--kai-config",
+        "-k",
         help="The path to the kai config file",
         type=Path,
+        required=True,
     )
 
     parser.add_argument(
-        "source_directory",
+        "--source-directory",
+        "-s",
         help="The root directory of the project to be fixed",
         type=Path,
+        required=True,
     )
 
     parser.add_argument(
-        "rules_directory",
+        "--rules-directory",
+        "-r",
         help="The root directory of the rules to use during analysis",
         type=Path,
+        required=True,
     )
 
     parser.add_argument(
-        "analyzer_lsp_server_binary",
+        "--analyzer-lsp-server-binary",
+        "-b",
         help="The binary for running analyzer-lsp RPC server",
         type=Path,
+        required=True,
     )
 
     parser.add_argument(
-        "analyzer_lsp_path",
+        "--analyzer-lsp-path",
+        "-a",
         help="The binary for analyzer-lsp",
         type=Path,
+        required=True,
     )
+
     parser.add_argument(
-        "analyzer_lsp_java_bundle",
+        "--analyzer-lsp-java-bundle",
+        "-j",
         help="The path to the analyzer java bundle",
         type=Path,
+        required=True,
     )
 
     parser.add_argument(
-        "label_selector",
-        default="",
+        "--label-selector",
+        "-l",
         help="The label selector for rules",
-        type=Path,
+        type=str,
+        default="",
     )
 
     parser.add_argument(
-        "incident_selector",
-        default="",
+        "--incident-selector",
+        "-i",
         help="The incident selector for violations",
-        type=Path,
+        type=str,
+        default="",
     )
 
     parser.add_argument(
-        "dep_open_source_labels_path",
-        default="",
-        help="Path to the opensource labels for depenencies file",
+        "--dep-open-source-labels-path",
+        "-d",
+        help="Path to the open source labels for dependencies file",
         type=Path,
+        default=None,
     )
-
     args = parser.parse_args()
 
     config = RpcClientConfig(
@@ -121,7 +136,11 @@ def main() -> None:
         rules_directory=Path(args.rules_directory),
         analyzer_lsp_path=Path(args.analyzer_lsp_path),
         analyzer_java_bundle_path=Path(args.analyzer_lsp_java_bundle),
-        dep_open_source_labels_path=Path(args.dep_open_source_labels_path),
+        dep_open_source_labels_path=(
+            Path(args.dep_open_source_labels_path)
+            if args.dep_open_source_labels_path
+            else None
+        ),
     )
 
     task_manager = TaskManager(
@@ -175,15 +194,11 @@ def main() -> None:
         logger.info("QUEUE_STATE: END")
         logger.info("QUEUE_STATE: SUCCESSFUL_TASKS: START")
         for task in task_manager.processed_tasks:
-            logger.info(
-                f"QUEUE_STATE: SUCCESSFUL_TASKS: {task}(priority={task.priority}, depth={task.depth}, retries={task.retry_count})"
-            )
+            logger.info(f"QUEUE_STATE: SUCCESSFUL_TASKS: {task}")
         logger.info("QUEUE_STATE: SUCCESSFUL_TASKS: END")
         logger.info("QUEUE_STATE: IGNORED_TASKS: START")
         for task in task_manager.ignored_tasks:
-            logger.info(
-                f"QUEUE_STATE: IGNORED_TASKS: {task}(priority={task.priority}, depth={task.depth}, retries={task.retry_count})"
-            )
+            logger.info(f"QUEUE_STATE: IGNORED_TASKS: {task}")
         logger.info("QUEUE_STATE: IGNORED_TASKS: END")
     task_manager.stop()
     logger.info("Codeplan execution completed.")

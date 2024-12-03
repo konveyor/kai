@@ -25,7 +25,7 @@ class AnalyzerLSP:
         rules_directory: Path,
         analyzer_lsp_path: Path,
         analyzer_java_bundle_path: Path,
-        dep_open_source_labels_path: Path,
+        dep_open_source_labels_path: Optional[Path],
     ) -> None:
         """This will start and analyzer-lsp jsonrpc server"""
         # trunk-ignore-begin(bandit/B603)

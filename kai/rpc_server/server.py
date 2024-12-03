@@ -530,15 +530,11 @@ def get_codeplan_agent_solution(
             app.log.debug("QUEUE_STATE: END")
             app.log.debug("QUEUE_STATE: SUCCESSFUL_TASKS: START")
             for task in app.task_manager.processed_tasks:
-                app.log.debug(
-                    f"QUEUE_STATE: SUCCESSFUL_TASKS: {task}(priority={task.priority}, depth={task.depth}, retries={task.retry_count})"
-                )
+                app.log.debug(f"QUEUE_STATE: SUCCESSFUL_TASKS: {task}")
             app.log.debug("QUEUE_STATE: SUCCESSFUL_TASKS: END")
             app.log.debug("QUEUE_STATE: IGNORED_TASKS: START")
             for task in app.task_manager.ignored_tasks:
-                app.log.debug(
-                    f"QUEUE_STATE: IGNORED_TASKS: {task}(priority={task.priority}, depth={task.depth}, retries={task.retry_count})"
-                )
+                app.log.debug(f"QUEUE_STATE: IGNORED_TASKS: {task}")
             app.log.debug("QUEUE_STATE: IGNORED_TASKS: END")
 
         diff = app.rcm.snapshot.diff(app.rcm.first_snapshot)

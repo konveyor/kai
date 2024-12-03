@@ -39,6 +39,9 @@ class MavenCompileStep(ValidationStep):
         )
         # Build/dependency/other errors prevent the compilation errors from being reported
         # But we still want to return them so they aren't mistakenly marked as solved.
+        logger.debug(
+            f"determining whether maven cache should be set: build_errors: {bool(build_errors)}, dependency_errors: {bool(dependency_errors)}, catchall_errors: {bool(catchall_errors)}, compilation_errors: {bool(compilation_errors)}, cond: {(build_errors or dependency_errors or catchall_errors) and not compilation_errors}"
+        )
         if (
             build_errors or dependency_errors or catchall_errors
         ) and not compilation_errors:
@@ -48,7 +51,9 @@ class MavenCompileStep(ValidationStep):
             )
         else:
             self.last_compilation_errors = compilation_errors
-            logger.debug("Setting the maven cache")
+            logger.debug(
+                f"Setting the maven cache with {len(self.last_compilation_errors)} compilation errors"
+            )
         errors = build_errors + dependency_errors + compilation_errors + catchall_errors
         return ValidationResult(passed=not errors, errors=errors)
 
