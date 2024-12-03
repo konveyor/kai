@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import contextlib
 import os
+import platform
 import subprocess  # trunk-ignore(bandit/B404)
 import sys
 import time
@@ -34,10 +35,10 @@ APP_NAME = "coolstore"
 SAMPLE_APP_DIR = Path("coolstore")
 ANALYSIS_BUNDLE_PATH = Path(".", "analysis", "bundle.jar")
 ANALYSIS_LSP_PATH = Path(".", "analysis", "jdtls", "bin", "jdtls")
-ANALYSIS_RPC_PATH = Path(".", "analysis", "kai-analyzer-rpc")
+ANALYSIS_RPC_PATH = Path(".", "analysis",  f"kai-analyzer-rpc{'.exe' if platform.system().lower() == 'windows' else ''}")
 ANALYSIS_RULES_PATH = Path(".", "analysis", "rulesets", "default", "generated")
 ANALYSIS_DEP_LABELS_FILE = Path(".", "analysis", "maven.default.index")
-RPC_BINARY_PATH = Path(".", "analysis", "kai-rpc-server")
+RPC_BINARY_PATH = Path(".", "analysis",  f"kai-rpc-server{'.exe' if platform.system().lower() == 'windows' else ''}")
 TRACING_ENABLED = "ENABLE_TRACING"
 
 KAI_LOG = get_logger("run_demo")
