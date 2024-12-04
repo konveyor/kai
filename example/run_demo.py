@@ -30,15 +30,21 @@ from kai.rpc_server.server import (
     KaiRpcApplicationConfig,
 )
 
+
+def get_binary_path(path: str) -> Path:
+    if platform.system().lower() != 'windows' and ".exe" not in path.lower():
+        return Path(f"{path}.exe")
+    return Path(path)
+
 SERVER_URL = "http://0.0.0.0:8080"
 APP_NAME = "coolstore"
 SAMPLE_APP_DIR = Path("coolstore")
 ANALYSIS_BUNDLE_PATH = Path(".", "analysis", "bundle.jar")
 ANALYSIS_LSP_PATH = Path(".", "analysis", "jdtls", "bin", "jdtls")
-ANALYSIS_RPC_PATH = Path(".", "analysis",  f"kai-analyzer-rpc{'.exe' if platform.system().lower() == 'windows' else ''}")
+ANALYSIS_RPC_PATH = get_binary_path("./analysis/kai-analyzer-rpc")
+RPC_BINARY_PATH = get_binary_path("./analysis/kai-rpc-server")
 ANALYSIS_RULES_PATH = Path(".", "analysis", "rulesets", "default", "generated")
 ANALYSIS_DEP_LABELS_FILE = Path(".", "analysis", "maven.default.index")
-RPC_BINARY_PATH = Path(".", "analysis",  f"kai-rpc-server{'.exe' if platform.system().lower() == 'windows' else ''}")
 TRACING_ENABLED = "ENABLE_TRACING"
 
 KAI_LOG = get_logger("run_demo")
@@ -46,7 +52,6 @@ KAI_LOG = get_logger("run_demo")
 # TODOs
 # 1) Add ConfigFile to tweak the server URL and rulesets/violations
 # 2) Limit to specific rulesets/violations we are interested in
-
 
 def pre_flight_checks() -> None:
     for path in [
