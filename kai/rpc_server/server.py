@@ -574,8 +574,11 @@ def scoped_task_fn(
         log.info(f"In inner {args}, {kwargs}")
         generator = next_task_fn(*args, **kwargs)
         for i in range(max_iterations):
-            log.info(f"Yielding on iteration {i}")
-            yield next(generator)
+            try:
+                log.debug(f"Yielding on iteration {i}")
+                yield next(generator)
+            except StopIteration:
+                break
 
     log.debug("Returning the iteration-scoped get_next_task function")
 
