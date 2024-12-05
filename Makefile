@@ -57,7 +57,7 @@ get-rulesets:
 	(cd example/analysis && rm -rf rulesets && git clone https://github.com/konveyor/rulesets); rm -rf example/analysis/rulesets/preview
 
 run_demo:
-	cd example && python run_demo.py
+	cd example && mkdir -p logs && python run_demo.py
 
 run_debug_driver:
 	python kai/reactive_codeplanner/main.py \

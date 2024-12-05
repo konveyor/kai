@@ -1,3 +1,4 @@
+from operator import attrgetter
 from pathlib import Path
 from typing import IO, Any, Optional, cast
 from urllib.parse import urlparse
@@ -79,7 +80,10 @@ class AnalyzerLSPStep(ValidationStep):
             logger.log(TRACE, "analyzer_output.result is not a BaseModel")
             logger.log(TRACE, analyzer_output.result)
 
-        errors = self.__parse_analyzer_lsp_output(analyzer_output.result)
+        errors = sorted(
+            self.__parse_analyzer_lsp_output(analyzer_output.result),
+            key=attrgetter("loc"),
+        )
         return ValidationResult(
             passed=not errors, errors=cast(list[ValidationError], errors)
         )

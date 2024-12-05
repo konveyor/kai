@@ -25,7 +25,8 @@ class AnalyzerLSP:
         rules_directory: Path,
         analyzer_lsp_path: Path,
         analyzer_java_bundle_path: Path,
-        dep_open_source_labels_path: Optional[Path],
+        dep_open_source_labels_path: Optional[Path] = None,
+        log_file: Optional[Path] = None,
     ) -> None:
         """This will start and analyzer-lsp jsonrpc server"""
         # trunk-ignore-begin(bandit/B603)
@@ -43,19 +44,25 @@ class AnalyzerLSP:
         if dep_open_source_labels_path is not None:
             args.append("-depOpenSourceLabelsFile")
             args.append(str(dep_open_source_labels_path))
+        server_stderr = subprocess.PIPE
+        if log_file is not None:
+            args.append("-log-file")
+            args.append(str(log_file))
+            server_stderr = subprocess.DEVNULL
         logger.debug(f"Starting analyzer rpc server with {args}")
         self.rpc_server = subprocess.Popen(
             args,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=server_stderr,
         )
         # trunk-ignore-end(bandit/B603)
 
-        self.stderr_logging_thread = threading.Thread(
-            target=log_stderr, args=(self.rpc_server.stderr,)
-        )
-        self.stderr_logging_thread.start()
+        if log_file is None:
+            self.stderr_logging_thread = threading.Thread(
+                target=log_stderr, args=(self.rpc_server.stderr,)
+            )
+            self.stderr_logging_thread.start()
 
         self.rpc = JsonRpcServer(
             json_rpc_stream=BareJsonStream(
