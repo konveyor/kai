@@ -141,7 +141,6 @@ def main() -> None:
             if args.dep_open_source_labels_path
             else None
         ),
-        log_file=Path(".", "kai-analyzer.log"),
     )
 
     task_manager = TaskManager(

@@ -33,7 +33,7 @@ jobs:
             shell: cmd
         models:
           - provider: ChatIBMGenAI
-            model_id: meta-llama/llama-3-1-70b-instruct
+            model_id: meta-llama/llama-3-70b-instruct
             max_new_tokens: 2048
     runs-on: ${{ matrix.runs_on.os }}
     steps:
@@ -104,7 +104,7 @@ jobs:
           git config --global user.email "no-reply@konveyor.io"
           git config --global user.name "Konveyor CI"
           git clone https://github.com/konveyor/rulesets
-          mv ./rulesets ./example/analysis
+          mv ./rulesets/default/generated ./example/analysis/rulesets
 
           cat << EOF > ./example/config.toml
           log_level = "info"
@@ -129,7 +129,6 @@ jobs:
         run: |
           which python
           cd example
-          mkdir logs
           ./fetch.sh
           ./run_demo.py
           cd coolstore
