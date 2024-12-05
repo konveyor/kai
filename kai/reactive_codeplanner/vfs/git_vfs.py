@@ -235,25 +235,33 @@ class RepoContextManager:
         self.reflection_agent = reflection_agent
 
     def commit(
-        self, msg: str | None = None, spawning_result: SpawningResult | None = None
+        self,
+        msg: str | None = None,
+        spawning_result: SpawningResult | None = None,
+        run_reflection_agent: bool = True,
     ) -> bool:
         """
         Commits the current state of the repository and updates the snapshot.
         Also runs the reflection agent validate the repository state.
         """
 
-        reflection_result = AgentResult()
-        if self.reflection_agent:
-            if spawning_result is not None and isinstance(
-                spawning_result, SpawningResult
-            ):
-                reflection_task = spawning_result.to_reflection_task()
-                if reflection_task:
-                    reflection_result = self.reflection_agent.execute(reflection_task)
+        if run_reflection_agent:
+            reflection_result = AgentResult()
+            if self.reflection_agent:
+                if spawning_result is not None and isinstance(
+                    spawning_result, SpawningResult
+                ):
+                    reflection_task = spawning_result.to_reflection_task()
+                    if reflection_task:
+                        reflection_result = self.reflection_agent.execute(
+                            reflection_task
+                        )
 
-        new_spawning_result = union_the_result_and_the_errors(
-            reflection_result.encountered_errors, spawning_result
-        )
+            new_spawning_result = union_the_result_and_the_errors(
+                reflection_result.encountered_errors, spawning_result
+            )
+        else:
+            new_spawning_result = spawning_result
 
         self.snapshot = self.snapshot.commit(msg, new_spawning_result)
 
