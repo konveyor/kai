@@ -452,6 +452,13 @@ def get_codeplan_agent_solution(
             server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
             return
 
+        # Get a snapshot of the current state of the repo so we can reset it
+        # later
+        app.rcm.commit(
+            f"get_codeplan_agent_solution. id: {id}", run_reflection_agent=False
+        )
+        agent_solution_snapshot = app.rcm.snapshot
+
         app.config = cast(KaiRpcApplicationConfig, app.config)
 
         # Data for AnalyzerRuleViolation should probably take an ExtendedIncident
@@ -543,7 +550,9 @@ def get_codeplan_agent_solution(
 
         diff = app.rcm.snapshot.diff(app.rcm.first_snapshot)
         overall_result["diff"] = diff[1] + diff[2]
-        app.rcm.reset_to_first()
+
+        app.rcm.reset(agent_solution_snapshot)
+
         server.send_response(
             id=id,
             result=dict(overall_result),
@@ -569,8 +578,11 @@ def scoped_task_fn(
         log.info(f"In inner {args}, {kwargs}")
         generator = next_task_fn(*args, **kwargs)
         for i in range(max_iterations):
-            log.info(f"Yielding on iteration {i}")
-            yield next(generator)
+            try:
+                log.debug(f"Yielding on iteration {i}")
+                yield next(generator)
+            except StopIteration:
+                break
 
     log.debug("Returning the iteration-scoped get_next_task function")
 
