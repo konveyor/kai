@@ -86,7 +86,6 @@ def initialize_rpc_server(
         analyzer_lsp_rpc_path=ANALYSIS_RPC_PATH,
         analyzer_lsp_rules_path=ANALYSIS_RULES_PATH,
         analyzer_lsp_dep_labels_path=ANALYSIS_DEP_LABELS_FILE,
-        enable_reflection=False,
     )
 
     rpc_subprocess = subprocess.Popen(  # trunk-ignore(bandit/B603)
@@ -133,7 +132,7 @@ def initialize_rpc_server(
         log.debug(f"shutdown resposne -- {response}")
         log.info("Stopping RPC Server")
         rpc_subprocess.wait()
-        log.info("Stopped RPC Server")
+        log.info("Stoped RPC Server")
         rpc_server.stop()
 
 

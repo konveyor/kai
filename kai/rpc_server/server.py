@@ -56,7 +56,7 @@ tracer = trace.get_tracer("kai_application")
 
 
 class KaiRpcApplicationConfig(CamelCaseBaseModel):
-    process_id: Optional[int] = None
+    process_id: Optional[int]
 
     root_path: Path
     model_provider: KaiConfigModels
@@ -68,8 +68,7 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
     file_log_level: Optional[str] = None
     log_dir_path: Optional[Path] = None
     demo_mode: bool = False
-    cache_dir: Optional[Path] = None
-    enable_reflection: bool = True
+    cache_dir: Optional[Path]
 
     analyzer_lsp_lsp_path: Path
     analyzer_lsp_rpc_path: Path
@@ -184,9 +183,6 @@ def initialize(
 
         app.log.info(f"Initialized with config: {app.config}")
 
-        analysis_log_path = None
-        if app.config.log_dir_path is not None:
-            analysis_log_path = Path(app.config.log_dir_path, "kai-analyzer.log")
         app.analyzer = AnalyzerLSP(
             analyzer_lsp_server_binary=app.config.analyzer_lsp_rpc_path,
             repo_directory=app.config.root_path,
@@ -195,7 +191,6 @@ def initialize(
             analyzer_java_bundle_path=app.config.analyzer_lsp_java_bundle_path,
             dep_open_source_labels_path=app.config.analyzer_lsp_dep_labels_path
             or Path(),
-            log_file=analysis_log_path,
         )
 
         internal_config = RpcClientConfig(
@@ -210,14 +205,11 @@ def initialize(
             dep_open_source_labels_path=app.config.analyzer_lsp_dep_labels_path,
         )
 
-        reflection_agent = None
-        if app.config.enable_reflection:
-            reflection_agent = ReflectionAgent(
-                model_provider=model_provider, iterations=1, retries=3
-            )
         app.rcm = RepoContextManager(
             project_root=app.config.root_path,
-            reflection_agent=reflection_agent,
+            reflection_agent=ReflectionAgent(
+                model_provider=model_provider, iterations=1, retries=3
+            ),
         )
 
         app.log.debug("initalized the repo context manager")
@@ -573,11 +565,8 @@ def scoped_task_fn(
         log.info(f"In inner {args}, {kwargs}")
         generator = next_task_fn(*args, **kwargs)
         for i in range(max_iterations):
-            try:
-                log.debug(f"Yielding on iteration {i}")
-                yield next(generator)
-            except StopIteration:
-                break
+            log.info(f"Yielding on iteration {i}")
+            yield next(generator)
 
     log.debug("Returning the iteration-scoped get_next_task function")
 

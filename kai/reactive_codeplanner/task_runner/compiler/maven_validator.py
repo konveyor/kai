@@ -3,7 +3,6 @@
 import re
 import subprocess  # trunk-ignore(bandit/B404)
 from dataclasses import dataclass, field
-from operator import attrgetter
 from pathlib import Path
 from typing import Optional, Type
 
@@ -56,7 +55,6 @@ class MavenCompileStep(ValidationStep):
                 f"Setting the maven cache with {len(self.last_compilation_errors)} compilation errors"
             )
         errors = build_errors + dependency_errors + compilation_errors + catchall_errors
-        errors = sorted(errors, key=attrgetter("parse_lines"))
         return ValidationResult(passed=not errors, errors=errors)
 
 
