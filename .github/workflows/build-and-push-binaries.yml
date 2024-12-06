@@ -103,7 +103,7 @@ jobs:
           cd kai_analyzer_rpc && go build -ldflags="-extldflags=-static" -o kai-analyzer-rpc main.go && cd ..
 
       - name: Setup analysis deps
-        if: ${{ matrix.runs_on.os == 'ubuntu-latest' || matrix.runs_on.os == 'ubuntu-24.04-arm' }}
+        if: ${{ startsWith(matrix.runs_on.os, 'ubuntu') }}
         run: |
           cp ./dist/kai-rpc-server ./example/analysis/
           cp ./kai_analyzer_rpc/kai-analyzer-rpc ./example/analysis/
@@ -136,7 +136,7 @@ jobs:
           cat ./example/config.toml
 
       - name: Run e2e test
-        if: matrix.runs_on.os == 'ubuntu-latest'
+        if: ${{ startsWith(matrix.runs_on.os, 'ubuntu') }}
         run: |
           which python
           cd example
@@ -159,34 +159,34 @@ jobs:
           GENAI_KEY: "BWAHAHA"
 
       - name: lowercase runner.os (linux & mac)
-        if: ${{ matrix.runs_on.os != 'windows-latest' || matrix.runs_on.os != 'windows-11-preview-arm' }}
+        if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           echo "OS=`echo ${{ runner.os }} | tr '[:upper:]' '[:lower:]'`" >>${GITHUB_ENV}
 
       - name: lowercase runner.os (windows)
-        if: ${{ matrix.runs_on.os == 'windows-latest' || matrix.runs_on.os == 'windows-11-preview-arm' }}
+        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           $os_string = "${{ runner.os }}"
           $lowercase_os_string = $os_string.ToLower() 
           echo "OS=$lowercase_os_string" >> $env:GITHUB_ENV
 
       - name: Identify OS Arch (linux & mac)
-        if: ${{ matrix.runs_on.os != 'windows-latest' || matrix.runs_on.os != 'windows-11-preview-arm' }}
+        if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           echo "OS_ARCH=$(uname -m)" >>${GITHUB_ENV}
 
       - name: Identify OS Arch (windows)
-        if: ${{ matrix.runs_on.os == 'windows-latest' || matrix.runs_on.os == 'windows-11-preview-arm' }}
+        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           echo "OS_ARCH=$(uname -m)" >> $env:GITHUB_ENV
 
       - name: Archive binaries (linux & mac)
-        if: ${{ matrix.runs_on.os != 'windows-latest' || matrix.runs_on.os != 'windows-11-preview-arm' }}
+        if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           zip -j kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip dist/kai-rpc-server kai_analyzer_rpc/kai-analyzer-rpc
 
       - name: Archive binaries (windows)
-        if: ${{ matrix.runs_on.os == 'windows-latest' || matrix.runs_on.os == 'windows-11-preview-arm' }}
+        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           mv kai_analyzer_rpc\kai-analyzer-rpc kai_analyzer_rpc\kai-analyzer-rpc.exe
           $filesToInclude = "dist\kai-rpc-server.exe", "kai_analyzer_rpc\kai-analyzer-rpc.exe"
