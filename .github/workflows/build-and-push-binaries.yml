@@ -184,7 +184,7 @@ jobs:
       - name: Identify OS Arch (windows)
         if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
         run: |
-          echo "OS_ARCH=$(uname -m)" >> $env:GITHUB_ENV
+          echo "OS_ARCH=$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)" >> $env:GITHUB_ENV
 
       - name: Archive binaries (linux & mac)
         if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
