@@ -101,6 +101,7 @@ Searched dependencies:
                     code="",
                     query=query,
                     times=ask.times + 1,
+                    background=ask.background,
                 )
             )
         if isinstance(response, list):
