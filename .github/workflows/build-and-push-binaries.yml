@@ -76,14 +76,14 @@ jobs:
           check-latest: true
 
       - name: Set up venv (windows)
-        if: ${{ matrix.runs_on.os == 'windows-latest' || matrix.runs_on.os == 'windows-11-preview-arm' }}
+        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           python -m venv venv
           . venv\Scripts\activate
           echo PATH=$PATH >> $GITHUB_ENV
 
       - name: Set up venv (linux & mac)
-        if: ${{ matrix.runs_on.os != 'windows-latest' || matrix.runs_on.os != 'windows-11-preview-arm' }}
+        if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           python -m venv venv
           . venv/bin/activate
