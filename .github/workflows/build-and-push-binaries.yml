@@ -45,13 +45,13 @@ jobs:
         uses: actions/checkout@v3
 
       - uses: actions/setup-java@v3
-        if: matrix.runs_on.os != 'windows-latest' || matrix.runs_on.os != 'windows-11-preview-arm'
+        if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
         with:
           distribution: "oracle"
           java-version: "17"
       
       - uses: actions/setup-java@v3
-        if: matrix.runs_on.os == 'windows-latest' || matrix.runs_on.os == 'windows-11-preview-arm'
+        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
         with:
           distribution: "microsoft"
           java-version: "17"
@@ -76,14 +76,14 @@ jobs:
           check-latest: true
 
       - name: Set up venv (windows)
-        if: matrix.runs_on.os == 'windows-latest'
+        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           python -m venv venv
           . venv\Scripts\activate
           echo PATH=$PATH >> $GITHUB_ENV
 
       - name: Set up venv (linux & mac)
-        if: matrix.runs_on.os != 'windows-latest'
+        if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           python -m venv venv
           . venv/bin/activate
@@ -98,12 +98,18 @@ jobs:
         env:
           PATH: ${{ env.PATH }}
 
-      - name: Build Kai Analyzer
+      - name: Build Kai Analyzer (non-windows)
+        if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           cd kai_analyzer_rpc && go build -ldflags="-extldflags=-static" -o kai-analyzer-rpc main.go && cd ..
 
+      - name: Build Kai Analyzer (windows)
+        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
+        run: |
+          cd kai_analyzer_rpc; go build -ldflags="-extldflags=-static" -o kai-analyzer-rpc main.go; cd ..
+
       - name: Setup analysis deps
-        if: matrix.runs_on.os == 'ubuntu-latest'
+        if: ${{ startsWith(matrix.runs_on.os, 'ubuntu') }}
         run: |
           cp ./dist/kai-rpc-server ./example/analysis/
           cp ./kai_analyzer_rpc/kai-analyzer-rpc ./example/analysis/
@@ -136,7 +142,7 @@ jobs:
           cat ./example/config.toml
 
       - name: Run e2e test
-        if: matrix.runs_on.os == 'ubuntu-latest'
+        if: ${{ startsWith(matrix.runs_on.os, 'ubuntu') }}
         run: |
           which python
           cd example
@@ -159,34 +165,34 @@ jobs:
           GENAI_KEY: "BWAHAHA"
 
       - name: lowercase runner.os (linux & mac)
-        if: matrix.runs_on.os != 'windows-latest'
+        if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           echo "OS=`echo ${{ runner.os }} | tr '[:upper:]' '[:lower:]'`" >>${GITHUB_ENV}
 
       - name: lowercase runner.os (windows)
-        if: matrix.runs_on.os == 'windows-latest'
+        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           $os_string = "${{ runner.os }}"
           $lowercase_os_string = $os_string.ToLower() 
           echo "OS=$lowercase_os_string" >> $env:GITHUB_ENV
 
       - name: Identify OS Arch (linux & mac)
-        if: matrix.runs_on.os != 'windows-latest'
+        if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           echo "OS_ARCH=$(uname -m)" >>${GITHUB_ENV}
 
       - name: Identify OS Arch (windows)
-        if: matrix.runs_on.os == 'windows-latest'
+        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
         run: |
-          echo "OS_ARCH=$(uname -m)" >> $env:GITHUB_ENV
+          echo "OS_ARCH=$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)" >> $env:GITHUB_ENV
 
       - name: Archive binaries (linux & mac)
-        if: matrix.runs_on.os != 'windows-latest'
+        if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           zip -j kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip dist/kai-rpc-server kai_analyzer_rpc/kai-analyzer-rpc
 
       - name: Archive binaries (windows)
-        if: matrix.runs_on.os == 'windows-latest'
+        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           mv kai_analyzer_rpc\kai-analyzer-rpc kai_analyzer_rpc\kai-analyzer-rpc.exe
           $filesToInclude = "dist\kai-rpc-server.exe", "kai_analyzer_rpc\kai-analyzer-rpc.exe"
