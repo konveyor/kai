@@ -56,7 +56,7 @@ tracer = trace.get_tracer("kai_application")
 
 
 class KaiRpcApplicationConfig(CamelCaseBaseModel):
-    process_id: Optional[int]
+    process_id: Optional[int] = None
 
     root_path: Path
     model_provider: KaiConfigModels
@@ -68,7 +68,8 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
     file_log_level: Optional[str] = None
     log_dir_path: Optional[Path] = None
     demo_mode: bool = False
-    cache_dir: Optional[Path]
+    cache_dir: Optional[Path] = None
+    enable_reflection: bool = True
 
     analyzer_lsp_lsp_path: Path
     analyzer_lsp_rpc_path: Path
@@ -205,11 +206,14 @@ def initialize(
             dep_open_source_labels_path=app.config.analyzer_lsp_dep_labels_path,
         )
 
+        reflection_agent = None
+        if app.config.enable_reflection:
+            reflection_agent = ReflectionAgent(
+                model_provider=model_provider, iterations=1, retries=3
+            )
         app.rcm = RepoContextManager(
             project_root=app.config.root_path,
-            reflection_agent=ReflectionAgent(
-                model_provider=model_provider, iterations=1, retries=3
-            ),
+            reflection_agent=reflection_agent,
         )
 
         app.log.debug("initalized the repo context manager")
