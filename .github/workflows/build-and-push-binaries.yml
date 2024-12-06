@@ -45,13 +45,13 @@ jobs:
         uses: actions/checkout@v3
 
       - uses: actions/setup-java@v3
-        if: ${{ matrix.runs_on.os != 'windows-latest' || matrix.runs_on.os != 'windows-11-preview-arm' }}
+        if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
         with:
           distribution: "oracle"
           java-version: "17"
       
       - uses: actions/setup-java@v3
-        if: ${{ matrix.runs_on.os == 'windows-latest' || matrix.runs_on.os == 'windows-11-preview-arm' }}
+        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
         with:
           distribution: "microsoft"
           java-version: "17"
