@@ -1,0 +1,2433 @@
+{
+  "input": [
+    {
+      "lc": 1,
+      "type": "constructor",
+      "id": ["langchain", "schema", "messages", "SystemMessage"],
+      "kwargs": {
+        "content": "You are a senior engineer with extensive experience in developing enterprise Java applications.\nYou are helping migrate old Java applications to a newer technology.\nA junior engineer has updated a java file in an application to migrate it to a newer technology.\nUse your best judgement to analyze the input data and review the changes.\n",
+        "type": "system"
+      }
+    },
+    {
+      "lc": 1,
+      "type": "constructor",
+      "id": ["langchain", "schema", "messages", "HumanMessage"],
+      "kwargs": {
+        "content": "You will be given a list of migration issues found in an old java file in JSON format.\nInstead of the java files themselves, you will be given a difference between old file and the new file in JSON format.\nThe difference is constructed by comparing ASTs of the two files. The JSON keys are self-explanatory.\n\nYou will analyze the differences expressed in JSON format to create a mental picture of the old source code and the new.\nYou will compare the analyzed data with the list of issues and identify which of the issues are not fixed.\nIssues often describe the expected change that needs to happen. You will use your best judgement to identify whether the issue is fixed as described.\nYou will also look for any new changes that were not originally mentioned in the issues.\nYou will also spot any changes that suggest a change in the original functionality.\nIf you find an issue that's not fixed, briefly describe why you think the issue is not fixed in 1-2 lines. If you find unnecessary changes, point those out too.\nBe precise in pointing out issues that are not fixed.\nIf you find the changes satisfactory, clearly output the word \"TERMINATE\" in your response.\n\n## Issues identified in the input file\n\n{\n    \"issues\": [\n        \"Replace the `javax.inject` import statement with `jakarta.inject`\"\n    ]\n}\n\n## Differences in ASTs of both files\n\n{\n    \"classes\": [\n        {\n            \"name\": \"StartupListener\",\n            \"super_class\": \"extends ApplicationLifecycleListener\",\n            \"fields\": {\n                \"3328776193272961245\": {\n                    \"name\": \"log\",\n                    \"type\": \"Logger\",\n                    \"annotations\": [\n                        {\n                            \"name\": \"Inject\"\n                        }\n                    ]\n                }\n            },\n            \"methods\": {\n                \"8765764857611387685\": {\n                    \"name\": \"postStart\",\n                    \"parameters\": \"(ApplicationLifecycleEvent evt)\",\n                    \"body\": \"{\\n        log.info(\\\"AppListener(postStart)\\\");\\n    }\",\n                    \"annotations\": [\n                        {\n                            \"name\": \"Override\"\n                        }\n                    ]\n                },\n                \"6170672499769985045\": {\n                    \"name\": \"preStop\",\n                    \"parameters\": \"(ApplicationLifecycleEvent evt)\",\n                    \"body\": \"{\\n        log.info(\\\"AppListener(preStop)\\\");\\n    }\",\n                    \"annotations\": [\n                        {\n                            \"name\": \"Override\"\n                        }\n                    ]\n                }\n            }\n        }\n    ]\n}\n",
+        "type": "human"
+      }
+    }
+  ],
+  "output": {
+    "lc": 1,
+    "type": "constructor",
+    "id": ["langchain", "schema", "messages", "AIMessage"],
+    "kwargs": {
+      "content": " The issue is not fixed. The import statement for `@Inject` is still from `javax.inject` instead of `jakarta.inject`. The change in the import statement is not reflected in the provided differences.",
+      "response_metadata": {
+        "model_name": "meta-llama/llama-3-1-70b-instruct",
+        "token_usage": {
+          "prompt_tokens": 579,
+          "completion_tokens": 43,
+          "total_tokens": 622,
+          "input_token_count": 579,
+          "generated_token_count": 43
+        },
+        "meta": {
+          "conversation_id": "565305e6-260c-46bb-af4f-533fd8fc4f2f",
+          "id": "93f2c7fe-8722-4a84-93c7-1d6afd41e925",
+          "model_id": "meta-llama/llama-3-1-70b-instruct"
+        },
+        "generated_token_count": 43,
+        "input_token_count": 0,
+        "input_tokens": [
+          {
+            "text": "<|begin_of_text|>"
+          },
+          {
+            "text": "You"
+          },
+          {
+            "text": "\u0120are"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120senior"
+          },
+          {
+            "text": "\u0120engineer"
+          },
+          {
+            "text": "\u0120with"
+          },
+          {
+            "text": "\u0120extensive"
+          },
+          {
+            "text": "\u0120experience"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120developing"
+          },
+          {
+            "text": "\u0120enterprise"
+          },
+          {
+            "text": "\u0120Java"
+          },
+          {
+            "text": "\u0120applications"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "You"
+          },
+          {
+            "text": "\u0120are"
+          },
+          {
+            "text": "\u0120helping"
+          },
+          {
+            "text": "\u0120migrate"
+          },
+          {
+            "text": "\u0120old"
+          },
+          {
+            "text": "\u0120Java"
+          },
+          {
+            "text": "\u0120applications"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120newer"
+          },
+          {
+            "text": "\u0120technology"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "A"
+          },
+          {
+            "text": "\u0120junior"
+          },
+          {
+            "text": "\u0120engineer"
+          },
+          {
+            "text": "\u0120has"
+          },
+          {
+            "text": "\u0120updated"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120java"
+          },
+          {
+            "text": "\u0120file"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120an"
+          },
+          {
+            "text": "\u0120application"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120migrate"
+          },
+          {
+            "text": "\u0120it"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120newer"
+          },
+          {
+            "text": "\u0120technology"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "Use"
+          },
+          {
+            "text": "\u0120your"
+          },
+          {
+            "text": "\u0120best"
+          },
+          {
+            "text": "\u0120judgement"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120analyze"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120input"
+          },
+          {
+            "text": "\u0120data"
+          },
+          {
+            "text": "\u0120and"
+          },
+          {
+            "text": "\u0120review"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120changes"
+          },
+          {
+            "text": ".\u010a\u010a\u010a"
+          },
+          {
+            "text": "User"
+          },
+          {
+            "text": ":"
+          },
+          {
+            "text": "\u0120You"
+          },
+          {
+            "text": "\u0120will"
+          },
+          {
+            "text": "\u0120be"
+          },
+          {
+            "text": "\u0120given"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120list"
+          },
+          {
+            "text": "\u0120of"
+          },
+          {
+            "text": "\u0120migration"
+          },
+          {
+            "text": "\u0120issues"
+          },
+          {
+            "text": "\u0120found"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120an"
+          },
+          {
+            "text": "\u0120old"
+          },
+          {
+            "text": "\u0120java"
+          },
+          {
+            "text": "\u0120file"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120JSON"
+          },
+          {
+            "text": "\u0120format"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "Instead"
+          },
+          {
+            "text": "\u0120of"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120java"
+          },
+          {
+            "text": "\u0120files"
+          },
+          {
+            "text": "\u0120themselves"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120will"
+          },
+          {
+            "text": "\u0120be"
+          },
+          {
+            "text": "\u0120given"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120difference"
+          },
+          {
+            "text": "\u0120between"
+          },
+          {
+            "text": "\u0120old"
+          },
+          {
+            "text": "\u0120file"
+          },
+          {
+            "text": "\u0120and"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120new"
+          },
+          {
+            "text": "\u0120file"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120JSON"
+          },
+          {
+            "text": "\u0120format"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "The"
+          },
+          {
+            "text": "\u0120difference"
+          },
+          {
+            "text": "\u0120is"
+          },
+          {
+            "text": "\u0120constructed"
+          },
+          {
+            "text": "\u0120by"
+          },
+          {
+            "text": "\u0120comparing"
+          },
+          {
+            "text": "\u0120AST"
+          },
+          {
+            "text": "s"
+          },
+          {
+            "text": "\u0120of"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120two"
+          },
+          {
+            "text": "\u0120files"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "\u0120The"
+          },
+          {
+            "text": "\u0120JSON"
+          },
+          {
+            "text": "\u0120keys"
+          },
+          {
+            "text": "\u0120are"
+          },
+          {
+            "text": "\u0120self"
+          },
+          {
+            "text": "-ex"
+          },
+          {
+            "text": "plan"
+          },
+          {
+            "text": "atory"
+          },
+          {
+            "text": ".\u010a\u010a"
+          },
+          {
+            "text": "You"
+          },
+          {
+            "text": "\u0120will"
+          },
+          {
+            "text": "\u0120analyze"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120differences"
+          },
+          {
+            "text": "\u0120expressed"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120JSON"
+          },
+          {
+            "text": "\u0120format"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120create"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120mental"
+          },
+          {
+            "text": "\u0120picture"
+          },
+          {
+            "text": "\u0120of"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120old"
+          },
+          {
+            "text": "\u0120source"
+          },
+          {
+            "text": "\u0120code"
+          },
+          {
+            "text": "\u0120and"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120new"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "You"
+          },
+          {
+            "text": "\u0120will"
+          },
+          {
+            "text": "\u0120compare"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120analyzed"
+          },
+          {
+            "text": "\u0120data"
+          },
+          {
+            "text": "\u0120with"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120list"
+          },
+          {
+            "text": "\u0120of"
+          },
+          {
+            "text": "\u0120issues"
+          },
+          {
+            "text": "\u0120and"
+          },
+          {
+            "text": "\u0120identify"
+          },
+          {
+            "text": "\u0120which"
+          },
+          {
+            "text": "\u0120of"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120issues"
+          },
+          {
+            "text": "\u0120are"
+          },
+          {
+            "text": "\u0120not"
+          },
+          {
+            "text": "\u0120fixed"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "Issues"
+          },
+          {
+            "text": "\u0120often"
+          },
+          {
+            "text": "\u0120describe"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120expected"
+          },
+          {
+            "text": "\u0120change"
+          },
+          {
+            "text": "\u0120that"
+          },
+          {
+            "text": "\u0120needs"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120happen"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "\u0120You"
+          },
+          {
+            "text": "\u0120will"
+          },
+          {
+            "text": "\u0120use"
+          },
+          {
+            "text": "\u0120your"
+          },
+          {
+            "text": "\u0120best"
+          },
+          {
+            "text": "\u0120judgement"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120identify"
+          },
+          {
+            "text": "\u0120whether"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120issue"
+          },
+          {
+            "text": "\u0120is"
+          },
+          {
+            "text": "\u0120fixed"
+          },
+          {
+            "text": "\u0120as"
+          },
+          {
+            "text": "\u0120described"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "You"
+          },
+          {
+            "text": "\u0120will"
+          },
+          {
+            "text": "\u0120also"
+          },
+          {
+            "text": "\u0120look"
+          },
+          {
+            "text": "\u0120for"
+          },
+          {
+            "text": "\u0120any"
+          },
+          {
+            "text": "\u0120new"
+          },
+          {
+            "text": "\u0120changes"
+          },
+          {
+            "text": "\u0120that"
+          },
+          {
+            "text": "\u0120were"
+          },
+          {
+            "text": "\u0120not"
+          },
+          {
+            "text": "\u0120originally"
+          },
+          {
+            "text": "\u0120mentioned"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120issues"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "You"
+          },
+          {
+            "text": "\u0120will"
+          },
+          {
+            "text": "\u0120also"
+          },
+          {
+            "text": "\u0120spot"
+          },
+          {
+            "text": "\u0120any"
+          },
+          {
+            "text": "\u0120changes"
+          },
+          {
+            "text": "\u0120that"
+          },
+          {
+            "text": "\u0120suggest"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120change"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120original"
+          },
+          {
+            "text": "\u0120functionality"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "If"
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120find"
+          },
+          {
+            "text": "\u0120an"
+          },
+          {
+            "text": "\u0120issue"
+          },
+          {
+            "text": "\u0120that"
+          },
+          {
+            "text": "'s"
+          },
+          {
+            "text": "\u0120not"
+          },
+          {
+            "text": "\u0120fixed"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120briefly"
+          },
+          {
+            "text": "\u0120describe"
+          },
+          {
+            "text": "\u0120why"
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120think"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120issue"
+          },
+          {
+            "text": "\u0120is"
+          },
+          {
+            "text": "\u0120not"
+          },
+          {
+            "text": "\u0120fixed"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120"
+          },
+          {
+            "text": "1"
+          },
+          {
+            "text": "-"
+          },
+          {
+            "text": "2"
+          },
+          {
+            "text": "\u0120lines"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "\u0120If"
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120find"
+          },
+          {
+            "text": "\u0120unnecessary"
+          },
+          {
+            "text": "\u0120changes"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120point"
+          },
+          {
+            "text": "\u0120those"
+          },
+          {
+            "text": "\u0120out"
+          },
+          {
+            "text": "\u0120too"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "Be"
+          },
+          {
+            "text": "\u0120precise"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120pointing"
+          },
+          {
+            "text": "\u0120out"
+          },
+          {
+            "text": "\u0120issues"
+          },
+          {
+            "text": "\u0120that"
+          },
+          {
+            "text": "\u0120are"
+          },
+          {
+            "text": "\u0120not"
+          },
+          {
+            "text": "\u0120fixed"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "If"
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120find"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120changes"
+          },
+          {
+            "text": "\u0120satisfactory"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120clearly"
+          },
+          {
+            "text": "\u0120output"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120word"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "TER"
+          },
+          {
+            "text": "MIN"
+          },
+          {
+            "text": "ATE"
+          },
+          {
+            "text": "\""
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120your"
+          },
+          {
+            "text": "\u0120response"
+          },
+          {
+            "text": ".\u010a\u010a"
+          },
+          {
+            "text": "##"
+          },
+          {
+            "text": "\u0120Issues"
+          },
+          {
+            "text": "\u0120identified"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120input"
+          },
+          {
+            "text": "\u0120file"
+          },
+          {
+            "text": "\u010a\u010a"
+          },
+          {
+            "text": "{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "issues"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120[\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "Replace"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120`"
+          },
+          {
+            "text": "javax"
+          },
+          {
+            "text": ".inject"
+          },
+          {
+            "text": "`"
+          },
+          {
+            "text": "\u0120import"
+          },
+          {
+            "text": "\u0120statement"
+          },
+          {
+            "text": "\u0120with"
+          },
+          {
+            "text": "\u0120`"
+          },
+          {
+            "text": "jak"
+          },
+          {
+            "text": "arta"
+          },
+          {
+            "text": ".inject"
+          },
+          {
+            "text": "`"
+          },
+          {
+            "text": "\"\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120]\u010a"
+          },
+          {
+            "text": "}\u010a\u010a"
+          },
+          {
+            "text": "##"
+          },
+          {
+            "text": "\u0120Differences"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120AST"
+          },
+          {
+            "text": "s"
+          },
+          {
+            "text": "\u0120of"
+          },
+          {
+            "text": "\u0120both"
+          },
+          {
+            "text": "\u0120files"
+          },
+          {
+            "text": "\u010a\u010a"
+          },
+          {
+            "text": "{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "classes"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120[\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "name"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "Startup"
+          },
+          {
+            "text": "Listener"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "super"
+          },
+          {
+            "text": "_class"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "extends"
+          },
+          {
+            "text": "\u0120Application"
+          },
+          {
+            "text": "Lifecycle"
+          },
+          {
+            "text": "Listener"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "fields"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "332"
+          },
+          {
+            "text": "877"
+          },
+          {
+            "text": "619"
+          },
+          {
+            "text": "327"
+          },
+          {
+            "text": "296"
+          },
+          {
+            "text": "124"
+          },
+          {
+            "text": "5"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "name"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "log"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "type"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "Logger"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "annotations"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120[\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "name"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "Inject"
+          },
+          {
+            "text": "\"\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120]\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120},\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "methods"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "876"
+          },
+          {
+            "text": "576"
+          },
+          {
+            "text": "485"
+          },
+          {
+            "text": "761"
+          },
+          {
+            "text": "138"
+          },
+          {
+            "text": "768"
+          },
+          {
+            "text": "5"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "name"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "post"
+          },
+          {
+            "text": "Start"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "parameters"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\"("
+          },
+          {
+            "text": "Application"
+          },
+          {
+            "text": "Lifecycle"
+          },
+          {
+            "text": "Event"
+          },
+          {
+            "text": "\u0120evt"
+          },
+          {
+            "text": ")\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "body"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\"{"
+          },
+          {
+            "text": "\\"
+          },
+          {
+            "text": "n"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120log"
+          },
+          {
+            "text": ".info"
+          },
+          {
+            "text": "(\\\""
+          },
+          {
+            "text": "App"
+          },
+          {
+            "text": "Listener"
+          },
+          {
+            "text": "(post"
+          },
+          {
+            "text": "Start"
+          },
+          {
+            "text": ")\\"
+          },
+          {
+            "text": "\");"
+          },
+          {
+            "text": "\\"
+          },
+          {
+            "text": "n"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "annotations"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120[\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "name"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "Override"
+          },
+          {
+            "text": "\"\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120]\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120},\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "617"
+          },
+          {
+            "text": "067"
+          },
+          {
+            "text": "249"
+          },
+          {
+            "text": "976"
+          },
+          {
+            "text": "998"
+          },
+          {
+            "text": "504"
+          },
+          {
+            "text": "5"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "name"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "pre"
+          },
+          {
+            "text": "Stop"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "parameters"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\"("
+          },
+          {
+            "text": "Application"
+          },
+          {
+            "text": "Lifecycle"
+          },
+          {
+            "text": "Event"
+          },
+          {
+            "text": "\u0120evt"
+          },
+          {
+            "text": ")\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "body"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\"{"
+          },
+          {
+            "text": "\\"
+          },
+          {
+            "text": "n"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120log"
+          },
+          {
+            "text": ".info"
+          },
+          {
+            "text": "(\\\""
+          },
+          {
+            "text": "App"
+          },
+          {
+            "text": "Listener"
+          },
+          {
+            "text": "(pre"
+          },
+          {
+            "text": "Stop"
+          },
+          {
+            "text": ")\\"
+          },
+          {
+            "text": "\");"
+          },
+          {
+            "text": "\\"
+          },
+          {
+            "text": "n"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "annotations"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120[\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "name"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "Override"
+          },
+          {
+            "text": "\"\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120]\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120]\u010a"
+          },
+          {
+            "text": "}\u010a"
+          },
+          {
+            "text": "\u0120\u010a\u010a"
+          },
+          {
+            "text": "Assistant"
+          },
+          {
+            "text": ":"
+          },
+          {
+            "text": "\u0120"
+          }
+        ],
+        "stop_reason": "eos_token",
+        "hap": [
+          {
+            "flagged": true,
+            "position": {
+              "end": 95,
+              "start": 0
+            },
+            "score": 0.12863850593566895,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 164,
+              "start": 96
+            },
+            "score": 0.12856803834438324,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 261,
+              "start": 165
+            },
+            "score": 0.13440464437007904,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 335,
+              "start": 262
+            },
+            "score": 0.12811671197414398,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 422,
+              "start": 336
+            },
+            "score": 0.12864059209823608,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 541,
+              "start": 423
+            },
+            "score": 0.13456770777702332,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 607,
+              "start": 542
+            },
+            "score": 0.15632730722427368,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 643,
+              "start": 608
+            },
+            "score": 0.13107356429100037,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 644,
+              "start": 644
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 765,
+              "start": 645
+            },
+            "score": 0.130771666765213,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 872,
+              "start": 766
+            },
+            "score": 0.13420352339744568,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 936,
+              "start": 873
+            },
+            "score": 0.12891702353954315,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1022,
+              "start": 937
+            },
+            "score": 0.12913791835308075,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1111,
+              "start": 1023
+            },
+            "score": 0.12630526721477509,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1195,
+              "start": 1112
+            },
+            "score": 0.12630772590637207,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1302,
+              "start": 1196
+            },
+            "score": 0.13414588570594788,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1356,
+              "start": 1303
+            },
+            "score": 0.1315016746520996,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1410,
+              "start": 1357
+            },
+            "score": 0.1288491189479828,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1502,
+              "start": 1411
+            },
+            "score": 0.23211786150932312,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1503,
+              "start": 1503
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1542,
+              "start": 1504
+            },
+            "score": 0.13015323877334595,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1543,
+              "start": 1543
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1545,
+              "start": 1544
+            },
+            "score": 0.14171549677848816,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1561,
+              "start": 1546
+            },
+            "score": 0.1296953558921814,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1637,
+              "start": 1562
+            },
+            "score": 0.13970616459846497,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1643,
+              "start": 1638
+            },
+            "score": 0.1333189159631729,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1645,
+              "start": 1644
+            },
+            "score": 0.13449959456920624,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1646,
+              "start": 1646
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1683,
+              "start": 1647
+            },
+            "score": 0.12787345051765442,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1684,
+              "start": 1684
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1686,
+              "start": 1685
+            },
+            "score": 0.14171549677848816,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1703,
+              "start": 1687
+            },
+            "score": 0.13269421458244324,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1713,
+              "start": 1704
+            },
+            "score": 0.14171549677848816,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1752,
+              "start": 1714
+            },
+            "score": 0.13372042775154114,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1819,
+              "start": 1753
+            },
+            "score": 0.13582375645637512,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1843,
+              "start": 1820
+            },
+            "score": 0.1336715966463089,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1884,
+              "start": 1844
+            },
+            "score": 0.14687208831310272,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1919,
+              "start": 1885
+            },
+            "score": 0.13090947270393372,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1957,
+              "start": 1920
+            },
+            "score": 0.7801145315170288,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1994,
+              "start": 1958
+            },
+            "score": 0.13156349956989288,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2020,
+              "start": 1995
+            },
+            "score": 0.14171549677848816,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2065,
+              "start": 2021
+            },
+            "score": 0.13745331764221191,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2091,
+              "start": 2066
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2113,
+              "start": 2092
+            },
+            "score": 0.1333189159631729,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2131,
+              "start": 2114
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2146,
+              "start": 2132
+            },
+            "score": 0.13295994699001312,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2171,
+              "start": 2147
+            },
+            "score": 0.13403162360191345,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2212,
+              "start": 2172
+            },
+            "score": 0.14708365499973297,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2253,
+              "start": 2213
+            },
+            "score": 0.8353085517883301,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2322,
+              "start": 2254
+            },
+            "score": 0.156355082988739,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2409,
+              "start": 2323
+            },
+            "score": 0.1601983606815338,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2446,
+              "start": 2410
+            },
+            "score": 0.13156349956989288,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2472,
+              "start": 2447
+            },
+            "score": 0.14171549677848816,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2519,
+              "start": 2473
+            },
+            "score": 0.13565658032894135,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2545,
+              "start": 2520
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2567,
+              "start": 2546
+            },
+            "score": 0.1333189159631729,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2586,
+              "start": 2568
+            },
+            "score": 0.13295994699001312,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2627,
+              "start": 2587
+            },
+            "score": 0.14947713911533356,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2666,
+              "start": 2628
+            },
+            "score": 0.1390564739704132,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2735,
+              "start": 2667
+            },
+            "score": 0.156355082988739,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2820,
+              "start": 2736
+            },
+            "score": 0.1466764658689499,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2857,
+              "start": 2821
+            },
+            "score": 0.13156349956989288,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2883,
+              "start": 2858
+            },
+            "score": 0.14171549677848816,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2930,
+              "start": 2884
+            },
+            "score": 0.13565658032894135,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2956,
+              "start": 2931
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2978,
+              "start": 2957
+            },
+            "score": 0.1333189159631729,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2996,
+              "start": 2979
+            },
+            "score": 0.13449959456920624,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3010,
+              "start": 2997
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3020,
+              "start": 3011
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3026,
+              "start": 3021
+            },
+            "score": 0.1333189159631729,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3028,
+              "start": 3027
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          }
+        ],
+        "stop_sequence": "<|eot_id|>"
+      },
+      "type": "ai",
+      "id": "run-1152e502-387e-4159-91a8-f92dd2d4cb37-0",
+      "tool_calls": [],
+      "invalid_tool_calls": []
+    }
+  }
+}
