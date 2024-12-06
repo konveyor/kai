@@ -1,0 +1,3090 @@
+{
+  "input": [
+    {
+      "lc": 1,
+      "type": "constructor",
+      "id": ["langchain", "schema", "messages", "SystemMessage"],
+      "kwargs": {
+        "content": "You are a senior engineer with extensive experience in developing enterprise Java applications.\nYou are helping migrate old Java applications to a newer technology.\nA junior engineer has updated a java file in an application to migrate it to a newer technology.\nUse your best judgement to analyze the input data and review the changes.\n",
+        "type": "system"
+      }
+    },
+    {
+      "lc": 1,
+      "type": "constructor",
+      "id": ["langchain", "schema", "messages", "HumanMessage"],
+      "kwargs": {
+        "content": "You will be given a list of migration issues found in an old java file in JSON format.\nInstead of the java files themselves, you will be given a difference between old file and the new file in JSON format.\nThe difference is constructed by comparing ASTs of the two files. The JSON keys are self-explanatory.\n\nYou will analyze the differences expressed in JSON format to create a mental picture of the old source code and the new.\nYou will compare the analyzed data with the list of issues and identify which of the issues are not fixed.\nIssues often describe the expected change that needs to happen. You will use your best judgement to identify whether the issue is fixed as described.\nYou will also look for any new changes that were not originally mentioned in the issues.\nYou will also spot any changes that suggest a change in the original functionality.\nIf you find an issue that's not fixed, briefly describe why you think the issue is not fixed in 1-2 lines. If you find unnecessary changes, point those out too.\nBe precise in pointing out issues that are not fixed.\nIf you find the changes satisfactory, clearly output the word \"TERMINATE\" in your response.\n\n## Issues identified in the input file\n\n{\n    \"issues\": [\n        \"Replace the `javax.annotation` import statement with `jakarta.annotation`\"\n    ]\n}\n\n## Differences in ASTs of both files\n\n{\n    \"imports\": {\n        \"old\": [\n            \"jakarta.inject.Inject\",\n            \"com.redhat.coolstore.model.ShoppingCart\",\n            \"io.smallrye.reactive.messaging.Emitter\",\n            \"java.util.logging.Logger\",\n            \"io.smallrye.reactive.messaging.Channel\",\n            \"com.redhat.coolstore.utils.Transformers\"\n        ],\n        \"new\": [\n            \"jakarta.inject.Inject\",\n            \"com.redhat.coolstore.model.ShoppingCart\",\n            \"io.smallrye.reactive.messaging.Emitter\",\n            \"jakarta.annotation.ApplicationScoped\",\n            \"java.util.logging.Logger\",\n            \"io.smallrye.reactive.messaging.Channel\",\n            \"com.redhat.coolstore.utils.Transformers\"\n        ]\n    },\n    \"classes\": [\n        {\n            \"name\": \"ShoppingCartOrderProcessor\",\n            \"annotations\": [\n                {\n                    \"name\": \"ApplicationScoped\"\n                }\n            ],\n            \"fields\": {\n                \"3328776193272961245\": {\n                    \"name\": \"log\",\n                    \"type\": \"Logger\",\n                    \"annotations\": [\n                        {\n                            \"name\": \"Inject\"\n                        }\n                    ]\n                },\n                \"-6532133895742386780\": {\n                    \"name\": \"ordersTopicEmitter\",\n                    \"type\": \"Emitter<String>\",\n                    \"annotations\": [\n                        {\n                            \"name\": \"Inject\"\n                        },\n                        {\n                            \"name\": \"Channel\",\n                            \"parameters\": \"(\\\"ordersTopic\\\")\"\n                        }\n                    ]\n                }\n            },\n            \"methods\": {\n                \"8154354295167250456\": {\n                    \"name\": \"process\",\n                    \"parameters\": \"(ShoppingCart cart)\",\n                    \"body\": \"{\\n        log.info(\\\"Sending order from processor: \\\");\\n        ordersTopicEmitter.send(Transformers.shoppingCartToJson(cart));\\n    }\"\n                }\n            }\n        }\n    ]\n}\n",
+        "type": "human"
+      }
+    }
+  ],
+  "output": {
+    "lc": 1,
+    "type": "constructor",
+    "id": ["langchain", "schema", "messages", "AIMessage"],
+    "kwargs": {
+      "content": " The issue is not fixed. The import statement for `javax.annotation` is not present in the old imports, but the new import statement for `jakarta.annotation` is added, however, the annotation `@ApplicationScoped` is still used from the old package `javax.annotation` which is not imported. It should be imported from `jakarta.annotation` instead.",
+      "response_metadata": {
+        "model_name": "meta-llama/llama-3-1-70b-instruct",
+        "token_usage": {
+          "prompt_tokens": 735,
+          "completion_tokens": 74,
+          "total_tokens": 809,
+          "input_token_count": 735,
+          "generated_token_count": 74
+        },
+        "meta": {
+          "conversation_id": "6be398e1-2aa2-49b8-a805-3979adc1d351",
+          "id": "43cbca49-dc9e-43f5-a484-cf6d59794452",
+          "model_id": "meta-llama/llama-3-1-70b-instruct"
+        },
+        "generated_token_count": 74,
+        "input_token_count": 0,
+        "input_tokens": [
+          {
+            "text": "<|begin_of_text|>"
+          },
+          {
+            "text": "You"
+          },
+          {
+            "text": "\u0120are"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120senior"
+          },
+          {
+            "text": "\u0120engineer"
+          },
+          {
+            "text": "\u0120with"
+          },
+          {
+            "text": "\u0120extensive"
+          },
+          {
+            "text": "\u0120experience"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120developing"
+          },
+          {
+            "text": "\u0120enterprise"
+          },
+          {
+            "text": "\u0120Java"
+          },
+          {
+            "text": "\u0120applications"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "You"
+          },
+          {
+            "text": "\u0120are"
+          },
+          {
+            "text": "\u0120helping"
+          },
+          {
+            "text": "\u0120migrate"
+          },
+          {
+            "text": "\u0120old"
+          },
+          {
+            "text": "\u0120Java"
+          },
+          {
+            "text": "\u0120applications"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120newer"
+          },
+          {
+            "text": "\u0120technology"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "A"
+          },
+          {
+            "text": "\u0120junior"
+          },
+          {
+            "text": "\u0120engineer"
+          },
+          {
+            "text": "\u0120has"
+          },
+          {
+            "text": "\u0120updated"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120java"
+          },
+          {
+            "text": "\u0120file"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120an"
+          },
+          {
+            "text": "\u0120application"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120migrate"
+          },
+          {
+            "text": "\u0120it"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120newer"
+          },
+          {
+            "text": "\u0120technology"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "Use"
+          },
+          {
+            "text": "\u0120your"
+          },
+          {
+            "text": "\u0120best"
+          },
+          {
+            "text": "\u0120judgement"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120analyze"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120input"
+          },
+          {
+            "text": "\u0120data"
+          },
+          {
+            "text": "\u0120and"
+          },
+          {
+            "text": "\u0120review"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120changes"
+          },
+          {
+            "text": ".\u010a\u010a\u010a"
+          },
+          {
+            "text": "User"
+          },
+          {
+            "text": ":"
+          },
+          {
+            "text": "\u0120You"
+          },
+          {
+            "text": "\u0120will"
+          },
+          {
+            "text": "\u0120be"
+          },
+          {
+            "text": "\u0120given"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120list"
+          },
+          {
+            "text": "\u0120of"
+          },
+          {
+            "text": "\u0120migration"
+          },
+          {
+            "text": "\u0120issues"
+          },
+          {
+            "text": "\u0120found"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120an"
+          },
+          {
+            "text": "\u0120old"
+          },
+          {
+            "text": "\u0120java"
+          },
+          {
+            "text": "\u0120file"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120JSON"
+          },
+          {
+            "text": "\u0120format"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "Instead"
+          },
+          {
+            "text": "\u0120of"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120java"
+          },
+          {
+            "text": "\u0120files"
+          },
+          {
+            "text": "\u0120themselves"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120will"
+          },
+          {
+            "text": "\u0120be"
+          },
+          {
+            "text": "\u0120given"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120difference"
+          },
+          {
+            "text": "\u0120between"
+          },
+          {
+            "text": "\u0120old"
+          },
+          {
+            "text": "\u0120file"
+          },
+          {
+            "text": "\u0120and"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120new"
+          },
+          {
+            "text": "\u0120file"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120JSON"
+          },
+          {
+            "text": "\u0120format"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "The"
+          },
+          {
+            "text": "\u0120difference"
+          },
+          {
+            "text": "\u0120is"
+          },
+          {
+            "text": "\u0120constructed"
+          },
+          {
+            "text": "\u0120by"
+          },
+          {
+            "text": "\u0120comparing"
+          },
+          {
+            "text": "\u0120AST"
+          },
+          {
+            "text": "s"
+          },
+          {
+            "text": "\u0120of"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120two"
+          },
+          {
+            "text": "\u0120files"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "\u0120The"
+          },
+          {
+            "text": "\u0120JSON"
+          },
+          {
+            "text": "\u0120keys"
+          },
+          {
+            "text": "\u0120are"
+          },
+          {
+            "text": "\u0120self"
+          },
+          {
+            "text": "-ex"
+          },
+          {
+            "text": "plan"
+          },
+          {
+            "text": "atory"
+          },
+          {
+            "text": ".\u010a\u010a"
+          },
+          {
+            "text": "You"
+          },
+          {
+            "text": "\u0120will"
+          },
+          {
+            "text": "\u0120analyze"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120differences"
+          },
+          {
+            "text": "\u0120expressed"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120JSON"
+          },
+          {
+            "text": "\u0120format"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120create"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120mental"
+          },
+          {
+            "text": "\u0120picture"
+          },
+          {
+            "text": "\u0120of"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120old"
+          },
+          {
+            "text": "\u0120source"
+          },
+          {
+            "text": "\u0120code"
+          },
+          {
+            "text": "\u0120and"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120new"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "You"
+          },
+          {
+            "text": "\u0120will"
+          },
+          {
+            "text": "\u0120compare"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120analyzed"
+          },
+          {
+            "text": "\u0120data"
+          },
+          {
+            "text": "\u0120with"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120list"
+          },
+          {
+            "text": "\u0120of"
+          },
+          {
+            "text": "\u0120issues"
+          },
+          {
+            "text": "\u0120and"
+          },
+          {
+            "text": "\u0120identify"
+          },
+          {
+            "text": "\u0120which"
+          },
+          {
+            "text": "\u0120of"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120issues"
+          },
+          {
+            "text": "\u0120are"
+          },
+          {
+            "text": "\u0120not"
+          },
+          {
+            "text": "\u0120fixed"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "Issues"
+          },
+          {
+            "text": "\u0120often"
+          },
+          {
+            "text": "\u0120describe"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120expected"
+          },
+          {
+            "text": "\u0120change"
+          },
+          {
+            "text": "\u0120that"
+          },
+          {
+            "text": "\u0120needs"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120happen"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "\u0120You"
+          },
+          {
+            "text": "\u0120will"
+          },
+          {
+            "text": "\u0120use"
+          },
+          {
+            "text": "\u0120your"
+          },
+          {
+            "text": "\u0120best"
+          },
+          {
+            "text": "\u0120judgement"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120identify"
+          },
+          {
+            "text": "\u0120whether"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120issue"
+          },
+          {
+            "text": "\u0120is"
+          },
+          {
+            "text": "\u0120fixed"
+          },
+          {
+            "text": "\u0120as"
+          },
+          {
+            "text": "\u0120described"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "You"
+          },
+          {
+            "text": "\u0120will"
+          },
+          {
+            "text": "\u0120also"
+          },
+          {
+            "text": "\u0120look"
+          },
+          {
+            "text": "\u0120for"
+          },
+          {
+            "text": "\u0120any"
+          },
+          {
+            "text": "\u0120new"
+          },
+          {
+            "text": "\u0120changes"
+          },
+          {
+            "text": "\u0120that"
+          },
+          {
+            "text": "\u0120were"
+          },
+          {
+            "text": "\u0120not"
+          },
+          {
+            "text": "\u0120originally"
+          },
+          {
+            "text": "\u0120mentioned"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120issues"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "You"
+          },
+          {
+            "text": "\u0120will"
+          },
+          {
+            "text": "\u0120also"
+          },
+          {
+            "text": "\u0120spot"
+          },
+          {
+            "text": "\u0120any"
+          },
+          {
+            "text": "\u0120changes"
+          },
+          {
+            "text": "\u0120that"
+          },
+          {
+            "text": "\u0120suggest"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120change"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120original"
+          },
+          {
+            "text": "\u0120functionality"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "If"
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120find"
+          },
+          {
+            "text": "\u0120an"
+          },
+          {
+            "text": "\u0120issue"
+          },
+          {
+            "text": "\u0120that"
+          },
+          {
+            "text": "'s"
+          },
+          {
+            "text": "\u0120not"
+          },
+          {
+            "text": "\u0120fixed"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120briefly"
+          },
+          {
+            "text": "\u0120describe"
+          },
+          {
+            "text": "\u0120why"
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120think"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120issue"
+          },
+          {
+            "text": "\u0120is"
+          },
+          {
+            "text": "\u0120not"
+          },
+          {
+            "text": "\u0120fixed"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120"
+          },
+          {
+            "text": "1"
+          },
+          {
+            "text": "-"
+          },
+          {
+            "text": "2"
+          },
+          {
+            "text": "\u0120lines"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "\u0120If"
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120find"
+          },
+          {
+            "text": "\u0120unnecessary"
+          },
+          {
+            "text": "\u0120changes"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120point"
+          },
+          {
+            "text": "\u0120those"
+          },
+          {
+            "text": "\u0120out"
+          },
+          {
+            "text": "\u0120too"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "Be"
+          },
+          {
+            "text": "\u0120precise"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120pointing"
+          },
+          {
+            "text": "\u0120out"
+          },
+          {
+            "text": "\u0120issues"
+          },
+          {
+            "text": "\u0120that"
+          },
+          {
+            "text": "\u0120are"
+          },
+          {
+            "text": "\u0120not"
+          },
+          {
+            "text": "\u0120fixed"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "If"
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120find"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120changes"
+          },
+          {
+            "text": "\u0120satisfactory"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120clearly"
+          },
+          {
+            "text": "\u0120output"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120word"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "TER"
+          },
+          {
+            "text": "MIN"
+          },
+          {
+            "text": "ATE"
+          },
+          {
+            "text": "\""
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120your"
+          },
+          {
+            "text": "\u0120response"
+          },
+          {
+            "text": ".\u010a\u010a"
+          },
+          {
+            "text": "##"
+          },
+          {
+            "text": "\u0120Issues"
+          },
+          {
+            "text": "\u0120identified"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120input"
+          },
+          {
+            "text": "\u0120file"
+          },
+          {
+            "text": "\u010a\u010a"
+          },
+          {
+            "text": "{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "issues"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120[\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "Replace"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120`"
+          },
+          {
+            "text": "javax"
+          },
+          {
+            "text": ".annotation"
+          },
+          {
+            "text": "`"
+          },
+          {
+            "text": "\u0120import"
+          },
+          {
+            "text": "\u0120statement"
+          },
+          {
+            "text": "\u0120with"
+          },
+          {
+            "text": "\u0120`"
+          },
+          {
+            "text": "jak"
+          },
+          {
+            "text": "arta"
+          },
+          {
+            "text": ".annotation"
+          },
+          {
+            "text": "`"
+          },
+          {
+            "text": "\"\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120]\u010a"
+          },
+          {
+            "text": "}\u010a\u010a"
+          },
+          {
+            "text": "##"
+          },
+          {
+            "text": "\u0120Differences"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120AST"
+          },
+          {
+            "text": "s"
+          },
+          {
+            "text": "\u0120of"
+          },
+          {
+            "text": "\u0120both"
+          },
+          {
+            "text": "\u0120files"
+          },
+          {
+            "text": "\u010a\u010a"
+          },
+          {
+            "text": "{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "imports"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "old"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120[\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "jak"
+          },
+          {
+            "text": "arta"
+          },
+          {
+            "text": ".inject"
+          },
+          {
+            "text": ".Inject"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "com"
+          },
+          {
+            "text": ".red"
+          },
+          {
+            "text": "hat"
+          },
+          {
+            "text": ".c"
+          },
+          {
+            "text": "ool"
+          },
+          {
+            "text": "store"
+          },
+          {
+            "text": ".model"
+          },
+          {
+            "text": ".Sh"
+          },
+          {
+            "text": "opping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "io"
+          },
+          {
+            "text": ".small"
+          },
+          {
+            "text": "ry"
+          },
+          {
+            "text": "e"
+          },
+          {
+            "text": ".re"
+          },
+          {
+            "text": "active"
+          },
+          {
+            "text": ".messaging"
+          },
+          {
+            "text": ".E"
+          },
+          {
+            "text": "mitter"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "java"
+          },
+          {
+            "text": ".util"
+          },
+          {
+            "text": ".logging"
+          },
+          {
+            "text": ".Logger"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "io"
+          },
+          {
+            "text": ".small"
+          },
+          {
+            "text": "ry"
+          },
+          {
+            "text": "e"
+          },
+          {
+            "text": ".re"
+          },
+          {
+            "text": "active"
+          },
+          {
+            "text": ".messaging"
+          },
+          {
+            "text": ".Channel"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "com"
+          },
+          {
+            "text": ".red"
+          },
+          {
+            "text": "hat"
+          },
+          {
+            "text": ".c"
+          },
+          {
+            "text": "ool"
+          },
+          {
+            "text": "store"
+          },
+          {
+            "text": ".utils"
+          },
+          {
+            "text": ".Transform"
+          },
+          {
+            "text": "ers"
+          },
+          {
+            "text": "\"\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120],\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "new"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120[\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "jak"
+          },
+          {
+            "text": "arta"
+          },
+          {
+            "text": ".inject"
+          },
+          {
+            "text": ".Inject"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "com"
+          },
+          {
+            "text": ".red"
+          },
+          {
+            "text": "hat"
+          },
+          {
+            "text": ".c"
+          },
+          {
+            "text": "ool"
+          },
+          {
+            "text": "store"
+          },
+          {
+            "text": ".model"
+          },
+          {
+            "text": ".Sh"
+          },
+          {
+            "text": "opping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "io"
+          },
+          {
+            "text": ".small"
+          },
+          {
+            "text": "ry"
+          },
+          {
+            "text": "e"
+          },
+          {
+            "text": ".re"
+          },
+          {
+            "text": "active"
+          },
+          {
+            "text": ".messaging"
+          },
+          {
+            "text": ".E"
+          },
+          {
+            "text": "mitter"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "jak"
+          },
+          {
+            "text": "arta"
+          },
+          {
+            "text": ".annotation"
+          },
+          {
+            "text": ".Application"
+          },
+          {
+            "text": "Scoped"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "java"
+          },
+          {
+            "text": ".util"
+          },
+          {
+            "text": ".logging"
+          },
+          {
+            "text": ".Logger"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "io"
+          },
+          {
+            "text": ".small"
+          },
+          {
+            "text": "ry"
+          },
+          {
+            "text": "e"
+          },
+          {
+            "text": ".re"
+          },
+          {
+            "text": "active"
+          },
+          {
+            "text": ".messaging"
+          },
+          {
+            "text": ".Channel"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "com"
+          },
+          {
+            "text": ".red"
+          },
+          {
+            "text": "hat"
+          },
+          {
+            "text": ".c"
+          },
+          {
+            "text": "ool"
+          },
+          {
+            "text": "store"
+          },
+          {
+            "text": ".utils"
+          },
+          {
+            "text": ".Transform"
+          },
+          {
+            "text": "ers"
+          },
+          {
+            "text": "\"\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120]\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120},\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "classes"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120[\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "name"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "Shopping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "Order"
+          },
+          {
+            "text": "Processor"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "annotations"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120[\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "name"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "Application"
+          },
+          {
+            "text": "Scoped"
+          },
+          {
+            "text": "\"\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120],\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "fields"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "332"
+          },
+          {
+            "text": "877"
+          },
+          {
+            "text": "619"
+          },
+          {
+            "text": "327"
+          },
+          {
+            "text": "296"
+          },
+          {
+            "text": "124"
+          },
+          {
+            "text": "5"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "name"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "log"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "type"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "Logger"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "annotations"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120[\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "name"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "Inject"
+          },
+          {
+            "text": "\"\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120]\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120},\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\"-"
+          },
+          {
+            "text": "653"
+          },
+          {
+            "text": "213"
+          },
+          {
+            "text": "389"
+          },
+          {
+            "text": "574"
+          },
+          {
+            "text": "238"
+          },
+          {
+            "text": "678"
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "name"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "orders"
+          },
+          {
+            "text": "Topic"
+          },
+          {
+            "text": "Emitter"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "type"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "Emitter"
+          },
+          {
+            "text": "<String"
+          },
+          {
+            "text": ">\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "annotations"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120[\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "name"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "Inject"
+          },
+          {
+            "text": "\"\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120},\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "name"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "Channel"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "parameters"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\"("
+          },
+          {
+            "text": "\\\""
+          },
+          {
+            "text": "orders"
+          },
+          {
+            "text": "Topic"
+          },
+          {
+            "text": "\\\")"
+          },
+          {
+            "text": "\"\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120]\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120},\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "methods"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "815"
+          },
+          {
+            "text": "435"
+          },
+          {
+            "text": "429"
+          },
+          {
+            "text": "516"
+          },
+          {
+            "text": "725"
+          },
+          {
+            "text": "045"
+          },
+          {
+            "text": "6"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "name"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "process"
+          },
+          {
+            "text": "\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "parameters"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\"("
+          },
+          {
+            "text": "Shopping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "\u0120cart"
+          },
+          {
+            "text": ")\",\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "body"
+          },
+          {
+            "text": "\":"
+          },
+          {
+            "text": "\u0120\"{"
+          },
+          {
+            "text": "\\"
+          },
+          {
+            "text": "n"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120log"
+          },
+          {
+            "text": ".info"
+          },
+          {
+            "text": "(\\\""
+          },
+          {
+            "text": "Sending"
+          },
+          {
+            "text": "\u0120order"
+          },
+          {
+            "text": "\u0120from"
+          },
+          {
+            "text": "\u0120processor"
+          },
+          {
+            "text": ":"
+          },
+          {
+            "text": "\u0120\\"
+          },
+          {
+            "text": "\");"
+          },
+          {
+            "text": "\\"
+          },
+          {
+            "text": "n"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120orders"
+          },
+          {
+            "text": "Topic"
+          },
+          {
+            "text": "Emitter"
+          },
+          {
+            "text": ".send"
+          },
+          {
+            "text": "(Transform"
+          },
+          {
+            "text": "ers"
+          },
+          {
+            "text": ".shopping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "ToJson"
+          },
+          {
+            "text": "(cart"
+          },
+          {
+            "text": "));"
+          },
+          {
+            "text": "\\"
+          },
+          {
+            "text": "n"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}"
+          },
+          {
+            "text": "\"\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120]\u010a"
+          },
+          {
+            "text": "}\u010a"
+          },
+          {
+            "text": "\u0120\u010a\u010a"
+          },
+          {
+            "text": "Assistant"
+          },
+          {
+            "text": ":"
+          },
+          {
+            "text": "\u0120"
+          }
+        ],
+        "stop_reason": "eos_token",
+        "hap": [
+          {
+            "flagged": true,
+            "position": {
+              "end": 95,
+              "start": 0
+            },
+            "score": 0.12863850593566895,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 164,
+              "start": 96
+            },
+            "score": 0.12856803834438324,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 261,
+              "start": 165
+            },
+            "score": 0.13440464437007904,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 335,
+              "start": 262
+            },
+            "score": 0.12811671197414398,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 422,
+              "start": 336
+            },
+            "score": 0.12864059209823608,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 541,
+              "start": 423
+            },
+            "score": 0.13456770777702332,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 607,
+              "start": 542
+            },
+            "score": 0.15632730722427368,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 643,
+              "start": 608
+            },
+            "score": 0.13107356429100037,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 644,
+              "start": 644
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 765,
+              "start": 645
+            },
+            "score": 0.130771666765213,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 872,
+              "start": 766
+            },
+            "score": 0.13420352339744568,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 936,
+              "start": 873
+            },
+            "score": 0.12891702353954315,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1022,
+              "start": 937
+            },
+            "score": 0.12913791835308075,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1111,
+              "start": 1023
+            },
+            "score": 0.12630526721477509,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1195,
+              "start": 1112
+            },
+            "score": 0.12630772590637207,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1302,
+              "start": 1196
+            },
+            "score": 0.13414588570594788,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1356,
+              "start": 1303
+            },
+            "score": 0.1315016746520996,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1410,
+              "start": 1357
+            },
+            "score": 0.1288491189479828,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1502,
+              "start": 1411
+            },
+            "score": 0.23211786150932312,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1503,
+              "start": 1503
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1542,
+              "start": 1504
+            },
+            "score": 0.13015323877334595,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1543,
+              "start": 1543
+            },
+            "score": 0.1295555979013443,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1545,
+              "start": 1544
+            },
+            "score": 0.14171549677848816,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1561,
+              "start": 1546
+            },
+            "score": 0.1296953558921814,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1645,
+              "start": 1562
+            },
+            "score": 0.14288876950740814,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1651,
+              "start": 1646
+            },
+            "score": 0.1333189159631729,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1653,
+              "start": 1652
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1654,
+              "start": 1654
+            },
+            "score": 0.1295555979013443,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1691,
+              "start": 1655
+            },
+            "score": 0.12787342071533203,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1692,
+              "start": 1692
+            },
+            "score": 0.1295555979013443,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1694,
+              "start": 1693
+            },
+            "score": 0.14171549677848816,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1711,
+              "start": 1695
+            },
+            "score": 0.13465246558189392,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1728,
+              "start": 1712
+            },
+            "score": 0.13206028938293457,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1765,
+              "start": 1729
+            },
+            "score": 0.14093388617038727,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1820,
+              "start": 1766
+            },
+            "score": 0.14056043326854706,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1874,
+              "start": 1821
+            },
+            "score": 0.13497641682624817,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1914,
+              "start": 1875
+            },
+            "score": 0.13473445177078247,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1968,
+              "start": 1915
+            },
+            "score": 0.1382904201745987,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2022,
+              "start": 1969
+            },
+            "score": 0.1371990144252777,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2033,
+              "start": 2023
+            },
+            "score": 0.13129141926765442,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2050,
+              "start": 2034
+            },
+            "score": 0.13103531301021576,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2087,
+              "start": 2051
+            },
+            "score": 0.14093388617038727,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2142,
+              "start": 2088
+            },
+            "score": 0.14056043326854706,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2196,
+              "start": 2143
+            },
+            "score": 0.13497641682624817,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2248,
+              "start": 2197
+            },
+            "score": 0.13139517605304718,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2288,
+              "start": 2249
+            },
+            "score": 0.13473445177078247,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2342,
+              "start": 2289
+            },
+            "score": 0.1382904201745987,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2396,
+              "start": 2343
+            },
+            "score": 0.1371990144252777,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2406,
+              "start": 2397
+            },
+            "score": 0.1333189159631729,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2413,
+              "start": 2407
+            },
+            "score": 0.13295994699001312,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2430,
+              "start": 2414
+            },
+            "score": 0.13269421458244324,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2440,
+              "start": 2431
+            },
+            "score": 0.14171549677848816,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2490,
+              "start": 2441
+            },
+            "score": 0.13735564053058624,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2519,
+              "start": 2491
+            },
+            "score": 0.13156349956989288,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2537,
+              "start": 2520
+            },
+            "score": 0.14171549677848816,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2585,
+              "start": 2538
+            },
+            "score": 0.13120993971824646,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2603,
+              "start": 2586
+            },
+            "score": 0.13449959456920624,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2618,
+              "start": 2604
+            },
+            "score": 0.13129141926765442,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2642,
+              "start": 2619
+            },
+            "score": 0.1336715966463089,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2683,
+              "start": 2643
+            },
+            "score": 0.14687208831310272,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2718,
+              "start": 2684
+            },
+            "score": 0.13090947270393372,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2756,
+              "start": 2719
+            },
+            "score": 0.7801145315170288,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2793,
+              "start": 2757
+            },
+            "score": 0.13156349956989288,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2819,
+              "start": 2794
+            },
+            "score": 0.14171549677848816,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2864,
+              "start": 2820
+            },
+            "score": 0.13745331764221191,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2890,
+              "start": 2865
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2912,
+              "start": 2891
+            },
+            "score": 0.1333189159631729,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2931,
+              "start": 2913
+            },
+            "score": 0.13295994699001312,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2973,
+              "start": 2932
+            },
+            "score": 0.14727544784545898,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3023,
+              "start": 2974
+            },
+            "score": 0.1445801556110382,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3070,
+              "start": 3024
+            },
+            "score": 0.14504443109035492,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3107,
+              "start": 3071
+            },
+            "score": 0.13156349956989288,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3133,
+              "start": 3108
+            },
+            "score": 0.14171549677848816,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3178,
+              "start": 3134
+            },
+            "score": 0.13745331764221191,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3205,
+              "start": 3179
+            },
+            "score": 0.13295994699001312,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3231,
+              "start": 3206
+            },
+            "score": 0.14171549677848816,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3278,
+              "start": 3232
+            },
+            "score": 0.1323441118001938,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3340,
+              "start": 3279
+            },
+            "score": 0.1498115509748459,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3366,
+              "start": 3341
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3388,
+              "start": 3367
+            },
+            "score": 0.1333189159631729,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3406,
+              "start": 3389
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3421,
+              "start": 3407
+            },
+            "score": 0.13295994699001312,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3446,
+              "start": 3422
+            },
+            "score": 0.13403162360191345,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3487,
+              "start": 3447
+            },
+            "score": 0.15172138810157776,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3526,
+              "start": 3488
+            },
+            "score": 0.1358705461025238,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3583,
+              "start": 3527
+            },
+            "score": 0.1415032297372818,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3750,
+              "start": 3584
+            },
+            "score": 0.13998158276081085,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3768,
+              "start": 3751
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3782,
+              "start": 3769
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3792,
+              "start": 3783
+            },
+            "score": 0.13449959456920624,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3798,
+              "start": 3793
+            },
+            "score": 0.1333189159631729,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3800,
+              "start": 3799
+            },
+            "score": 0.13449960947036743,
+            "success": true
+          }
+        ],
+        "stop_sequence": "<|eot_id|>"
+      },
+      "type": "ai",
+      "id": "run-e8cf1e67-0a97-4a21-85e6-d1af378f7080-0",
+      "tool_calls": [],
+      "invalid_tool_calls": []
+    }
+  }
+}
