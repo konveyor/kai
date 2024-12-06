@@ -11,6 +11,8 @@ from kai.logging.logging import get_logger
 
 logger = get_logger(__name__)
 
+CONST_KAI_ANALYZER_LOG_FILE = "kai-analyzer-server.log"
+
 
 def log_stderr(stderr: IO[bytes]) -> None:
     for line in iter(stderr.readline, b""):
@@ -39,6 +41,8 @@ class AnalyzerLSP:
             str(analyzer_lsp_path),
             "-bundles",
             str(analyzer_java_bundle_path),
+            "-log-file",
+            CONST_KAI_ANALYZER_LOG_FILE,
         ]
         if dep_open_source_labels_path is not None:
             args.append("-depOpenSourceLabelsFile")
@@ -63,6 +67,7 @@ class AnalyzerLSP:
                 cast(BufferedWriter, self.rpc_server.stdin),
             ),
             request_timeout=4 * 60,
+            log=get_logger("kai.analyzer-rpc-client"),
         )
         self.rpc.start()
         logger.debug("analyzer rpc server started")
