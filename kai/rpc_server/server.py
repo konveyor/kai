@@ -423,7 +423,7 @@ def test_rcm(
     rcm.commit("testRCM")
     the_snapshot = rcm.snapshot
 
-    diff = rcm.snapshot.diff(rcm.first_snapshot)
+    diff = rcm.snapshot.diff(the_snapshot)
 
     rcm.reset(the_snapshot)
 
@@ -549,7 +549,7 @@ def get_codeplan_agent_solution(
                 app.log.debug(f"QUEUE_STATE: IGNORED_TASKS: {task}")
             app.log.debug("QUEUE_STATE: IGNORED_TASKS: END")
 
-        diff = app.rcm.snapshot.diff(app.rcm.first_snapshot)
+        diff = app.rcm.snapshot.diff(agent_solution_snapshot)
         overall_result["diff"] = diff[1] + diff[2]
 
         app.rcm.reset(agent_solution_snapshot)

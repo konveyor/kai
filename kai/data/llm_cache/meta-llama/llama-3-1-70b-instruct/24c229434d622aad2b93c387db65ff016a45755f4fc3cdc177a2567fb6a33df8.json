@@ -24,22 +24,22 @@
     "type": "constructor",
     "id": ["langchain", "schema", "messages", "AIMessage"],
     "kwargs": {
-      "content": "\n\n\n\n\n\n## Reasoning\nTo migrate the provided Java EE file to Quarkus, we need to address the issue of replacing the `javax.ejb` import statement with `jakarta.ejb`. This is because Quarkus uses the Jakarta EE namespace instead of the Java EE namespace.\n\nHere's the step-by-step reasoning:\n\n1. Identify the import statement that needs to be replaced: `import javax.ejb.ActivationConfigProperty;` and `import javax.ejb.MessageDriven;`\n2. Replace the `javax.ejb` import statements with `jakarta.ejb`: `import jakarta.ejb.ActivationConfigProperty;` and `import jakarta.ejb.MessageDriven;`\n3. No changes are required to the `pom.xml` file for this specific issue, as we are only updating the import statements.\n4. No additional dependencies need to be added or removed.\n\n## Updated Java File\n```java\npackage com.redhat.coolstore.service;\n\nimport jakarta.ejb.ActivationConfigProperty;\nimport jakarta.ejb.MessageDriven;\nimport javax.inject.Inject;\nimport javax.jms.JMSException;\nimport javax.jms.Message;\nimport javax.jms.MessageListener;\nimport javax.jms.TextMessage;\n\nimport com.redhat.coolstore.model.Order;\nimport com.redhat.coolstore.utils.Transformers;\n\n@MessageDriven(name = \"OrderServiceMDB\", activationConfig = {\n\t@ActivationConfigProperty(propertyName = \"destinationLookup\", propertyValue = \"topic/orders\"),\n\t@ActivationConfigProperty(propertyName = \"destinationType\", propertyValue = \"javax.jms.Topic\"),\n\t@ActivationConfigProperty(propertyName = \"acknowledgeMode\", propertyValue = \"Auto-acknowledge\")})\npublic class OrderServiceMDB implements MessageListener { \n\n\t@Inject\n\tOrderService orderService;\n\n\t@Inject\n\tCatalogService catalogService;\n\n\t@Override\n\tpublic void onMessage(Message rcvMessage) {\n\t\tSystem.out.println(\"\\nMessage recd !\");\n\t\tTextMessage msg = null;\n\t\ttry {\n\t\t\t\tif (rcvMessage instanceof TextMessage) {\n\t\t\t\t\t\tmsg = (TextMessage) rcvMessage;\n\t\t\t\t\t\tString orderStr = msg.getBody(String.class);\n\t\t\t\t\t\tSystem.out.println(\"Received order: \" + orderStr);\n\t\t\t\t\t\tOrder order = Transformers.jsonToOrder(orderStr);\n\t\t\t\t\t\tSystem.out.println(\"Order object is \" + order);\n\t\t\t\t\t\torderService.save(order);\n\t\t\t\t\t\torder.getItemList().forEach(orderItem -> {\n\t\t\t\t\t\t\tcatalogService.updateInventoryItems(orderItem.getProductId(), orderItem.getQuantity());\n\t\t\t\t\t\t});\n\t\t\t\t}\n\t\t} catch (JMSException e) {\n\t\t\tthrow new RuntimeException(e);\n\t\t}\n\t}\n\n}\n```\n\n## Additional Information (optional)\nNote that this is just the first step in migrating the code to Quarkus. There may be additional issues that need to be addressed in subsequent steps.",
+      "content": "\n\n\n\n\n\n## Reasoning\nTo migrate the provided Java EE file to Quarkus, we need to address the issue of replacing the `javax.ejb` import statement with `jakarta.ejb`. This is because Quarkus uses the Jakarta EE namespace instead of the Java EE namespace.\n\nHere are the steps to update the file:\n\n1. Replace the `javax.ejb` import statement with `jakarta.ejb`. This will update the namespace for the `@MessageDriven` and `@ActivationConfigProperty` annotations.\n2. Update the `@MessageDriven` annotation to use the `jakarta.ejb` namespace.\n3. Update the `@ActivationConfigProperty` annotation to use the `jakarta.ejb` namespace.\n\nNo changes are required to the `pom.xml` file or other external dependencies for this specific issue.\n\n## Updated Java File\n```java\npackage com.redhat.coolstore.service;\n\nimport jakarta.ejb.ActivationConfigProperty;\nimport jakarta.ejb.MessageDriven;\nimport javax.inject.Inject;\nimport javax.jms.JMSException;\nimport javax.jms.Message;\nimport javax.jms.MessageListener;\nimport javax.jms.TextMessage;\n\nimport com.redhat.coolstore.model.Order;\nimport com.redhat.coolstore.utils.Transformers;\n\n@MessageDriven(name = \"OrderServiceMDB\", activationConfig = {\n\t@ActivationConfigProperty(propertyName = \"destinationLookup\", propertyValue = \"topic/orders\"),\n\t@ActivationConfigProperty(propertyName = \"destinationType\", propertyValue = \"javax.jms.Topic\"),\n\t@ActivationConfigProperty(propertyName = \"acknowledgeMode\", propertyValue = \"Auto-acknowledge\")})\npublic class OrderServiceMDB implements MessageListener { \n\n\t@Inject\n\tOrderService orderService;\n\n\t@Inject\n\tCatalogService catalogService;\n\n\t@Override\n\tpublic void onMessage(Message rcvMessage) {\n\t\tSystem.out.println(\"\\nMessage recd !\");\n\t\tTextMessage msg = null;\n\t\ttry {\n\t\t\t\tif (rcvMessage instanceof TextMessage) {\n\t\t\t\t\t\tmsg = (TextMessage) rcvMessage;\n\t\t\t\t\t\tString orderStr = msg.getBody(String.class);\n\t\t\t\t\t\tSystem.out.println(\"Received order: \" + orderStr);\n\t\t\t\t\t\tOrder order = Transformers.jsonToOrder(orderStr);\n\t\t\t\t\t\tSystem.out.println(\"Order object is \" + order);\n\t\t\t\t\t\torderService.save(order);\n\t\t\t\t\t\torder.getItemList().forEach(orderItem -> {\n\t\t\t\t\t\t\tcatalogService.updateInventoryItems(orderItem.getProductId(), orderItem.getQuantity());\n\t\t\t\t\t\t});\n\t\t\t\t}\n\t\t} catch (JMSException e) {\n\t\t\tthrow new RuntimeException(e);\n\t\t}\n\t}\n\n}\n```\n\n## Additional Information (optional)\nNote that the `@MessageDriven` annotation is still used in the updated file, but it's worth noting that Quarkus provides a more modern and simplified way of handling message-driven beans using the `@Incoming` annotation from the `io.quarkus.arc` package. However, this is not addressed in this specific issue and will be handled in subsequent steps.",
       "response_metadata": {
         "model_name": "meta-llama/llama-3-1-70b-instruct",
         "token_usage": {
           "prompt_tokens": 754,
-          "completion_tokens": 559,
-          "total_tokens": 1313,
+          "completion_tokens": 594,
+          "total_tokens": 1348,
           "input_token_count": 754,
-          "generated_token_count": 559
+          "generated_token_count": 594
         },
         "meta": {
-          "conversation_id": "7a7eac65-f1f1-4514-ba46-bf5fb57674a5",
-          "id": "caacbd6f-7cbe-458b-9a15-afbb6dcae3bf",
+          "conversation_id": "e8e48509-4b60-4078-98a7-cb7150b1a0b4",
+          "id": "b9d17f08-298e-4d6c-ad75-15ff9a948b1f",
           "model_id": "meta-llama/llama-3-1-70b-instruct"
         },
-        "generated_token_count": 559,
+        "generated_token_count": 594,
         "input_token_count": 0,
         "input_tokens": [
           {
@@ -3292,7 +3292,7 @@
         "stop_sequence": "<|eot_id|>"
       },
       "type": "ai",
-      "id": "run-3405ea3c-5b91-4629-998c-d82a7ae40059-0",
+      "id": "run-eb62d9f7-1f4a-471e-8c61-1d8dd1437fc4-0",
       "tool_calls": [],
       "invalid_tool_calls": []
     }

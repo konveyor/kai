@@ -24,22 +24,22 @@
     "type": "constructor",
     "id": ["langchain", "schema", "messages", "AIMessage"],
     "kwargs": {
-      "content": " I'd be happy to help you migrate your JavaEE file to Quarkus.\n\n## Reasoning\n\nThe issue to fix is related to the XML namespace and schema version number in the `beans.xml` file. The current namespace `http://xmlns.jcp.org/xml/ns/javaee` and schema version number `beans_1_1.xsd` are specific to JavaEE, but Quarkus uses Jakarta EE, which has a different namespace and schema version number.\n\nTo fix this issue, we need to replace the namespace with `https://jakarta.ee/xml/ns/jakartaee` and update the schema version number to match the Jakarta EE version used by Quarkus.\n\n## Updated Java File\n\n```xml\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!--\n    JBoss, Home of Professional Open Source\n    Copyright 2015, Red Hat, Inc. and/or its affiliates, and individual\n    contributors by the @authors tag. See the copyright.txt in the\n    distribution for a full listing of individual contributors.\n    Licensed under the Apache License, Version 2.0 (the \"License\");\n    you may not use this file except in compliance with the License.\n    You may obtain a copy of the License at\n    http://www.apache.org/licenses/LICENSE-2.0\n    Unless required by applicable law or agreed to in writing, software\n    distributed under the License is distributed on an \"AS IS\" BASIS,\n    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n    See the License for the specific language governing permissions and\n    limitations under the License.\n-->\n<!-- Marker file indicating CDI should be enabled -->\n<beans xmlns=\"https://jakarta.ee/xml/ns/jakartaee\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n\t   xsi:schemaLocation=\"\n      https://jakarta.ee/xml/ns/jakartaee\n      https://jakarta.ee/xml/ns/jakartaee/beans_4_0.xsd\"\n\t   bean-discovery-mode=\"all\">\n</beans>\n```\n\n## Additional Information\n\nNote that the updated file uses the Jakarta EE namespace and schema version number `beans_4_0.xsd`, which is the latest version used by Quarkus. Also, the `pom.xml` file may need to be updated to include the Jakarta EE dependencies, but that is not part of this specific issue.",
+      "content": " # Reasoning\n\nThe provided file is a `beans.xml` file, which is a marker file used to enable CDI (Context and Dependency Injection) in Java EE applications. To migrate this file to Quarkus, we need to update the namespace and schema version to match the Jakarta EE specifications.\n\nThe issue reported is that the namespace `http://xmlns.jcp.org/xml/ns/javaee` should be replaced with `https://jakarta.ee/xml/ns/jakartaee`, and the schema version number should be updated.\n\n## Updated Java File\n```xml\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!--\n    JBoss, Home of Professional Open Source\n    Copyright 2015, Red Hat, Inc. and/or its affiliates, and individual\n    contributors by the @authors tag. See the copyright.txt in the\n    distribution for a full listing of individual contributors.\n    Licensed under the Apache License, Version 2.0 (the \"License\");\n    you may not use this file except in compliance with the License.\n    You may obtain a copy of the License at\n    http://www.apache.org/licenses/LICENSE-2.0\n    Unless required by applicable law or agreed to in writing, software\n    distributed under the License is distributed on an \"AS IS\" BASIS,\n    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n    See the License for the specific language governing permissions and\n    limitations under the License.\n-->\n<!-- Marker file indicating CDI should be enabled -->\n<beans xmlns=\"https://jakarta.ee/xml/ns/jakartaee\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n\t   xsi:schemaLocation=\"\n      https://jakarta.ee/xml/ns/jakartaee\n      https://jakarta.ee/xml/ns/jakartaee/beans_4_0.xsd\"\n\t   bean-discovery-mode=\"all\">\n</beans>\n```\n\n## Additional Information (optional)\n\nNo additional changes are required in the `pom.xml` file or imports for this specific update. However, it's worth noting that Quarkus uses Jakarta EE APIs, so you may need to update your dependencies to use the Jakarta EE versions instead of the Java EE versions. For example, you may need to replace `javax` with `jakarta` in your dependencies.",
       "response_metadata": {
         "model_name": "meta-llama/llama-3-1-70b-instruct",
         "token_usage": {
           "prompt_tokens": 710,
-          "completion_tokens": 500,
-          "total_tokens": 1210,
+          "completion_tokens": 481,
+          "total_tokens": 1191,
           "input_token_count": 710,
-          "generated_token_count": 500
+          "generated_token_count": 481
         },
         "meta": {
-          "conversation_id": "10df292e-9291-4da6-82bf-9e5d310028a4",
-          "id": "2490e1d8-efe7-4008-b63c-5c41e5e7ad3d",
+          "conversation_id": "1b6a85d1-b739-47cd-98e8-abb4bd29d3f4",
+          "id": "070cce0a-7a74-4195-8829-536d64d2a0fe",
           "model_id": "meta-llama/llama-3-1-70b-instruct"
         },
-        "generated_token_count": 500,
+        "generated_token_count": 481,
         "input_token_count": 0,
         "input_tokens": [
           {
@@ -2962,7 +2962,7 @@
         "stop_sequence": "<|eot_id|>"
       },
       "type": "ai",
-      "id": "run-da107067-7cc1-4096-8dd4-12eeee1318c7-0",
+      "id": "run-47c734a9-839f-4c9c-9590-d83b024d78b5-0",
       "tool_calls": [],
       "invalid_tool_calls": []
     }
