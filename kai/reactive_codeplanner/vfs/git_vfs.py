@@ -287,13 +287,6 @@ class RepoContextManager:
 
         self.reset(self.snapshot.parent)
 
-    def reset_to_first(self) -> None:
-        """
-        Resets the repository to the initial commit.
-        """
-        while self.snapshot.parent is not None:
-            self.reset_to_parent()
-
     def get_lineage(self) -> list[RepoContextSnapshot]:
         """
         Returns the lineage of the current snapshot, starting from the initial
