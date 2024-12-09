@@ -417,10 +417,11 @@ def test_rcm(
         f.write(params.new_content)
 
     rcm.commit("testRCM")
+    the_snapshot = rcm.snapshot
 
     diff = rcm.snapshot.diff(rcm.first_snapshot)
 
-    rcm.reset_to_first()
+    rcm.reset(the_snapshot)
 
     server.send_response(
         id=id,
@@ -554,6 +555,9 @@ def get_codeplan_agent_solution(
             result=dict(overall_result),
         )
     except Exception as e:
+        if app.rcm is not None:
+            app.rcm.reset(agent_solution_snapshot)
+
         app.log.error(e)
         raise
 
