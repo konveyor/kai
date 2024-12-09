@@ -44,22 +44,22 @@ set-binaries-demo: build-binaries
 	
 # This will set up the demo run, with all the things that you need for run_demo.py
 get-analyzer-deps:
-	docker run -d --name=bundle quay.io/konveyor/jdtls-server-base:latest &&\
-    docker cp bundle:/usr/local/etc/maven.default.index ./example/analysis &&\
-    docker cp bundle:/jdtls ./example/analysis &&\
-    docker cp bundle:/jdtls/java-analyzer-bundle/java-analyzer-bundle.core/target/java-analyzer-bundle.core-1.0.0-SNAPSHOT.jar ./example/analysis/bundle.jar &&\
-    docker cp bundle:/usr/local/etc/maven.default.index ./example/analysis &&\
-	docker stop bundle &&\
-	docker rm bundle
+	${CONTAINER_RUNTIME} run -d --name=bundle quay.io/konveyor/jdtls-server-base:latest &&\
+    ${CONTAINER_RUNTIME} cp bundle:/usr/local/etc/maven.default.index ./example/analysis &&\
+    ${CONTAINER_RUNTIME} cp bundle:/jdtls ./example/analysis &&\
+    ${CONTAINER_RUNTIME} cp bundle:/jdtls/java-analyzer-bundle/java-analyzer-bundle.core/target/java-analyzer-bundle.core-1.0.0-SNAPSHOT.jar ./example/analysis/bundle.jar &&\
+    ${CONTAINER_RUNTIME} cp bundle:/usr/local/etc/maven.default.index ./example/analysis &&\
+	${CONTAINER_RUNTIME} stop bundle &&\
+	${CONTAINER_RUNTIME} rm bundle
 
 # This will get the rulesets and set them to be used by run_demo.py
 get-rulesets:
 	(cd example/analysis && rm -rf rulesets && git clone https://github.com/konveyor/rulesets); rm -rf example/analysis/rulesets/preview
 
-run_demo:
+run-demo:
 	cd example && python run_demo.py
 
-run_debug_driver:
+run-debug-driver:
 	python kai/reactive_codeplanner/main.py \
 		--kai-config example/config.toml \
 		--source-directory example/coolstore \
@@ -70,4 +70,4 @@ run_debug_driver:
 		--label-selector "(konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee || konveyor.io/target=jakarta-ee8 || konveyor.io/target=jakarta-ee9 || konveyor.io/target=cloud-readiness)"
 
 # This will run all the things that you need to do, to configure the demo.
-config_demo: set-binaries-demo get-analyzer-deps get-rulesets
+config-demo: set-binaries-demo get-analyzer-deps get-rulesets
