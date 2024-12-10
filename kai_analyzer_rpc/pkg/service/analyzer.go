@@ -97,7 +97,7 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 		engine:          eng,
 		engineCtx:       ctx,
 		cancelFunc:      cancelFunc,
-		initedProviders: map[string]provider.InternalProviderClient{},
+		initedProviders: providers,
 		ruleSets:        ruleSets,
 	}, nil
 
@@ -113,6 +113,17 @@ type Args struct {
 
 type Response struct {
 	Rulesets []konveyor.RuleSet
+}
+
+func (a *Analyzer) Stop() {
+	a.Logger.Info("stopping engine")
+	a.engine.Stop()
+	a.Logger.Info("engine stopped")
+
+	for providerName, provider := range a.initedProviders {
+		a.Logger.Info("stopping provider", "provider", providerName)
+		provider.Stop()
+	}
 }
 
 func (a *Analyzer) Analyze(args Args, response *Response) error {
