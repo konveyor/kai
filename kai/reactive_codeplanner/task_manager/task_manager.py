@@ -213,14 +213,14 @@ class TaskManager:
         resolved_tasks = tasks_in_queue - unprocessed_new_tasks
         logger.debug("Resolved tasks to remove from stacks: %s", resolved_tasks)
 
-        similar_non_resolved_tasks = set(
-            [
-                t
-                for t in resolved_tasks
-                for u in unprocessed_new_tasks
-                if self.is_similar_to_task(t, u)
-            ]
-        )
+        similar_non_resolved_tasks = set()
+
+        for t in resolved_tasks:
+            logger.info("is task similar to unprocessed tasks")
+            for u in unprocessed_new_tasks:
+                if self.is_similar_to_task(t, u):
+                    logger.debug("adding task to similar_non_resolved_task: %s", t)
+                    similar_non_resolved_tasks.add(t)
 
         if similar_non_resolved_tasks:
             for t in similar_non_resolved_tasks:

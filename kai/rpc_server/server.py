@@ -465,6 +465,8 @@ def get_codeplan_agent_solution(
         # Data for AnalyzerRuleViolation should probably take an ExtendedIncident
         seed_tasks: list[Task] = []
 
+        params.incidents.sort()
+        app.log.info("params: %s", params.incidents)
         for incident in params.incidents:
 
             class_to_use = AnalyzerRuleViolation

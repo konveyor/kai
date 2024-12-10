@@ -70,12 +70,20 @@ class Incident(BaseModel):
         # For same priority, higher depth means process children first (DFS)
         # For same priority and depth, rely on creation order just to make it deterministic
         return (
+            self.uri,
             self.message,
             self.line_number,
         ) < (
+            other.uri,
             other.message,
             other.line_number,
         )
+
+    def __str__(self) -> str:
+        return f"<{self.uri}-{self.message}-{self.line_number}>"
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
 
 class ExtendedIncident(Incident):
@@ -90,6 +98,12 @@ class ExtendedIncident(Incident):
     violation_description: Optional[str] = None
     violation_category: Category = Category.POTENTIAL
     violation_labels: list[str] = []
+
+    def __str__(self) -> str:
+        return f"<{self.uri}-{self.message}-{self.line_number}>"
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
 
 class Link(BaseModel):

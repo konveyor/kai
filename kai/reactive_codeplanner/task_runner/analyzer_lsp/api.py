@@ -27,7 +27,7 @@ class AnalyzerRuleViolation(ValidationError):
         else:
             shadowed_priority = self.__class__.priority
 
-        return f"{self.__class__.__name__}<loc={self.file}:{self.line}:{self.column}, message={self.violation.description}>(priority={self.priority}({shadowed_priority}), depth={self.depth}, retries={self.retry_count})"
+        return f"{self.__class__.__name__}<loc={self.file}:{self.line}:{self.column}, message={self.violation.id}>(priority={self.priority}({shadowed_priority}), depth={self.depth}, retries={self.retry_count})"
 
     __repr__ = __str__
 
@@ -37,9 +37,9 @@ class AnalyzerRuleViolation(ValidationError):
 
         if (
             self.ruleset.name == error2.ruleset.name
+            and self.violation.id == error2.violation.id
             and self.incident.message == error2.incident.message
             and self.file == error2.file
-            and self.incident.variables == error2.incident.variables
         ):
             logger.info("should match on line numbers %s -- %s", self.line, error2.line)
             return True

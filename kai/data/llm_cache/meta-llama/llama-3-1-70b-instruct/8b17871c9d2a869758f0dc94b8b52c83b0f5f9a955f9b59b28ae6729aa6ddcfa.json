@@ -14,7 +14,7 @@
       "type": "constructor",
       "id": ["langchain", "schema", "messages", "HumanMessage"],
       "kwargs": {
-        "content": "\n    I will give you a JavaEE file for which I want to take one step towards migrating to Quarkus.\n\nI will provide you with static source code analysis information highlighting an issue which needs to be addressed.\n\nI will also provide you with an example of how a similar issue was solved in the past via a solved example.\n\nYou can refer to the solved example for a pattern of how to update the input Java EE file to Quarkus.\n\nFix only the problem described. Other problems will be solved in subsequent steps so it is unnecessary to handle them now.\n\nBefore attempting to migrate the code to Quarkus reason through what changes are required and why.\n\nPay attention to changes you make and impacts to external dependencies in the pom.xml as well as changes to imports we need to consider.\n\nRemember when updating or adding annotations that the class must be imported.\n\nAs you make changes that impact the pom.xml or imports, be sure you explain what needs to be updated.\n\nAfter you have shared your step by step thinking, provide a full output of the updated file.\n\n# Input information\n\n## Input File\n\nFile name: \"PromoService.java\"\nSource file contents:\n```java\npackage com.redhat.coolstore.service;\n\nimport java.io.Serializable;\nimport java.util.HashMap;\nimport java.util.HashSet;\nimport java.util.Map;\nimport java.util.Set;\n\nimport javax.enterprise.context.ApplicationScoped;\n\nimport com.redhat.coolstore.model.Promotion;\nimport com.redhat.coolstore.model.ShoppingCart;\nimport com.redhat.coolstore.model.ShoppingCartItem;\n\n@ApplicationScoped\npublic class PromoService implements Serializable {\n\n    private static final long serialVersionUID = 2088590587856645568L;\n\n    private String name = null;\n\n    private Set<Promotion> promotionSet = null;\n\n    public PromoService() {\n\n        promotionSet = new HashSet<>();\n\n        promotionSet.add(new Promotion(\"329299\", .25));\n\n    }\n\n    public void applyCartItemPromotions(ShoppingCart shoppingCart) {\n\n        if (shoppingCart != null && shoppingCart.getShoppingCartItemList().size() > 0) {\n\n            Map<String, Promotion> promoMap = new HashMap<String, Promotion>();\n\n            for (Promotion promo : getPromotions()) {\n\n                promoMap.put(promo.getItemId(), promo);\n\n            }\n\n            for (ShoppingCartItem sci : shoppingCart.getShoppingCartItemList()) {\n\n                String productId = sci.getProduct().getItemId();\n\n                Promotion promo = promoMap.get(productId);\n\n                if (promo != null) {\n\n                    sci.setPromoSavings(sci.getProduct().getPrice() * promo.getPercentOff() * -1);\n                    sci.setPrice(sci.getProduct().getPrice() * (1 - promo.getPercentOff()));\n\n                }\n\n            }\n\n        }\n\n    }\n\n    public void applyShippingPromotions(ShoppingCart shoppingCart) {\n\n        if (shoppingCart != null) {\n\n            //PROMO: if cart total is greater than 75, free shipping\n            if (shoppingCart.getCartItemTotal() >= 75) {\n\n                shoppingCart.setShippingPromoSavings(shoppingCart.getShippingTotal() * -1);\n                shoppingCart.setShippingTotal(0);\n\n            }\n\n        }\n\n    }\n\n    public Set<Promotion> getPromotions() {\n\n        if (promotionSet == null) {\n\n            promotionSet = new HashSet<>();\n\n        }\n\n        return new HashSet<>(promotionSet);\n\n    }\n\n    public void setPromotions(Set<Promotion> promotionSet) {\n\n        if (promotionSet != null) {\n\n            this.promotionSet = new HashSet<>(promotionSet);\n\n        } else {\n\n            this.promotionSet = new HashSet<>();\n\n        }\n\n    }\n\n    @Override\n    public String toString() {\n        return \"PromoService [name=\" + name + \", promotionSet=\" + promotionSet + \"]\";\n    }\n\n}\n\n```\n\n## Issues\n\n\n### incident 0\nincident to fix: \"Replace the `javax.enterprise` import statement with `jakarta.enterprise`\"\nLine number: 9\n\n\n\n# Output Instructions\nStructure your output in Markdown format such as:\n\n## Reasoning\nWrite the step by step reasoning in this markdown section. If you are unsure of a step or reasoning, clearly state you are unsure and why.\n\n## Updated Java File\n```java\n// Write the updated file for Quarkus in this section. If the file should be removed, make the content of the updated file a comment explaining it should be removed.\n```\n\n## Additional Information (optional)\n\nIf you have any additional details or steps that need to be performed, put it here.\n\n    ",
+        "content": "\n    I will give you a JavaEE file for which I want to take one step towards migrating to Quarkus.\n\nI will provide you with static source code analysis information highlighting an issue which needs to be addressed.\n\nI will also provide you with an example of how a similar issue was solved in the past via a solved example.\n\nYou can refer to the solved example for a pattern of how to update the input Java EE file to Quarkus.\n\nFix only the problem described. Other problems will be solved in subsequent steps so it is unnecessary to handle them now.\n\nBefore attempting to migrate the code to Quarkus reason through what changes are required and why.\n\nPay attention to changes you make and impacts to external dependencies in the pom.xml as well as changes to imports we need to consider.\n\nRemember when updating or adding annotations that the class must be imported.\n\nAs you make changes that impact the pom.xml or imports, be sure you explain what needs to be updated.\n\nAfter you have shared your step by step thinking, provide a full output of the updated file.\n\n# Input information\n\n## Input File\n\nFile name: \"ShoppingCartService.java\"\nSource file contents:\n```java\npackage com.redhat.coolstore.service;\n\nimport java.util.Hashtable;\nimport java.util.logging.Logger;\n\nimport jakarta.ejb.Stateful;\nimport jakarta.inject.Inject;\nimport javax.naming.Context;\nimport javax.naming.InitialContext;\nimport javax.naming.NamingException;\n\nimport com.redhat.coolstore.model.Product;\nimport com.redhat.coolstore.model.ShoppingCart;\nimport com.redhat.coolstore.model.ShoppingCartItem;\n\n@Stateful\npublic class ShoppingCartService  {\n\n    @Inject\n    Logger log;\n\n    @Inject\n    ProductService productServices;\n\n    @Inject\n    PromoService ps;\n\n\n    @Inject\n    ShoppingCartOrderProcessor shoppingCartOrderProcessor;\n\n    private ShoppingCart cart  = new ShoppingCart(); //Each user can have multiple shopping carts (tabbed browsing)\n\n   \n\n    public ShoppingCartService() {\n    }\n\n    public ShoppingCart getShoppingCart(String cartId) {\n        return cart;\n    }\n\n    public ShoppingCart checkOutShoppingCart(String cartId) {\n        ShoppingCart cart = this.getShoppingCart(cartId);\n      \n        log.info(\"Sending  order: \");\n        shoppingCartOrderProcessor.process(cart);\n   \n        cart.resetShoppingCartItemList();\n        priceShoppingCart(cart);\n        return cart;\n    }\n\n    public void priceShoppingCart(ShoppingCart sc) {\n\n        if (sc != null) {\n\n            initShoppingCartForPricing(sc);\n\n            if (sc.getShoppingCartItemList() != null && sc.getShoppingCartItemList().size() > 0) {\n\n                ps.applyCartItemPromotions(sc);\n\n                for (ShoppingCartItem sci : sc.getShoppingCartItemList()) {\n\n                    sc.setCartItemPromoSavings(\n                            sc.getCartItemPromoSavings() + sci.getPromoSavings() * sci.getQuantity());\n                    sc.setCartItemTotal(sc.getCartItemTotal() + sci.getPrice() * sci.getQuantity());\n\n                }\n\n                sc.setShippingTotal(lookupShippingServiceRemote().calculateShipping(sc));\n\n                if (sc.getCartItemTotal() >= 25) {\n                    sc.setShippingTotal(sc.getShippingTotal()\n                            + lookupShippingServiceRemote().calculateShippingInsurance(sc));\n                }\n\n            }\n\n            ps.applyShippingPromotions(sc);\n\n            sc.setCartTotal(sc.getCartItemTotal() + sc.getShippingTotal());\n\n        }\n\n    }\n\n    private void initShoppingCartForPricing(ShoppingCart sc) {\n\n        sc.setCartItemTotal(0);\n        sc.setCartItemPromoSavings(0);\n        sc.setShippingTotal(0);\n        sc.setShippingPromoSavings(0);\n        sc.setCartTotal(0);\n\n        for (ShoppingCartItem sci : sc.getShoppingCartItemList()) {\n            Product p = getProduct(sci.getProduct().getItemId());\n            //if product exist\n            if (p != null) {\n                sci.setProduct(p);\n                sci.setPrice(p.getPrice());\n            }\n\n            sci.setPromoSavings(0);\n        }\n\n    }\n\n    public Product getProduct(String itemId) {\n        return productServices.getProductByItemId(itemId);\n    }\n\n\tprivate static ShippingServiceRemote lookupShippingServiceRemote() {\n        try {\n            final Hashtable<String, String> jndiProperties = new Hashtable<>();\n            jndiProperties.put(Context.INITIAL_CONTEXT_FACTORY, \"org.wildfly.naming.client.WildFlyInitialContextFactory\");\n\n            final Context context = new InitialContext(jndiProperties);\n\n            return (ShippingServiceRemote) context.lookup(\"ejb:/ROOT/ShippingService!\" + ShippingServiceRemote.class.getName());\n        } catch (NamingException e) {\n            throw new RuntimeException(e);\n        }\n    }\n}\n```\n\n## Issues\n\n\n### incident 0\nincident to fix: \"Stateful EJBs can be converted to a CDI bean by replacing the `@Stateful` annotation with a bean-defining annotation\n that encompasses the appropriate scope (e.g., `@ApplicationScoped`). `@Stateful` EJBs often translate to `@SessionScoped`\n beans (a scope which requires activating the `quarkus-undertow` extension), but the appropriate scope may differ based\n on your application architecture. Review your application's requirements to determine the appropriate scope.\n\n Note that it is recommended, as a good practice, to keep state external from the service in Quarkus.\"\nLine number: 16\n\n\n\n# Output Instructions\nStructure your output in Markdown format such as:\n\n## Reasoning\nWrite the step by step reasoning in this markdown section. If you are unsure of a step or reasoning, clearly state you are unsure and why.\n\n## Updated Java File\n```java\n// Write the updated file for Quarkus in this section. If the file should be removed, make the content of the updated file a comment explaining it should be removed.\n```\n\n## Additional Information (optional)\n\nIf you have any additional details or steps that need to be performed, put it here.\n\n    ",
         "type": "human"
       }
     }
@@ -24,22 +24,22 @@
     "type": "constructor",
     "id": ["langchain", "schema", "messages", "AIMessage"],
     "kwargs": {
-      "content": " # Reasoning\n\nThe issue to fix is the import statement `javax.enterprise.context.ApplicationScoped` which needs to be replaced with `jakarta.enterprise.context.ApplicationScoped`. This is because Quarkus uses the Jakarta EE namespace instead of the Java EE namespace.\n\nTo fix this issue, we need to update the import statement at the top of the file. We also need to make sure that the `jakarta.enterprise` dependency is included in the `pom.xml` file.\n\n## Updated Java File\n```java\npackage com.redhat.coolstore.service;\n\nimport java.io.Serializable;\nimport java.util.HashMap;\nimport java.util.HashSet;\nimport java.util.Map;\nimport java.util.Set;\n\nimport jakarta.enterprise.context.ApplicationScoped;\n\nimport com.redhat.coolstore.model.Promotion;\nimport com.redhat.coolstore.model.ShoppingCart;\nimport com.redhat.coolstore.model.ShoppingCartItem;\n\n@ApplicationScoped\npublic class PromoService implements Serializable {\n\n    private static final long serialVersionUID = 2088590587856645568L;\n\n    private String name = null;\n\n    private Set<Promotion> promotionSet = null;\n\n    public PromoService() {\n\n        promotionSet = new HashSet<>();\n\n        promotionSet.add(new Promotion(\"329299\", .25));\n\n    }\n\n    public void applyCartItemPromotions(ShoppingCart shoppingCart) {\n\n        if (shoppingCart != null && shoppingCart.getShoppingCartItemList().size() > 0) {\n\n            Map<String, Promotion> promoMap = new HashMap<String, Promotion>();\n\n            for (Promotion promo : getPromotions()) {\n\n                promoMap.put(promo.getItemId(), promo);\n\n            }\n\n            for (ShoppingCartItem sci : shoppingCart.getShoppingCartItemList()) {\n\n                String productId = sci.getProduct().getItemId();\n\n                Promotion promo = promoMap.get(productId);\n\n                if (promo != null) {\n\n                    sci.setPromoSavings(sci.getProduct().getPrice() * promo.getPercentOff() * -1);\n                    sci.setPrice(sci.getProduct().getPrice() * (1 - promo.getPercentOff()));\n\n                }\n\n            }\n\n        }\n\n    }\n\n    public void applyShippingPromotions(ShoppingCart shoppingCart) {\n\n        if (shoppingCart != null) {\n\n            //PROMO: if cart total is greater than 75, free shipping\n            if (shoppingCart.getCartItemTotal() >= 75) {\n\n                shoppingCart.setShippingPromoSavings(shoppingCart.getShippingTotal() * -1);\n                shoppingCart.setShippingTotal(0);\n\n            }\n\n        }\n\n    }\n\n    public Set<Promotion> getPromotions() {\n\n        if (promotionSet == null) {\n\n            promotionSet = new HashSet<>();\n\n        }\n\n        return new HashSet<>(promotionSet);\n\n    }\n\n    public void setPromotions(Set<Promotion> promotionSet) {\n\n        if (promotionSet != null) {\n\n            this.promotionSet = new HashSet<>(promotionSet);\n\n        } else {\n\n            this.promotionSet = new HashSet<>();\n\n        }\n\n    }\n\n    @Override\n    public String toString() {\n        return \"PromoService [name=\" + name + \", promotionSet=\" + promotionSet + \"]\";\n    }\n\n}\n```\n\n## Additional Information\nThe `pom.xml` file needs to be updated to include the `jakarta.enterprise` dependency. The exact dependency to add is:\n```xml\n<dependency>\n    <groupId>jakarta.enterprise</groupId>\n    <artifactId>jakarta.enterprise.cdi-api</artifactId>\n</dependency>\n```",
+      "content": " ## Reasoning\n\nTo migrate the `ShoppingCartService` class from Java EE to Quarkus, we need to address the issue with the `@Stateful` annotation. In Quarkus, we can replace `@Stateful` with a CDI bean-defining annotation that encompasses the appropriate scope.\n\nSince `@Stateful` EJBs often translate to `@SessionScoped` beans, we will replace `@Stateful` with `@SessionScoped`. However, we need to ensure that the `quarkus-undertow` extension is activated in the `pom.xml` file to use the `@SessionScoped` annotation.\n\nHere are the steps to update the code:\n\n1. Replace the `@Stateful` annotation with `@SessionScoped`.\n2. Add the `@SessionScoped` import statement.\n3. Ensure that the `quarkus-undertow` extension is activated in the `pom.xml` file.\n\n## Updated Java File\n```java\npackage com.redhat.coolstore.service;\n\nimport java.util.Hashtable;\nimport java.util.logging.Logger;\n\nimport jakarta.enterprise.context.SessionScoped;\nimport jakarta.inject.Inject;\nimport javax.naming.Context;\nimport javax.naming.InitialContext;\nimport javax.naming.NamingException;\n\nimport com.redhat.coolstore.model.Product;\nimport com.redhat.coolstore.model.ShoppingCart;\nimport com.redhat.coolstore.model.ShoppingCartItem;\n\n@SessionScoped\npublic class ShoppingCartService  {\n\n    @Inject\n    Logger log;\n\n    @Inject\n    ProductService productServices;\n\n    @Inject\n    PromoService ps;\n\n\n    @Inject\n    ShoppingCartOrderProcessor shoppingCartOrderProcessor;\n\n    private ShoppingCart cart  = new ShoppingCart(); //Each user can have multiple shopping carts (tabbed browsing)\n\n   \n\n    public ShoppingCartService() {\n    }\n\n    public ShoppingCart getShoppingCart(String cartId) {\n        return cart;\n    }\n\n    public ShoppingCart checkOutShoppingCart(String cartId) {\n        ShoppingCart cart = this.getShoppingCart(cartId);\n      \n        log.info(\"Sending  order: \");\n        shoppingCartOrderProcessor.process(cart);\n   \n        cart.resetShoppingCartItemList();\n        priceShoppingCart(cart);\n        return cart;\n    }\n\n    public void priceShoppingCart(ShoppingCart sc) {\n\n        if (sc != null) {\n\n            initShoppingCartForPricing(sc);\n\n            if (sc.getShoppingCartItemList() != null && sc.getShoppingCartItemList().size() > 0) {\n\n                ps.applyCartItemPromotions(sc);\n\n                for (ShoppingCartItem sci : sc.getShoppingCartItemList()) {\n\n                    sc.setCartItemPromoSavings(\n                            sc.getCartItemPromoSavings() + sci.getPromoSavings() * sci.getQuantity());\n                    sc.setCartItemTotal(sc.getCartItemTotal() + sci.getPrice() * sci.getQuantity());\n\n                }\n\n                sc.setShippingTotal(lookupShippingServiceRemote().calculateShipping(sc));\n\n                if (sc.getCartItemTotal() >= 25) {\n                    sc.setShippingTotal(sc.getShippingTotal()\n                            + lookupShippingServiceRemote().calculateShippingInsurance(sc));\n                }\n\n            }\n\n            ps.applyShippingPromotions(sc);\n\n            sc.setCartTotal(sc.getCartItemTotal() + sc.getShippingTotal());\n\n        }\n\n    }\n\n    private void initShoppingCartForPricing(ShoppingCart sc) {\n\n        sc.setCartItemTotal(0);\n        sc.setCartItemPromoSavings(0);\n        sc.setShippingTotal(0);\n        sc.setShippingPromoSavings(0);\n        sc.setCartTotal(0);\n\n        for (ShoppingCartItem sci : sc.getShoppingCartItemList()) {\n            Product p = getProduct(sci.getProduct().getItemId());\n            //if product exist\n            if (p != null) {\n                sci.setProduct(p);\n                sci.setPrice(p.getPrice());\n            }\n\n            sci.setPromoSavings(0);\n        }\n\n    }\n\n    public Product getProduct(String itemId) {\n        return productServices.getProductByItemId(itemId);\n    }\n\n\tprivate static ShippingServiceRemote lookupShippingServiceRemote() {\n        try {\n            final Hashtable<String, String> jndiProperties = new Hashtable<>();\n            jndiProperties.put(Context.INITIAL_CONTEXT_FACTORY, \"org.wildfly.naming.client.WildFlyInitialContextFactory\");\n\n            final Context context = new InitialContext(jndiProperties);\n\n            return (ShippingServiceRemote) context.lookup(\"ejb:/ROOT/ShippingService!\" + ShippingServiceRemote.class.getName());\n        } catch (NamingException e) {\n            throw new RuntimeException(e);\n        }\n    }\n}\n```\n\n## Additional Information\n\nTo complete the migration, ensure that the `quarkus-undertow` extension is activated in the `pom.xml` file by adding the following dependency:\n\n```xml\n<dependency>\n    <groupId>io.quarkus</groupId>\n    <artifactId>quarkus-undertow</artifactId>\n</dependency>\n```\n\nThis will enable the use of the `@SessionScoped` annotation in the `ShoppingCartService` class.",
       "response_metadata": {
         "model_name": "meta-llama/llama-3-1-70b-instruct",
         "token_usage": {
-          "prompt_tokens": 952,
-          "completion_tokens": 708,
-          "total_tokens": 1660,
-          "input_token_count": 952,
-          "generated_token_count": 708
+          "prompt_tokens": 1241,
+          "completion_tokens": 1019,
+          "total_tokens": 2260,
+          "input_token_count": 1241,
+          "generated_token_count": 1019
         },
         "meta": {
-          "conversation_id": "2ba24126-05d8-48ff-8a2d-4debe9dbda59",
-          "id": "4a64f569-67e2-42d6-8de1-cec964528067",
+          "conversation_id": "cc600ebb-72da-4bd8-95f0-0bc90b6642e5",
+          "id": "adda1951-56ad-4121-87cd-9a08cea5b0d1",
           "model_id": "meta-llama/llama-3-1-70b-instruct"
         },
-        "generated_token_count": 708,
+        "generated_token_count": 1019,
         "input_token_count": 0,
         "input_tokens": [
           {
@@ -790,10 +790,10 @@
             "text": "\u0120\""
           },
           {
-            "text": "Prom"
+            "text": "Shopping"
           },
           {
-            "text": "o"
+            "text": "Cart"
           },
           {
             "text": "Service"
@@ -859,10 +859,13 @@
             "text": "\u0120java"
           },
           {
-            "text": ".io"
+            "text": ".util"
           },
           {
-            "text": ".Serializable"
+            "text": ".Has"
+          },
+          {
+            "text": "htable"
           },
           {
             "text": ";\u010a"
@@ -877,52 +880,10 @@
             "text": ".util"
           },
           {
-            "text": ".HashMap"
+            "text": ".logging"
           },
           {
-            "text": ";\u010a"
-          },
-          {
-            "text": "import"
-          },
-          {
-            "text": "\u0120java"
-          },
-          {
-            "text": ".util"
-          },
-          {
-            "text": ".HashSet"
-          },
-          {
-            "text": ";\u010a"
-          },
-          {
-            "text": "import"
-          },
-          {
-            "text": "\u0120java"
-          },
-          {
-            "text": ".util"
-          },
-          {
-            "text": ".Map"
-          },
-          {
-            "text": ";\u010a"
-          },
-          {
-            "text": "import"
-          },
-          {
-            "text": "\u0120java"
-          },
-          {
-            "text": ".util"
-          },
-          {
-            "text": ".Set"
+            "text": ".Logger"
           },
           {
             "text": ";\u010a\u010a"
@@ -931,19 +892,100 @@
             "text": "import"
           },
           {
+            "text": "\u0120jak"
+          },
+          {
+            "text": "arta"
+          },
+          {
+            "text": ".ejb"
+          },
+          {
+            "text": ".State"
+          },
+          {
+            "text": "ful"
+          },
+          {
+            "text": ";\u010a"
+          },
+          {
+            "text": "import"
+          },
+          {
+            "text": "\u0120jak"
+          },
+          {
+            "text": "arta"
+          },
+          {
+            "text": ".inject"
+          },
+          {
+            "text": ".Inject"
+          },
+          {
+            "text": ";\u010a"
+          },
+          {
+            "text": "import"
+          },
+          {
             "text": "\u0120javax"
           },
           {
-            "text": ".enterprise"
+            "text": ".n"
           },
           {
-            "text": ".context"
+            "text": "aming"
           },
           {
-            "text": ".Application"
+            "text": ".Context"
           },
           {
-            "text": "Scoped"
+            "text": ";\u010a"
+          },
+          {
+            "text": "import"
+          },
+          {
+            "text": "\u0120javax"
+          },
+          {
+            "text": ".n"
+          },
+          {
+            "text": "aming"
+          },
+          {
+            "text": ".Initial"
+          },
+          {
+            "text": "Context"
+          },
+          {
+            "text": ";\u010a"
+          },
+          {
+            "text": "import"
+          },
+          {
+            "text": "\u0120javax"
+          },
+          {
+            "text": ".n"
+          },
+          {
+            "text": "aming"
+          },
+          {
+            "text": ".N"
+          },
+          {
+            "text": "aming"
+          },
+          {
+            "text": "Exception"
           },
           {
             "text": ";\u010a\u010a"
@@ -973,13 +1015,7 @@
             "text": ".model"
           },
           {
-            "text": ".P"
-          },
-          {
-            "text": "rom"
-          },
-          {
-            "text": "otion"
+            "text": ".Product"
           },
           {
             "text": ";\u010a"
@@ -1060,10 +1096,10 @@
             "text": "@"
           },
           {
-            "text": "Application"
+            "text": "State"
           },
           {
-            "text": "Scoped"
+            "text": "ful"
           },
           {
             "text": "\u010a"
@@ -1075,67 +1111,37 @@
             "text": "\u0120class"
           },
           {
-            "text": "\u0120Promo"
+            "text": "\u0120ShoppingCart"
           },
           {
             "text": "Service"
-          },
-          {
-            "text": "\u0120implements"
-          },
-          {
-            "text": "\u0120Serializable"
-          },
-          {
-            "text": "\u0120{\u010a\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120private"
-          },
-          {
-            "text": "\u0120static"
-          },
-          {
-            "text": "\u0120final"
-          },
-          {
-            "text": "\u0120long"
-          },
-          {
-            "text": "\u0120serialVersionUID"
-          },
-          {
-            "text": "\u0120="
           },
           {
             "text": "\u0120"
           },
           {
-            "text": "208"
+            "text": "\u0120{\u010a\u010a"
           },
           {
-            "text": "859"
+            "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "058"
+            "text": "\u0120@"
           },
           {
-            "text": "785"
+            "text": "Inject"
           },
           {
-            "text": "664"
+            "text": "\u010a"
           },
           {
-            "text": "556"
+            "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "8"
+            "text": "\u0120Logger"
           },
           {
-            "text": "L"
+            "text": "\u0120log"
           },
           {
             "text": ";\u010a\u010a"
@@ -1144,19 +1150,25 @@
             "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120private"
+            "text": "\u0120@"
           },
           {
-            "text": "\u0120String"
+            "text": "Inject"
           },
           {
-            "text": "\u0120name"
+            "text": "\u010a"
           },
           {
-            "text": "\u0120="
+            "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120null"
+            "text": "\u0120ProductService"
+          },
+          {
+            "text": "\u0120product"
+          },
+          {
+            "text": "Services"
           },
           {
             "text": ";\u010a\u010a"
@@ -1165,43 +1177,16 @@
             "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120private"
+            "text": "\u0120@"
           },
           {
-            "text": "\u0120Set"
+            "text": "Inject"
           },
           {
-            "text": "<P"
-          },
-          {
-            "text": "rom"
-          },
-          {
-            "text": "otion"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "\u0120promotion"
-          },
-          {
-            "text": "Set"
-          },
-          {
-            "text": "\u0120="
-          },
-          {
-            "text": "\u0120null"
-          },
-          {
-            "text": ";\u010a\u010a"
+            "text": "\u010a"
           },
           {
             "text": "\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120public"
           },
           {
             "text": "\u0120Promo"
@@ -1210,19 +1195,64 @@
             "text": "Service"
           },
           {
-            "text": "()"
+            "text": "\u0120ps"
           },
           {
-            "text": "\u0120{\u010a\u010a"
+            "text": ";\u010a\u010a\u010a"
           },
           {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+            "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120promotion"
+            "text": "\u0120@"
           },
           {
-            "text": "Set"
+            "text": "Inject"
+          },
+          {
+            "text": "\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120ShoppingCart"
+          },
+          {
+            "text": "Order"
+          },
+          {
+            "text": "Processor"
+          },
+          {
+            "text": "\u0120shopping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "Order"
+          },
+          {
+            "text": "Processor"
+          },
+          {
+            "text": ";\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120private"
+          },
+          {
+            "text": "\u0120ShoppingCart"
+          },
+          {
+            "text": "\u0120cart"
+          },
+          {
+            "text": "\u0120"
           },
           {
             "text": "\u0120="
@@ -1231,49 +1261,304 @@
             "text": "\u0120new"
           },
           {
-            "text": "\u0120HashSet"
+            "text": "\u0120ShoppingCart"
           },
           {
-            "text": "<>();\u010a\u010a"
+            "text": "();"
+          },
+          {
+            "text": "\u0120//"
+          },
+          {
+            "text": "Each"
+          },
+          {
+            "text": "\u0120user"
+          },
+          {
+            "text": "\u0120can"
+          },
+          {
+            "text": "\u0120have"
+          },
+          {
+            "text": "\u0120multiple"
+          },
+          {
+            "text": "\u0120shopping"
+          },
+          {
+            "text": "\u0120carts"
+          },
+          {
+            "text": "\u0120("
+          },
+          {
+            "text": "tab"
+          },
+          {
+            "text": "bed"
+          },
+          {
+            "text": "\u0120browsing"
+          },
+          {
+            "text": ")\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120public"
+          },
+          {
+            "text": "\u0120ShoppingCart"
+          },
+          {
+            "text": "Service"
+          },
+          {
+            "text": "()"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120public"
+          },
+          {
+            "text": "\u0120ShoppingCart"
+          },
+          {
+            "text": "\u0120get"
+          },
+          {
+            "text": "Shopping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "(String"
+          },
+          {
+            "text": "\u0120cart"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ")"
+          },
+          {
+            "text": "\u0120{\u010a"
           },
           {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120promotion"
+            "text": "\u0120return"
           },
           {
-            "text": "Set"
+            "text": "\u0120cart"
           },
           {
-            "text": ".add"
+            "text": ";\u010a"
           },
           {
-            "text": "(new"
+            "text": "\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120Promotion"
+            "text": "\u0120}\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120public"
+          },
+          {
+            "text": "\u0120ShoppingCart"
+          },
+          {
+            "text": "\u0120check"
+          },
+          {
+            "text": "Out"
+          },
+          {
+            "text": "Shopping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "(String"
+          },
+          {
+            "text": "\u0120cart"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ")"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120ShoppingCart"
+          },
+          {
+            "text": "\u0120cart"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120this"
+          },
+          {
+            "text": ".get"
+          },
+          {
+            "text": "Shopping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "(cart"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120log"
+          },
+          {
+            "text": ".info"
           },
           {
             "text": "(\""
           },
           {
-            "text": "329"
+            "text": "Sending"
           },
           {
-            "text": "299"
+            "text": "\u0120"
           },
           {
-            "text": "\","
+            "text": "\u0120order"
           },
           {
-            "text": "\u0120."
+            "text": ":"
           },
           {
-            "text": "25"
+            "text": "\u0120\");\u010a"
           },
           {
-            "text": "));\u010a\u010a"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120shopping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "Order"
+          },
+          {
+            "text": "Processor"
+          },
+          {
+            "text": ".process"
+          },
+          {
+            "text": "(cart"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120cart"
+          },
+          {
+            "text": ".reset"
+          },
+          {
+            "text": "Shopping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "ItemList"
+          },
+          {
+            "text": "();\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120price"
+          },
+          {
+            "text": "Shopping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "(cart"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120return"
+          },
+          {
+            "text": "\u0120cart"
+          },
+          {
+            "text": ";\u010a"
           },
           {
             "text": "\u0120\u0120\u0120"
@@ -1291,16 +1576,13 @@
             "text": "\u0120void"
           },
           {
-            "text": "\u0120apply"
+            "text": "\u0120price"
           },
           {
-            "text": "CartItem"
+            "text": "Shopping"
           },
           {
-            "text": "Prom"
-          },
-          {
-            "text": "otions"
+            "text": "Cart"
           },
           {
             "text": "("
@@ -1312,10 +1594,7 @@
             "text": "Cart"
           },
           {
-            "text": "\u0120shopping"
-          },
-          {
-            "text": "Cart"
+            "text": "\u0120sc"
           },
           {
             "text": ")"
@@ -1333,10 +1612,73 @@
             "text": "\u0120("
           },
           {
-            "text": "shopping"
+            "text": "sc"
+          },
+          {
+            "text": "\u0120!="
+          },
+          {
+            "text": "\u0120null"
+          },
+          {
+            "text": ")"
+          },
+          {
+            "text": "\u0120{\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120init"
+          },
+          {
+            "text": "Shopping"
           },
           {
             "text": "Cart"
+          },
+          {
+            "text": "For"
+          },
+          {
+            "text": "P"
+          },
+          {
+            "text": "ricing"
+          },
+          {
+            "text": "(sc"
+          },
+          {
+            "text": ");\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120if"
+          },
+          {
+            "text": "\u0120("
+          },
+          {
+            "text": "sc"
+          },
+          {
+            "text": ".get"
+          },
+          {
+            "text": "Shopping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "ItemList"
+          },
+          {
+            "text": "()"
           },
           {
             "text": "\u0120!="
@@ -1348,10 +1690,7 @@
             "text": "\u0120&&"
           },
           {
-            "text": "\u0120shopping"
-          },
-          {
-            "text": "Cart"
+            "text": "\u0120sc"
           },
           {
             "text": ".get"
@@ -1390,73 +1729,16 @@
             "text": "\u0120{\u010a\u010a"
           },
           {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120Map"
+            "text": "\u0120ps"
           },
           {
-            "text": "<String"
+            "text": ".apply"
           },
           {
-            "text": ","
-          },
-          {
-            "text": "\u0120Promotion"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "\u0120promo"
-          },
-          {
-            "text": "Map"
-          },
-          {
-            "text": "\u0120="
-          },
-          {
-            "text": "\u0120new"
-          },
-          {
-            "text": "\u0120HashMap"
-          },
-          {
-            "text": "<String"
-          },
-          {
-            "text": ","
-          },
-          {
-            "text": "\u0120Promotion"
-          },
-          {
-            "text": ">();\u010a\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120for"
-          },
-          {
-            "text": "\u0120("
-          },
-          {
-            "text": "Prom"
-          },
-          {
-            "text": "otion"
-          },
-          {
-            "text": "\u0120promo"
-          },
-          {
-            "text": "\u0120:"
-          },
-          {
-            "text": "\u0120get"
+            "text": "CartItem"
           },
           {
             "text": "Prom"
@@ -1465,49 +1747,13 @@
             "text": "otions"
           },
           {
-            "text": "())"
-          },
-          {
-            "text": "\u0120{\u010a\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120promo"
-          },
-          {
-            "text": "Map"
-          },
-          {
-            "text": ".put"
-          },
-          {
-            "text": "(prom"
-          },
-          {
-            "text": "o"
-          },
-          {
-            "text": ".getItemId"
-          },
-          {
-            "text": "(),"
-          },
-          {
-            "text": "\u0120promo"
+            "text": "(sc"
           },
           {
             "text": ");\u010a\u010a"
           },
           {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120}\u010a\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
             "text": "\u0120for"
@@ -1528,10 +1774,7 @@
             "text": "\u0120:"
           },
           {
-            "text": "\u0120shopping"
-          },
-          {
-            "text": "Cart"
+            "text": "\u0120sc"
           },
           {
             "text": ".get"
@@ -1552,94 +1795,16 @@
             "text": "\u0120{\u010a\u010a"
           },
           {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120String"
-          },
-          {
-            "text": "\u0120productId"
-          },
-          {
-            "text": "\u0120="
-          },
-          {
-            "text": "\u0120sci"
-          },
-          {
-            "text": ".getProduct"
-          },
-          {
-            "text": "()."
-          },
-          {
-            "text": "getItem"
-          },
-          {
-            "text": "Id"
-          },
-          {
-            "text": "();\u010a\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120Promotion"
-          },
-          {
-            "text": "\u0120promo"
-          },
-          {
-            "text": "\u0120="
-          },
-          {
-            "text": "\u0120promo"
-          },
-          {
-            "text": "Map"
-          },
-          {
-            "text": ".get"
-          },
-          {
-            "text": "(productId"
-          },
-          {
-            "text": ");\u010a\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120if"
-          },
-          {
-            "text": "\u0120("
-          },
-          {
-            "text": "promo"
-          },
-          {
-            "text": "\u0120!="
-          },
-          {
-            "text": "\u0120null"
-          },
-          {
-            "text": ")"
-          },
-          {
-            "text": "\u0120{\u010a\u010a"
-          },
-          {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120sci"
+            "text": "\u0120sc"
           },
           {
             "text": ".set"
+          },
+          {
+            "text": "CartItem"
           },
           {
             "text": "Prom"
@@ -1651,85 +1816,49 @@
             "text": "avings"
           },
           {
-            "text": "(s"
+            "text": "(\u010a"
           },
           {
-            "text": "ci"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": ".getProduct"
-          },
-          {
-            "text": "()."
-          },
-          {
-            "text": "get"
-          },
-          {
-            "text": "Price"
-          },
-          {
-            "text": "()"
-          },
-          {
-            "text": "\u0120*"
-          },
-          {
-            "text": "\u0120promo"
+            "text": "\u0120sc"
           },
           {
             "text": ".get"
           },
           {
-            "text": "Percent"
+            "text": "CartItem"
           },
           {
-            "text": "Off"
+            "text": "Prom"
+          },
+          {
+            "text": "oS"
+          },
+          {
+            "text": "avings"
           },
           {
             "text": "()"
           },
           {
-            "text": "\u0120*"
-          },
-          {
-            "text": "\u0120-"
-          },
-          {
-            "text": "1"
-          },
-          {
-            "text": ");\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+            "text": "\u0120+"
           },
           {
             "text": "\u0120sci"
           },
           {
-            "text": ".set"
+            "text": ".get"
           },
           {
-            "text": "Price"
+            "text": "Prom"
           },
           {
-            "text": "(s"
+            "text": "oS"
           },
           {
-            "text": "ci"
-          },
-          {
-            "text": ".getProduct"
-          },
-          {
-            "text": "()."
-          },
-          {
-            "text": "get"
-          },
-          {
-            "text": "Price"
+            "text": "avings"
           },
           {
             "text": "()"
@@ -1738,28 +1867,73 @@
             "text": "\u0120*"
           },
           {
-            "text": "\u0120("
-          },
-          {
-            "text": "1"
-          },
-          {
-            "text": "\u0120-"
-          },
-          {
-            "text": "\u0120promo"
+            "text": "\u0120sci"
           },
           {
             "text": ".get"
           },
           {
-            "text": "Percent"
+            "text": "Quantity"
           },
           {
-            "text": "Off"
+            "text": "());\u010a"
           },
           {
-            "text": "()));\u010a\u010a"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120sc"
+          },
+          {
+            "text": ".set"
+          },
+          {
+            "text": "CartItem"
+          },
+          {
+            "text": "Total"
+          },
+          {
+            "text": "(sc"
+          },
+          {
+            "text": ".get"
+          },
+          {
+            "text": "CartItem"
+          },
+          {
+            "text": "Total"
+          },
+          {
+            "text": "()"
+          },
+          {
+            "text": "\u0120+"
+          },
+          {
+            "text": "\u0120sci"
+          },
+          {
+            "text": ".getPrice"
+          },
+          {
+            "text": "()"
+          },
+          {
+            "text": "\u0120*"
+          },
+          {
+            "text": "\u0120sci"
+          },
+          {
+            "text": ".get"
+          },
+          {
+            "text": "Quantity"
+          },
+          {
+            "text": "());\u010a\u010a"
           },
           {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
@@ -1768,148 +1942,52 @@
             "text": "\u0120}\u010a\u010a"
           },
           {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120}\u010a\u010a"
+            "text": "\u0120sc"
           },
           {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120}\u010a\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120}\u010a\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120public"
-          },
-          {
-            "text": "\u0120void"
-          },
-          {
-            "text": "\u0120apply"
+            "text": ".set"
           },
           {
             "text": "Shipping"
           },
           {
-            "text": "Prom"
-          },
-          {
-            "text": "otions"
+            "text": "Total"
           },
           {
             "text": "("
           },
           {
-            "text": "Shopping"
+            "text": "lookup"
           },
           {
-            "text": "Cart"
+            "text": "Shipping"
           },
           {
-            "text": "\u0120shopping"
+            "text": "Service"
           },
           {
-            "text": "Cart"
+            "text": "Remote"
           },
           {
-            "text": ")"
+            "text": "()."
           },
           {
-            "text": "\u0120{\u010a\u010a"
+            "text": "calculate"
           },
           {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+            "text": "Shipping"
           },
           {
-            "text": "\u0120if"
+            "text": "(sc"
           },
           {
-            "text": "\u0120("
+            "text": "));\u010a\u010a"
           },
           {
-            "text": "shopping"
-          },
-          {
-            "text": "Cart"
-          },
-          {
-            "text": "\u0120!="
-          },
-          {
-            "text": "\u0120null"
-          },
-          {
-            "text": ")"
-          },
-          {
-            "text": "\u0120{\u010a\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120//"
-          },
-          {
-            "text": "P"
-          },
-          {
-            "text": "ROM"
-          },
-          {
-            "text": "O"
-          },
-          {
-            "text": ":"
-          },
-          {
-            "text": "\u0120if"
-          },
-          {
-            "text": "\u0120cart"
-          },
-          {
-            "text": "\u0120total"
-          },
-          {
-            "text": "\u0120is"
-          },
-          {
-            "text": "\u0120greater"
-          },
-          {
-            "text": "\u0120than"
-          },
-          {
-            "text": "\u0120"
-          },
-          {
-            "text": "75"
-          },
-          {
-            "text": ","
-          },
-          {
-            "text": "\u0120free"
-          },
-          {
-            "text": "\u0120shipping"
-          },
-          {
-            "text": "\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
             "text": "\u0120if"
@@ -1918,10 +1996,7 @@
             "text": "\u0120("
           },
           {
-            "text": "shopping"
-          },
-          {
-            "text": "Cart"
+            "text": "sc"
           },
           {
             "text": ".get"
@@ -1942,22 +2017,19 @@
             "text": "\u0120"
           },
           {
-            "text": "75"
+            "text": "25"
           },
           {
             "text": ")"
           },
           {
-            "text": "\u0120{\u010a\u010a"
+            "text": "\u0120{\u010a"
           },
           {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120shopping"
-          },
-          {
-            "text": "Cart"
+            "text": "\u0120sc"
           },
           {
             "text": ".set"
@@ -1966,22 +2038,10 @@
             "text": "Shipping"
           },
           {
-            "text": "Prom"
+            "text": "Total"
           },
           {
-            "text": "oS"
-          },
-          {
-            "text": "avings"
-          },
-          {
-            "text": "(sh"
-          },
-          {
-            "text": "opping"
-          },
-          {
-            "text": "Cart"
+            "text": "(sc"
           },
           {
             "text": ".get"
@@ -1993,28 +2053,244 @@
             "text": "Total"
           },
           {
-            "text": "()"
+            "text": "()\u010a"
           },
           {
-            "text": "\u0120*"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120-"
+            "text": "\u0120+"
           },
           {
-            "text": "1"
+            "text": "\u0120lookup"
           },
           {
-            "text": ");\u010a"
+            "text": "Shipping"
+          },
+          {
+            "text": "Service"
+          },
+          {
+            "text": "Remote"
+          },
+          {
+            "text": "()."
+          },
+          {
+            "text": "calculate"
+          },
+          {
+            "text": "Shipping"
+          },
+          {
+            "text": "Insurance"
+          },
+          {
+            "text": "(sc"
+          },
+          {
+            "text": "));\u010a"
           },
           {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120shopping"
+            "text": "\u0120}\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120ps"
+          },
+          {
+            "text": ".apply"
+          },
+          {
+            "text": "Shipping"
+          },
+          {
+            "text": "Prom"
+          },
+          {
+            "text": "otions"
+          },
+          {
+            "text": "(sc"
+          },
+          {
+            "text": ");\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120sc"
+          },
+          {
+            "text": ".set"
           },
           {
             "text": "Cart"
+          },
+          {
+            "text": "Total"
+          },
+          {
+            "text": "(sc"
+          },
+          {
+            "text": ".get"
+          },
+          {
+            "text": "CartItem"
+          },
+          {
+            "text": "Total"
+          },
+          {
+            "text": "()"
+          },
+          {
+            "text": "\u0120+"
+          },
+          {
+            "text": "\u0120sc"
+          },
+          {
+            "text": ".get"
+          },
+          {
+            "text": "Shipping"
+          },
+          {
+            "text": "Total"
+          },
+          {
+            "text": "());\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120private"
+          },
+          {
+            "text": "\u0120void"
+          },
+          {
+            "text": "\u0120init"
+          },
+          {
+            "text": "Shopping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "For"
+          },
+          {
+            "text": "P"
+          },
+          {
+            "text": "ricing"
+          },
+          {
+            "text": "("
+          },
+          {
+            "text": "Shopping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "\u0120sc"
+          },
+          {
+            "text": ")"
+          },
+          {
+            "text": "\u0120{\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120sc"
+          },
+          {
+            "text": ".set"
+          },
+          {
+            "text": "CartItem"
+          },
+          {
+            "text": "Total"
+          },
+          {
+            "text": "("
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120sc"
+          },
+          {
+            "text": ".set"
+          },
+          {
+            "text": "CartItem"
+          },
+          {
+            "text": "Prom"
+          },
+          {
+            "text": "oS"
+          },
+          {
+            "text": "avings"
+          },
+          {
+            "text": "("
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120sc"
           },
           {
             "text": ".set"
@@ -2032,193 +2308,160 @@
             "text": "0"
           },
           {
-            "text": ");\u010a\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120}\u010a\u010a"
+            "text": ");\u010a"
           },
           {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120}\u010a\u010a"
+            "text": "\u0120sc"
           },
           {
-            "text": "\u0120\u0120\u0120"
+            "text": ".set"
           },
           {
-            "text": "\u0120}\u010a\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120public"
-          },
-          {
-            "text": "\u0120Set"
-          },
-          {
-            "text": "<P"
-          },
-          {
-            "text": "rom"
-          },
-          {
-            "text": "otion"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "\u0120get"
+            "text": "Shipping"
           },
           {
             "text": "Prom"
           },
           {
-            "text": "otions"
+            "text": "oS"
           },
           {
-            "text": "()"
+            "text": "avings"
           },
           {
-            "text": "\u0120{\u010a\u010a"
+            "text": "("
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": ");\u010a"
           },
           {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120if"
+            "text": "\u0120sc"
+          },
+          {
+            "text": ".set"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "Total"
+          },
+          {
+            "text": "("
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": ");\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120for"
           },
           {
             "text": "\u0120("
           },
           {
-            "text": "promotion"
+            "text": "Shopping"
           },
           {
-            "text": "Set"
+            "text": "CartItem"
           },
           {
-            "text": "\u0120=="
+            "text": "\u0120sci"
           },
           {
-            "text": "\u0120null"
+            "text": "\u0120:"
           },
           {
-            "text": ")"
+            "text": "\u0120sc"
           },
           {
-            "text": "\u0120{\u010a\u010a"
+            "text": ".get"
+          },
+          {
+            "text": "Shopping"
+          },
+          {
+            "text": "Cart"
+          },
+          {
+            "text": "ItemList"
+          },
+          {
+            "text": "())"
+          },
+          {
+            "text": "\u0120{\u010a"
           },
           {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120promotion"
+            "text": "\u0120Product"
           },
           {
-            "text": "Set"
+            "text": "\u0120p"
           },
           {
             "text": "\u0120="
           },
           {
-            "text": "\u0120new"
+            "text": "\u0120getProduct"
           },
           {
-            "text": "\u0120HashSet"
+            "text": "(s"
           },
           {
-            "text": "<>();\u010a\u010a"
+            "text": "ci"
           },
           {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+            "text": ".getProduct"
           },
           {
-            "text": "\u0120}\u010a\u010a"
+            "text": "()."
           },
           {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+            "text": "getItem"
           },
           {
-            "text": "\u0120return"
+            "text": "Id"
           },
           {
-            "text": "\u0120new"
+            "text": "());\u010a"
           },
           {
-            "text": "\u0120HashSet"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "<>("
+            "text": "\u0120//"
           },
           {
-            "text": "promotion"
+            "text": "if"
           },
           {
-            "text": "Set"
+            "text": "\u0120product"
           },
           {
-            "text": ");\u010a\u010a"
+            "text": "\u0120exist"
           },
           {
-            "text": "\u0120\u0120\u0120"
+            "text": "\u010a"
           },
           {
-            "text": "\u0120}\u010a\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120public"
-          },
-          {
-            "text": "\u0120void"
-          },
-          {
-            "text": "\u0120set"
-          },
-          {
-            "text": "Prom"
-          },
-          {
-            "text": "otions"
-          },
-          {
-            "text": "(Set"
-          },
-          {
-            "text": "<P"
-          },
-          {
-            "text": "rom"
-          },
-          {
-            "text": "otion"
-          },
-          {
-            "text": ">"
-          },
-          {
-            "text": "\u0120promotion"
-          },
-          {
-            "text": "Set"
-          },
-          {
-            "text": ")"
-          },
-          {
-            "text": "\u0120{\u010a\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
             "text": "\u0120if"
@@ -2227,10 +2470,7 @@
             "text": "\u0120("
           },
           {
-            "text": "promotion"
-          },
-          {
-            "text": "Set"
+            "text": "p"
           },
           {
             "text": "\u0120!="
@@ -2242,82 +2482,79 @@
             "text": ")"
           },
           {
-            "text": "\u0120{\u010a\u010a"
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120sci"
+          },
+          {
+            "text": ".set"
+          },
+          {
+            "text": "Product"
+          },
+          {
+            "text": "(p"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120sci"
+          },
+          {
+            "text": ".set"
+          },
+          {
+            "text": "Price"
+          },
+          {
+            "text": "(p"
+          },
+          {
+            "text": ".getPrice"
+          },
+          {
+            "text": "());\u010a"
           },
           {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120this"
-          },
-          {
-            "text": ".prom"
-          },
-          {
-            "text": "otion"
-          },
-          {
-            "text": "Set"
-          },
-          {
-            "text": "\u0120="
-          },
-          {
-            "text": "\u0120new"
-          },
-          {
-            "text": "\u0120HashSet"
-          },
-          {
-            "text": "<>("
-          },
-          {
-            "text": "promotion"
-          },
-          {
-            "text": "Set"
-          },
-          {
-            "text": ");\u010a\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120}"
-          },
-          {
-            "text": "\u0120else"
-          },
-          {
-            "text": "\u0120{\u010a\u010a"
+            "text": "\u0120}\u010a\u010a"
           },
           {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
           },
           {
-            "text": "\u0120this"
+            "text": "\u0120sci"
           },
           {
-            "text": ".prom"
+            "text": ".set"
           },
           {
-            "text": "otion"
+            "text": "Prom"
           },
           {
-            "text": "Set"
+            "text": "oS"
           },
           {
-            "text": "\u0120="
+            "text": "avings"
           },
           {
-            "text": "\u0120new"
+            "text": "("
           },
           {
-            "text": "\u0120HashSet"
+            "text": "0"
           },
           {
-            "text": "<>();\u010a\u010a"
+            "text": ");\u010a"
           },
           {
             "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
@@ -2330,18 +2567,6 @@
           },
           {
             "text": "\u0120}\u010a\u010a"
-          },
-          {
-            "text": "\u0120\u0120\u0120"
-          },
-          {
-            "text": "\u0120@"
-          },
-          {
-            "text": "Override"
-          },
-          {
-            "text": "\u010a"
           },
           {
             "text": "\u0120\u0120\u0120"
@@ -2350,13 +2575,19 @@
             "text": "\u0120public"
           },
           {
-            "text": "\u0120String"
+            "text": "\u0120Product"
           },
           {
-            "text": "\u0120toString"
+            "text": "\u0120getProduct"
           },
           {
-            "text": "()"
+            "text": "(String"
+          },
+          {
+            "text": "\u0120itemId"
+          },
+          {
+            "text": ")"
           },
           {
             "text": "\u0120{\u010a"
@@ -2368,61 +2599,25 @@
             "text": "\u0120return"
           },
           {
-            "text": "\u0120\""
+            "text": "\u0120product"
           },
           {
-            "text": "Prom"
+            "text": "Services"
           },
           {
-            "text": "o"
+            "text": ".getProduct"
           },
           {
-            "text": "Service"
+            "text": "By"
           },
           {
-            "text": "\u0120["
+            "text": "ItemId"
           },
           {
-            "text": "name"
+            "text": "(itemId"
           },
           {
-            "text": "=\""
-          },
-          {
-            "text": "\u0120+"
-          },
-          {
-            "text": "\u0120name"
-          },
-          {
-            "text": "\u0120+"
-          },
-          {
-            "text": "\u0120\","
-          },
-          {
-            "text": "\u0120promotion"
-          },
-          {
-            "text": "Set"
-          },
-          {
-            "text": "=\""
-          },
-          {
-            "text": "\u0120+"
-          },
-          {
-            "text": "\u0120promotion"
-          },
-          {
-            "text": "Set"
-          },
-          {
-            "text": "\u0120+"
-          },
-          {
-            "text": "\u0120\"]\";\u010a"
+            "text": ");\u010a"
           },
           {
             "text": "\u0120\u0120\u0120"
@@ -2431,7 +2626,349 @@
             "text": "\u0120}\u010a\u010a"
           },
           {
-            "text": "}\u010a\u010a"
+            "text": "\u0109private"
+          },
+          {
+            "text": "\u0120static"
+          },
+          {
+            "text": "\u0120Shipping"
+          },
+          {
+            "text": "Service"
+          },
+          {
+            "text": "Remote"
+          },
+          {
+            "text": "\u0120lookup"
+          },
+          {
+            "text": "Shipping"
+          },
+          {
+            "text": "Service"
+          },
+          {
+            "text": "Remote"
+          },
+          {
+            "text": "()"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120try"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120final"
+          },
+          {
+            "text": "\u0120Hashtable"
+          },
+          {
+            "text": "<String"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120String"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "\u0120j"
+          },
+          {
+            "text": "nd"
+          },
+          {
+            "text": "i"
+          },
+          {
+            "text": "Properties"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120new"
+          },
+          {
+            "text": "\u0120Hashtable"
+          },
+          {
+            "text": "<>();\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120j"
+          },
+          {
+            "text": "nd"
+          },
+          {
+            "text": "i"
+          },
+          {
+            "text": "Properties"
+          },
+          {
+            "text": ".put"
+          },
+          {
+            "text": "(Context"
+          },
+          {
+            "text": ".IN"
+          },
+          {
+            "text": "IT"
+          },
+          {
+            "text": "IAL"
+          },
+          {
+            "text": "_CONTEXT"
+          },
+          {
+            "text": "_FACTORY"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "org"
+          },
+          {
+            "text": ".w"
+          },
+          {
+            "text": "ild"
+          },
+          {
+            "text": "fly"
+          },
+          {
+            "text": ".n"
+          },
+          {
+            "text": "aming"
+          },
+          {
+            "text": ".client"
+          },
+          {
+            "text": ".W"
+          },
+          {
+            "text": "ild"
+          },
+          {
+            "text": "Fly"
+          },
+          {
+            "text": "Initial"
+          },
+          {
+            "text": "Context"
+          },
+          {
+            "text": "Factory"
+          },
+          {
+            "text": "\");\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120final"
+          },
+          {
+            "text": "\u0120Context"
+          },
+          {
+            "text": "\u0120context"
+          },
+          {
+            "text": "\u0120="
+          },
+          {
+            "text": "\u0120new"
+          },
+          {
+            "text": "\u0120Initial"
+          },
+          {
+            "text": "Context"
+          },
+          {
+            "text": "(j"
+          },
+          {
+            "text": "nd"
+          },
+          {
+            "text": "i"
+          },
+          {
+            "text": "Properties"
+          },
+          {
+            "text": ");\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120return"
+          },
+          {
+            "text": "\u0120("
+          },
+          {
+            "text": "Shipping"
+          },
+          {
+            "text": "Service"
+          },
+          {
+            "text": "Remote"
+          },
+          {
+            "text": ")"
+          },
+          {
+            "text": "\u0120context"
+          },
+          {
+            "text": ".lookup"
+          },
+          {
+            "text": "(\""
+          },
+          {
+            "text": "ej"
+          },
+          {
+            "text": "b"
+          },
+          {
+            "text": ":/"
+          },
+          {
+            "text": "ROOT"
+          },
+          {
+            "text": "/"
+          },
+          {
+            "text": "Shipping"
+          },
+          {
+            "text": "Service"
+          },
+          {
+            "text": "!\""
+          },
+          {
+            "text": "\u0120+"
+          },
+          {
+            "text": "\u0120Shipping"
+          },
+          {
+            "text": "Service"
+          },
+          {
+            "text": "Remote"
+          },
+          {
+            "text": ".class"
+          },
+          {
+            "text": ".getName"
+          },
+          {
+            "text": "());\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}"
+          },
+          {
+            "text": "\u0120catch"
+          },
+          {
+            "text": "\u0120("
+          },
+          {
+            "text": "Naming"
+          },
+          {
+            "text": "Exception"
+          },
+          {
+            "text": "\u0120e"
+          },
+          {
+            "text": ")"
+          },
+          {
+            "text": "\u0120{\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120throw"
+          },
+          {
+            "text": "\u0120new"
+          },
+          {
+            "text": "\u0120RuntimeException"
+          },
+          {
+            "text": "(e"
+          },
+          {
+            "text": ");\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120}\u010a"
+          },
+          {
+            "text": "}\u010a"
           },
           {
             "text": "``"
@@ -2479,7 +3016,49 @@
             "text": "\u0120\""
           },
           {
-            "text": "Replace"
+            "text": "State"
+          },
+          {
+            "text": "ful"
+          },
+          {
+            "text": "\u0120E"
+          },
+          {
+            "text": "JB"
+          },
+          {
+            "text": "s"
+          },
+          {
+            "text": "\u0120can"
+          },
+          {
+            "text": "\u0120be"
+          },
+          {
+            "text": "\u0120converted"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120CD"
+          },
+          {
+            "text": "I"
+          },
+          {
+            "text": "\u0120bean"
+          },
+          {
+            "text": "\u0120by"
+          },
+          {
+            "text": "\u0120replacing"
           },
           {
             "text": "\u0120the"
@@ -2488,40 +3067,328 @@
             "text": "\u0120`"
           },
           {
-            "text": "javax"
+            "text": "@"
           },
           {
-            "text": ".enterprise"
+            "text": "State"
+          },
+          {
+            "text": "ful"
           },
           {
             "text": "`"
           },
           {
-            "text": "\u0120import"
-          },
-          {
-            "text": "\u0120statement"
+            "text": "\u0120annotation"
           },
           {
             "text": "\u0120with"
           },
           {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120bean"
+          },
+          {
+            "text": "-def"
+          },
+          {
+            "text": "ining"
+          },
+          {
+            "text": "\u0120annotation"
+          },
+          {
+            "text": "\u010a"
+          },
+          {
+            "text": "\u0120that"
+          },
+          {
+            "text": "\u0120encompasses"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120appropriate"
+          },
+          {
+            "text": "\u0120scope"
+          },
+          {
+            "text": "\u0120("
+          },
+          {
+            "text": "e"
+          },
+          {
+            "text": ".g"
+          },
+          {
+            "text": ".,"
+          },
+          {
             "text": "\u0120`"
           },
           {
-            "text": "jak"
+            "text": "@"
           },
           {
-            "text": "arta"
+            "text": "Application"
           },
           {
-            "text": ".enterprise"
+            "text": "Scoped"
+          },
+          {
+            "text": "`)."
+          },
+          {
+            "text": "\u0120`"
+          },
+          {
+            "text": "@"
+          },
+          {
+            "text": "State"
+          },
+          {
+            "text": "ful"
           },
           {
             "text": "`"
           },
           {
-            "text": "\"\u010a"
+            "text": "\u0120E"
+          },
+          {
+            "text": "JB"
+          },
+          {
+            "text": "s"
+          },
+          {
+            "text": "\u0120often"
+          },
+          {
+            "text": "\u0120translate"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120`"
+          },
+          {
+            "text": "@"
+          },
+          {
+            "text": "Session"
+          },
+          {
+            "text": "Scoped"
+          },
+          {
+            "text": "`\u010a"
+          },
+          {
+            "text": "\u0120beans"
+          },
+          {
+            "text": "\u0120("
+          },
+          {
+            "text": "a"
+          },
+          {
+            "text": "\u0120scope"
+          },
+          {
+            "text": "\u0120which"
+          },
+          {
+            "text": "\u0120requires"
+          },
+          {
+            "text": "\u0120activating"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120`"
+          },
+          {
+            "text": "qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": "-"
+          },
+          {
+            "text": "und"
+          },
+          {
+            "text": "ert"
+          },
+          {
+            "text": "ow"
+          },
+          {
+            "text": "`"
+          },
+          {
+            "text": "\u0120extension"
+          },
+          {
+            "text": "),"
+          },
+          {
+            "text": "\u0120but"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120appropriate"
+          },
+          {
+            "text": "\u0120scope"
+          },
+          {
+            "text": "\u0120may"
+          },
+          {
+            "text": "\u0120differ"
+          },
+          {
+            "text": "\u0120based"
+          },
+          {
+            "text": "\u010a"
+          },
+          {
+            "text": "\u0120on"
+          },
+          {
+            "text": "\u0120your"
+          },
+          {
+            "text": "\u0120application"
+          },
+          {
+            "text": "\u0120architecture"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "\u0120Review"
+          },
+          {
+            "text": "\u0120your"
+          },
+          {
+            "text": "\u0120application"
+          },
+          {
+            "text": "'s"
+          },
+          {
+            "text": "\u0120requirements"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120determine"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120appropriate"
+          },
+          {
+            "text": "\u0120scope"
+          },
+          {
+            "text": ".\u010a\u010a"
+          },
+          {
+            "text": "\u0120Note"
+          },
+          {
+            "text": "\u0120that"
+          },
+          {
+            "text": "\u0120it"
+          },
+          {
+            "text": "\u0120is"
+          },
+          {
+            "text": "\u0120recommended"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120as"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120good"
+          },
+          {
+            "text": "\u0120practice"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120keep"
+          },
+          {
+            "text": "\u0120state"
+          },
+          {
+            "text": "\u0120external"
+          },
+          {
+            "text": "\u0120from"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120service"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120Qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": ".\"\u010a"
           },
           {
             "text": "Line"
@@ -2536,7 +3403,7 @@
             "text": "\u0120"
           },
           {
-            "text": "9"
+            "text": "16"
           },
           {
             "text": "\u010a\u010a\u010a\u010a"
@@ -3165,7 +4032,7 @@
           {
             "flagged": false,
             "position": {
-              "end": 1239,
+              "end": 1246,
               "start": 1209
             },
             "score": 0.0,
@@ -3174,8 +4041,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1261,
-              "start": 1240
+              "end": 1268,
+              "start": 1247
             },
             "score": 0.0,
             "success": false
@@ -3183,8 +4050,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1269,
-              "start": 1262
+              "end": 1276,
+              "start": 1269
             },
             "score": 0.0,
             "success": false
@@ -3192,8 +4059,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1307,
-              "start": 1270
+              "end": 1314,
+              "start": 1277
             },
             "score": 0.0,
             "success": false
@@ -3201,8 +4068,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1308,
-              "start": 1308
+              "end": 1315,
+              "start": 1315
             },
             "score": 0.0,
             "success": false
@@ -3210,8 +4077,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1337,
-              "start": 1309
+              "end": 1343,
+              "start": 1316
             },
             "score": 0.0,
             "success": false
@@ -3219,8 +4086,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1363,
-              "start": 1338
+              "end": 1376,
+              "start": 1344
             },
             "score": 0.0,
             "success": false
@@ -3228,8 +4095,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1389,
-              "start": 1364
+              "end": 1377,
+              "start": 1377
             },
             "score": 0.0,
             "success": false
@@ -3237,8 +4104,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1411,
-              "start": 1390
+              "end": 1406,
+              "start": 1378
             },
             "score": 0.0,
             "success": false
@@ -3246,8 +4113,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1433,
-              "start": 1412
+              "end": 1436,
+              "start": 1407
             },
             "score": 0.0,
             "success": false
@@ -3255,8 +4122,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1434,
-              "start": 1434
+              "end": 1465,
+              "start": 1437
             },
             "score": 0.0,
             "success": false
@@ -3264,8 +4131,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1485,
-              "start": 1435
+              "end": 1501,
+              "start": 1466
             },
             "score": 0.0,
             "success": false
@@ -3273,8 +4140,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1486,
-              "start": 1486
+              "end": 1538,
+              "start": 1502
             },
             "score": 0.0,
             "success": false
@@ -3282,8 +4149,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1531,
-              "start": 1487
+              "end": 1539,
+              "start": 1539
             },
             "score": 0.0,
             "success": false
@@ -3291,8 +4158,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1579,
-              "start": 1532
+              "end": 1582,
+              "start": 1540
             },
             "score": 0.0,
             "success": false
@@ -3300,8 +4167,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1631,
-              "start": 1580
+              "end": 1630,
+              "start": 1583
             },
             "score": 0.0,
             "success": false
@@ -3309,8 +4176,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1632,
-              "start": 1632
+              "end": 1682,
+              "start": 1631
             },
             "score": 0.0,
             "success": false
@@ -3318,8 +4185,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1651,
-              "start": 1633
+              "end": 1683,
+              "start": 1683
             },
             "score": 0.0,
             "success": false
@@ -3327,8 +4194,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1703,
-              "start": 1652
+              "end": 1693,
+              "start": 1684
             },
             "score": 0.0,
             "success": false
@@ -3336,8 +4203,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1704,
-              "start": 1704
+              "end": 1729,
+              "start": 1694
             },
             "score": 0.0,
             "success": false
@@ -3345,8 +4212,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1775,
-              "start": 1705
+              "end": 1730,
+              "start": 1730
             },
             "score": 0.0,
             "success": false
@@ -3354,8 +4221,44 @@
           {
             "flagged": false,
             "position": {
-              "end": 1776,
-              "start": 1776
+              "end": 1742,
+              "start": 1731
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 1758,
+              "start": 1743
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 1759,
+              "start": 1759
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 1771,
+              "start": 1760
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 1807,
+              "start": 1772
             },
             "score": 0.0,
             "success": false
@@ -3364,7 +4267,7 @@
             "flagged": false,
             "position": {
               "end": 1808,
-              "start": 1777
+              "start": 1808
             },
             "score": 0.0,
             "success": false
@@ -3372,7 +4275,7 @@
           {
             "flagged": false,
             "position": {
-              "end": 1809,
+              "end": 1820,
               "start": 1809
             },
             "score": 0.0,
@@ -3381,8 +4284,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1857,
-              "start": 1810
+              "end": 1841,
+              "start": 1821
             },
             "score": 0.0,
             "success": false
@@ -3390,8 +4293,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1858,
-              "start": 1858
+              "end": 1842,
+              "start": 1842
             },
             "score": 0.0,
             "success": false
@@ -3399,8 +4302,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1886,
-              "start": 1859
+              "end": 1843,
+              "start": 1843
             },
             "score": 0.0,
             "success": false
@@ -3408,8 +4311,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1887,
-              "start": 1887
+              "end": 1855,
+              "start": 1844
             },
             "score": 0.0,
             "success": false
@@ -3417,8 +4320,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1927,
-              "start": 1888
+              "end": 1914,
+              "start": 1856
             },
             "score": 0.0,
             "success": false
@@ -3426,8 +4329,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1928,
-              "start": 1928
+              "end": 1915,
+              "start": 1915
             },
             "score": 0.0,
             "success": false
@@ -3435,8 +4338,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1984,
-              "start": 1929
+              "end": 2031,
+              "start": 1916
             },
             "score": 0.0,
             "success": false
@@ -3444,8 +4347,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1985,
-              "start": 1985
+              "end": 2032,
+              "start": 2032
             },
             "score": 0.0,
             "success": false
@@ -3453,8 +4356,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1991,
-              "start": 1986
+              "end": 2036,
+              "start": 2033
             },
             "score": 0.0,
             "success": false
@@ -3462,8 +4365,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 1992,
-              "start": 1992
+              "end": 2037,
+              "start": 2037
             },
             "score": 0.0,
             "success": false
@@ -3471,8 +4374,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2061,
-              "start": 1993
+              "end": 2072,
+              "start": 2038
             },
             "score": 0.0,
             "success": false
@@ -3480,8 +4383,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2062,
-              "start": 2062
+              "end": 2078,
+              "start": 2073
             },
             "score": 0.0,
             "success": false
@@ -3489,8 +4392,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2088,
-              "start": 2063
+              "end": 2079,
+              "start": 2079
             },
             "score": 0.0,
             "success": false
@@ -3498,8 +4401,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2151,
-              "start": 2089
+              "end": 2136,
+              "start": 2080
             },
             "score": 0.0,
             "success": false
@@ -3507,8 +4410,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2152,
-              "start": 2152
+              "end": 2157,
+              "start": 2137
             },
             "score": 0.0,
             "success": false
@@ -3516,8 +4419,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2232,
-              "start": 2153
+              "end": 2163,
+              "start": 2158
             },
             "score": 0.0,
             "success": false
@@ -3525,8 +4428,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2233,
-              "start": 2233
+              "end": 2164,
+              "start": 2164
             },
             "score": 0.0,
             "success": false
@@ -3534,8 +4437,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2287,
-              "start": 2234
+              "end": 2226,
+              "start": 2165
             },
             "score": 0.0,
             "success": false
@@ -3543,8 +4446,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2288,
-              "start": 2288
+              "end": 2284,
+              "start": 2227
             },
             "score": 0.0,
             "success": false
@@ -3552,8 +4455,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2344,
-              "start": 2289
+              "end": 2291,
+              "start": 2285
             },
             "score": 0.0,
             "success": false
@@ -3561,8 +4464,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2345,
-              "start": 2345
+              "end": 2329,
+              "start": 2292
             },
             "score": 0.0,
             "success": false
@@ -3570,8 +4473,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2359,
-              "start": 2346
+              "end": 2379,
+              "start": 2330
             },
             "score": 0.0,
             "success": false
@@ -3579,8 +4482,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2360,
-              "start": 2360
+              "end": 2383,
+              "start": 2380
             },
             "score": 0.0,
             "success": false
@@ -3588,8 +4491,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2442,
-              "start": 2361
+              "end": 2425,
+              "start": 2384
             },
             "score": 0.0,
             "success": false
@@ -3597,8 +4500,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2443,
-              "start": 2443
+              "end": 2458,
+              "start": 2426
             },
             "score": 0.0,
             "success": false
@@ -3606,8 +4509,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2508,
-              "start": 2444
+              "end": 2479,
+              "start": 2459
             },
             "score": 0.0,
             "success": false
@@ -3615,8 +4518,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2509,
-              "start": 2509
+              "end": 2485,
+              "start": 2480
             },
             "score": 0.0,
             "success": false
@@ -3624,8 +4527,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2568,
-              "start": 2510
+              "end": 2486,
+              "start": 2486
             },
             "score": 0.0,
             "success": false
@@ -3633,8 +4536,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2569,
-              "start": 2569
+              "end": 2539,
+              "start": 2487
             },
             "score": 0.0,
             "success": false
@@ -3642,8 +4545,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2596,
-              "start": 2570
+              "end": 2540,
+              "start": 2540
             },
             "score": 0.0,
             "success": false
@@ -3651,8 +4554,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2606,
-              "start": 2597
+              "end": 2556,
+              "start": 2541
             },
             "score": 0.0,
             "success": false
@@ -3660,8 +4563,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2607,
-              "start": 2607
+              "end": 2566,
+              "start": 2557
             },
             "score": 0.0,
             "success": false
@@ -3669,8 +4572,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2706,
-              "start": 2608
+              "end": 2567,
+              "start": 2567
             },
             "score": 0.0,
             "success": false
@@ -3678,8 +4581,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2799,
-              "start": 2707
+              "end": 2611,
+              "start": 2568
             },
             "score": 0.0,
             "success": false
@@ -3687,8 +4590,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2800,
-              "start": 2800
+              "end": 2612,
+              "start": 2612
             },
             "score": 0.0,
             "success": false
@@ -3696,8 +4599,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2818,
-              "start": 2801
+              "end": 2658,
+              "start": 2613
             },
             "score": 0.0,
             "success": false
@@ -3705,8 +4608,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2819,
-              "start": 2819
+              "end": 2711,
+              "start": 2659
             },
             "score": 0.0,
             "success": false
@@ -3714,8 +4617,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2833,
-              "start": 2820
+              "end": 2712,
+              "start": 2712
             },
             "score": 0.0,
             "success": false
@@ -3723,8 +4626,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2834,
-              "start": 2834
+              "end": 2760,
+              "start": 2713
             },
             "score": 0.0,
             "success": false
@@ -3732,8 +4635,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2844,
-              "start": 2835
+              "end": 2761,
+              "start": 2761
             },
             "score": 0.0,
             "success": false
@@ -3741,8 +4644,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2845,
-              "start": 2845
+              "end": 2837,
+              "start": 2762
             },
             "score": 0.0,
             "success": false
@@ -3750,8 +4653,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2851,
-              "start": 2846
+              "end": 2838,
+              "start": 2838
             },
             "score": 0.0,
             "success": false
@@ -3759,8 +4662,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2852,
-              "start": 2852
+              "end": 2886,
+              "start": 2839
             },
             "score": 0.0,
             "success": false
@@ -3768,8 +4671,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2921,
-              "start": 2853
+              "end": 2989,
+              "start": 2887
             },
             "score": 0.0,
             "success": false
@@ -3777,8 +4680,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2922,
-              "start": 2922
+              "end": 3090,
+              "start": 2990
             },
             "score": 0.0,
             "success": false
@@ -3786,8 +4689,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2948,
-              "start": 2923
+              "end": 3091,
+              "start": 3091
             },
             "score": 0.0,
             "success": false
@@ -3795,8 +4698,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2958,
-              "start": 2949
+              "end": 3109,
+              "start": 3092
             },
             "score": 0.0,
             "success": false
@@ -3804,8 +4707,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 2959,
-              "start": 2959
+              "end": 3110,
+              "start": 3110
             },
             "score": 0.0,
             "success": false
@@ -3813,8 +4716,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3028,
-              "start": 2960
+              "end": 3200,
+              "start": 3111
             },
             "score": 0.0,
             "success": false
@@ -3822,8 +4725,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3085,
-              "start": 3029
+              "end": 3201,
+              "start": 3201
             },
             "score": 0.0,
             "success": false
@@ -3831,8 +4734,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3086,
-              "start": 3086
+              "end": 3252,
+              "start": 3202
             },
             "score": 0.0,
             "success": false
@@ -3840,8 +4743,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3178,
-              "start": 3087
+              "end": 3314,
+              "start": 3253
             },
             "score": 0.0,
             "success": false
@@ -3849,8 +4752,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3228,
-              "start": 3179
+              "end": 3407,
+              "start": 3315
             },
             "score": 0.0,
             "success": false
@@ -3858,8 +4761,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3229,
-              "start": 3229
+              "end": 3425,
+              "start": 3408
             },
             "score": 0.0,
             "success": false
@@ -3867,8 +4770,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3243,
-              "start": 3230
+              "end": 3426,
+              "start": 3426
             },
             "score": 0.0,
             "success": false
@@ -3876,8 +4779,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3244,
-              "start": 3244
+              "end": 3440,
+              "start": 3427
             },
             "score": 0.0,
             "success": false
@@ -3885,8 +4788,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3254,
-              "start": 3245
+              "end": 3441,
+              "start": 3441
             },
             "score": 0.0,
             "success": false
@@ -3894,8 +4797,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3255,
-              "start": 3255
+              "end": 3485,
+              "start": 3442
             },
             "score": 0.0,
             "success": false
@@ -3903,8 +4806,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3261,
-              "start": 3256
+              "end": 3486,
+              "start": 3486
             },
             "score": 0.0,
             "success": false
@@ -3912,8 +4815,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3262,
-              "start": 3262
+              "end": 3562,
+              "start": 3487
             },
             "score": 0.0,
             "success": false
@@ -3921,8 +4824,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3306,
-              "start": 3263
+              "end": 3563,
+              "start": 3563
             },
             "score": 0.0,
             "success": false
@@ -3930,8 +4833,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3307,
-              "start": 3307
+              "end": 3573,
+              "start": 3564
             },
             "score": 0.0,
             "success": false
@@ -3939,8 +4842,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3343,
-              "start": 3308
+              "end": 3574,
+              "start": 3574
             },
             "score": 0.0,
             "success": false
@@ -3948,8 +4851,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3344,
-              "start": 3344
+              "end": 3580,
+              "start": 3575
             },
             "score": 0.0,
             "success": false
@@ -3957,8 +4860,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3388,
-              "start": 3345
+              "end": 3581,
+              "start": 3581
             },
             "score": 0.0,
             "success": false
@@ -3966,8 +4869,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3389,
-              "start": 3389
+              "end": 3644,
+              "start": 3582
             },
             "score": 0.0,
             "success": false
@@ -3975,8 +4878,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3399,
-              "start": 3390
+              "end": 3645,
+              "start": 3645
             },
             "score": 0.0,
             "success": false
@@ -3984,8 +4887,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3400,
-              "start": 3400
+              "end": 3677,
+              "start": 3646
             },
             "score": 0.0,
             "success": false
@@ -3993,8 +4896,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3444,
-              "start": 3401
+              "end": 3716,
+              "start": 3678
             },
             "score": 0.0,
             "success": false
@@ -4002,8 +4905,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3445,
-              "start": 3445
+              "end": 3748,
+              "start": 3717
             },
             "score": 0.0,
             "success": false
@@ -4011,8 +4914,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3451,
-              "start": 3446
+              "end": 3787,
+              "start": 3749
             },
             "score": 0.0,
             "success": false
@@ -4020,8 +4923,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3452,
-              "start": 3452
+              "end": 3815,
+              "start": 3788
             },
             "score": 0.0,
             "success": false
@@ -4029,8 +4932,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3513,
-              "start": 3453
+              "end": 3816,
+              "start": 3816
             },
             "score": 0.0,
             "success": false
@@ -4038,8 +4941,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3514,
-              "start": 3514
+              "end": 3884,
+              "start": 3817
             },
             "score": 0.0,
             "success": false
@@ -4047,251 +4950,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3540,
-              "start": 3515
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3550,
-              "start": 3541
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3551,
-              "start": 3551
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3612,
-              "start": 3552
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3613,
-              "start": 3613
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3630,
-              "start": 3614
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3631,
-              "start": 3631
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3680,
-              "start": 3632
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3681,
-              "start": 3681
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3691,
-              "start": 3682
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3692,
-              "start": 3692
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3698,
-              "start": 3693
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3699,
-              "start": 3699
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3713,
-              "start": 3700
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3744,
-              "start": 3714
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3830,
-              "start": 3745
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3836,
-              "start": 3831
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3837,
-              "start": 3837
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3839,
-              "start": 3838
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3840,
-              "start": 3840
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3844,
-              "start": 3841
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3845,
-              "start": 3845
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3855,
-              "start": 3846
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3856,
-              "start": 3856
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3857,
-              "start": 3857
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3872,
-              "start": 3858
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3965,
-              "start": 3873
-            },
-            "score": 0.0,
-            "success": false
-          },
-          {
-            "flagged": false,
-            "position": {
-              "end": 3980,
-              "start": 3966
+              "end": 3950,
+              "start": 3885
             },
             "score": 0.0,
             "success": false
@@ -4300,7 +4960,7 @@
             "flagged": false,
             "position": {
               "end": 3981,
-              "start": 3981
+              "start": 3951
             },
             "score": 0.0,
             "success": false
@@ -4308,7 +4968,7 @@
           {
             "flagged": false,
             "position": {
-              "end": 3982,
+              "end": 4000,
               "start": 3982
             },
             "score": 0.0,
@@ -4317,8 +4977,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 3983,
-              "start": 3983
+              "end": 4010,
+              "start": 4001
             },
             "score": 0.0,
             "success": false
@@ -4326,8 +4986,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 4005,
-              "start": 3984
+              "end": 4045,
+              "start": 4011
             },
             "score": 0.0,
             "success": false
@@ -4335,8 +4995,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 4055,
-              "start": 4006
+              "end": 4089,
+              "start": 4046
             },
             "score": 0.0,
             "success": false
@@ -4344,8 +5004,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 4056,
-              "start": 4056
+              "end": 4103,
+              "start": 4090
             },
             "score": 0.0,
             "success": false
@@ -4353,8 +5013,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 4069,
-              "start": 4057
+              "end": 4104,
+              "start": 4104
             },
             "score": 0.0,
             "success": false
@@ -4362,8 +5022,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 4128,
-              "start": 4070
+              "end": 4140,
+              "start": 4105
             },
             "score": 0.0,
             "success": false
@@ -4371,8 +5031,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 4208,
-              "start": 4129
+              "end": 4150,
+              "start": 4141
             },
             "score": 0.0,
             "success": false
@@ -4380,8 +5040,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 4209,
-              "start": 4209
+              "end": 4151,
+              "start": 4151
             },
             "score": 0.0,
             "success": false
@@ -4389,8 +5049,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 4230,
-              "start": 4210
+              "end": 4157,
+              "start": 4152
             },
             "score": 0.0,
             "success": false
@@ -4398,8 +5058,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 4238,
-              "start": 4231
+              "end": 4158,
+              "start": 4158
             },
             "score": 0.0,
             "success": false
@@ -4407,8 +5067,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 4293,
-              "start": 4239
+              "end": 4205,
+              "start": 4159
             },
             "score": 0.0,
             "success": false
@@ -4416,8 +5076,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 4404,
-              "start": 4294
+              "end": 4264,
+              "start": 4206
             },
             "score": 0.0,
             "success": false
@@ -4425,8 +5085,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 4408,
-              "start": 4405
+              "end": 4270,
+              "start": 4265
             },
             "score": 0.0,
             "success": false
@@ -4434,8 +5094,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 4409,
-              "start": 4409
+              "end": 4271,
+              "start": 4271
             },
             "score": 0.0,
             "success": false
@@ -4443,8 +5103,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 4446,
-              "start": 4410
+              "end": 4341,
+              "start": 4272
             },
             "score": 0.0,
             "success": false
@@ -4452,8 +5112,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 4447,
-              "start": 4447
+              "end": 4355,
+              "start": 4342
             },
             "score": 0.0,
             "success": false
@@ -4461,8 +5121,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 4531,
-              "start": 4448
+              "end": 4435,
+              "start": 4356
             },
             "score": 0.0,
             "success": false
@@ -4470,8 +5130,8 @@
           {
             "flagged": false,
             "position": {
-              "end": 4532,
-              "start": 4532
+              "end": 4558,
+              "start": 4436
             },
             "score": 0.0,
             "success": false
@@ -4479,8 +5139,413 @@
           {
             "flagged": false,
             "position": {
-              "end": 4536,
-              "start": 4533
+              "end": 4559,
+              "start": 4559
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 4631,
+              "start": 4560
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 4632,
+              "start": 4632
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 4719,
+              "start": 4633
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 4761,
+              "start": 4720
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 4799,
+              "start": 4762
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 4842,
+              "start": 4800
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 4852,
+              "start": 4843
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 4858,
+              "start": 4853
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 4860,
+              "start": 4859
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 4864,
+              "start": 4861
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 4865,
+              "start": 4865
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 4875,
+              "start": 4866
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 4876,
+              "start": 4876
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 4877,
+              "start": 4877
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 4892,
+              "start": 4878
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5027,
+              "start": 4893
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5097,
+              "start": 5028
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5150,
+              "start": 5098
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5270,
+              "start": 5151
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5305,
+              "start": 5271
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5380,
+              "start": 5306
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5381,
+              "start": 5381
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5484,
+              "start": 5382
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5500,
+              "start": 5485
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5501,
+              "start": 5501
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5502,
+              "start": 5502
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5503,
+              "start": 5503
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5525,
+              "start": 5504
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5575,
+              "start": 5526
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5576,
+              "start": 5576
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5589,
+              "start": 5577
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5648,
+              "start": 5590
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5728,
+              "start": 5649
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5729,
+              "start": 5729
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5750,
+              "start": 5730
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5758,
+              "start": 5751
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5813,
+              "start": 5759
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5924,
+              "start": 5814
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5928,
+              "start": 5925
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5929,
+              "start": 5929
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5966,
+              "start": 5930
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 5967,
+              "start": 5967
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 6051,
+              "start": 5968
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 6052,
+              "start": 6052
+            },
+            "score": 0.0,
+            "success": false
+          },
+          {
+            "flagged": false,
+            "position": {
+              "end": 6056,
+              "start": 6053
             },
             "score": 0.0,
             "success": false
@@ -4489,7 +5554,7 @@
         "stop_sequence": "<|eot_id|>"
       },
       "type": "ai",
-      "id": "run-e6f8da46-d313-4ec1-9ce9-63e7ccbf4c3b-0",
+      "id": "run-b2287cad-9af9-4269-b6e5-051d038307c8-0",
       "tool_calls": [],
       "invalid_tool_calls": []
     }
