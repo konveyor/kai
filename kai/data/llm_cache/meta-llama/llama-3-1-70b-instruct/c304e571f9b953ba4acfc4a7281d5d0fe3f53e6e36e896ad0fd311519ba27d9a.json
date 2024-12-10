@@ -1,0 +1,7182 @@
+{
+  "input": [
+    {
+      "lc": 1,
+      "type": "constructor",
+      "id": ["langchain", "schema", "messages", "SystemMessage"],
+      "kwargs": {
+        "content": "\n    You are an experienced java developer, who specializes in migrating code to the Quarkus Framework\n    ",
+        "type": "system"
+      }
+    },
+    {
+      "lc": 1,
+      "type": "constructor",
+      "id": ["langchain", "schema", "messages", "HumanMessage"],
+      "kwargs": {
+        "content": "\n    I will give you a JavaEE file for which I want to take one step towards migrating to Quarkus.\n\nI will provide you with static source code analysis information highlighting an issue which needs to be addressed.\n\nI will also provide you with an example of how a similar issue was solved in the past via a solved example.\n\nYou can refer to the solved example for a pattern of how to update the input Java EE file to Quarkus.\n\nFix only the problem described. Other problems will be solved in subsequent steps so it is unnecessary to handle them now.\n\nBefore attempting to migrate the code to Quarkus reason through what changes are required and why.\n\nPay attention to changes you make and impacts to external dependencies in the pom.xml as well as changes to imports we need to consider.\n\nRemember when updating or adding annotations that the class must be imported.\n\nAs you make changes that impact the pom.xml or imports, be sure you explain what needs to be updated.\n\nAfter you have shared your step by step thinking, provide a full output of the updated file.\n\n# Input information\n\n## Input File\n\nFile name: \"pom.xml\"\nSource file contents:\n```genshi\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<project \n    xmlns=\"http://maven.apache.org/POM/4.0.0\" \n    xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">\n    <modelVersion>4.0.0</modelVersion>\n    <groupId>com.redhat.coolstore</groupId>\n    <artifactId>monolith</artifactId>\n    <version>1.0.0-SNAPSHOT</version>\n    <packaging>jar</packaging>\n    <name>coolstore-monolith</name>\n    <properties>\n        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>\n        <maven.build.timestamp.format>yyyyMMdd'T'HHmmss</maven.build.timestamp.format>\n        <project.encoding>UTF-8</project.encoding>\n        <maven.test.skip>true</maven.test.skip>\n        <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>\n        <quarkus.platform.version>3.1.0.Final</quarkus.platform.version>\n        <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>\n        <compiler-plugin.version>3.10.1</compiler-plugin.version>\n        <maven.compiler.release>11</maven.compiler.release>\n        <surefire-plugin.version>3.0.0</surefire-plugin.version>\n        <failsafe-plugin.version>3.0.0</failsafe-plugin.version>\n    </properties>\n    <dependencies>\n        <dependency>\n            <groupId>jakarta.platform</groupId>\n            <artifactId>jakarta.jakartaee-web-api</artifactId>\n            <version>8.0.0</version>\n            <scope>provided</scope>\n        </dependency>\n        <dependency>\n            <groupId>jakarta.platform</groupId>\n            <artifactId>jakarta.jakartaee-api</artifactId>\n            <version>8.0.0</version>\n            <scope>provided</scope>\n        </dependency>\n        <dependency>\n            <groupId>org.jboss.spec.javax.jms</groupId>\n            <artifactId>jboss-jms-api_2.0_spec</artifactId>\n            <version>2.0.0.Final</version>\n        </dependency>\n        <dependency>\n            <groupId>org.flywaydb</groupId>\n            <artifactId>flyway-core</artifactId>\n            <version>4.1.2</version>\n        </dependency>\n        <dependency>\n            <groupId>org.jboss.spec.javax.rmi</groupId>\n            <artifactId>jboss-rmi-api_1.0_spec</artifactId>\n            <version>1.0.2.Final</version>\n        </dependency>\n    </dependencies>\n    <dependencyManagement>\n        <dependencies>\n            <dependency>\n                <groupId>${quarkus.platform.group-id}</groupId>\n                <artifactId>${quarkus.platform.artifact-id}</artifactId>\n                <version>${quarkus.platform.version}</version>\n                <type>pom</type>\n                <scope>import</scope>\n            </dependency>\n        </dependencies>\n    </dependencyManagement>\n    <build>\n        <finalName>ROOT</finalName>\n        <plugins>\n            <plugin>\n                <artifactId>maven-compiler-plugin</artifactId>\n                <version>${compiler-plugin.version}</version>\n                <configuration>\n                    <compilerArgs>\n                        <arg>-parameters</arg>\n                    </compilerArgs>\n                    <encoding>${project.encoding}</encoding>\n                    <release>${maven.compiler.release}</release>\n                </configuration>\n            </plugin>\n            <plugin>\n                <groupId>org.apache.maven.plugins</groupId>\n                <artifactId>maven-war-plugin</artifactId>\n                <version>3.2.0</version>\n            </plugin>\n            <plugin>\n                <groupId>${quarkus.platform.group-id}</groupId>\n                <artifactId>quarkus-maven-plugin</artifactId>\n                <version>${quarkus.platform.version}</version>\n                <extensions>true</extensions>\n                <executions>\n                    <execution>\n                        <goals>\n                            <goal>build</goal>\n                            <goal>generate-code</goal>\n                            <goal>generate-code-tests</goal>\n                        </goals>\n                    </execution>\n                </executions>\n            </plugin>\n            <plugin>\n                <artifactId>maven-surefire-plugin</artifactId>\n                <version>${surefire-plugin.version}</version>\n                <configuration>\n                    <systemPropertyVariables>\n                        <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>\n                        <maven.home>${maven.home}</maven.home>\n                    </systemPropertyVariables>\n                </configuration>\n            </plugin>\n            <plugin>\n                <artifactId>maven-failsafe-plugin</artifactId>\n                <version>${failsafe-plugin.version}</version>\n                <executions>\n                    <execution>\n                        <goals>\n                            <goal>integration-test</goal>\n                            <goal>verify</goal>\n                        </goals>\n                        <configuration>\n                            <systemPropertyVariables>\n                                <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>\n                                <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>\n                                <maven.home>${maven.home}</maven.home>\n                            </systemPropertyVariables>\n                        </configuration>\n                    </execution>\n                </executions>\n            </plugin>\n        </plugins>\n    </build>\n    <profiles>\n<!-- TODO: Add OpenShift profile here -->\n    </profiles>\n</project>\n```\n\n## Issues\n\n\n### incident 0\nincident to fix: \"Leverage a Maven profile to run the Quarkus native build adding the following section to the `pom.xml` file: \n\n ```xml\n <profiles>\n <profile>\n <id>native</id>\n <activation>\n <property>\n <name>native</name>\n </property>\n </activation>\n <properties>\n <skipITs>false</skipITs>\n <quarkus.package.type>native</quarkus.package.type>\n </properties>\n </profile>\n </profiles>\n ```\"\nLine number: 5\n\n\n\n# Output Instructions\nStructure your output in Markdown format such as:\n\n## Reasoning\nWrite the step by step reasoning in this markdown section. If you are unsure of a step or reasoning, clearly state you are unsure and why.\n\n## Updated Java File\n```java\n// Write the updated file for Quarkus in this section. If the file should be removed, make the content of the updated file a comment explaining it should be removed.\n```\n\n## Additional Information (optional)\n\nIf you have any additional details or steps that need to be performed, put it here.\n\n    ",
+        "type": "human"
+      }
+    }
+  ],
+  "output": {
+    "lc": 1,
+    "type": "constructor",
+    "id": ["langchain", "schema", "messages", "AIMessage"],
+    "kwargs": {
+      "content": " # Reasoning\n\nTo address the issue, we need to add a Maven profile to the `pom.xml` file to enable the Quarkus native build. This profile will be activated when the `native` property is set.\n\nThe provided code snippet shows the exact configuration that needs to be added to the `pom.xml` file. We will add this section to the existing `pom.xml` file.\n\n## Updated Java File\n\n```xml\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<project \n    xmlns=\"http://maven.apache.org/POM/4.0.0\" \n    xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">\n    <modelVersion>4.0.0</modelVersion>\n    <groupId>com.redhat.coolstore</groupId>\n    <artifactId>monolith</artifactId>\n    <version>1.0.0-SNAPSHOT</version>\n    <packaging>jar</packaging>\n    <name>coolstore-monolith</name>\n    <properties>\n        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>\n        <maven.build.timestamp.format>yyyyMMdd'T'HHmmss</maven.build.timestamp.format>\n        <project.encoding>UTF-8</project.encoding>\n        <maven.test.skip>true</maven.test.skip>\n        <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>\n        <quarkus.platform.version>3.1.0.Final</quarkus.platform.version>\n        <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>\n        <compiler-plugin.version>3.10.1</compiler-plugin.version>\n        <maven.compiler.release>11</maven.compiler.release>\n        <surefire-plugin.version>3.0.0</surefire-plugin.version>\n        <failsafe-plugin.version>3.0.0</failsafe-plugin.version>\n    </properties>\n    <dependencies>\n        <dependency>\n            <groupId>jakarta.platform</groupId>\n            <artifactId>jakarta.jakartaee-web-api</artifactId>\n            <version>8.0.0</version>\n            <scope>provided</scope>\n        </dependency>\n        <dependency>\n            <groupId>jakarta.platform</groupId>\n            <artifactId>jakarta.jakartaee-api</artifactId>\n            <version>8.0.0</version>\n            <scope>provided</scope>\n        </dependency>\n        <dependency>\n            <groupId>org.jboss.spec.javax.jms</groupId>\n            <artifactId>jboss-jms-api_2.0_spec</artifactId>\n            <version>2.0.0.Final</version>\n        </dependency>\n        <dependency>\n            <groupId>org.flywaydb</groupId>\n            <artifactId>flyway-core</artifactId>\n            <version>4.1.2</version>\n        </dependency>\n        <dependency>\n            <groupId>org.jboss.spec.javax.rmi</groupId>\n            <artifactId>jboss-rmi-api_1.0_spec</artifactId>\n            <version>1.0.2.Final</version>\n        </dependency>\n    </dependencies>\n    <dependencyManagement>\n        <dependencies>\n            <dependency>\n                <groupId>${quarkus.platform.group-id}</groupId>\n                <artifactId>${quarkus.platform.artifact-id}</artifactId>\n                <version>${quarkus.platform.version}</version>\n                <type>pom</type>\n                <scope>import</scope>\n            </dependency>\n        </dependencies>\n    </dependencyManagement>\n    <build>\n        <finalName>ROOT</finalName>\n        <plugins>\n            <plugin>\n                <artifactId>maven-compiler-plugin</artifactId>\n                <version>${compiler-plugin.version}</version>\n                <configuration>\n                    <compilerArgs>\n                        <arg>-parameters</arg>\n                    </compilerArgs>\n                    <encoding>${project.encoding}</encoding>\n                    <release>${maven.compiler.release}</release>\n                </configuration>\n            </plugin>\n            <plugin>\n                <groupId>org.apache.maven.plugins</groupId>\n                <artifactId>maven-war-plugin</artifactId>\n                <version>3.2.0</version>\n            </plugin>\n            <plugin>\n                <groupId>${quarkus.platform.group-id}</groupId>\n                <artifactId>quarkus-maven-plugin</artifactId>\n                <version>${quarkus.platform.version}</version>\n                <extensions>true</extensions>\n                <executions>\n                    <execution>\n                        <goals>\n                            <goal>build</goal>\n                            <goal>generate-code</goal>\n                            <goal>generate-code-tests</goal>\n                        </goals>\n                    </execution>\n                </executions>\n            </plugin>\n            <plugin>\n                <artifactId>maven-surefire-plugin</artifactId>\n                <version>${surefire-plugin.version}</version>\n                <configuration>\n                    <systemPropertyVariables>\n                        <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>\n                        <maven.home>${maven.home}</maven.home>\n                    </systemPropertyVariables>\n                </configuration>\n            </plugin>\n            <plugin>\n                <artifactId>maven-failsafe-plugin</artifactId>\n                <version>${failsafe-plugin.version}</version>\n                <executions>\n                    <execution>\n                        <goals>\n                            <goal>integration-test</goal>\n                            <goal>verify</goal>\n                        </goals>\n                        <configuration>\n                            <systemPropertyVariables>\n                                <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>\n                                <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>\n                                <maven.home>${maven.home}</maven.home>\n                            </systemPropertyVariables>\n                        </configuration>\n                    </execution>\n                </executions>\n            </plugin>\n        </plugins>\n    </build>\n    <profiles>\n        <profile>\n            <id>native</id>\n            <activation>\n                <property>\n                    <name>native</name>\n                </property>\n            </activation>\n            <properties>\n                <skipITs>false</skipITs>\n                <quarkus.package.type>native</quarkus.package.type>\n            </properties>\n        </profile>\n    </profiles>\n</project>\n```\n\n## Additional Information (optional)\n\nNo additional information is required for this update. The provided code snippet is added to the existing `pom.xml` file to enable the Quarkus native build.",
+      "response_metadata": {
+        "model_name": "meta-llama/llama-3-1-70b-instruct",
+        "token_usage": {
+          "prompt_tokens": 1730,
+          "completion_tokens": 1425,
+          "total_tokens": 3155,
+          "input_token_count": 1730,
+          "generated_token_count": 1425
+        },
+        "meta": {
+          "conversation_id": "f79d26ad-944c-49da-98a6-b323b62373ea",
+          "id": "7a904ab6-1a52-4ceb-a5b8-d185eaf7c970",
+          "model_id": "meta-llama/llama-3-1-70b-instruct"
+        },
+        "generated_token_count": 1425,
+        "input_token_count": 0,
+        "input_tokens": [
+          {
+            "text": "<|begin_of_text|>"
+          },
+          {
+            "text": "\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120You"
+          },
+          {
+            "text": "\u0120are"
+          },
+          {
+            "text": "\u0120an"
+          },
+          {
+            "text": "\u0120experienced"
+          },
+          {
+            "text": "\u0120java"
+          },
+          {
+            "text": "\u0120developer"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120who"
+          },
+          {
+            "text": "\u0120specializes"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120migrating"
+          },
+          {
+            "text": "\u0120code"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120Qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": "\u0120Framework"
+          },
+          {
+            "text": "\u010a\u0120\u0120\u0120\u0120\u010a\u010a"
+          },
+          {
+            "text": "User"
+          },
+          {
+            "text": ":"
+          },
+          {
+            "text": "\u0120\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120I"
+          },
+          {
+            "text": "\u0120will"
+          },
+          {
+            "text": "\u0120give"
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120Java"
+          },
+          {
+            "text": "EE"
+          },
+          {
+            "text": "\u0120file"
+          },
+          {
+            "text": "\u0120for"
+          },
+          {
+            "text": "\u0120which"
+          },
+          {
+            "text": "\u0120I"
+          },
+          {
+            "text": "\u0120want"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120take"
+          },
+          {
+            "text": "\u0120one"
+          },
+          {
+            "text": "\u0120step"
+          },
+          {
+            "text": "\u0120towards"
+          },
+          {
+            "text": "\u0120migrating"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120Qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": ".\u010a\u010a"
+          },
+          {
+            "text": "I"
+          },
+          {
+            "text": "\u0120will"
+          },
+          {
+            "text": "\u0120provide"
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120with"
+          },
+          {
+            "text": "\u0120static"
+          },
+          {
+            "text": "\u0120source"
+          },
+          {
+            "text": "\u0120code"
+          },
+          {
+            "text": "\u0120analysis"
+          },
+          {
+            "text": "\u0120information"
+          },
+          {
+            "text": "\u0120highlighting"
+          },
+          {
+            "text": "\u0120an"
+          },
+          {
+            "text": "\u0120issue"
+          },
+          {
+            "text": "\u0120which"
+          },
+          {
+            "text": "\u0120needs"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120be"
+          },
+          {
+            "text": "\u0120addressed"
+          },
+          {
+            "text": ".\u010a\u010a"
+          },
+          {
+            "text": "I"
+          },
+          {
+            "text": "\u0120will"
+          },
+          {
+            "text": "\u0120also"
+          },
+          {
+            "text": "\u0120provide"
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120with"
+          },
+          {
+            "text": "\u0120an"
+          },
+          {
+            "text": "\u0120example"
+          },
+          {
+            "text": "\u0120of"
+          },
+          {
+            "text": "\u0120how"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120similar"
+          },
+          {
+            "text": "\u0120issue"
+          },
+          {
+            "text": "\u0120was"
+          },
+          {
+            "text": "\u0120solved"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120past"
+          },
+          {
+            "text": "\u0120via"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120solved"
+          },
+          {
+            "text": "\u0120example"
+          },
+          {
+            "text": ".\u010a\u010a"
+          },
+          {
+            "text": "You"
+          },
+          {
+            "text": "\u0120can"
+          },
+          {
+            "text": "\u0120refer"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120solved"
+          },
+          {
+            "text": "\u0120example"
+          },
+          {
+            "text": "\u0120for"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120pattern"
+          },
+          {
+            "text": "\u0120of"
+          },
+          {
+            "text": "\u0120how"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120update"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120input"
+          },
+          {
+            "text": "\u0120Java"
+          },
+          {
+            "text": "\u0120EE"
+          },
+          {
+            "text": "\u0120file"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120Qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": ".\u010a\u010a"
+          },
+          {
+            "text": "Fix"
+          },
+          {
+            "text": "\u0120only"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120problem"
+          },
+          {
+            "text": "\u0120described"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "\u0120Other"
+          },
+          {
+            "text": "\u0120problems"
+          },
+          {
+            "text": "\u0120will"
+          },
+          {
+            "text": "\u0120be"
+          },
+          {
+            "text": "\u0120solved"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120subsequent"
+          },
+          {
+            "text": "\u0120steps"
+          },
+          {
+            "text": "\u0120so"
+          },
+          {
+            "text": "\u0120it"
+          },
+          {
+            "text": "\u0120is"
+          },
+          {
+            "text": "\u0120unnecessary"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120handle"
+          },
+          {
+            "text": "\u0120them"
+          },
+          {
+            "text": "\u0120now"
+          },
+          {
+            "text": ".\u010a\u010a"
+          },
+          {
+            "text": "Before"
+          },
+          {
+            "text": "\u0120attempting"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120migrate"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120code"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120Qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": "\u0120reason"
+          },
+          {
+            "text": "\u0120through"
+          },
+          {
+            "text": "\u0120what"
+          },
+          {
+            "text": "\u0120changes"
+          },
+          {
+            "text": "\u0120are"
+          },
+          {
+            "text": "\u0120required"
+          },
+          {
+            "text": "\u0120and"
+          },
+          {
+            "text": "\u0120why"
+          },
+          {
+            "text": ".\u010a\u010a"
+          },
+          {
+            "text": "Pay"
+          },
+          {
+            "text": "\u0120attention"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120changes"
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120make"
+          },
+          {
+            "text": "\u0120and"
+          },
+          {
+            "text": "\u0120impacts"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120external"
+          },
+          {
+            "text": "\u0120dependencies"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120pom"
+          },
+          {
+            "text": ".xml"
+          },
+          {
+            "text": "\u0120as"
+          },
+          {
+            "text": "\u0120well"
+          },
+          {
+            "text": "\u0120as"
+          },
+          {
+            "text": "\u0120changes"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120imports"
+          },
+          {
+            "text": "\u0120we"
+          },
+          {
+            "text": "\u0120need"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120consider"
+          },
+          {
+            "text": ".\u010a\u010a"
+          },
+          {
+            "text": "Remember"
+          },
+          {
+            "text": "\u0120when"
+          },
+          {
+            "text": "\u0120updating"
+          },
+          {
+            "text": "\u0120or"
+          },
+          {
+            "text": "\u0120adding"
+          },
+          {
+            "text": "\u0120annotations"
+          },
+          {
+            "text": "\u0120that"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120class"
+          },
+          {
+            "text": "\u0120must"
+          },
+          {
+            "text": "\u0120be"
+          },
+          {
+            "text": "\u0120imported"
+          },
+          {
+            "text": ".\u010a\u010a"
+          },
+          {
+            "text": "As"
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120make"
+          },
+          {
+            "text": "\u0120changes"
+          },
+          {
+            "text": "\u0120that"
+          },
+          {
+            "text": "\u0120impact"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120pom"
+          },
+          {
+            "text": ".xml"
+          },
+          {
+            "text": "\u0120or"
+          },
+          {
+            "text": "\u0120imports"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120be"
+          },
+          {
+            "text": "\u0120sure"
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120explain"
+          },
+          {
+            "text": "\u0120what"
+          },
+          {
+            "text": "\u0120needs"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120be"
+          },
+          {
+            "text": "\u0120updated"
+          },
+          {
+            "text": ".\u010a\u010a"
+          },
+          {
+            "text": "After"
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120have"
+          },
+          {
+            "text": "\u0120shared"
+          },
+          {
+            "text": "\u0120your"
+          },
+          {
+            "text": "\u0120step"
+          },
+          {
+            "text": "\u0120by"
+          },
+          {
+            "text": "\u0120step"
+          },
+          {
+            "text": "\u0120thinking"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120provide"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120full"
+          },
+          {
+            "text": "\u0120output"
+          },
+          {
+            "text": "\u0120of"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120updated"
+          },
+          {
+            "text": "\u0120file"
+          },
+          {
+            "text": ".\u010a\u010a"
+          },
+          {
+            "text": "#"
+          },
+          {
+            "text": "\u0120Input"
+          },
+          {
+            "text": "\u0120information"
+          },
+          {
+            "text": "\u010a\u010a"
+          },
+          {
+            "text": "##"
+          },
+          {
+            "text": "\u0120Input"
+          },
+          {
+            "text": "\u0120File"
+          },
+          {
+            "text": "\u010a\u010a"
+          },
+          {
+            "text": "File"
+          },
+          {
+            "text": "\u0120name"
+          },
+          {
+            "text": ":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "pom"
+          },
+          {
+            "text": ".xml"
+          },
+          {
+            "text": "\"\u010a"
+          },
+          {
+            "text": "Source"
+          },
+          {
+            "text": "\u0120file"
+          },
+          {
+            "text": "\u0120contents"
+          },
+          {
+            "text": ":\u010a"
+          },
+          {
+            "text": "```"
+          },
+          {
+            "text": "gens"
+          },
+          {
+            "text": "hi"
+          },
+          {
+            "text": "\u010a"
+          },
+          {
+            "text": "<?"
+          },
+          {
+            "text": "xml"
+          },
+          {
+            "text": "\u0120version"
+          },
+          {
+            "text": "=\""
+          },
+          {
+            "text": "1"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "\""
+          },
+          {
+            "text": "\u0120encoding"
+          },
+          {
+            "text": "=\""
+          },
+          {
+            "text": "UTF"
+          },
+          {
+            "text": "-"
+          },
+          {
+            "text": "8"
+          },
+          {
+            "text": "\"?>\u010a"
+          },
+          {
+            "text": "<"
+          },
+          {
+            "text": "project"
+          },
+          {
+            "text": "\u0120\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120xmlns"
+          },
+          {
+            "text": "=\""
+          },
+          {
+            "text": "http"
+          },
+          {
+            "text": "://"
+          },
+          {
+            "text": "m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": ".apache"
+          },
+          {
+            "text": ".org"
+          },
+          {
+            "text": "/P"
+          },
+          {
+            "text": "OM"
+          },
+          {
+            "text": "/"
+          },
+          {
+            "text": "4"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "\""
+          },
+          {
+            "text": "\u0120\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120xmlns"
+          },
+          {
+            "text": ":x"
+          },
+          {
+            "text": "si"
+          },
+          {
+            "text": "=\""
+          },
+          {
+            "text": "http"
+          },
+          {
+            "text": "://"
+          },
+          {
+            "text": "www"
+          },
+          {
+            "text": ".w"
+          },
+          {
+            "text": "3"
+          },
+          {
+            "text": ".org"
+          },
+          {
+            "text": "/"
+          },
+          {
+            "text": "200"
+          },
+          {
+            "text": "1"
+          },
+          {
+            "text": "/XMLSchema"
+          },
+          {
+            "text": "-instance"
+          },
+          {
+            "text": "\""
+          },
+          {
+            "text": "\u0120xsi"
+          },
+          {
+            "text": ":s"
+          },
+          {
+            "text": "chema"
+          },
+          {
+            "text": "Location"
+          },
+          {
+            "text": "=\""
+          },
+          {
+            "text": "http"
+          },
+          {
+            "text": "://"
+          },
+          {
+            "text": "m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": ".apache"
+          },
+          {
+            "text": ".org"
+          },
+          {
+            "text": "/P"
+          },
+          {
+            "text": "OM"
+          },
+          {
+            "text": "/"
+          },
+          {
+            "text": "4"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "\u0120http"
+          },
+          {
+            "text": "://"
+          },
+          {
+            "text": "m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": ".apache"
+          },
+          {
+            "text": ".org"
+          },
+          {
+            "text": "/x"
+          },
+          {
+            "text": "sd"
+          },
+          {
+            "text": "/m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": "-"
+          },
+          {
+            "text": "4"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": ".x"
+          },
+          {
+            "text": "sd"
+          },
+          {
+            "text": "\">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "model"
+          },
+          {
+            "text": "Version"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "4"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "model"
+          },
+          {
+            "text": "Version"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "groupId"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "com"
+          },
+          {
+            "text": ".red"
+          },
+          {
+            "text": "hat"
+          },
+          {
+            "text": ".c"
+          },
+          {
+            "text": "ool"
+          },
+          {
+            "text": "store"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "groupId"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "mon"
+          },
+          {
+            "text": "olith"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "1"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "-S"
+          },
+          {
+            "text": "N"
+          },
+          {
+            "text": "APSHOT"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "pack"
+          },
+          {
+            "text": "aging"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "jar"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "pack"
+          },
+          {
+            "text": "aging"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "name"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "cool"
+          },
+          {
+            "text": "store"
+          },
+          {
+            "text": "-mon"
+          },
+          {
+            "text": "olith"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "name"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "properties"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "project"
+          },
+          {
+            "text": ".build"
+          },
+          {
+            "text": ".source"
+          },
+          {
+            "text": "Encoding"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "UTF"
+          },
+          {
+            "text": "-"
+          },
+          {
+            "text": "8"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "project"
+          },
+          {
+            "text": ".build"
+          },
+          {
+            "text": ".source"
+          },
+          {
+            "text": "Encoding"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": ".build"
+          },
+          {
+            "text": ".timestamp"
+          },
+          {
+            "text": ".format"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "yyyyMMdd"
+          },
+          {
+            "text": "'T"
+          },
+          {
+            "text": "'"
+          },
+          {
+            "text": "HH"
+          },
+          {
+            "text": "mm"
+          },
+          {
+            "text": "ss"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": ".build"
+          },
+          {
+            "text": ".timestamp"
+          },
+          {
+            "text": ".format"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "project"
+          },
+          {
+            "text": ".encoding"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "UTF"
+          },
+          {
+            "text": "-"
+          },
+          {
+            "text": "8"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "project"
+          },
+          {
+            "text": ".encoding"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": ".test"
+          },
+          {
+            "text": ".skip"
+          },
+          {
+            "text": ">true"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": ".test"
+          },
+          {
+            "text": ".skip"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": ".platform"
+          },
+          {
+            "text": ".group"
+          },
+          {
+            "text": "-id"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "io"
+          },
+          {
+            "text": ".qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": ".platform"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": ".platform"
+          },
+          {
+            "text": ".group"
+          },
+          {
+            "text": "-id"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": ".platform"
+          },
+          {
+            "text": ".version"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "3"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "1"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": ".F"
+          },
+          {
+            "text": "inal"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": ".platform"
+          },
+          {
+            "text": ".version"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": ".platform"
+          },
+          {
+            "text": ".art"
+          },
+          {
+            "text": "ifact"
+          },
+          {
+            "text": "-id"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": "-b"
+          },
+          {
+            "text": "om"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": ".platform"
+          },
+          {
+            "text": ".art"
+          },
+          {
+            "text": "ifact"
+          },
+          {
+            "text": "-id"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "compiler"
+          },
+          {
+            "text": "-plugin"
+          },
+          {
+            "text": ".version"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "3"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "10"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "1"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "compiler"
+          },
+          {
+            "text": "-plugin"
+          },
+          {
+            "text": ".version"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": ".compiler"
+          },
+          {
+            "text": ".release"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "11"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": ".compiler"
+          },
+          {
+            "text": ".release"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "sure"
+          },
+          {
+            "text": "fire"
+          },
+          {
+            "text": "-plugin"
+          },
+          {
+            "text": ".version"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "3"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "sure"
+          },
+          {
+            "text": "fire"
+          },
+          {
+            "text": "-plugin"
+          },
+          {
+            "text": ".version"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "fails"
+          },
+          {
+            "text": "afe"
+          },
+          {
+            "text": "-plugin"
+          },
+          {
+            "text": ".version"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "3"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "fails"
+          },
+          {
+            "text": "afe"
+          },
+          {
+            "text": "-plugin"
+          },
+          {
+            "text": ".version"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "properties"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "dependencies"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "dependency"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "groupId"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "jak"
+          },
+          {
+            "text": "arta"
+          },
+          {
+            "text": ".platform"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "groupId"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "jak"
+          },
+          {
+            "text": "arta"
+          },
+          {
+            "text": ".j"
+          },
+          {
+            "text": "ak"
+          },
+          {
+            "text": "arta"
+          },
+          {
+            "text": "ee"
+          },
+          {
+            "text": "-web"
+          },
+          {
+            "text": "-api"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "8"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "scope"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "provided"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "scope"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "dependency"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "dependency"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "groupId"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "jak"
+          },
+          {
+            "text": "arta"
+          },
+          {
+            "text": ".platform"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "groupId"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "jak"
+          },
+          {
+            "text": "arta"
+          },
+          {
+            "text": ".j"
+          },
+          {
+            "text": "ak"
+          },
+          {
+            "text": "arta"
+          },
+          {
+            "text": "ee"
+          },
+          {
+            "text": "-api"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "8"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "scope"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "provided"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "scope"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "dependency"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "dependency"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "groupId"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "org"
+          },
+          {
+            "text": ".jboss"
+          },
+          {
+            "text": ".spec"
+          },
+          {
+            "text": ".j"
+          },
+          {
+            "text": "avax"
+          },
+          {
+            "text": ".jms"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "groupId"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">j"
+          },
+          {
+            "text": "boss"
+          },
+          {
+            "text": "-j"
+          },
+          {
+            "text": "ms"
+          },
+          {
+            "text": "-api"
+          },
+          {
+            "text": "_"
+          },
+          {
+            "text": "2"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "_spec"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "2"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": ".F"
+          },
+          {
+            "text": "inal"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "dependency"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "dependency"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "groupId"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "org"
+          },
+          {
+            "text": ".f"
+          },
+          {
+            "text": "ly"
+          },
+          {
+            "text": "way"
+          },
+          {
+            "text": "db"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "groupId"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "fly"
+          },
+          {
+            "text": "way"
+          },
+          {
+            "text": "-core"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "4"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "1"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "2"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "dependency"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "dependency"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "groupId"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "org"
+          },
+          {
+            "text": ".jboss"
+          },
+          {
+            "text": ".spec"
+          },
+          {
+            "text": ".j"
+          },
+          {
+            "text": "avax"
+          },
+          {
+            "text": ".rmi"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "groupId"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">j"
+          },
+          {
+            "text": "boss"
+          },
+          {
+            "text": "-r"
+          },
+          {
+            "text": "mi"
+          },
+          {
+            "text": "-api"
+          },
+          {
+            "text": "_"
+          },
+          {
+            "text": "1"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "_spec"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "1"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "2"
+          },
+          {
+            "text": ".F"
+          },
+          {
+            "text": "inal"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "dependency"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "dependencies"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "dependency"
+          },
+          {
+            "text": "Management"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "dependencies"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "dependency"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "groupId"
+          },
+          {
+            "text": ">${"
+          },
+          {
+            "text": "qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": ".platform"
+          },
+          {
+            "text": ".group"
+          },
+          {
+            "text": "-id"
+          },
+          {
+            "text": "}</"
+          },
+          {
+            "text": "groupId"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">${"
+          },
+          {
+            "text": "qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": ".platform"
+          },
+          {
+            "text": ".art"
+          },
+          {
+            "text": "ifact"
+          },
+          {
+            "text": "-id"
+          },
+          {
+            "text": "}</"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">${"
+          },
+          {
+            "text": "qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": ".platform"
+          },
+          {
+            "text": ".version"
+          },
+          {
+            "text": "}</"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "type"
+          },
+          {
+            "text": ">p"
+          },
+          {
+            "text": "om"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "type"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "scope"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "import"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "scope"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "dependency"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "dependencies"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "dependency"
+          },
+          {
+            "text": "Management"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "build"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "final"
+          },
+          {
+            "text": "Name"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "ROOT"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "final"
+          },
+          {
+            "text": "Name"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "plugins"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "plugin"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": "-"
+          },
+          {
+            "text": "compiler"
+          },
+          {
+            "text": "-plugin"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">${"
+          },
+          {
+            "text": "compiler"
+          },
+          {
+            "text": "-plugin"
+          },
+          {
+            "text": ".version"
+          },
+          {
+            "text": "}</"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "configuration"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "compiler"
+          },
+          {
+            "text": "Args"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "arg"
+          },
+          {
+            "text": ">-"
+          },
+          {
+            "text": "parameters"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "arg"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "compiler"
+          },
+          {
+            "text": "Args"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "encoding"
+          },
+          {
+            "text": ">${"
+          },
+          {
+            "text": "project"
+          },
+          {
+            "text": ".encoding"
+          },
+          {
+            "text": "}</"
+          },
+          {
+            "text": "encoding"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "release"
+          },
+          {
+            "text": ">${"
+          },
+          {
+            "text": "m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": ".compiler"
+          },
+          {
+            "text": ".release"
+          },
+          {
+            "text": "}</"
+          },
+          {
+            "text": "release"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "configuration"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "plugin"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "plugin"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "groupId"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "org"
+          },
+          {
+            "text": ".apache"
+          },
+          {
+            "text": ".maven"
+          },
+          {
+            "text": ".plugins"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "groupId"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": "-war"
+          },
+          {
+            "text": "-plugin"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "3"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "2"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "plugin"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "plugin"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "groupId"
+          },
+          {
+            "text": ">${"
+          },
+          {
+            "text": "qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": ".platform"
+          },
+          {
+            "text": ".group"
+          },
+          {
+            "text": "-id"
+          },
+          {
+            "text": "}</"
+          },
+          {
+            "text": "groupId"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": "-m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": "-plugin"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">${"
+          },
+          {
+            "text": "qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": ".platform"
+          },
+          {
+            "text": ".version"
+          },
+          {
+            "text": "}</"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "extensions"
+          },
+          {
+            "text": ">true"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "extensions"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "exec"
+          },
+          {
+            "text": "utions"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "execution"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "goals"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "goal"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "build"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "goal"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "goal"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "generate"
+          },
+          {
+            "text": "-code"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "goal"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "goal"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "generate"
+          },
+          {
+            "text": "-code"
+          },
+          {
+            "text": "-tests"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "goal"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "goals"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "execution"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "exec"
+          },
+          {
+            "text": "utions"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "plugin"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "plugin"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": "-s"
+          },
+          {
+            "text": "ure"
+          },
+          {
+            "text": "fire"
+          },
+          {
+            "text": "-plugin"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">${"
+          },
+          {
+            "text": "sure"
+          },
+          {
+            "text": "fire"
+          },
+          {
+            "text": "-plugin"
+          },
+          {
+            "text": ".version"
+          },
+          {
+            "text": "}</"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "configuration"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "system"
+          },
+          {
+            "text": "Property"
+          },
+          {
+            "text": "Variables"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "java"
+          },
+          {
+            "text": ".util"
+          },
+          {
+            "text": ".logging"
+          },
+          {
+            "text": ".manager"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "org"
+          },
+          {
+            "text": ".jboss"
+          },
+          {
+            "text": ".log"
+          },
+          {
+            "text": "manager"
+          },
+          {
+            "text": ".Log"
+          },
+          {
+            "text": "Manager"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "java"
+          },
+          {
+            "text": ".util"
+          },
+          {
+            "text": ".logging"
+          },
+          {
+            "text": ".manager"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": ".home"
+          },
+          {
+            "text": ">${"
+          },
+          {
+            "text": "m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": ".home"
+          },
+          {
+            "text": "}</"
+          },
+          {
+            "text": "m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": ".home"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "system"
+          },
+          {
+            "text": "Property"
+          },
+          {
+            "text": "Variables"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "configuration"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "plugin"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "plugin"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": "-f"
+          },
+          {
+            "text": "ails"
+          },
+          {
+            "text": "afe"
+          },
+          {
+            "text": "-plugin"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "artifact"
+          },
+          {
+            "text": "Id"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">${"
+          },
+          {
+            "text": "fails"
+          },
+          {
+            "text": "afe"
+          },
+          {
+            "text": "-plugin"
+          },
+          {
+            "text": ".version"
+          },
+          {
+            "text": "}</"
+          },
+          {
+            "text": "version"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "exec"
+          },
+          {
+            "text": "utions"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "execution"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "goals"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "goal"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "integration"
+          },
+          {
+            "text": "-test"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "goal"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "goal"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "verify"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "goal"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "goals"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "configuration"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "system"
+          },
+          {
+            "text": "Property"
+          },
+          {
+            "text": "Variables"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "native"
+          },
+          {
+            "text": ".image"
+          },
+          {
+            "text": ".path"
+          },
+          {
+            "text": ">${"
+          },
+          {
+            "text": "project"
+          },
+          {
+            "text": ".build"
+          },
+          {
+            "text": ".directory"
+          },
+          {
+            "text": "}/${"
+          },
+          {
+            "text": "project"
+          },
+          {
+            "text": ".build"
+          },
+          {
+            "text": ".final"
+          },
+          {
+            "text": "Name"
+          },
+          {
+            "text": "}-"
+          },
+          {
+            "text": "runner"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "native"
+          },
+          {
+            "text": ".image"
+          },
+          {
+            "text": ".path"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "java"
+          },
+          {
+            "text": ".util"
+          },
+          {
+            "text": ".logging"
+          },
+          {
+            "text": ".manager"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "org"
+          },
+          {
+            "text": ".jboss"
+          },
+          {
+            "text": ".log"
+          },
+          {
+            "text": "manager"
+          },
+          {
+            "text": ".Log"
+          },
+          {
+            "text": "Manager"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "java"
+          },
+          {
+            "text": ".util"
+          },
+          {
+            "text": ".logging"
+          },
+          {
+            "text": ".manager"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": ".home"
+          },
+          {
+            "text": ">${"
+          },
+          {
+            "text": "m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": ".home"
+          },
+          {
+            "text": "}</"
+          },
+          {
+            "text": "m"
+          },
+          {
+            "text": "aven"
+          },
+          {
+            "text": ".home"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "system"
+          },
+          {
+            "text": "Property"
+          },
+          {
+            "text": "Variables"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "configuration"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "execution"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "exec"
+          },
+          {
+            "text": "utions"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "plugin"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "plugins"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "build"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "profiles"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "<!--"
+          },
+          {
+            "text": "\u0120TODO"
+          },
+          {
+            "text": ":"
+          },
+          {
+            "text": "\u0120Add"
+          },
+          {
+            "text": "\u0120Open"
+          },
+          {
+            "text": "Shift"
+          },
+          {
+            "text": "\u0120profile"
+          },
+          {
+            "text": "\u0120here"
+          },
+          {
+            "text": "\u0120-->\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "profiles"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "project"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "``"
+          },
+          {
+            "text": "`\u010a\u010a"
+          },
+          {
+            "text": "##"
+          },
+          {
+            "text": "\u0120Issues"
+          },
+          {
+            "text": "\u010a\u010a\u010a"
+          },
+          {
+            "text": "###"
+          },
+          {
+            "text": "\u0120incident"
+          },
+          {
+            "text": "\u0120"
+          },
+          {
+            "text": "0"
+          },
+          {
+            "text": "\u010a"
+          },
+          {
+            "text": "incident"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120fix"
+          },
+          {
+            "text": ":"
+          },
+          {
+            "text": "\u0120\""
+          },
+          {
+            "text": "L"
+          },
+          {
+            "text": "ever"
+          },
+          {
+            "text": "age"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120Maven"
+          },
+          {
+            "text": "\u0120profile"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120run"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120Qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": "\u0120native"
+          },
+          {
+            "text": "\u0120build"
+          },
+          {
+            "text": "\u0120adding"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120following"
+          },
+          {
+            "text": "\u0120section"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120`"
+          },
+          {
+            "text": "pom"
+          },
+          {
+            "text": ".xml"
+          },
+          {
+            "text": "`"
+          },
+          {
+            "text": "\u0120file"
+          },
+          {
+            "text": ":"
+          },
+          {
+            "text": "\u0120\u010a\u010a"
+          },
+          {
+            "text": "\u0120```"
+          },
+          {
+            "text": "xml"
+          },
+          {
+            "text": "\u010a"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "profiles"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "profile"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "id"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "native"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "id"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "activation"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "property"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "name"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "native"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "name"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "property"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "activation"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "properties"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "skip"
+          },
+          {
+            "text": "IT"
+          },
+          {
+            "text": "s"
+          },
+          {
+            "text": ">false"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "skip"
+          },
+          {
+            "text": "IT"
+          },
+          {
+            "text": "s"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120<"
+          },
+          {
+            "text": "qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": ".package"
+          },
+          {
+            "text": ".type"
+          },
+          {
+            "text": ">"
+          },
+          {
+            "text": "native"
+          },
+          {
+            "text": "</"
+          },
+          {
+            "text": "qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": ".package"
+          },
+          {
+            "text": ".type"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "properties"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "profile"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120</"
+          },
+          {
+            "text": "profiles"
+          },
+          {
+            "text": ">\u010a"
+          },
+          {
+            "text": "\u0120```"
+          },
+          {
+            "text": "\"\u010a"
+          },
+          {
+            "text": "Line"
+          },
+          {
+            "text": "\u0120number"
+          },
+          {
+            "text": ":"
+          },
+          {
+            "text": "\u0120"
+          },
+          {
+            "text": "5"
+          },
+          {
+            "text": "\u010a\u010a\u010a\u010a"
+          },
+          {
+            "text": "#"
+          },
+          {
+            "text": "\u0120Output"
+          },
+          {
+            "text": "\u0120Instructions"
+          },
+          {
+            "text": "\u010a"
+          },
+          {
+            "text": "Structure"
+          },
+          {
+            "text": "\u0120your"
+          },
+          {
+            "text": "\u0120output"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120Markdown"
+          },
+          {
+            "text": "\u0120format"
+          },
+          {
+            "text": "\u0120such"
+          },
+          {
+            "text": "\u0120as"
+          },
+          {
+            "text": ":\u010a\u010a"
+          },
+          {
+            "text": "##"
+          },
+          {
+            "text": "\u0120Reason"
+          },
+          {
+            "text": "ing"
+          },
+          {
+            "text": "\u010a"
+          },
+          {
+            "text": "Write"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120step"
+          },
+          {
+            "text": "\u0120by"
+          },
+          {
+            "text": "\u0120step"
+          },
+          {
+            "text": "\u0120reasoning"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120this"
+          },
+          {
+            "text": "\u0120markdown"
+          },
+          {
+            "text": "\u0120section"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "\u0120If"
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120are"
+          },
+          {
+            "text": "\u0120unsure"
+          },
+          {
+            "text": "\u0120of"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120step"
+          },
+          {
+            "text": "\u0120or"
+          },
+          {
+            "text": "\u0120reasoning"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120clearly"
+          },
+          {
+            "text": "\u0120state"
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120are"
+          },
+          {
+            "text": "\u0120unsure"
+          },
+          {
+            "text": "\u0120and"
+          },
+          {
+            "text": "\u0120why"
+          },
+          {
+            "text": ".\u010a\u010a"
+          },
+          {
+            "text": "##"
+          },
+          {
+            "text": "\u0120Updated"
+          },
+          {
+            "text": "\u0120Java"
+          },
+          {
+            "text": "\u0120File"
+          },
+          {
+            "text": "\u010a"
+          },
+          {
+            "text": "```"
+          },
+          {
+            "text": "java"
+          },
+          {
+            "text": "\u010a"
+          },
+          {
+            "text": "//"
+          },
+          {
+            "text": "\u0120Write"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120updated"
+          },
+          {
+            "text": "\u0120file"
+          },
+          {
+            "text": "\u0120for"
+          },
+          {
+            "text": "\u0120Qu"
+          },
+          {
+            "text": "ark"
+          },
+          {
+            "text": "us"
+          },
+          {
+            "text": "\u0120in"
+          },
+          {
+            "text": "\u0120this"
+          },
+          {
+            "text": "\u0120section"
+          },
+          {
+            "text": "."
+          },
+          {
+            "text": "\u0120If"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120file"
+          },
+          {
+            "text": "\u0120should"
+          },
+          {
+            "text": "\u0120be"
+          },
+          {
+            "text": "\u0120removed"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120make"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120content"
+          },
+          {
+            "text": "\u0120of"
+          },
+          {
+            "text": "\u0120the"
+          },
+          {
+            "text": "\u0120updated"
+          },
+          {
+            "text": "\u0120file"
+          },
+          {
+            "text": "\u0120a"
+          },
+          {
+            "text": "\u0120comment"
+          },
+          {
+            "text": "\u0120explaining"
+          },
+          {
+            "text": "\u0120it"
+          },
+          {
+            "text": "\u0120should"
+          },
+          {
+            "text": "\u0120be"
+          },
+          {
+            "text": "\u0120removed"
+          },
+          {
+            "text": ".\u010a"
+          },
+          {
+            "text": "``"
+          },
+          {
+            "text": "`\u010a\u010a"
+          },
+          {
+            "text": "##"
+          },
+          {
+            "text": "\u0120Additional"
+          },
+          {
+            "text": "\u0120Information"
+          },
+          {
+            "text": "\u0120("
+          },
+          {
+            "text": "optional"
+          },
+          {
+            "text": ")\u010a\u010a"
+          },
+          {
+            "text": "If"
+          },
+          {
+            "text": "\u0120you"
+          },
+          {
+            "text": "\u0120have"
+          },
+          {
+            "text": "\u0120any"
+          },
+          {
+            "text": "\u0120additional"
+          },
+          {
+            "text": "\u0120details"
+          },
+          {
+            "text": "\u0120or"
+          },
+          {
+            "text": "\u0120steps"
+          },
+          {
+            "text": "\u0120that"
+          },
+          {
+            "text": "\u0120need"
+          },
+          {
+            "text": "\u0120to"
+          },
+          {
+            "text": "\u0120be"
+          },
+          {
+            "text": "\u0120performed"
+          },
+          {
+            "text": ","
+          },
+          {
+            "text": "\u0120put"
+          },
+          {
+            "text": "\u0120it"
+          },
+          {
+            "text": "\u0120here"
+          },
+          {
+            "text": ".\u010a\u010a"
+          },
+          {
+            "text": "\u0120\u0120\u0120\u0120\u0120\u010a\u010a"
+          },
+          {
+            "text": "Assistant"
+          },
+          {
+            "text": ":"
+          },
+          {
+            "text": "\u0120"
+          }
+        ],
+        "stop_reason": "eos_token",
+        "hap": [
+          {
+            "flagged": true,
+            "position": {
+              "end": 0,
+              "start": 0
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 102,
+              "start": 1
+            },
+            "score": 0.13009746372699738,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 106,
+              "start": 103
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 107,
+              "start": 107
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 205,
+              "start": 108
+            },
+            "score": 0.1321881115436554,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 206,
+              "start": 206
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 321,
+              "start": 207
+            },
+            "score": 0.1269688904285431,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 322,
+              "start": 322
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 430,
+              "start": 323
+            },
+            "score": 0.13652503490447998,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 431,
+              "start": 431
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 533,
+              "start": 432
+            },
+            "score": 0.13948561251163483,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 534,
+              "start": 534
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 566,
+              "start": 535
+            },
+            "score": 0.13339073956012726,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 657,
+              "start": 567
+            },
+            "score": 0.13619425892829895,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 658,
+              "start": 658
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 757,
+              "start": 659
+            },
+            "score": 0.13671815395355225,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 758,
+              "start": 758
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 895,
+              "start": 759
+            },
+            "score": 0.14433841407299042,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 896,
+              "start": 896
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 974,
+              "start": 897
+            },
+            "score": 0.13867318630218506,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 975,
+              "start": 975
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1077,
+              "start": 976
+            },
+            "score": 0.14246653020381927,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1078,
+              "start": 1078
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1171,
+              "start": 1079
+            },
+            "score": 0.1278086006641388,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1172,
+              "start": 1172
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1192,
+              "start": 1173
+            },
+            "score": 0.1289086788892746,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1193,
+              "start": 1193
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1207,
+              "start": 1194
+            },
+            "score": 0.13254345953464508,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1208,
+              "start": 1208
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1229,
+              "start": 1209
+            },
+            "score": 0.1369560807943344,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1251,
+              "start": 1230
+            },
+            "score": 0.1307024359703064,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1261,
+              "start": 1252
+            },
+            "score": 0.15841905772686005,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1263,
+              "start": 1262
+            },
+            "score": 0.13463552296161652,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1298,
+              "start": 1264
+            },
+            "score": 0.14399699866771698,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1300,
+              "start": 1299
+            },
+            "score": 0.13231950998306274,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1310,
+              "start": 1301
+            },
+            "score": 0.13206055760383606,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1357,
+              "start": 1311
+            },
+            "score": 0.14737333357334137,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1515,
+              "start": 1358
+            },
+            "score": 0.15428049862384796,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1554,
+              "start": 1516
+            },
+            "score": 0.15514546632766724,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1598,
+              "start": 1555
+            },
+            "score": 0.153778538107872,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1636,
+              "start": 1599
+            },
+            "score": 0.13387735188007355,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1674,
+              "start": 1637
+            },
+            "score": 0.143919438123703,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1705,
+              "start": 1675
+            },
+            "score": 0.1403724104166031,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1741,
+              "start": 1706
+            },
+            "score": 0.1456719934940338,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1758,
+              "start": 1742
+            },
+            "score": 0.13581471145153046,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1833,
+              "start": 1759
+            },
+            "score": 0.14866840839385986,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1920,
+              "start": 1834
+            },
+            "score": 0.14643430709838867,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 1971,
+              "start": 1921
+            },
+            "score": 0.14764541387557983,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2019,
+              "start": 1972
+            },
+            "score": 0.14301565289497375,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2102,
+              "start": 2020
+            },
+            "score": 0.14483731985092163,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2142,
+              "start": 2103
+            },
+            "score": 0.1404920518398285,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2175,
+              "start": 2143
+            },
+            "score": 0.16056199371814728,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2256,
+              "start": 2176
+            },
+            "score": 0.1398880034685135,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2322,
+              "start": 2257
+            },
+            "score": 0.1415092796087265,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2382,
+              "start": 2323
+            },
+            "score": 0.14574234187602997,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2447,
+              "start": 2383
+            },
+            "score": 0.1393788754940033,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2512,
+              "start": 2448
+            },
+            "score": 0.14905418455600739,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2530,
+              "start": 2513
+            },
+            "score": 0.139417827129364,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2549,
+              "start": 2531
+            },
+            "score": 0.14394761621952057,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2570,
+              "start": 2550
+            },
+            "score": 0.1491820514202118,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2618,
+              "start": 2571
+            },
+            "score": 0.14574678242206573,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2681,
+              "start": 2619
+            },
+            "score": 0.14208941161632538,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2718,
+              "start": 2682
+            },
+            "score": 0.1496107131242752,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2754,
+              "start": 2719
+            },
+            "score": 0.1390652358531952,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2776,
+              "start": 2755
+            },
+            "score": 0.1484624594449997,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2797,
+              "start": 2777
+            },
+            "score": 0.1491820365190506,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2845,
+              "start": 2798
+            },
+            "score": 0.14574676752090454,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2904,
+              "start": 2846
+            },
+            "score": 0.14023995399475098,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2941,
+              "start": 2905
+            },
+            "score": 0.1496107131242752,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2977,
+              "start": 2942
+            },
+            "score": 0.1390652358531952,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 2999,
+              "start": 2978
+            },
+            "score": 0.1484624594449997,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3020,
+              "start": 3000
+            },
+            "score": 0.1491820365190506,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3076,
+              "start": 3021
+            },
+            "score": 0.13853801786899567,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3136,
+              "start": 3077
+            },
+            "score": 0.13412337005138397,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3163,
+              "start": 3137
+            },
+            "score": 0.1431245654821396,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3179,
+              "start": 3164
+            },
+            "score": 0.14398224651813507,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3201,
+              "start": 3180
+            },
+            "score": 0.1484624594449997,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3222,
+              "start": 3202
+            },
+            "score": 0.1491820365190506,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3266,
+              "start": 3223
+            },
+            "score": 0.1374364197254181,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3315,
+              "start": 3267
+            },
+            "score": 0.1309570074081421,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3352,
+              "start": 3316
+            },
+            "score": 0.14271777868270874,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3374,
+              "start": 3353
+            },
+            "score": 0.1484624594449997,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3395,
+              "start": 3375
+            },
+            "score": 0.1491820365190506,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3451,
+              "start": 3396
+            },
+            "score": 0.13831192255020142,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3511,
+              "start": 3452
+            },
+            "score": 0.13384637236595154,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3538,
+              "start": 3512
+            },
+            "score": 0.13886089622974396,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3554,
+              "start": 3539
+            },
+            "score": 0.14398224651813507,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3576,
+              "start": 3555
+            },
+            "score": 0.1484624594449997,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3596,
+              "start": 3577
+            },
+            "score": 0.15263797342777252,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3623,
+              "start": 3597
+            },
+            "score": 0.1556241661310196,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3646,
+              "start": 3624
+            },
+            "score": 0.14394761621952057,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3671,
+              "start": 3647
+            },
+            "score": 0.1491820365190506,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3735,
+              "start": 3672
+            },
+            "score": 0.14937248826026917,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3808,
+              "start": 3736
+            },
+            "score": 0.1393435299396515,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3871,
+              "start": 3809
+            },
+            "score": 0.18735957145690918,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3904,
+              "start": 3872
+            },
+            "score": 0.159319207072258,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3942,
+              "start": 3905
+            },
+            "score": 0.13895145058631897,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3968,
+              "start": 3943
+            },
+            "score": 0.1484624594449997,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 3992,
+              "start": 3969
+            },
+            "score": 0.15263797342777252,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4020,
+              "start": 3993
+            },
+            "score": 0.15840192139148712,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4032,
+              "start": 4021
+            },
+            "score": 0.13515862822532654,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4068,
+              "start": 4033
+            },
+            "score": 0.1459958553314209,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4086,
+              "start": 4069
+            },
+            "score": 0.13416820764541626,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4107,
+              "start": 4087
+            },
+            "score": 0.13439910113811493,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4170,
+              "start": 4108
+            },
+            "score": 0.13930024206638336,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4232,
+              "start": 4171
+            },
+            "score": 0.14986594021320343,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4264,
+              "start": 4233
+            },
+            "score": 0.1420312374830246,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4299,
+              "start": 4265
+            },
+            "score": 0.140677809715271,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4346,
+              "start": 4300
+            },
+            "score": 0.14775335788726807,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4382,
+              "start": 4347
+            },
+            "score": 0.14200633764266968,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4443,
+              "start": 4383
+            },
+            "score": 0.1603131741285324,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4508,
+              "start": 4444
+            },
+            "score": 0.15554317831993103,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4541,
+              "start": 4509
+            },
+            "score": 0.1463278979063034,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4563,
+              "start": 4542
+            },
+            "score": 0.1362575888633728,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4584,
+              "start": 4564
+            },
+            "score": 0.13439911603927612,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4644,
+              "start": 4585
+            },
+            "score": 0.149483785033226,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4702,
+              "start": 4645
+            },
+            "score": 0.15467020869255066,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4743,
+              "start": 4703
+            },
+            "score": 0.1446874737739563,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4765,
+              "start": 4744
+            },
+            "score": 0.1362575888633728,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4786,
+              "start": 4766
+            },
+            "score": 0.13439910113811493,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4850,
+              "start": 4787
+            },
+            "score": 0.14937248826026917,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4912,
+              "start": 4851
+            },
+            "score": 0.13746377825737,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 4975,
+              "start": 4913
+            },
+            "score": 0.18735957145690918,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5021,
+              "start": 4976
+            },
+            "score": 0.14231368899345398,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5050,
+              "start": 5022
+            },
+            "score": 0.14917528629302979,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5082,
+              "start": 5051
+            },
+            "score": 0.1421007513999939,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5114,
+              "start": 5083
+            },
+            "score": 0.12980790436267853,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5161,
+              "start": 5115
+            },
+            "score": 0.12933412194252014,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5216,
+              "start": 5162
+            },
+            "score": 0.13302019238471985,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5277,
+              "start": 5217
+            },
+            "score": 0.136012002825737,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5310,
+              "start": 5278
+            },
+            "score": 0.1316705346107483,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5343,
+              "start": 5311
+            },
+            "score": 0.14511103928089142,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5373,
+              "start": 5344
+            },
+            "score": 0.15106619894504547,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5395,
+              "start": 5374
+            },
+            "score": 0.1362575888633728,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5416,
+              "start": 5396
+            },
+            "score": 0.13439911603927612,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5479,
+              "start": 5417
+            },
+            "score": 0.140485480427742,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5541,
+              "start": 5480
+            },
+            "score": 0.1582617610692978,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5573,
+              "start": 5542
+            },
+            "score": 0.14203119277954102,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5619,
+              "start": 5574
+            },
+            "score": 0.1418025940656662,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5730,
+              "start": 5620
+            },
+            "score": 0.1460440754890442,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5793,
+              "start": 5731
+            },
+            "score": 0.15119853615760803,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5840,
+              "start": 5794
+            },
+            "score": 0.1467251032590866,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5873,
+              "start": 5841
+            },
+            "score": 0.1463278979063034,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5895,
+              "start": 5874
+            },
+            "score": 0.1362575888633728,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5916,
+              "start": 5896
+            },
+            "score": 0.13439910113811493,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 5979,
+              "start": 5917
+            },
+            "score": 0.14320455491542816,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6041,
+              "start": 5980
+            },
+            "score": 0.18807700276374817,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6070,
+              "start": 6042
+            },
+            "score": 0.14917528629302979,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6102,
+              "start": 6071
+            },
+            "score": 0.1421007513999939,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6134,
+              "start": 6103
+            },
+            "score": 0.12980790436267853,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6192,
+              "start": 6135
+            },
+            "score": 0.13272196054458618,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6240,
+              "start": 6193
+            },
+            "score": 0.1313498616218567,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6273,
+              "start": 6241
+            },
+            "score": 0.1316705346107483,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6313,
+              "start": 6274
+            },
+            "score": 0.1420312374830246,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6367,
+              "start": 6314
+            },
+            "score": 0.1418026089668274,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6499,
+              "start": 6368
+            },
+            "score": 0.1447923630475998,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6618,
+              "start": 6500
+            },
+            "score": 0.146044060587883,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6689,
+              "start": 6619
+            },
+            "score": 0.15119853615760803,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6744,
+              "start": 6690
+            },
+            "score": 0.1467251032590866,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6785,
+              "start": 6745
+            },
+            "score": 0.146327942609787,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6818,
+              "start": 6786
+            },
+            "score": 0.14511100947856903,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6848,
+              "start": 6819
+            },
+            "score": 0.15106619894504547,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6870,
+              "start": 6849
+            },
+            "score": 0.1362575888633728,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6889,
+              "start": 6871
+            },
+            "score": 0.13573184609413147,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6902,
+              "start": 6890
+            },
+            "score": 0.13693071901798248,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6917,
+              "start": 6903
+            },
+            "score": 0.1345086693763733,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6959,
+              "start": 6918
+            },
+            "score": 0.1398303359746933,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6975,
+              "start": 6960
+            },
+            "score": 0.1369461715221405,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6986,
+              "start": 6976
+            },
+            "score": 0.13572555780410767,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6990,
+              "start": 6987
+            },
+            "score": 0.14512835443019867,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 6991,
+              "start": 6991
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7001,
+              "start": 6992
+            },
+            "score": 0.13039731979370117,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7002,
+              "start": 7002
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7003,
+              "start": 7003
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7018,
+              "start": 7004
+            },
+            "score": 0.13395380973815918,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7146,
+              "start": 7019
+            },
+            "score": 0.14304624497890472,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7147,
+              "start": 7147
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7155,
+              "start": 7148
+            },
+            "score": 0.13961713016033173,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7167,
+              "start": 7156
+            },
+            "score": 0.1345086693763733,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7178,
+              "start": 7168
+            },
+            "score": 0.13571053743362427,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7195,
+              "start": 7179
+            },
+            "score": 0.16290348768234253,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7209,
+              "start": 7196
+            },
+            "score": 0.1385723352432251,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7221,
+              "start": 7210
+            },
+            "score": 0.1365814357995987,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7242,
+              "start": 7222
+            },
+            "score": 0.14048738777637482,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7255,
+              "start": 7243
+            },
+            "score": 0.13924816250801086,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7270,
+              "start": 7256
+            },
+            "score": 0.14246344566345215,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7284,
+              "start": 7271
+            },
+            "score": 0.13581471145153046,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7310,
+              "start": 7285
+            },
+            "score": 0.1472664177417755,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7363,
+              "start": 7311
+            },
+            "score": 0.134907066822052,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7378,
+              "start": 7364
+            },
+            "score": 0.1394178718328476,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7390,
+              "start": 7379
+            },
+            "score": 0.13933615386486053,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7403,
+              "start": 7391
+            },
+            "score": 0.1369461715221405,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7409,
+              "start": 7404
+            },
+            "score": 0.14048339426517487,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7424,
+              "start": 7410
+            },
+            "score": 0.12809564173221588,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7425,
+              "start": 7425
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7426,
+              "start": 7426
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7427,
+              "start": 7427
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7449,
+              "start": 7428
+            },
+            "score": 0.1325024664402008,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7499,
+              "start": 7450
+            },
+            "score": 0.13186714053153992,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7500,
+              "start": 7500
+            },
+            "score": 0.1295556128025055,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7513,
+              "start": 7501
+            },
+            "score": 0.13192392885684967,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7572,
+              "start": 7514
+            },
+            "score": 0.13186180591583252,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7652,
+              "start": 7573
+            },
+            "score": 0.13391800224781036,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7653,
+              "start": 7653
+            },
+            "score": 0.1295555979013443,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7674,
+              "start": 7654
+            },
+            "score": 0.12817129492759705,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7682,
+              "start": 7675
+            },
+            "score": 0.14054612815380096,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7737,
+              "start": 7683
+            },
+            "score": 0.13026008009910583,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7848,
+              "start": 7738
+            },
+            "score": 0.13014476001262665,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7852,
+              "start": 7849
+            },
+            "score": 0.14512835443019867,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7853,
+              "start": 7853
+            },
+            "score": 0.1295555979013443,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7890,
+              "start": 7854
+            },
+            "score": 0.13007301092147827,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7891,
+              "start": 7891
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7975,
+              "start": 7892
+            },
+            "score": 0.1291487067937851,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7976,
+              "start": 7976
+            },
+            "score": 0.1295555830001831,
+            "success": true
+          },
+          {
+            "flagged": true,
+            "position": {
+              "end": 7980,
+              "start": 7977
+            },
+            "score": 0.1295556128025055,
+            "success": true
+          }
+        ],
+        "stop_sequence": "<|eot_id|>"
+      },
+      "type": "ai",
+      "id": "run-878e4a39-1d47-47bf-816d-28120c0a6292-0",
+      "tool_calls": [],
+      "invalid_tool_calls": []
+    }
+  }
+}
