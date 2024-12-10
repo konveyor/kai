@@ -217,6 +217,8 @@ def run_demo(report: Report, server: JsonRpcServer) -> None:
                 incident.uri = os.path.join(SAMPLE_APP_DIR, file_path)
                 incident.uri = os.path.abspath(Path(incident.uri))
 
+            incidents.sort()
+
             process_file(
                 server=server,
                 incidents=incidents,

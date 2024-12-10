@@ -62,6 +62,21 @@ class Incident(BaseModel):
         {}, validation_alias=AliasChoices("variables", "incident_variables")
     )
 
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, Incident):
+            raise ValueError(f"Cannot compare Task with {type(other)}")
+
+        # Lower priority number means higher priority
+        # For same priority, higher depth means process children first (DFS)
+        # For same priority and depth, rely on creation order just to make it deterministic
+        return (
+            self.message,
+            self.line_number,
+        ) < (
+            other.message,
+            other.line_number,
+        )
+
 
 class ExtendedIncident(Incident):
     """

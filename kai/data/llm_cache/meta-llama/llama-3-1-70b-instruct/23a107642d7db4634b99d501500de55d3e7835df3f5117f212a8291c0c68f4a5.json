@@ -24,22 +24,22 @@
     "type": "constructor",
     "id": ["langchain", "schema", "messages", "AIMessage"],
     "kwargs": {
-      "content": "\n\n\n\n\n\n## Reasoning\nTo address the issue, we need to replace the `javax.annotation` import statement with `jakarta.annotation`. This is because Quarkus uses Jakarta EE, which has replaced the `javax` namespace with `jakarta`.\n\nHere are the steps to update the code:\n\n1. Identify the import statement that needs to be replaced: `import javax.annotation.Resource;`\n2. Replace the `javax.annotation` import statement with `jakarta.annotation`: `import jakarta.annotation.Resource;`\n3. Verify that the `@Resource` annotation is still valid and functional with the new import statement.\n\nNote: The `@Resource` annotation is still valid in Jakarta EE, so no further changes are required.\n\n## Updated Java File\n```java\npackage com.redhat.coolstore.service;\n\nimport java.util.logging.Logger;\nimport jakarta.ejb.Stateless;\nimport jakarta.annotation.Resource;\nimport jakarta.inject.Inject;\nimport javax.jms.JMSContext;\nimport javax.jms.Topic;\n\nimport com.redhat.coolstore.model.ShoppingCart;\nimport com.redhat.coolstore.utils.Transformers;\n\n@Stateless\npublic class ShoppingCartOrderProcessor  {\n\n    @Inject\n    Logger log;\n\n\n    @Inject\n    private transient JMSContext context;\n\n    @Resource(lookup = \"java:/topic/orders\")\n    private Topic ordersTopic;\n\n    \n  \n    public void  process(ShoppingCart cart) {\n        log.info(\"Sending order from processor: \");\n        context.createProducer().send(ordersTopic, Transformers.shoppingCartToJson(cart));\n    }\n\n\n\n}\n```\n\n## Additional Information (optional)\nNote that the `jakarta.ejb` import statement should also be updated to `jakarta.ejb` to be consistent with the Jakarta EE namespace. However, since it's not part of the issue to be fixed, it's left unchanged in this update. It's recommended to update it in a subsequent step. \n\nAdditionally, the pom.xml file may need to be updated to include the Jakarta EE dependencies. The specific dependencies required will depend on the Quarkus version and the features being used.",
+      "content": "\n\n\n\n\n\n## Reasoning\nTo address the issue, we need to replace the `javax.annotation` import statement with `jakarta.annotation`. This is because Quarkus uses the Jakarta EE namespace instead of the Java EE namespace.\n\nThe `@Inject` annotation is used for dependency injection, and in Quarkus, it is part of the `jakarta.annotation` package. Therefore, we need to update the import statement to use the correct package.\n\n## Updated Java File\n```java\npackage com.redhat.coolstore.service;\n\nimport java.util.logging.Logger;\nimport jakarta.annotation.Resource;\nimport jakarta.ejb.Stateless;\nimport jakarta.inject.Inject;\nimport javax.jms.JMSContext;\nimport javax.jms.Topic;\n\nimport com.redhat.coolstore.model.ShoppingCart;\nimport com.redhat.coolstore.utils.Transformers;\n\n@Stateless\npublic class ShoppingCartOrderProcessor  {\n\n    @Inject\n    Logger log;\n\n\n    @Inject\n    private transient JMSContext context;\n\n    @Resource(lookup = \"java:/topic/orders\")\n    private Topic ordersTopic;\n\n    \n  \n    public void  process(ShoppingCart cart) {\n        log.info(\"Sending order from processor: \");\n        context.createProducer().send(ordersTopic, Transformers.shoppingCartToJson(cart));\n    }\n\n\n\n}\n```\n\n## Additional Information (optional)\nNote that we only updated the `javax.annotation` import statement to `jakarta.annotation`. The other import statements remain the same. Also, we did not update the `@Stateless` annotation as it is still part of the `jakarta.ejb` package.\n\nIn the `pom.xml` file, we would need to ensure that the `jakarta.annotation` dependency is included. If it's not already included, we would need to add it. However, since we are only updating the import statement, we don't need to make any changes to the `pom.xml` file at this point.",
       "response_metadata": {
         "model_name": "meta-llama/llama-3-1-70b-instruct",
         "token_usage": {
           "prompt_tokens": 574,
-          "completion_tokens": 421,
-          "total_tokens": 995,
+          "completion_tokens": 388,
+          "total_tokens": 962,
           "input_token_count": 574,
-          "generated_token_count": 421
+          "generated_token_count": 388
         },
         "meta": {
-          "conversation_id": "0efa9a0a-f27d-4b3c-9f59-206cbc4b2742",
-          "id": "b6609902-79d1-4c6a-a11d-227a8281df36",
+          "conversation_id": "21513e87-9b65-4c24-8335-304979ef6de9",
+          "id": "a3d5ab44-d6da-423c-a71a-178da61e94ac",
           "model_id": "meta-llama/llama-3-1-70b-instruct"
         },
-        "generated_token_count": 421,
+        "generated_token_count": 388,
         "input_token_count": 0,
         "input_tokens": [
           {
@@ -2644,7 +2644,7 @@
         "stop_sequence": "<|eot_id|>"
       },
       "type": "ai",
-      "id": "run-432d780b-48cc-46f0-bd4d-3f7ddf8a4df4-0",
+      "id": "run-085736d3-9dfa-431b-b0a1-49c9f0146300-0",
       "tool_calls": [],
       "invalid_tool_calls": []
     }
