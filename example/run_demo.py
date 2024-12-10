@@ -32,9 +32,10 @@ from kai.rpc_server.server import (
 
 
 def get_binary_path(path: str) -> Path:
-    if platform.system().lower() != 'windows' and ".exe" not in path.lower():
+    if platform.system().lower() == "windows" and ".exe" not in path.lower():
         return Path(f"{path}.exe")
     return Path(path)
+
 
 SERVER_URL = "http://0.0.0.0:8080"
 APP_NAME = "coolstore"
@@ -52,6 +53,7 @@ KAI_LOG = get_logger("run_demo")
 # TODOs
 # 1) Add ConfigFile to tweak the server URL and rulesets/violations
 # 2) Limit to specific rulesets/violations we are interested in
+
 
 def pre_flight_checks() -> None:
     for path in [
