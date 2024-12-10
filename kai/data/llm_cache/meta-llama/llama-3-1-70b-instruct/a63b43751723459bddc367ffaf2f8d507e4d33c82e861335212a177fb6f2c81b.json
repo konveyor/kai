@@ -24,22 +24,22 @@
     "type": "constructor",
     "id": ["langchain", "schema", "messages", "AIMessage"],
     "kwargs": {
-      "content": " # Reasoning\n\nTo address the issue of replacing the `javax.json` import statement with `jakarta.json`, we need to understand the context and the changes required.\n\n1.  The `javax.json` package is part of the Java API for JSON Processing (JSON-P) and is used for processing JSON data in Java.\n2.  However, Quarkus uses the Jakarta EE 9+ namespace, which means that the `javax.json` package needs to be replaced with `jakarta.json`.\n3.  This change is necessary because Quarkus is built on top of the Jakarta EE 9+ namespace, and using the `javax.json` package would cause conflicts and compatibility issues.\n4.  To fix this issue, we need to update the import statement at the top of the file to use `jakarta.json` instead of `javax.json`.\n\n## Updated Java File\n\n```java\npackage com.redhat.coolstore.utils;\n\nimport com.redhat.coolstore.model.CatalogItemEntity;\nimport com.redhat.coolstore.model.Order;\nimport com.redhat.coolstore.model.OrderItem;\nimport com.redhat.coolstore.model.Product;\nimport com.redhat.coolstore.model.ShoppingCart;\nimport java.io.StringReader;\nimport java.io.StringWriter;\nimport java.util.ArrayList;\nimport java.util.List;\nimport jakarta.json.Json;\nimport jakarta.json.JsonArray;\nimport jakarta.json.JsonArrayBuilder;\nimport jakarta.json.JsonObject;\nimport jakarta.json.JsonReader;\nimport jakarta.json.JsonWriter;\n\nimport java.util.concurrent.ThreadLocalRandom;\nimport java.util.logging.Logger;\n\n/**\n * Created by tqvarnst on 2017-03-30.\n */\npublic class Transformers {\n\n    private static final String[] RANDOM_NAMES = {\"Sven Karlsson\",\"Johan Andersson\",\"Karl Svensson\",\"Anders Johansson\",\"Stefan Olson\",\"Martin Ericsson\"};\n    private static final String[] RANDOM_EMAILS = {\"sven@gmail.com\",\"johan@gmail.com\",\"karl@gmail.com\",\"anders@gmail.com\",\"stefan@gmail.com\",\"martin@gmail.com\"};\n\n    private static Logger log = Logger.getLogger(Transformers.class.getName());\n\n    public static Product toProduct(CatalogItemEntity entity) {\n        Product prod = new Product();\n        prod.setItemId(entity.getItemId());\n        prod.setName(entity.getName());\n        prod.setDesc(entity.getDesc());\n        prod.setPrice(entity.getPrice());\n        if (entity.getInventory() != null) {\n            prod.setLocation(entity.getInventory().getLocation());\n            prod.setLink(entity.getInventory().getLink());\n            prod.setQuantity(entity.getInventory().getQuantity());\n        } else {\n            log.warning(\"Inventory for \" + entity.getName() + \"[\" + entity.getItemId()+ \"] unknown and missing\");\n        }\n        return prod;\n    }\n\n    public static String shoppingCartToJson(ShoppingCart cart) {\n        JsonArrayBuilder cartItems = Json.createArrayBuilder();\n        cart.getShoppingCartItemList().forEach(item -> {\n            cartItems.add(Json.createObjectBuilder()\n                .add(\"productSku\",item.getProduct().getItemId())\n                .add(\"quantity\",item.getQuantity())\n            );\n        });\n\n        int randomNameAndEmailIndex = ThreadLocalRandom.current().nextInt(RANDOM_NAMES.length);\n\n        JsonObject jsonObject = Json.createObjectBuilder()\n            .add(\"orderValue\", Double.valueOf(cart.getCartTotal()))\n            .add(\"customerName\",RANDOM_NAMES[randomNameAndEmailIndex])\n            .add(\"customerEmail\",RANDOM_EMAILS[randomNameAndEmailIndex])\n            .add(\"retailPrice\", cart.getShoppingCartItemList().stream().mapToDouble(i -> i.getQuantity()*i.getPrice()).sum())\n            .add(\"discount\", Double.valueOf(cart.getCartItemPromoSavings()))\n            .add(\"shippingFee\", Double.valueOf(cart.getShippingTotal()))\n            .add(\"shippingDiscount\", Double.valueOf(cart.getShippingPromoSavings()))\n            .add(\"items\",cartItems) \n            .build();\n        StringWriter w = new StringWriter();\n        try (JsonWriter writer = Json.createWriter(w)) {\n            writer.write(jsonObject);\n        }\n        return w.toString();\n    }\n\n    public static Order jsonToOrder(String json) {\n        JsonReader jsonReader = Json.createReader(new StringReader(json));\n        JsonObject rootObject = jsonReader.readObject();\n        Order order = new Order();\n        order.setCustomerName(rootObject.getString(\"customerName\"));\n        order.setCustomerEmail(rootObject.getString(\"customerEmail\"));\n        order.setOrderValue(rootObject.getJsonNumber(\"orderValue\").doubleValue());\n        order.setRetailPrice(rootObject.getJsonNumber(\"retailPrice\").doubleValue());\n        order.setDiscount(rootObject.getJsonNumber(\"discount\").doubleValue());\n        order.setShippingFee(rootObject.getJsonNumber(\"shippingFee\").doubleValue());\n        order.setShippingDiscount(rootObject.getJsonNumber(\"shippingDiscount\").doubleValue());\n        JsonArray jsonItems = rootObject.getJsonArray(\"items\");\n        List<OrderItem> items = new ArrayList<OrderItem>(jsonItems.size());\n        for (JsonObject jsonItem : jsonItems.getValuesAs(JsonObject.class)) {\n            OrderItem oi = new OrderItem();\n            oi.setProductId(jsonItem.getString(\"productSku\"));\n            oi.setQuantity(jsonItem.getInt(\"quantity\"));\n            items.add(oi);\n        }\n        order.setItemList(items); \n        return order;\n    }\n\n\n}\n\n```\n\n## Additional Information\n\nWhen updating the `pom.xml` file, make sure to include the `jakarta.json` dependency to ensure that the `jakarta.json` package is available for use. The dependency can be added as follows:\n\n```xml\n<dependency>\n    <groupId>jakarta.json</groupId>\n    <artifactId>jakarta.json-api</artifactId>\n</dependency>\n```\n\nAlso, ensure that the `jakarta.json` import statement is used consistently throughout the project to avoid any conflicts or compatibility issues.",
+      "content": " # Reasoning\n\nTo address the issue of replacing the `javax.json` import statement with `jakarta.json`, we need to understand the context and the implications of this change.\n\nThe `javax.json` package is part of the Java API for JSON Processing (JSON-P) specification, which is a Java EE API. However, Quarkus is built on top of Jakarta EE, which has its own set of APIs, including the Jakarta JSON Processing API (`jakarta.json`).\n\nThe reason for this change is that Quarkus uses the Jakarta EE APIs, and the `javax.json` package is not compatible with Quarkus. By replacing the import statement with `jakarta.json`, we ensure that the code uses the correct API for JSON processing in Quarkus.\n\nTo make this change, we need to update the import statement at the top of the file from `javax.json` to `jakarta.json`. This will require updating the following lines:\n\n```java\nimport javax.json.Json;\nimport javax.json.JsonArray;\nimport javax.json.JsonArrayBuilder;\nimport javax.json.JsonObject;\nimport javax.json.JsonReader;\nimport javax.json.JsonWriter;\n```\n\nto\n\n```java\nimport jakarta.json.Json;\nimport jakarta.json.JsonArray;\nimport jakarta.json.JsonArrayBuilder;\nimport jakarta.json.JsonObject;\nimport jakarta.json.JsonReader;\nimport jakarta.json.JsonWriter;\n```\n\nAdditionally, we need to ensure that the `jakarta.json` API is included in the project's dependencies. This can be done by adding the following dependency to the `pom.xml` file:\n\n```xml\n<dependency>\n    <groupId>jakarta.json</groupId>\n    <artifactId>jakarta.json-api</artifactId>\n</dependency>\n```\n\n## Updated Java File\n\n```java\npackage com.redhat.coolstore.utils;\n\nimport com.redhat.coolstore.model.CatalogItemEntity;\nimport com.redhat.coolstore.model.Order;\nimport com.redhat.coolstore.model.OrderItem;\nimport com.redhat.coolstore.model.Product;\nimport com.redhat.coolstore.model.ShoppingCart;\nimport java.io.StringReader;\nimport java.io.StringWriter;\nimport java.util.ArrayList;\nimport java.util.List;\nimport jakarta.json.Json;\nimport jakarta.json.JsonArray;\nimport jakarta.json.JsonArrayBuilder;\nimport jakarta.json.JsonObject;\nimport jakarta.json.JsonReader;\nimport jakarta.json.JsonWriter;\n\nimport java.util.concurrent.ThreadLocalRandom;\nimport java.util.logging.Logger;\n\n/**\n * Created by tqvarnst on 2017-03-30.\n */\npublic class Transformers {\n\n    private static final String[] RANDOM_NAMES = {\"Sven Karlsson\",\"Johan Andersson\",\"Karl Svensson\",\"Anders Johansson\",\"Stefan Olson\",\"Martin Ericsson\"};\n    private static final String[] RANDOM_EMAILS = {\"sven@gmail.com\",\"johan@gmail.com\",\"karl@gmail.com\",\"anders@gmail.com\",\"stefan@gmail.com\",\"martin@gmail.com\"};\n\n    private static Logger log = Logger.getLogger(Transformers.class.getName());\n\n    public static Product toProduct(CatalogItemEntity entity) {\n        Product prod = new Product();\n        prod.setItemId(entity.getItemId());\n        prod.setName(entity.getName());\n        prod.setDesc(entity.getDesc());\n        prod.setPrice(entity.getPrice());\n        if (entity.getInventory() != null) {\n            prod.setLocation(entity.getInventory().getLocation());\n            prod.setLink(entity.getInventory().getLink());\n            prod.setQuantity(entity.getInventory().getQuantity());\n        } else {\n            log.warning(\"Inventory for \" + entity.getName() + \"[\" + entity.getItemId()+ \"] unknown and missing\");\n        }\n        return prod;\n    }\n\n    public static String shoppingCartToJson(ShoppingCart cart) {\n        JsonArrayBuilder cartItems = Json.createArrayBuilder();\n        cart.getShoppingCartItemList().forEach(item -> {\n            cartItems.add(Json.createObjectBuilder()\n                .add(\"productSku\",item.getProduct().getItemId())\n                .add(\"quantity\",item.getQuantity())\n            );\n        });\n\n        int randomNameAndEmailIndex = ThreadLocalRandom.current().nextInt(RANDOM_NAMES.length);\n\n        JsonObject jsonObject = Json.createObjectBuilder()\n            .add(\"orderValue\", Double.valueOf(cart.getCartTotal()))\n            .add(\"customerName\",RANDOM_NAMES[randomNameAndEmailIndex])\n            .add(\"customerEmail\",RANDOM_EMAILS[randomNameAndEmailIndex])\n            .add(\"retailPrice\", cart.getShoppingCartItemList().stream().mapToDouble(i -> i.getQuantity()*i.getPrice()).sum())\n            .add(\"discount\", Double.valueOf(cart.getCartItemPromoSavings()))\n            .add(\"shippingFee\", Double.valueOf(cart.getShippingTotal()))\n            .add(\"shippingDiscount\", Double.valueOf(cart.getShippingPromoSavings()))\n            .add(\"items\",cartItems) \n            .build();\n        StringWriter w = new StringWriter();\n        try (JsonWriter writer = Json.createWriter(w)) {\n            writer.write(jsonObject);\n        }\n        return w.toString();\n    }\n\n    public static Order jsonToOrder(String json) {\n        JsonReader jsonReader = Json.createReader(new StringReader(json));\n        JsonObject rootObject = jsonReader.readObject();\n        Order order = new Order();\n        order.setCustomerName(rootObject.getString(\"customerName\"));\n        order.setCustomerEmail(rootObject.getString(\"customerEmail\"));\n        order.setOrderValue(rootObject.getJsonNumber(\"orderValue\").doubleValue());\n        order.setRetailPrice(rootObject.getJsonNumber(\"retailPrice\").doubleValue());\n        order.setDiscount(rootObject.getJsonNumber(\"discount\").doubleValue());\n        order.setShippingFee(rootObject.getJsonNumber(\"shippingFee\").doubleValue());\n        order.setShippingDiscount(rootObject.getJsonNumber(\"shippingDiscount\").doubleValue());\n        JsonArray jsonItems = rootObject.getJsonArray(\"items\");\n        List<OrderItem> items = new ArrayList<OrderItem>(jsonItems.size());\n        for (JsonObject jsonItem : jsonItems.getValuesAs(JsonObject.class)) {\n            OrderItem oi = new OrderItem();\n            oi.setProductId(jsonItem.getString(\"productSku\"));\n            oi.setQuantity(jsonItem.getInt(\"quantity\"));\n            items.add(oi);\n        }\n        order.setItemList(items); \n        return order;\n    }\n\n\n}\n```\n\n## Additional Information\n\nTo complete the migration, the following dependency needs to be added to the `pom.xml` file:\n\n```xml\n<dependency>\n    <groupId>jakarta.json</groupId>\n    <artifactId>jakarta.json-api</artifactId>\n</dependency>\n```",
       "response_metadata": {
         "model_name": "meta-llama/llama-3-1-70b-instruct",
         "token_usage": {
           "prompt_tokens": 1302,
-          "completion_tokens": 1186,
-          "total_tokens": 2488,
+          "completion_tokens": 1317,
+          "total_tokens": 2619,
           "input_token_count": 1302,
-          "generated_token_count": 1186
+          "generated_token_count": 1317
         },
         "meta": {
-          "conversation_id": "a269f091-0b46-47d8-811d-3df48fa98257",
-          "id": "fdebeb24-13c9-4e0f-9eab-b20286b1ff25",
+          "conversation_id": "f8b16ca8-54a6-4229-8b5b-ffb1962ba4ae",
+          "id": "eed43788-aa10-4861-b050-c90f370d704b",
           "model_id": "meta-llama/llama-3-1-70b-instruct"
         },
-        "generated_token_count": 1186,
+        "generated_token_count": 1317,
         "input_token_count": 0,
         "input_tokens": [
           {
@@ -3952,1477 +3952,1477 @@
         "stop_reason": "eos_token",
         "hap": [
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 0,
               "start": 0
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 102,
               "start": 1
             },
-            "score": 0.13009746372699738,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 106,
               "start": 103
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 107,
               "start": 107
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 205,
               "start": 108
             },
-            "score": 0.1321881115436554,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 206,
               "start": 206
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 321,
               "start": 207
             },
-            "score": 0.1269688904285431,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 322,
               "start": 322
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 430,
               "start": 323
             },
-            "score": 0.13652503490447998,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 431,
               "start": 431
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 533,
               "start": 432
             },
-            "score": 0.13948561251163483,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 534,
               "start": 534
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 566,
               "start": 535
             },
-            "score": 0.13339073956012726,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 657,
               "start": 567
             },
-            "score": 0.13619425892829895,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 658,
               "start": 658
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 757,
               "start": 659
             },
-            "score": 0.13671815395355225,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 758,
               "start": 758
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 895,
               "start": 759
             },
-            "score": 0.14433841407299042,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 896,
               "start": 896
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 974,
               "start": 897
             },
-            "score": 0.13867318630218506,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 975,
               "start": 975
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1077,
               "start": 976
             },
-            "score": 0.14246653020381927,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1078,
               "start": 1078
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1171,
               "start": 1079
             },
-            "score": 0.1278086006641388,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1172,
               "start": 1172
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1192,
               "start": 1173
             },
-            "score": 0.1289086788892746,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1193,
               "start": 1193
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1207,
               "start": 1194
             },
-            "score": 0.13254345953464508,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1208,
               "start": 1208
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1239,
               "start": 1209
             },
-            "score": 0.13129571080207825,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1261,
               "start": 1240
             },
-            "score": 0.1307024359703064,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1269,
               "start": 1262
             },
-            "score": 0.14054611325263977,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1305,
               "start": 1270
             },
-            "score": 0.133064866065979,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1306,
               "start": 1306
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1359,
               "start": 1307
             },
-            "score": 0.13457152247428894,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1400,
               "start": 1360
             },
-            "score": 0.13867981731891632,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1445,
               "start": 1401
             },
-            "score": 0.13941021263599396,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1488,
               "start": 1446
             },
-            "score": 0.13703909516334534,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1536,
               "start": 1489
             },
-            "score": 0.1341712474822998,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1565,
               "start": 1537
             },
-            "score": 0.13117685914039612,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1594,
               "start": 1566
             },
-            "score": 0.12780171632766724,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1622,
               "start": 1595
             },
-            "score": 0.13029177486896515,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1645,
               "start": 1623
             },
-            "score": 0.13070032000541687,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1669,
               "start": 1646
             },
-            "score": 0.1317795217037201,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1698,
               "start": 1670
             },
-            "score": 0.1318226307630539,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1734,
               "start": 1699
             },
-            "score": 0.13207687437534332,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1764,
               "start": 1735
             },
-            "score": 0.13319697976112366,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1794,
               "start": 1765
             },
-            "score": 0.13237637281417847,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1824,
               "start": 1795
             },
-            "score": 0.12910838425159454,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1825,
               "start": 1825
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1872,
               "start": 1826
             },
-            "score": 0.13120517134666443,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1905,
               "start": 1873
             },
-            "score": 0.13215318322181702,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1906,
               "start": 1906
             },
-            "score": 0.1295555979013443,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1910,
               "start": 1907
             },
-            "score": 0.1401526778936386,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1948,
               "start": 1911
             },
-            "score": 0.14074799418449402,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1952,
               "start": 1949
             },
-            "score": 0.13734625279903412,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1980,
               "start": 1953
             },
-            "score": 0.12781262397766113,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1981,
               "start": 1981
             },
-            "score": 0.1295555979013443,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2135,
               "start": 1982
             },
-            "score": 0.14054875075817108,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2297,
               "start": 2136
             },
-            "score": 0.14103305339813232,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2298,
               "start": 2298
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2378,
               "start": 2299
             },
-            "score": 0.12932461500167847,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2379,
               "start": 2379
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2443,
               "start": 2380
             },
-            "score": 0.12892934679985046,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2481,
               "start": 2444
             },
-            "score": 0.14199002087116241,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2525,
               "start": 2482
             },
-            "score": 0.1465449035167694,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2565,
               "start": 2526
             },
-            "score": 0.1312897503376007,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2605,
               "start": 2566
             },
-            "score": 0.1394304633140564,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2647,
               "start": 2606
             },
-            "score": 0.14816312491893768,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2682,
               "start": 2648
             },
-            "score": 0.13334345817565918,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2692,
               "start": 2683
             },
-            "score": 0.17935782670974731,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2759,
               "start": 2693
             },
-            "score": 0.8337377309799194,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2818,
               "start": 2760
             },
-            "score": 0.13314446806907654,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2885,
               "start": 2819
             },
-            "score": 0.14408136904239655,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2902,
               "start": 2886
             },
-            "score": 0.14291894435882568,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3016,
               "start": 2903
             },
-            "score": 0.13821300864219666,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3026,
               "start": 3017
             },
-            "score": 0.13449959456920624,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3047,
               "start": 3027
             },
-            "score": 0.12893131375312805,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3053,
               "start": 3048
             },
-            "score": 0.13449960947036743,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3054,
               "start": 3054
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3119,
               "start": 3055
             },
-            "score": 0.13383837044239044,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3183,
               "start": 3120
             },
-            "score": 0.13284547626972198,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3240,
               "start": 3184
             },
-            "score": 0.16030260920524597,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3293,
               "start": 3241
             },
-            "score": 0.13496746122837067,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3358,
               "start": 3294
             },
-            "score": 0.15242871642112732,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3410,
               "start": 3359
             },
-            "score": 0.14532335102558136,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3425,
               "start": 3411
             },
-            "score": 0.13545630872249603,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3437,
               "start": 3426
             },
-            "score": 0.1368626356124878,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3438,
               "start": 3438
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3534,
               "start": 3439
             },
-            "score": 0.14124658703804016,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3535,
               "start": 3535
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3594,
               "start": 3536
             },
-            "score": 0.14872393012046814,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3662,
               "start": 3595
             },
-            "score": 0.15037836134433746,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3733,
               "start": 3663
             },
-            "score": 0.13464905321598053,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3806,
               "start": 3734
             },
-            "score": 0.13214562833309174,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 3932,
               "start": 3807
             },
-            "score": 0.14670051634311676,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4009,
               "start": 3933
             },
-            "score": 0.14710094034671783,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4082,
               "start": 4010
             },
-            "score": 0.14728832244873047,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4167,
               "start": 4083
             },
-            "score": 0.13656693696975708,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4204,
               "start": 4168
             },
-            "score": 0.13017499446868896,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4226,
               "start": 4205
             },
-            "score": 0.1291034072637558,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4271,
               "start": 4227
             },
-            "score": 0.133893221616745,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4328,
               "start": 4272
             },
-            "score": 0.1456705927848816,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4366,
               "start": 4329
             },
-            "score": 0.13069184124469757,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4376,
               "start": 4367
             },
-            "score": 0.13449960947036743,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4405,
               "start": 4377
             },
-            "score": 0.1572534441947937,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4411,
               "start": 4406
             },
-            "score": 0.13449960947036743,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4412,
               "start": 4412
             },
-            "score": 0.1295555979013443,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4463,
               "start": 4413
             },
-            "score": 0.13677631318569183,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4538,
               "start": 4464
             },
-            "score": 0.13391901552677155,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4595,
               "start": 4539
             },
-            "score": 0.5199897289276123,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4630,
               "start": 4596
             },
-            "score": 0.14426128566265106,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4699,
               "start": 4631
             },
-            "score": 0.1408519446849823,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4770,
               "start": 4700
             },
-            "score": 0.13513977825641632,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4853,
               "start": 4771
             },
-            "score": 0.16954196989536285,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 4938,
               "start": 4854
             },
-            "score": 0.17706254124641418,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5017,
               "start": 4939
             },
-            "score": 0.1480785310268402,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5102,
               "start": 5018
             },
-            "score": 0.16726116836071014,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5197,
               "start": 5103
             },
-            "score": 0.14616283774375916,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5261,
               "start": 5198
             },
-            "score": 0.16240687668323517,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5337,
               "start": 5262
             },
-            "score": 0.13755042850971222,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5415,
               "start": 5338
             },
-            "score": 0.724551260471344,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5459,
               "start": 5416
             },
-            "score": 0.16455674171447754,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5522,
               "start": 5460
             },
-            "score": 0.15568944811820984,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5579,
               "start": 5523
             },
-            "score": 0.1539398431777954,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5606,
               "start": 5580
             },
-            "score": 0.12816323339939117,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5616,
               "start": 5607
             },
-            "score": 0.13449960947036743,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5651,
               "start": 5617
             },
-            "score": 0.12743939459323883,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5673,
               "start": 5652
             },
-            "score": 0.12914706766605377,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5679,
               "start": 5674
             },
-            "score": 0.13449960947036743,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5680,
               "start": 5680
             },
-            "score": 0.1295555680990219,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5681,
               "start": 5681
             },
-            "score": 0.1295555680990219,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5683,
               "start": 5682
             },
-            "score": 0.13449960947036743,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5684,
               "start": 5684
             },
-            "score": 0.1295555680990219,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5688,
               "start": 5685
             },
-            "score": 0.14512836933135986,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5689,
               "start": 5689
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5699,
               "start": 5690
             },
-            "score": 0.13039731979370117,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5700,
               "start": 5700
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5701,
               "start": 5701
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5716,
               "start": 5702
             },
-            "score": 0.13395383954048157,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5797,
               "start": 5717
             },
-            "score": 0.1383575201034546,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5813,
               "start": 5798
             },
-            "score": 0.12758596241474152,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5814,
               "start": 5814
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5815,
               "start": 5815
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5816,
               "start": 5816
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5838,
               "start": 5817
             },
-            "score": 0.1325024664402008,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5888,
               "start": 5839
             },
-            "score": 0.13186714053153992,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5889,
               "start": 5889
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5902,
               "start": 5890
             },
-            "score": 0.1319238841533661,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 5961,
               "start": 5903
             },
-            "score": 0.13186179101467133,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 6041,
               "start": 5962
             },
-            "score": 0.13391800224781036,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 6042,
               "start": 6042
             },
-            "score": 0.1295555979013443,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 6063,
               "start": 6043
             },
-            "score": 0.12817129492759705,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 6071,
               "start": 6064
             },
-            "score": 0.14054612815380096,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 6126,
               "start": 6072
             },
-            "score": 0.13026009500026703,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 6237,
               "start": 6127
             },
-            "score": 0.13014476001262665,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 6241,
               "start": 6238
             },
-            "score": 0.14512835443019867,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 6242,
               "start": 6242
             },
-            "score": 0.1295555979013443,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 6279,
               "start": 6243
             },
-            "score": 0.13007299602031708,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 6280,
               "start": 6280
             },
-            "score": 0.1295555979013443,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 6364,
               "start": 6281
             },
-            "score": 0.1291486769914627,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 6365,
               "start": 6365
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 6369,
               "start": 6366
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           }
         ],
         "stop_sequence": "<|eot_id|>"
       },
       "type": "ai",
-      "id": "run-42d30e7a-b26f-4ac3-a6d7-47094e57011f-0",
+      "id": "run-f1a3165d-da76-4622-a739-55e88a4523d7-0",
       "tool_calls": [],
       "invalid_tool_calls": []
     }

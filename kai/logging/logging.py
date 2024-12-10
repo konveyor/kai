@@ -5,6 +5,7 @@ import sys
 from kai.kai_config import KaiConfig
 
 TRACE = logging.DEBUG - 5
+logging.addLevelName(TRACE, "TRACE")
 
 
 class KaiLogger(logging.Logger):
@@ -47,7 +48,7 @@ def get_logger(childName: str) -> KaiLogger:
     global log
     if not log:
         # Default to debug, can be overriden at start or program by setting kai_logger
-        log = KaiLogger("kai", logging.DEBUG, logging.DEBUG)
+        log = KaiLogger("kai", logging.NOTSET, logging.NOTSET)
 
     return log.getChild(childName)
 
@@ -105,7 +106,7 @@ def init_logging(
 ) -> None:
     global log
     if not log:
-        log = KaiLogger("kai", TRACE, TRACE)
+        log = KaiLogger("kai", logging.NOTSET, logging.NOTSET)
 
     for handler in log.handlers:
         log.removeHandler(handler)
@@ -137,3 +138,9 @@ def init_logging_from_config(config: KaiConfig) -> None:
         raise NotImplementedError()
     for child_log in log.getChildren():
         child_log.handlers = []
+
+    log.info(
+        "We have initited the logger: file_logging: %s console_logging: %s",
+        file_log_level,
+        log_level,
+    )
