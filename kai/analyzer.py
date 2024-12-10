@@ -1,15 +1,29 @@
+import logging
+import os
 import subprocess  # trunk-ignore(bandit/B404)
 import threading
 from io import BufferedReader, BufferedWriter
 from pathlib import Path
 from typing import IO, Optional, cast
 
+from kai.constants import PATH_KAI
 from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcResponse
 from kai.jsonrpc.streams import BareJsonStream
-from kai.logging.logging import get_logger
+from kai.logging.logging import get_logger, log
 
 logger = get_logger(__name__)
+
+CONST_KAI_ANALYZER_LOG_FILE = "kai-analyzer-server.log"
+
+
+def get_logfile_dir() -> str:
+    if not log:
+        return PATH_KAI
+    for h in log.handlers:
+        if isinstance(h, logging.FileHandler):
+            return os.path.dirname(h.baseFilename)
+    return PATH_KAI
 
 
 def log_stderr(stderr: IO[bytes]) -> None:
@@ -39,6 +53,8 @@ class AnalyzerLSP:
             str(analyzer_lsp_path),
             "-bundles",
             str(analyzer_java_bundle_path),
+            "-log-file",
+            os.path.join(get_logfile_dir(), CONST_KAI_ANALYZER_LOG_FILE),
         ]
         if dep_open_source_labels_path is not None:
             args.append("-depOpenSourceLabelsFile")
@@ -63,6 +79,7 @@ class AnalyzerLSP:
                 cast(BufferedWriter, self.rpc_server.stdin),
             ),
             request_timeout=4 * 60,
+            log=get_logger("kai.analyzer-rpc-client"),
         )
         self.rpc.start()
         logger.debug("analyzer rpc server started")

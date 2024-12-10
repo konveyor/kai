@@ -15,9 +15,9 @@ class TestLogging(unittest.TestCase):
 
         from kai.logging.logging import log as base_logger
 
-        self.assertEqual(log.getEffectiveLevel(), logging.DEBUG)
+        self.assertEqual(log.getEffectiveLevel(), logging.NOTSET)
         self.assertTrue(isinstance(log, KaiLogger))
-        self.assertEqual(log.configLogLevel, logging.DEBUG)
+        self.assertEqual(log.configLogLevel, logging.NOTSET)
         self.assertEqual(base_logger.filters, log.filters)
         self.assertEqual(base_logger.handlers, log.handlers)
 

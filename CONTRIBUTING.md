@@ -15,6 +15,7 @@
   - [Testing](#testing)
   - [Modifying a Python Dependency](#modifying-a-python-dependency)
   - [Running the Project](#running-the-project)
+    - [Using Open Telemetry](#using-open-telemetry)
   - [Working with Notebooks](#working-with-notebooks)
   - [Sign Your Commits](#sign-your-commits)
     - [DCO](#dco)
@@ -191,7 +192,7 @@ steps:
 
 For end users, please refer to the IDE plugin documentation for the primary interaction path.
 
-### Using Open Telemtry
+### Using Open Telemetry
 
 If you would like to use open telemetry to see the span's and performance of specific code paths you should look at using jaeger.
 
