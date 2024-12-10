@@ -216,7 +216,6 @@ class TaskManager:
         similar_non_resolved_tasks = set()
 
         for t in resolved_tasks:
-            logger.info("is task similar to unprocessed tasks")
             for u in unprocessed_new_tasks:
                 if self.is_similar_to_task(t, u):
                     logger.debug("adding task to similar_non_resolved_task: %s", t)

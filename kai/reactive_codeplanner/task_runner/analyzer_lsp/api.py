@@ -27,7 +27,7 @@ class AnalyzerRuleViolation(ValidationError):
         else:
             shadowed_priority = self.__class__.priority
 
-        return f"{self.__class__.__name__}<loc={self.file}:{self.line}:{self.column}, message={self.violation.id}>(priority={self.priority}({shadowed_priority}), depth={self.depth}, retries={self.retry_count})"
+        return f"{self.__class__.__name__}<loc={self.file}:{self.line}:{self.column}, violation.id={self.violation.id}>(priority={self.priority}({shadowed_priority}), depth={self.depth}, retries={self.retry_count})"
 
     __repr__ = __str__
 
