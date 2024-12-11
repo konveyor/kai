@@ -45,7 +45,7 @@ from kai.reactive_codeplanner.task_runner.dependency.task_runner import Dependen
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import MavenDependencyAgent
 from kai.analyzer_types import Incident, RuleSet, Violation, Category
 from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
-from kai.kai_config import KaiConfig
+from kai.kai_config import KaiSolutionServerConfig
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
 import logging
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import AnalyzerDependencyRuleViolation, AnalyzerRuleViolation
@@ -68,7 +68,7 @@ config = RpcClientConfig(Path(coolstore_path),
                          "konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee",
                          None,
                          None)
-kai_config = KaiConfig.model_validate_filepath("01_config.toml")
+kai_config = KaiSolutionServerConfig.model_validate_filepath("01_config.toml")
 
 init_logging_from_config(kai_config)
 modelProvider = ModelProvider(kai_config.models)

@@ -3,7 +3,7 @@ import os
 import sys
 from pathlib import Path
 
-from kai.rpc_server.server import KaiRpcApplicationConfig
+from kai.rpc_server.server import KaiLogConfig
 
 TRACE = logging.DEBUG - 5
 logging.addLevelName(TRACE, "TRACE")
@@ -129,7 +129,8 @@ def init_logging(
         log_level,
     )
 
-def init_logging_from_rpc_application_config(config: KaiRpcApplicationConfig) -> None:
+
+def init_logging_from_log_config(config: KaiLogConfig) -> None:
     init_logging(
         config.log_level,
         config.file_log_level,

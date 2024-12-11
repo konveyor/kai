@@ -205,7 +205,7 @@ class TomlConfigSettingsSource(PydanticBaseSettingsSource):
         return d
 
 
-class KaiConfig(BaseSettings):
+class KaiSolutionServerConfig(BaseSettings):
     """
     Kai configuration settings. It loads settings from init arguments,
     environment, dotenv, and config files. See
@@ -267,7 +267,7 @@ class KaiConfig(BaseSettings):
         )
 
     @staticmethod
-    def model_validate_filepath(filepath: str) -> "KaiConfig":
+    def model_validate_filepath(filepath: str) -> "KaiSolutionServerConfig":
         """
         Load a model config from a file and validate it.
 
@@ -286,4 +286,4 @@ class KaiConfig(BaseSettings):
         else:
             raise ValueError(f"'{filepath}' has unsupported file type: {file_ext}")
 
-        return KaiConfig(**model_dict)
+        return KaiSolutionServerConfig(**model_dict)

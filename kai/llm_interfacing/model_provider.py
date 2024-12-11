@@ -22,8 +22,8 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from pydantic.v1.utils import deep_update
 
-from kai.kai_config import KaiConfigModels
 from kai.logging.logging import get_logger
+from kai_solution_server.kai_config import KaiConfigModels
 
 LOG = get_logger(__name__)
 

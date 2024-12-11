@@ -46,6 +46,12 @@ print(the_model.the_path)  #/path/to/build/build.spec
 ```
 """
 
+AutoAbsPathExists = Annotated[
+    Path,
+    AfterValidator(lambda x: Path(os.path.abspath(x))),
+    AfterValidator(lambda x: x.exists()),
+]
+
 AutoUpperStr = Annotated[str, AfterValidator(lambda x: x.upper())]
 """
 `AutoUpperStr` is a type that can be used with Pydantic models to automatically
