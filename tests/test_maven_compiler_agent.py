@@ -1,7 +1,6 @@
 import unittest
 from pathlib import Path
 
-from kai.kai_config import KaiConfigModels
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.reactive_codeplanner.agent.analyzer_fix.api import AnalyzerFixRequest
 from kai.reactive_codeplanner.agent.api import AgentResult
@@ -10,6 +9,7 @@ from kai.reactive_codeplanner.agent.maven_compiler_fix.api import (
     MavenCompilerAgentRequest,
     MavenCompilerAgentResult,
 )
+from kai_solution_server.kai_config import KaiConfigModels
 
 
 class TestMavenCompilerAgent(unittest.TestCase):

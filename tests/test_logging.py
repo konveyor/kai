@@ -3,8 +3,8 @@ import os
 import unittest
 
 from kai.constants import PATH_TEST_DATA
-from kai.kai_config import KaiConfig
 from kai.logging.logging import KaiLogger, get_logger, init_logging_from_config
+from kai_solution_server.kai_config import KaiConfig
 
 
 class TestLogging(unittest.TestCase):

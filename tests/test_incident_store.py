@@ -11,12 +11,12 @@ from sqlalchemy.orm import Session
 
 from kai.analyzer_types import Report
 from kai.constants import PATH_TEST_DATA
-from kai.kai_config import (
+from kai.llm_interfacing.model_provider import ModelProvider
+from kai_solution_server.kai_config import (
     KaiConfigIncidentStore,
     KaiConfigIncidentStoreSQLiteArgs,
     KaiConfigModels,
 )
-from kai.llm_interfacing.model_provider import ModelProvider
 from kai_solution_server.service.incident_store.backend import (
     incident_store_backend_factory,
 )

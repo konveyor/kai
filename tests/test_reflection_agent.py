@@ -2,12 +2,12 @@ import os
 import unittest
 from pathlib import Path
 
-from kai.kai_config import KaiConfigModels
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.reactive_codeplanner.agent.reflection_agent import (
     ReflectionAgent,
     ReflectionTask,
 )
+from kai_solution_server.kai_config import KaiConfigModels
 
 
 class TestReflectionAgent(unittest.TestCase):
