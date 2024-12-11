@@ -56,7 +56,7 @@ tracer = trace.get_tracer("kai_application")
 
 
 class KaiRpcApplicationConfig(CamelCaseBaseModel):
-    process_id: Optional[int]
+    process_id: Optional[int] = None
 
     root_path: Path
     model_provider: KaiConfigModels
@@ -68,7 +68,8 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
     file_log_level: Optional[str] = None
     log_dir_path: Optional[Path] = None
     demo_mode: bool = False
-    cache_dir: Optional[Path]
+    cache_dir: Optional[Path] = None
+    enable_reflection: bool = True
 
     analyzer_lsp_lsp_path: Path
     analyzer_lsp_rpc_path: Path
@@ -205,11 +206,14 @@ def initialize(
             dep_open_source_labels_path=app.config.analyzer_lsp_dep_labels_path,
         )
 
+        reflection_agent = None
+        if app.config.enable_reflection:
+            reflection_agent = ReflectionAgent(
+                model_provider=model_provider, iterations=1, retries=3
+            )
         app.rcm = RepoContextManager(
             project_root=app.config.root_path,
-            reflection_agent=ReflectionAgent(
-                model_provider=model_provider, iterations=1, retries=3
-            ),
+            reflection_agent=reflection_agent,
         )
 
         app.log.debug("initalized the repo context manager")
@@ -417,10 +421,11 @@ def test_rcm(
         f.write(params.new_content)
 
     rcm.commit("testRCM")
+    the_snapshot = rcm.snapshot
 
-    diff = rcm.snapshot.diff(rcm.first_snapshot)
+    diff = rcm.snapshot.diff(the_snapshot)
 
-    rcm.reset_to_first()
+    rcm.reset(the_snapshot)
 
     server.send_response(
         id=id,
@@ -448,11 +453,20 @@ def get_codeplan_agent_solution(
             server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
             return
 
+        # Get a snapshot of the current state of the repo so we can reset it
+        # later
+        app.rcm.commit(
+            f"get_codeplan_agent_solution. id: {id}", run_reflection_agent=False
+        )
+        agent_solution_snapshot = app.rcm.snapshot
+
         app.config = cast(KaiRpcApplicationConfig, app.config)
 
         # Data for AnalyzerRuleViolation should probably take an ExtendedIncident
         seed_tasks: list[Task] = []
 
+        params.incidents.sort()
+        app.log.info("params: %s", params.incidents)
         for incident in params.incidents:
 
             class_to_use = AnalyzerRuleViolation
@@ -537,14 +551,19 @@ def get_codeplan_agent_solution(
                 app.log.debug(f"QUEUE_STATE: IGNORED_TASKS: {task}")
             app.log.debug("QUEUE_STATE: IGNORED_TASKS: END")
 
-        diff = app.rcm.snapshot.diff(app.rcm.first_snapshot)
+        diff = app.rcm.snapshot.diff(agent_solution_snapshot)
         overall_result["diff"] = diff[1] + diff[2]
-        app.rcm.reset_to_first()
+
+        app.rcm.reset(agent_solution_snapshot)
+
         server.send_response(
             id=id,
             result=dict(overall_result),
         )
     except Exception as e:
+        if app.rcm is not None:
+            app.rcm.reset(agent_solution_snapshot)
+
         app.log.error(e)
         raise
 
@@ -565,8 +584,11 @@ def scoped_task_fn(
         log.info(f"In inner {args}, {kwargs}")
         generator = next_task_fn(*args, **kwargs)
         for i in range(max_iterations):
-            log.info(f"Yielding on iteration {i}")
-            yield next(generator)
+            try:
+                log.debug(f"Yielding on iteration {i}")
+                yield next(generator)
+            except StopIteration:
+                break
 
     log.debug("Returning the iteration-scoped get_next_task function")
 

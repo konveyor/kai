@@ -7,6 +7,8 @@ import (
 	"net/rpc"
 	"os"
 	"os/exec"
+	"os/signal"
+	"syscall"
 
 	"github.com/go-logr/logr"
 	"github.com/konveyor/kai-analyzer/pkg/codec"
@@ -91,7 +93,18 @@ func main() {
 		panic(err)
 	}
 
+	cancelChan := make(chan os.Signal, 1)
+	// catch SIGETRM or SIGINTERRUPT
+	signal.Notify(cancelChan, syscall.SIGTERM, syscall.SIGINT)
 	codec := codec.NewCodec(codec.Connection{Input: os.Stdin, Output: os.Stdout}, l)
-	l.Info("Starting Server")
-	server.ServeCodec(codec)
+	go func() {
+		l.Info("Starting Server")
+		server.ServeCodec(codec)
+	}()
+
+	sig := <-cancelChan
+	// When we get here, call stop on the analyzer server
+	l.Info("stopping server", "signal", sig)
+	analyzerService.Stop()
+
 }

@@ -63,6 +63,7 @@ class TestDependencyTaskRunner(unittest.TestCase):
         runner = self._task_runner(project_base=project_base, response_variant=0)
 
         rcm = RepoContextManager(project_root=project_base)
+        snapshot = rcm.snapshot
         result = runner.execute_task(rcm=rcm, task=task)
 
         self.assertEqual(len(result.modified_files), 1)
@@ -75,4 +76,4 @@ class TestDependencyTaskRunner(unittest.TestCase):
                 expected_pom_contents = f.read()
             self.assertEqual(actual_pom_contents, expected_pom_contents)
 
-        rcm.reset_to_first()
+        rcm.reset(snapshot)

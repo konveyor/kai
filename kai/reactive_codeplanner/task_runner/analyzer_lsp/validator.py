@@ -98,9 +98,17 @@ class AnalyzerLSPStep(ValidationStep):
         r = Report.load_report_from_object(rulesets, "analysis_run_task_runner")
 
         validation_errors: list[AnalyzerRuleViolation] = []
-        for _k, v in r.rulesets.items():
-            for _vk, vio in v.violations.items():
-                for i in vio.incidents:
+        rulesetNamesSorted: list[str] = list(r.rulesets.keys())
+        rulesetNamesSorted.sort()
+        logger.debug("getting rulesetNames sorted %s", rulesetNamesSorted)
+        for key in rulesetNamesSorted:
+            violationsSortedKeys: list[str] = list(r.rulesets[key].violations.keys())
+            violationsSortedKeys.sort()
+            logger.debug("getting sorted violations %s", violationsSortedKeys)
+            for violationKey in violationsSortedKeys:
+                violation = r.rulesets[key].violations[violationKey]
+                violation.incidents.sort()
+                for i in violation.incidents:
                     if i.line_number < 0:
                         continue
                     class_to_use = AnalyzerRuleViolation
@@ -114,8 +122,8 @@ class AnalyzerLSPStep(ValidationStep):
                             column=-1,
                             message=i.message,
                             incident=i,
-                            violation=vio,
-                            ruleset=v,
+                            violation=violation,
+                            ruleset=r.rulesets[key],
                         )
                     )
 

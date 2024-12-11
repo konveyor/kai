@@ -24,22 +24,22 @@
     "type": "constructor",
     "id": ["langchain", "schema", "messages", "AIMessage"],
     "kwargs": {
-      "content": "\n\n\n\n\n\n## Reasoning\nTo address the issue, we need to replace the `javax.annotation` import statement with `jakarta.annotation`. This is because Quarkus uses Jakarta EE, which has replaced the `javax` namespace with `jakarta`.\n\nHere are the steps to update the code:\n\n1. Identify the import statement that needs to be replaced: `import javax.annotation.Resource;`\n2. Replace the `javax.annotation` import statement with `jakarta.annotation`: `import jakarta.annotation.Resource;`\n3. Verify that the `@Resource` annotation is still valid and functional with the new import statement.\n\nNote: The `@Resource` annotation is still valid in Jakarta EE, so no further changes are required.\n\n## Updated Java File\n```java\npackage com.redhat.coolstore.service;\n\nimport java.util.logging.Logger;\nimport jakarta.ejb.Stateless;\nimport jakarta.annotation.Resource;\nimport jakarta.inject.Inject;\nimport javax.jms.JMSContext;\nimport javax.jms.Topic;\n\nimport com.redhat.coolstore.model.ShoppingCart;\nimport com.redhat.coolstore.utils.Transformers;\n\n@Stateless\npublic class ShoppingCartOrderProcessor  {\n\n    @Inject\n    Logger log;\n\n\n    @Inject\n    private transient JMSContext context;\n\n    @Resource(lookup = \"java:/topic/orders\")\n    private Topic ordersTopic;\n\n    \n  \n    public void  process(ShoppingCart cart) {\n        log.info(\"Sending order from processor: \");\n        context.createProducer().send(ordersTopic, Transformers.shoppingCartToJson(cart));\n    }\n\n\n\n}\n```\n\n## Additional Information (optional)\nNote that the `jakarta.ejb` import statement should also be updated to `jakarta.ejb` to be consistent with the Jakarta EE namespace. However, since it's not part of the issue to be fixed, it's left unchanged in this update. It's recommended to update it in a subsequent step. \n\nAdditionally, the pom.xml file may need to be updated to include the Jakarta EE dependencies. The specific dependencies required will depend on the Quarkus version and the features being used.",
+      "content": "\n\n\n\n\n\n## Reasoning\nTo address the issue, we need to replace the `javax.annotation` import statement with `jakarta.annotation`. This is because Quarkus uses the Jakarta EE namespace instead of the Java EE namespace.\n\nThe `@Inject` annotation is part of the Jakarta EE specification, and its package has been changed from `javax.annotation` to `jakarta.annotation` in Jakarta EE 9. Therefore, we need to update the import statement to use the correct package.\n\n## Updated Java File\n```java\npackage com.redhat.coolstore.service;\n\nimport java.util.logging.Logger;\nimport jakarta.annotation.Resource;\nimport jakarta.ejb.Stateless;\nimport jakarta.inject.Inject;\nimport javax.jms.JMSContext;\nimport javax.jms.Topic;\n\nimport com.redhat.coolstore.model.ShoppingCart;\nimport com.redhat.coolstore.utils.Transformers;\n\n@Stateless\npublic class ShoppingCartOrderProcessor  {\n\n    @Inject\n    Logger log;\n\n\n    @Inject\n    private transient JMSContext context;\n\n    @Resource(lookup = \"java:/topic/orders\")\n    private Topic ordersTopic;\n\n    \n  \n    public void  process(ShoppingCart cart) {\n        log.info(\"Sending order from processor: \");\n        context.createProducer().send(ordersTopic, Transformers.shoppingCartToJson(cart));\n    }\n\n\n\n}\n```\n\n## Additional Information (optional)\nNote that this change may require updating the `pom.xml` file to use the correct Jakarta EE dependencies. Specifically, the `jakarta.annotation-api` dependency should be added to the `pom.xml` file. The exact dependency version may vary depending on the Quarkus version being used. For example:\n```xml\n<dependency>\n    <groupId>jakarta.annotation</groupId>\n    <artifactId>jakarta.annotation-api</artifactId>\n    <version>2.0.0</version>\n</dependency>\n```",
       "response_metadata": {
         "model_name": "meta-llama/llama-3-1-70b-instruct",
         "token_usage": {
           "prompt_tokens": 574,
-          "completion_tokens": 421,
-          "total_tokens": 995,
+          "completion_tokens": 380,
+          "total_tokens": 954,
           "input_token_count": 574,
-          "generated_token_count": 421
+          "generated_token_count": 380
         },
         "meta": {
-          "conversation_id": "0efa9a0a-f27d-4b3c-9f59-206cbc4b2742",
-          "id": "b6609902-79d1-4c6a-a11d-227a8281df36",
+          "conversation_id": "826bb661-d01c-4241-ab2d-f70d3619629c",
+          "id": "a9fae1da-9026-4e79-8fcb-59a3498dfd46",
           "model_id": "meta-llama/llama-3-1-70b-instruct"
         },
-        "generated_token_count": 421,
+        "generated_token_count": 380,
         "input_token_count": 0,
         "input_tokens": [
           {
@@ -1768,883 +1768,883 @@
         "stop_reason": "eos_token",
         "hap": [
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 0,
               "start": 0
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 102,
               "start": 1
             },
-            "score": 0.13009746372699738,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 106,
               "start": 103
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 107,
               "start": 107
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 205,
               "start": 108
             },
-            "score": 0.1321881115436554,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 206,
               "start": 206
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 321,
               "start": 207
             },
-            "score": 0.1269688904285431,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 322,
               "start": 322
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 430,
               "start": 323
             },
-            "score": 0.13652503490447998,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 431,
               "start": 431
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 533,
               "start": 432
             },
-            "score": 0.13948561251163483,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 534,
               "start": 534
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 566,
               "start": 535
             },
-            "score": 0.13339073956012726,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 657,
               "start": 567
             },
-            "score": 0.13619425892829895,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 658,
               "start": 658
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 757,
               "start": 659
             },
-            "score": 0.13671815395355225,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 758,
               "start": 758
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 895,
               "start": 759
             },
-            "score": 0.14433841407299042,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 896,
               "start": 896
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 974,
               "start": 897
             },
-            "score": 0.13867318630218506,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 975,
               "start": 975
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1077,
               "start": 976
             },
-            "score": 0.14246653020381927,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1078,
               "start": 1078
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1171,
               "start": 1079
             },
-            "score": 0.1278086006641388,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1172,
               "start": 1172
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1192,
               "start": 1173
             },
-            "score": 0.1289086788892746,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1193,
               "start": 1193
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1207,
               "start": 1194
             },
-            "score": 0.13254345953464508,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1208,
               "start": 1208
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1253,
               "start": 1209
             },
-            "score": 0.1335536539554596,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1275,
               "start": 1254
             },
-            "score": 0.1307024210691452,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1283,
               "start": 1276
             },
-            "score": 0.14054611325263977,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1321,
               "start": 1284
             },
-            "score": 0.13084466755390167,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1322,
               "start": 1322
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1355,
               "start": 1323
             },
-            "score": 0.13215318322181702,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1383,
               "start": 1356
             },
-            "score": 0.13279244303703308,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1417,
               "start": 1384
             },
-            "score": 0.1294717937707901,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1445,
               "start": 1418
             },
-            "score": 0.13182677328586578,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1474,
               "start": 1446
             },
-            "score": 0.1311350017786026,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1498,
               "start": 1475
             },
-            "score": 0.1305215060710907,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1499,
               "start": 1499
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1547,
               "start": 1500
             },
-            "score": 0.1341712474822998,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1595,
               "start": 1548
             },
-            "score": 0.13039326667785645,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1596,
               "start": 1596
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1607,
               "start": 1597
             },
-            "score": 0.12871387600898743,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1650,
               "start": 1608
             },
-            "score": 0.13463395833969116,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1651,
               "start": 1651
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1663,
               "start": 1652
             },
-            "score": 0.13187219202518463,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1679,
               "start": 1664
             },
-            "score": 0.13118542730808258,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1680,
               "start": 1680
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1681,
               "start": 1681
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1693,
               "start": 1682
             },
-            "score": 0.13187219202518463,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1735,
               "start": 1694
             },
-            "score": 0.12841004133224487,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1736,
               "start": 1736
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1781,
               "start": 1737
             },
-            "score": 0.13765206933021545,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1812,
               "start": 1782
             },
-            "score": 0.1299239546060562,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1813,
               "start": 1813
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1818,
               "start": 1814
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1821,
               "start": 1819
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1867,
               "start": 1822
             },
-            "score": 0.14112143218517303,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 1919,
               "start": 1868
             },
-            "score": 0.12837660312652588,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2010,
               "start": 1920
             },
-            "score": 0.13310225307941437,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2016,
               "start": 2011
             },
-            "score": 0.13449960947036743,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2017,
               "start": 2017
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2018,
               "start": 2018
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2019,
               "start": 2019
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2021,
               "start": 2020
             },
-            "score": 0.13449959456920624,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2022,
               "start": 2022
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2026,
               "start": 2023
             },
-            "score": 0.14512835443019867,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2027,
               "start": 2027
             },
-            "score": 0.1295555830001831,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2037,
               "start": 2028
             },
-            "score": 0.13039730489253998,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2038,
               "start": 2038
             },
-            "score": 0.1295555979013443,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2039,
               "start": 2039
             },
-            "score": 0.1295555979013443,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2054,
               "start": 2040
             },
-            "score": 0.13395380973815918,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2147,
               "start": 2055
             },
-            "score": 0.14433537423610687,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2162,
               "start": 2148
             },
-            "score": 0.12809564173221588,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2163,
               "start": 2163
             },
-            "score": 0.1295555979013443,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2164,
               "start": 2164
             },
-            "score": 0.1295555979013443,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2165,
               "start": 2165
             },
-            "score": 0.1295555979013443,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2187,
               "start": 2166
             },
-            "score": 0.132502481341362,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2237,
               "start": 2188
             },
-            "score": 0.13186712563037872,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2238,
               "start": 2238
             },
-            "score": 0.1295555979013443,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2251,
               "start": 2239
             },
-            "score": 0.13192392885684967,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2310,
               "start": 2252
             },
-            "score": 0.13186180591583252,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2390,
               "start": 2311
             },
-            "score": 0.13391800224781036,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2391,
               "start": 2391
             },
-            "score": 0.1295555979013443,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2412,
               "start": 2392
             },
-            "score": 0.12817129492759705,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2420,
               "start": 2413
             },
-            "score": 0.14054612815380096,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2475,
               "start": 2421
             },
-            "score": 0.13026009500026703,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2586,
               "start": 2476
             },
-            "score": 0.13014476001262665,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2590,
               "start": 2587
             },
-            "score": 0.14512835443019867,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2591,
               "start": 2591
             },
-            "score": 0.1295555979013443,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2628,
               "start": 2592
             },
-            "score": 0.13007299602031708,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2629,
               "start": 2629
             },
-            "score": 0.1295555979013443,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2713,
               "start": 2630
             },
-            "score": 0.1291486769914627,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2714,
               "start": 2714
             },
-            "score": 0.1295555979013443,
-            "success": true
+            "score": 0.0,
+            "success": false
           },
           {
-            "flagged": true,
+            "flagged": false,
             "position": {
               "end": 2718,
               "start": 2715
             },
-            "score": 0.1295555979013443,
-            "success": true
+            "score": 0.0,
+            "success": false
           }
         ],
         "stop_sequence": "<|eot_id|>"
       },
       "type": "ai",
-      "id": "run-432d780b-48cc-46f0-bd4d-3f7ddf8a4df4-0",
+      "id": "run-cd3a57ce-6721-43eb-a162-fe6c01b8d56c-0",
       "tool_calls": [],
       "invalid_tool_calls": []
     }
