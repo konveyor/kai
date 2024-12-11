@@ -35,14 +35,20 @@ class AnalyzerRuleViolation(ValidationError):
         if self.parent is not None:
             return self.oldest_ancestor().background()
         if self.children:
-            return f"""You are a software developer who specializes in migrating from {" and ".join(self.sources)} to {" and ".join(self.targets)}
-You attempted to solve an issue in a repository you are migrating:
+            message = f"""You attempted to migrate a project using {" and ".join(self.sources)} to a project using {" and ".join(self.targets)}
+As part of that, you attempted to solve the following issue:
 
 Location: {self.incident.uri}
 Message:
 {self.incident.message}
+"""
 
-However your solution caused additional problems elsewhere in the repository, which you are now going to solve."""
+            if self.result and self.result.summary:
+                message += f"\n\nHere is the reasoning you provided for your initial solution:\n\n{self.result.summary}"
+            message += "\n\nHowever your solution caused additional problems elsewhere in the repository."
+            logger.info(f"BACKGROUND: \n{message}")
+            return message
+
         return ""
 
     @cached_property
