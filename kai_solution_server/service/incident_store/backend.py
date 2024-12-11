@@ -12,7 +12,7 @@ from sqlalchemy import (
     text,
 )
 
-from kai_solution_server.kai_config import (
+from kai.kai_config import (
     KaiConfigIncidentStoreArgs,
     KaiConfigIncidentStorePostgreSQLArgs,
     KaiConfigIncidentStoreProvider,

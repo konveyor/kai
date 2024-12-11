@@ -22,8 +22,8 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from pydantic.v1.utils import deep_update
 
+from kai.kai_config import KaiConfigModels
 from kai.logging.logging import get_logger
-from kai_solution_server.kai_config import KaiConfigModels
 
 LOG = get_logger(__name__)
 
@@ -39,7 +39,6 @@ class ModelProvider:
         self.llm_retry_delay: float = config.llm_retry_delay
         self.demo_mode: bool = demo_mode
         self.cache_dir = cache_dir
-        LOG.info("using cache dir: %s", self.cache_dir)
 
         model_class: type[BaseChatModel]
         defaults: dict[str, Any]
@@ -201,7 +200,7 @@ class ModelProvider:
         if self.demo_mode and self.cache_dir is not None:
             cache_file = self.__get_cache_filename(input)
 
-            LOG.info(f"Using cache file {cache_file}")
+            LOG.debug(f"Using cache file {cache_file}")
 
             if os.path.exists(cache_file):
                 try:

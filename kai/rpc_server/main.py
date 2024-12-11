@@ -18,7 +18,8 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 import kai.logging.logging as logging
 from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.streams import LspStyleStream
-from kai.rpc_server.server import KaiLogConfig, app
+from kai.logging.logging import KaiLogConfig
+from kai.rpc_server.server import app
 
 DEFAULT_FORMATTER = core_logging.Formatter(
     "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

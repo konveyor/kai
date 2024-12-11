@@ -3,10 +3,18 @@ import os
 import sys
 from pathlib import Path
 
-from kai.rpc_server.server import KaiLogConfig
+from kai.jsonrpc.util import AutoAbsPath, AutoUpperStr, CamelCaseBaseModel
 
 TRACE = logging.DEBUG - 5
 logging.addLevelName(TRACE, "TRACE")
+
+
+class KaiLogConfig(CamelCaseBaseModel):
+    log_level: AutoUpperStr | int = "INFO"
+    stderr_log_level: AutoUpperStr | int = "TRACE"
+    file_log_level: AutoUpperStr | int = "DEBUG"
+    log_dir_path: AutoAbsPath = Path("./logs")
+    log_file_name: str = "kai_server.log"
 
 
 class KaiLogger(logging.Logger):
