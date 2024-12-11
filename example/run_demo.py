@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import contextlib
 import os
+import platform
 import subprocess  # trunk-ignore(bandit/B404)
 import sys
 import time
@@ -29,15 +30,22 @@ from kai.rpc_server.server import (
     KaiRpcApplicationConfig,
 )
 
+
+def get_binary_path(path: str) -> Path:
+    if platform.system().lower() == "windows" and ".exe" not in path.lower():
+        return Path(f"{path}.exe")
+    return Path(path)
+
+
 SERVER_URL = "http://0.0.0.0:8080"
 APP_NAME = "coolstore"
 SAMPLE_APP_DIR = Path("coolstore")
 ANALYSIS_BUNDLE_PATH = Path(".", "analysis", "bundle.jar")
 ANALYSIS_LSP_PATH = Path(".", "analysis", "jdtls", "bin", "jdtls")
-ANALYSIS_RPC_PATH = Path(".", "analysis", "kai-analyzer-rpc")
+ANALYSIS_RPC_PATH = get_binary_path("./analysis/kai-analyzer-rpc")
+RPC_BINARY_PATH = get_binary_path("./analysis/kai-rpc-server")
 ANALYSIS_RULES_PATH = Path(".", "analysis", "rulesets", "default", "generated")
 ANALYSIS_DEP_LABELS_FILE = Path(".", "analysis", "maven.default.index")
-RPC_BINARY_PATH = Path(".", "analysis", "kai-rpc-server")
 TRACING_ENABLED = "ENABLE_TRACING"
 
 KAI_LOG = get_logger("run_demo")
