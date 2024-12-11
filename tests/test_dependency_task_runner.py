@@ -2,6 +2,7 @@ import os
 import unittest
 from pathlib import Path
 
+from kai.kai_config import KaiConfigModels
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
@@ -13,7 +14,6 @@ from kai.reactive_codeplanner.task_runner.dependency.task_runner import (
     DependencyTaskRunner,
 )
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
-from kai_solution_server.kai_config import KaiConfigModels
 
 
 class TestDependencyTaskRunner(unittest.TestCase):
