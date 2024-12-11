@@ -1,6 +1,5 @@
 import argparse
 import functools
-import os
 import subprocess  # trunk-ignore(bandit/B404)
 import tempfile
 from abc import ABC, abstractmethod
@@ -10,6 +9,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Optional
 
+from kai.constants import ENV
 from kai.logging.logging import TRACE, get_logger
 from kai.reactive_codeplanner.agent.api import AgentResult
 from kai.reactive_codeplanner.agent.reflection_agent import (
@@ -104,7 +104,7 @@ class RepoContextSnapshot:
         ]
         popen_kwargs = {
             "cwd": self.work_tree,
-            "env": dict(os.environ),
+            "env": ENV,
             "stdout": subprocess.PIPE,
             "stderr": subprocess.PIPE,
             "text": True,

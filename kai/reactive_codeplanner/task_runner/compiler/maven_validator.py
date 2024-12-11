@@ -8,6 +8,7 @@ from typing import Optional, Type
 
 from opentelemetry import trace
 
+from kai.constants import ENV
 from kai.logging.logging import get_logger
 from kai.reactive_codeplanner.task_manager.api import (
     RpcClientConfig,
@@ -151,6 +152,7 @@ def run_maven(source_directory: Path = Path(".")) -> tuple[int, str, Optional[Pa
             text=True,
             check=False,
             cwd=source_directory,
+            env=ENV,
         )
         pom_file_path = source_directory / "pom.xml"
         return (process.returncode, process.stdout, pom_file_path)

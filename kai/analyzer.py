@@ -6,7 +6,7 @@ from io import BufferedReader, BufferedWriter
 from pathlib import Path
 from typing import IO, Optional, cast
 
-from kai.constants import PATH_KAI
+from kai.constants import ENV, PATH_KAI
 from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcResponse
 from kai.jsonrpc.streams import BareJsonStream
@@ -60,11 +60,13 @@ class AnalyzerLSP:
             args.append("-depOpenSourceLabelsFile")
             args.append(str(dep_open_source_labels_path))
         logger.debug(f"Starting analyzer rpc server with {args}")
+
         self.rpc_server = subprocess.Popen(
             args,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            env=ENV,
         )
         # trunk-ignore-end(bandit/B603)
 
