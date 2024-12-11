@@ -138,7 +138,7 @@ def initialize_rpc_server(
     finally:
         # send shutdown
         response = rpc_server.send_request("shutdown", params={})
-        log.debug(f"shutdown resposne -- {response}")
+        log.debug(f"shutdown response -- {response}")
         log.info("Stopping RPC Server")
         rpc_subprocess.wait()
         log.info("Stopped RPC Server")

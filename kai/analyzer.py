@@ -41,7 +41,7 @@ class AnalyzerLSP:
         analyzer_java_bundle_path: Path,
         dep_open_source_labels_path: Optional[Path],
     ) -> None:
-        """This will start and analyzer-lsp jsonrpc server"""
+        """This will start an analyzer-lsp jsonrpc server"""
         # trunk-ignore-begin(bandit/B603)
         args: list[str] = [
             str(analyzer_lsp_server_binary),
