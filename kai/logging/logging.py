@@ -1,8 +1,9 @@
 import logging
 import os
 import sys
+from pathlib import Path
 
-from kai.kai_config import KaiConfig
+from kai.rpc_server.server import KaiRpcApplicationConfig
 
 TRACE = logging.DEBUG - 5
 logging.addLevelName(TRACE, "TRACE")
@@ -47,7 +48,7 @@ log: KaiLogger | None = None
 def get_logger(childName: str) -> KaiLogger:
     global log
     if not log:
-        # Default to debug, can be overriden at start or program by setting kai_logger
+        # Default to debug, can be overridden at start or program by setting kai_logger
         log = KaiLogger("kai", logging.NOTSET, logging.NOTSET)
 
     return log.getChild(childName)
@@ -99,48 +100,39 @@ def setup_file_handler(
 
 
 def init_logging(
-    console_log_level: str | int,
+    log_level: str | int,
     file_log_level: str | int,
-    log_dir: str,
-    log_file: str = "kai_server.log",
+    log_dir_path: str | Path,
+    log_file_name: str = "kai_server.log",
 ) -> None:
+    if isinstance(log_dir_path, Path):
+        log_dir_path = str(log_dir_path)
+
     global log
     if not log:
         log = KaiLogger("kai", logging.NOTSET, logging.NOTSET)
 
     for handler in log.handlers:
         log.removeHandler(handler)
-    setup_console_handler(log, console_log_level)
-    setup_file_handler(log, log_file, log_dir, file_log_level)
+    setup_console_handler(log, log_level)
+    setup_file_handler(log, log_file_name, log_dir_path, file_log_level)
 
-
-def init_logging_from_config(config: KaiConfig) -> None:
-    log_level: str | int = 0
-    if isinstance(config.log_level, str):
-        log_level = config.log_level.upper()
-    elif isinstance(config.log_level, int):
-        log_level = config.log_level
-    else:
-        # TODO: raise exception
-        log_level = logging.DEBUG
-
-    file_log_level: str | int = 0
-    if isinstance(config.file_log_level, str):
-        file_log_level = config.file_log_level.upper()
-    elif isinstance(config.file_log_level, int):
-        file_log_level = config.file_log_level
-    else:
-        # TODO: raise exception
-        file_log_level = logging.DEBUG
-
-    init_logging(log_level, file_log_level, config.log_dir)
     if not log:
         raise NotImplementedError()
+
     for child_log in log.getChildren():
         child_log.handlers = []
 
     log.info(
-        "We have initited the logger: file_logging: %s console_logging: %s",
+        "We have inited the logger: file_logging: %s console_logging: %s",
         file_log_level,
         log_level,
+    )
+
+def init_logging_from_rpc_application_config(config: KaiRpcApplicationConfig) -> None:
+    init_logging(
+        config.log_level,
+        config.file_log_level,
+        config.log_dir_path,
+        config.log_file_name,
     )

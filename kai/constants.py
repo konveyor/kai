@@ -1,7 +1,7 @@
 import os
 import sys
-from typing import Any
 from pathlib import Path
+from typing import Any
 
 """
 This file exists because we need to define some constants - specifically file
@@ -35,6 +35,7 @@ PATH_LOCAL_REPO = PATH_GIT_ROOT / "kai_solution_server" / "samples" / "sample_re
 
 PATH_TESTS = PATH_GIT_ROOT / "tests"
 PATH_TEST_DATA = PATH_GIT_ROOT / "tests" / "test_data"
+
 
 def __clean_env() -> dict[str, Any]:
     """

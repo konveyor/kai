@@ -1,7 +1,9 @@
 import logging
-from typing import Any
+import os
+from pathlib import Path
+from typing import Annotated, Any
 
-from pydantic import AliasChoices, AliasGenerator, BaseModel, ConfigDict
+from pydantic import AfterValidator, AliasChoices, AliasGenerator, BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
 
@@ -28,7 +30,45 @@ def log_record_to_dict(record: logging.LogRecord) -> dict[str, Any]:
     }
 
 
+AutoAbsPath = Annotated[Path, AfterValidator(lambda x: Path(os.path.abspath(x)))]
+"""
+`AutoAbsPath` is a type that can be used with Pydantic models to automatically
+convert an inputted relative path to an absolute path. This is different than
+`.resolve()` because it will resolve relative paths, but not symlinks. For
+example:
+
+```python
+class TheModel(BaseModel):
+    the_path: AutoAbsPath
+
+the_model = TheModel(the_path="build/build.spec")
+print(the_model.the_path)  #/path/to/build/build.spec
+```
+"""
+
+AutoUpperStr = Annotated[str, AfterValidator(lambda x: x.upper())]
+"""
+`AutoUpperStr` is a type that can be used with Pydantic models to automatically
+convert an inputted string to uppercase.
+"""
+
+
 class CamelCaseBaseModel(BaseModel):
+    """
+    This class will accept both camelCase and snake_case keys when creating an
+    instance of the model. When serializing, it will produce camelCase keys.
+    For example:
+
+    ```python
+    class TheModel(CamelCaseBaseModel):
+        the_thing: str
+
+    a = TheModel.model_validate({"theThing": "hello"})  # Works!
+    b = TheModel.model_validate({"the_thing": "hello"})  # Works!
+    c = TheModel(the_thing="hello").model_dump()  # {"theThing": "hello"}
+    ```
+    """
+
     model_config = ConfigDict(
         alias_generator=AliasGenerator(
             validation_alias=lambda field_name: AliasChoices(
