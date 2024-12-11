@@ -2,7 +2,6 @@ import unittest
 from pathlib import Path
 
 from kai.constants import PATH_KAI
-from kai.kai_config import KaiConfigModels
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.reactive_codeplanner.agent.analyzer_fix.agent import AnalyzerAgent
 from kai.reactive_codeplanner.agent.analyzer_fix.api import (
@@ -12,6 +11,7 @@ from kai.reactive_codeplanner.agent.analyzer_fix.api import (
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyRequest,
 )
+from kai_solution_server.kai_config import KaiConfigModels
 
 
 class TestAnalyzerAgent(unittest.TestCase):
