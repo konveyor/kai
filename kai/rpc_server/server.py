@@ -24,15 +24,10 @@ from kai.analyzer_types import ExtendedIncident, Incident, RuleSet, Violation
 from kai.constants import PATH_LLM_CACHE
 from kai.jsonrpc.core import JsonRpcApplication, JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcId
-from kai.jsonrpc.util import (
-    AutoAbsPath,
-    AutoAbsPathExists,
-    AutoUpperStr,
-    CamelCaseBaseModel,
-)
+from kai.jsonrpc.util import AutoAbsPath, AutoAbsPathExists, CamelCaseBaseModel
 from kai.kai_config import KaiConfigModels
 from kai.llm_interfacing.model_provider import ModelProvider
-from kai.logging.logging import get_logger
+from kai.logging.logging import KaiLogConfig, get_logger
 from kai.reactive_codeplanner.agent.analyzer_fix.agent import AnalyzerAgent
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
@@ -61,14 +56,6 @@ from kai.reactive_codeplanner.task_runner.dependency.task_runner import (
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager, RepoContextSnapshot
 
 tracer = trace.get_tracer("kai_application")
-
-
-class KaiLogConfig(CamelCaseBaseModel):
-    log_level: AutoUpperStr | int = "INFO"
-    stderr_log_level: AutoUpperStr | int = "TRACE"
-    file_log_level: AutoUpperStr | int = "DEBUG"
-    log_dir_path: AutoAbsPath = Path("./logs")
-    log_file_name: str = "kai_server.log"
 
 
 class KaiRpcApplicationConfig(CamelCaseBaseModel):
