@@ -75,7 +75,7 @@ class MavenCompilerTaskRunner(TaskRunner):
 
         # convert the task to the MavenCompilerError
         if not isinstance(task, MavenCompilerError):
-            return TaskResult(encountered_errors=[], modified_files=[])
+            return TaskResult(encountered_errors=[], modified_files=[], summary="")
 
         with open(task.file) as f:
             src_file_contents = f.read()
@@ -92,10 +92,10 @@ class MavenCompilerTaskRunner(TaskRunner):
         )
 
         if not isinstance(result, MavenCompilerAgentResult):
-            return TaskResult(encountered_errors=[], modified_files=[])
+            return TaskResult(encountered_errors=[], modified_files=[], summary="")
 
         if result.updated_file_contents is None:
-            return TaskResult(encountered_errors=[], modified_files=[])
+            return TaskResult(encountered_errors=[], modified_files=[], summary="")
 
         # rewrite the file, based on the java file returned
         with open(task.file, "w") as f:
@@ -103,4 +103,8 @@ class MavenCompilerTaskRunner(TaskRunner):
 
         rcm.commit(f"MavenCompilerTaskRunner changed file {str(task.file)}", result)
 
-        return TaskResult(modified_files=[Path(task.file)], encountered_errors=[])
+        return TaskResult(
+            modified_files=[Path(task.file)],
+            encountered_errors=[],
+            summary=result.reasoning or "",
+        )

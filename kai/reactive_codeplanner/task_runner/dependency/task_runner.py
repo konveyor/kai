@@ -52,7 +52,7 @@ class DependencyTaskRunner(TaskRunner):
     def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
         if not isinstance(task, self.handled_type):
             logger.error("Unexpected task type %r", task)
-            return TaskResult(encountered_errors=[], modified_files=[])
+            return TaskResult(encountered_errors=[], modified_files=[], summary="")
 
         msg = task.message
         if isinstance(task, PackageDoesNotExistError):
@@ -60,27 +60,30 @@ class DependencyTaskRunner(TaskRunner):
 
         maven_dep_response = self._agent.execute(
             MavenDependencyRequest(
-                file_path=Path(task.file), task=task, message=msg, background=task.background()
+                file_path=Path(task.file),
+                task=task,
+                message=msg,
+                background=task.background(),
             )
         )
         logger.info("got mvn dep response: %r", maven_dep_response)
 
         if not isinstance(maven_dep_response, MavenDependencyResult):
-            return TaskResult(encountered_errors=[], modified_files=[])
+            return TaskResult(encountered_errors=[], modified_files=[], summary="")
 
         if not maven_dep_response.final_answer:
             logger.info(
                 "No final answer was given, we need to return with nothing modified. result: %r",
                 maven_dep_response,
             )
-            return TaskResult(encountered_errors=[], modified_files=[])
+            return TaskResult(encountered_errors=[], modified_files=[], summary="")
 
         if not maven_dep_response.fqdn_response:
             logger.info(
                 "we got a final answer, but it must have skipped steps in the LLM, we need to review the LLM call response %r",
                 maven_dep_response,
             )
-            return TaskResult(encountered_errors=[], modified_files=[])
+            return TaskResult(encountered_errors=[], modified_files=[], summary="")
 
         logger.debug(
             "we are now updating the pom based %s", maven_dep_response.final_answer
@@ -88,14 +91,14 @@ class DependencyTaskRunner(TaskRunner):
         pom = os.path.join(os.path.join(rcm.project_root, "pom.xml"))
         tree = ET.parse(pom)  # trunk-ignore(bandit/B320)
         if tree is None:
-            return TaskResult(modified_files=[], encountered_errors=[])
+            return TaskResult(modified_files=[], encountered_errors=[], summary="")
         root = tree.getroot()
         if root is None:
-            return TaskResult(modified_files=[], encountered_errors=[])
+            return TaskResult(modified_files=[], encountered_errors=[], summary="")
         deps = root.find("{http://maven.apache.org/POM/4.0.0}dependencies")
 
         if deps is None or not isinstance(deps, ET._Element):
-            return TaskResult(modified_files=[], encountered_errors=[])
+            return TaskResult(modified_files=[], encountered_errors=[], summary="")
 
         ## We always need to add the new dep
         deps.append(maven_dep_response.fqdn_response.to_xml_element())
@@ -114,7 +117,7 @@ class DependencyTaskRunner(TaskRunner):
             None,
         )
 
-        return TaskResult(modified_files=[Path(pom)], encountered_errors=[])
+        return TaskResult(modified_files=[Path(pom)], encountered_errors=[], summary="")
 
     def refine_task(self, errors: list[str]) -> None:
         # Knows that it's the refine step so that it might not spawn as much
