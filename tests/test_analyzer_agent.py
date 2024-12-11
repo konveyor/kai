@@ -23,7 +23,7 @@ class TestAnalyzerAgent(unittest.TestCase):
                 args={
                     "sleep": None,
                     "responses": [
-                        "## Reasoning\n1. Frobinate the widget\n\n## Updated Java File\n```java\nimport str\nimport class\n```\n## ## Additional Information\ntesting added info",
+                        "## Reasoning\n1. Frobinate the widget\n\n## Updated unknown File\n```unknown\nimport str\nimport class\n```\n## ## Additional Information\ntesting added info",
                     ],
                 },
             )
@@ -31,7 +31,14 @@ class TestAnalyzerAgent(unittest.TestCase):
 
         agent = AnalyzerAgent(model_provider=model_provider)
         result = agent.execute(
-            AnalyzerFixRequest(file_path=Path(PATH_KAI), file_content="", incidents="")
+            AnalyzerFixRequest(
+                file_path=Path(PATH_KAI),
+                file_content="",
+                incidents="",
+                background="",
+                sources=[],
+                targets=[],
+            )
         )
         print(result)
         expected = AnalyzerFixResponse(
@@ -58,7 +65,7 @@ class TestAnalyzerAgent(unittest.TestCase):
         )
 
         agent = AnalyzerAgent(model_provider=model_provider)
-        result = agent.execute(MavenDependencyRequest(Path("")))
+        result = agent.execute(MavenDependencyRequest(Path(""), ""))
         print(result)
         expected = AnalyzerFixResponse(
             encountered_errors=["invalid request type"],

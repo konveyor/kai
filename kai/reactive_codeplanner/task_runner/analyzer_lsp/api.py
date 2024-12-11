@@ -1,4 +1,6 @@
+import itertools
 from dataclasses import dataclass
+from functools import cached_property
 
 from kai.analyzer_types import Incident, RuleSet, Violation
 from kai.logging.logging import get_logger
@@ -28,6 +30,46 @@ class AnalyzerRuleViolation(ValidationError):
             shadowed_priority = self.__class__.priority
 
         return f"{self.__class__.__name__}<loc={self.file}:{self.line}:{self.column}, violation.id={self.violation.id}>(priority={self.priority}({shadowed_priority}), depth={self.depth}, retries={self.retry_count})"
+
+    def background(self) -> str:
+        if self.parent is not None:
+            return self.oldest_ancestor().background()
+        if self.children:
+            message = f"""You attempted to migrate a project using {" and ".join(self.sources)} to a project using {" and ".join(self.targets)}
+As part of that, you attempted to solve the following issue:
+
+Location: {self.incident.uri}
+Message:
+{self.incident.message}
+"""
+
+            if self.result and self.result.summary:
+                message += f"\n\nHere is the reasoning you provided for your initial solution:\n\n{self.result.summary}"
+            message += "\n\nHowever your solution caused additional problems elsewhere in the repository."
+            logger.info(f"BACKGROUND: \n{message}")
+            return message
+
+        return ""
+
+    @cached_property
+    def sources(self) -> list[str]:
+        labels = set(
+            itertools.chain(*[v.labels for v in self.ruleset.violations.values()])
+        )
+        source_key = "konveyor.io/source="
+        return [
+            label.replace(source_key, "") for label in labels if source_key in label
+        ]
+
+    @cached_property
+    def targets(self) -> list[str]:
+        labels = set(
+            itertools.chain(*[v.labels for v in self.ruleset.violations.values()])
+        )
+        target_key = "konveyor.io/target="
+        return [
+            label.replace(target_key, "") for label in labels if target_key in label
+        ]
 
     __repr__ = __str__
 
