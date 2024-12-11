@@ -3,7 +3,7 @@ import os
 import unittest
 
 from kai.constants import PATH_TEST_DATA
-from kai.kai_config import KaiConfig
+from kai.kai_config import KaiSolutionServerConfig
 from kai.logging.logging import KaiLogger, get_logger, init_logging_from_config
 
 
@@ -23,7 +23,7 @@ class TestLogging(unittest.TestCase):
 
     def test_logger_init_updates_logs(self):
 
-        config = KaiConfig.model_validate_filepath(
+        config = KaiSolutionServerConfig.model_validate_filepath(
             os.path.join(PATH_TEST_DATA, "data", "01_config.toml")
         )
         test_first_log = get_logger("child")

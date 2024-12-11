@@ -14,7 +14,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from kai.analyzer_types import Report, filter_incident_vars
 from kai.constants import PATH_GIT_ROOT, PATH_LOCAL_REPO
-from kai.kai_config import KaiConfig
+from kai.kai_config import KaiSolutionServerConfig
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.logging.logging import get_logger
 from kai_solution_server.service.incident_store.backend import (
@@ -522,7 +522,7 @@ class IncidentStore:
                 KAI_LOG.debug(f"Processed {processed_count} solutions, limit {limit}")
 
     @staticmethod
-    def incident_store_from_config(config: KaiConfig) -> "IncidentStore":
+    def incident_store_from_config(config: KaiSolutionServerConfig) -> "IncidentStore":
         model_provider = ModelProvider(config.models)
 
         KAI_LOG.info(f"Selected provider: {config.models.provider}")
@@ -586,9 +586,9 @@ def cmd(provider: str | None = None) -> None:
     args = parser.parse_args()
 
     if args.config_filepath:
-        config = KaiConfig.model_validate_filepath(args.config_filepath)
+        config = KaiSolutionServerConfig.model_validate_filepath(args.config_filepath)
     else:
-        config = KaiConfig()
+        config = KaiSolutionServerConfig()
 
     KAI_LOG.info(f"config: {config}")
     incident_store = IncidentStore.incident_store_from_config(config)

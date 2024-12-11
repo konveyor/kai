@@ -5,9 +5,7 @@ from typing import Any, Generator
 
 import kai.logging.logging as logging
 from kai.analyzer import AnalyzerLSP
-from kai.kai_config import KaiConfig
 from kai.llm_interfacing.model_provider import ModelProvider
-from kai.logging.logging import init_logging_from_config
 from kai.reactive_codeplanner.agent.analyzer_fix.agent import AnalyzerAgent
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
@@ -30,6 +28,7 @@ from kai.reactive_codeplanner.task_runner.dependency.task_runner import (
     DependencyTaskRunner,
 )
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
+from kai.rpc_server.server import KaiRpcApplicationConfig
 
 logger = logging.get_logger(__name__)
 
@@ -126,8 +125,8 @@ def main() -> None:
 
     logger.info("Starting reactive codeplanner with configuration: %s", config)
 
-    kai_config = KaiConfig.model_validate_filepath(args.kai_config)
-    init_logging_from_config(kai_config)
+    kai_config = KaiRpcApplicationConfig.model_validate_filepath(args.kai_config)
+    logging.init_logging_from_log_config(kai_config.log_config)
     model_provider = ModelProvider(kai_config.models)
 
     analyzer = AnalyzerLSP(

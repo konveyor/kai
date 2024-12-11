@@ -11,7 +11,7 @@ from typing import Any
 from aiohttp import web
 from gunicorn.app.wsgiapp import WSGIApplication  # type: ignore[import-untyped]
 
-from kai.kai_config import KaiConfig
+from kai.kai_config import KaiSolutionServerConfig
 from kai.logging.logging import init_logging_from_config
 from kai_solution_server.routes import kai_routes
 from kai_solution_server.service.incident_store.incident_store import IncidentStore
@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 
 @cache
-def get_config() -> KaiConfig:
+def get_config() -> KaiSolutionServerConfig:
     """
     Get the configuration for the server and parse command line arguments.
 
@@ -39,9 +39,9 @@ def get_config() -> KaiConfig:
     args = parser.parse_args()
 
     if args.config_filepath:
-        return KaiConfig.model_validate_filepath(args.config_filepath)
+        return KaiSolutionServerConfig.model_validate_filepath(args.config_filepath)
 
-    return KaiConfig()
+    return KaiSolutionServerConfig()
 
 
 def app() -> web.Application:

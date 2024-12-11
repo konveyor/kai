@@ -12,10 +12,10 @@ from sqlalchemy.orm import Session
 
 from kai.constants import PATH_TEST_DATA
 from kai.kai_config import (
-    KaiConfig,
     KaiConfigIncidentStore,
     KaiConfigIncidentStoreSQLiteArgs,
     KaiConfigModels,
+    KaiSolutionServerConfig,
     SolutionDetectorKind,
     SolutionProducerKind,
 )
@@ -33,7 +33,7 @@ from kai_solution_server.service.incident_store.sql_types import (
 class HubImporterTest(unittest.TestCase):
     def setUp(self) -> None:
         self.incident_store = IncidentStore.incident_store_from_config(
-            KaiConfig(
+            KaiSolutionServerConfig(
                 models=KaiConfigModels(
                     provider="FakeListChatModel",
                     args={

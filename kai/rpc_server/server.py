@@ -24,7 +24,12 @@ from kai.analyzer_types import ExtendedIncident, Incident, RuleSet, Violation
 from kai.constants import PATH_LLM_CACHE
 from kai.jsonrpc.core import JsonRpcApplication, JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcId
-from kai.jsonrpc.util import AutoAbsPath, AutoUpperStr, CamelCaseBaseModel
+from kai.jsonrpc.util import (
+    AutoAbsPath,
+    AutoAbsPathExists,
+    AutoUpperStr,
+    CamelCaseBaseModel,
+)
 from kai.kai_config import KaiConfigModels
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.logging.logging import get_logger
@@ -58,27 +63,31 @@ from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager, RepoContext
 tracer = trace.get_tracer("kai_application")
 
 
-class KaiRpcApplicationConfig(CamelCaseBaseModel):
-    process_id: Optional[int] = None
-
-    root_path: AutoAbsPath
-    model_provider: KaiConfigModels
-
+class KaiLogConfig(CamelCaseBaseModel):
     log_level: AutoUpperStr | int = "INFO"
     stderr_log_level: AutoUpperStr | int = "TRACE"
     file_log_level: AutoUpperStr | int = "DEBUG"
     log_dir_path: AutoAbsPath = Path("./logs")
     log_file_name: str = "kai_server.log"
 
+
+class KaiRpcApplicationConfig(CamelCaseBaseModel):
+    process_id: Optional[int] = None
+
+    root_path: AutoAbsPath
+    models: KaiConfigModels
+
+    log_config: KaiLogConfig
+
     demo_mode: bool = False
     cache_dir: Optional[AutoAbsPath] = None
     enable_reflection: bool = True
 
-    analyzer_lsp_lsp_path: AutoAbsPath
-    analyzer_lsp_rpc_path: AutoAbsPath
-    analyzer_lsp_rules_path: AutoAbsPath
-    analyzer_lsp_java_bundle_path: AutoAbsPath
-    analyzer_lsp_dep_labels_path: Optional[AutoAbsPath] = None
+    analyzer_lsp_lsp_path: AutoAbsPathExists
+    analyzer_lsp_rpc_path: AutoAbsPathExists
+    analyzer_lsp_rules_path: AutoAbsPathExists
+    analyzer_lsp_java_bundle_path: AutoAbsPathExists
+    analyzer_lsp_dep_labels_path: Optional[AutoAbsPathExists] = None
 
     @staticmethod
     def model_validate_filepath(filepath: str | Path) -> "KaiRpcApplicationConfig":
@@ -182,7 +191,7 @@ def initialize(
 
         try:
             model_provider = ModelProvider(
-                app.config.model_provider, app.config.demo_mode, app.config.cache_dir
+                app.config.models, app.config.demo_mode, app.config.cache_dir
             )
         except Exception as e:
             app.log.error("unable to get model provider:", e)

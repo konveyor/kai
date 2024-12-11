@@ -7,7 +7,7 @@ import sys
 import time
 from io import BufferedReader, BufferedWriter
 from pathlib import Path
-from typing import Generator, Optional, cast
+from typing import Generator, cast
 
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -22,8 +22,7 @@ from kai.analyzer_types import ExtendedIncident, Report
 from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcResponse
 from kai.jsonrpc.streams import LspStyleStream
-from kai.kai_config import KaiConfig
-from kai.logging.logging import get_logger, init_logging_from_config
+from kai.logging.logging import get_logger, init_logging_from_log_config
 from kai.rpc_server.server import (
     GetCodeplanAgentSolutionParams,
     KaiRpcApplication,
@@ -38,14 +37,9 @@ def get_binary_path(path: str) -> Path:
 
 
 SERVER_URL = "http://0.0.0.0:8080"
-APP_NAME = "coolstore"
 SAMPLE_APP_DIR = Path("coolstore")
-ANALYSIS_BUNDLE_PATH = Path(".", "analysis", "bundle.jar")
-ANALYSIS_LSP_PATH = Path(".", "analysis", "jdtls", "bin", "jdtls")
 ANALYSIS_RPC_PATH = get_binary_path("./analysis/kai-analyzer-rpc")
 RPC_BINARY_PATH = get_binary_path("./analysis/kai-rpc-server")
-ANALYSIS_RULES_PATH = Path(".", "analysis", "rulesets", "default", "generated")
-ANALYSIS_DEP_LABELS_FILE = Path(".", "analysis", "maven.default.index")
 TRACING_ENABLED = "ENABLE_TRACING"
 
 KAI_LOG = get_logger("run_demo")
@@ -57,11 +51,6 @@ KAI_LOG = get_logger("run_demo")
 
 def pre_flight_checks() -> None:
     for path in [
-        SAMPLE_APP_DIR,
-        ANALYSIS_BUNDLE_PATH,
-        ANALYSIS_LSP_PATH,
-        ANALYSIS_RPC_PATH,
-        ANALYSIS_DEP_LABELS_FILE,
         RPC_BINARY_PATH,
     ]:
         if not path.exists():
@@ -73,32 +62,29 @@ def pre_flight_checks() -> None:
 
 @contextlib.contextmanager
 def initialize_rpc_server(
-    kai_config: KaiConfig,
+    config: KaiRpcApplicationConfig,
 ) -> Generator[JsonRpcServer, None, None]:
-
-    cache_dir: Optional[Path] = None
-    if kai_config.cache_dir is not None:
-        cache_dir = Path(kai_config.cache_dir)
+    # NOTE: This is a hack. Config should probably be globally accessible in
+    # this script.
+    global SAMPLE_APP_DIR
+    SAMPLE_APP_DIR = config.root_path
 
     log = get_logger("client")
-    config = KaiRpcApplicationConfig(
-        process_id=None,
-        root_path=SAMPLE_APP_DIR,
-        kai_backend_url=SERVER_URL,
-        log_dir_path=Path("./logs"),
-        model_provider=kai_config.models,
-        demo_mode=True,
-        cache_dir=cache_dir,
-        analyzer_lsp_java_bundle_path=ANALYSIS_BUNDLE_PATH,
-        analyzer_lsp_lsp_path=ANALYSIS_LSP_PATH,
-        analyzer_lsp_rpc_path=ANALYSIS_RPC_PATH,
-        analyzer_lsp_rules_path=ANALYSIS_RULES_PATH,
-        analyzer_lsp_dep_labels_path=ANALYSIS_DEP_LABELS_FILE,
-        enable_reflection=False,
-    )
 
     rpc_subprocess = subprocess.Popen(  # trunk-ignore(bandit/B603)
-        [RPC_BINARY_PATH, "-c", "config.toml"],
+        [
+            RPC_BINARY_PATH,
+            "--log-level",
+            str(config.log_config.log_level),
+            "--stderr-log-level",
+            str(config.log_config.stderr_log_level),
+            "--file-log-level",
+            str(config.log_config.file_log_level),
+            "--log-dir-path",
+            config.log_config.log_dir_path,
+            "--log-file-name",
+            config.log_config.log_file_name,
+        ],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         env=os.environ,
@@ -237,8 +223,8 @@ def run_demo(report: Report, server: JsonRpcServer) -> None:
 
 
 def main() -> None:
-    kai_config = KaiConfig.model_validate_filepath("config.toml")
-    init_logging_from_config(kai_config)
+    kai_config = KaiRpcApplicationConfig.model_validate_filepath("initialize.toml")
+    init_logging_from_log_config(kai_config.log_config)
     start = time.time()
 
     tracer_provider: TracerProvider | None = None
@@ -254,7 +240,7 @@ def main() -> None:
     report = Report.load_report_from_file(coolstore_analysis_dir)
     try:
         pre_flight_checks()
-        with initialize_rpc_server(kai_config=kai_config) as server:
+        with initialize_rpc_server(kai_config) as server:
             run_demo(report, server)
         KAI_LOG.info(
             f"Total time to process '{coolstore_analysis_dir}' was {time.time()-start}s"
