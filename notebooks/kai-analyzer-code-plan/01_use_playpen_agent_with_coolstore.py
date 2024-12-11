@@ -78,7 +78,7 @@ rcm = RepoContextManager(config.repo_directory, reflection_agent, None)
 maven_dependency_agent = MavenDependencyAgent(modelProvider.llm, config.repo_directory)
 
 
-anayzer_task_runner= AnalyzerTaskRunner(modelProvider.llm)
+analyzer_task_runner= AnalyzerTaskRunner(modelProvider.llm)
 maven_compiler_task_runner= MavenCompilerTaskRunner(modelProvider.llm)
 dependency_task_runner = DependencyTaskRunner(maven_dependency_agent)
 
@@ -139,7 +139,7 @@ task_manager = TaskManager(
         # TODO: Set up with maven as well?
         validators=[AnalyzerLSPStep(config=config, analyzer=analyzer), MavenCompileStep(config)],
         # Agents are really task_runners
-        task_runners=[anayzer_task_runner, maven_compiler_task_runner, dependency_task_runner],
+        task_runners=[analyzer_task_runner, maven_compiler_task_runner, dependency_task_runner],
     )
 
 
