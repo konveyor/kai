@@ -118,6 +118,14 @@ def initialize_rpc_server(
             raise Exception(
                 f"Failed to initialize RPC server - {response.code} {response.message}"
             )
+        elif response.error is not None:
+            if isinstance(response.error, str):
+                raise Exception(f"Failed to initialize RPC server - {response.error}")
+            else:
+                raise Exception(
+                    f"Failed to initialize RPC server - {response.error.code} {response.error.message}"
+                )
+
         yield rpc_server
     except Exception as e:
         log.error("Failed to initialize the server:", e)
