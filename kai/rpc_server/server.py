@@ -67,7 +67,7 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
     log_config: KaiLogConfig
 
     demo_mode: bool = False
-    cache_dir: Optional[AutoAbsPath] = None
+    cache_dir: Optional[AutoAbsPath] = PATH_LLM_CACHE
     enable_reflection: bool = True
 
     analyzer_lsp_lsp_path: AutoAbsPathExists
@@ -84,13 +84,14 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
         Supported file formats:
         - TOML
         - YAML
+        - JSON
         """
         model_dict: dict[str, Any]
         _, file_ext = os.path.splitext(filepath)
 
         if file_ext == ".toml":
             model_dict = tomllib.load(open(filepath, "rb"))
-        elif file_ext == ".yaml" or file_ext == ".yml":
+        elif file_ext == ".yaml" or file_ext == ".yml" or file_ext == ".json":
             model_dict = yaml.safe_load(open(filepath, "r"))
         else:
             raise ValueError(f"'{filepath}' has unsupported file type: {file_ext}")
@@ -173,9 +174,6 @@ def initialize(
     try:
         app.config = params
 
-        if app.config.cache_dir is None:
-            app.config.cache_dir = PATH_LLM_CACHE
-
         try:
             model_provider = ModelProvider(
                 app.config.models, app.config.demo_mode, app.config.cache_dir
@@ -213,6 +211,7 @@ def initialize(
             reflection_agent = ReflectionAgent(
                 model_provider=model_provider, iterations=1, retries=3
             )
+
         app.rcm = RepoContextManager(
             project_root=app.config.root_path,
             reflection_agent=reflection_agent,

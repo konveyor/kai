@@ -12,7 +12,7 @@ from aiohttp import web
 from gunicorn.app.wsgiapp import WSGIApplication  # type: ignore[import-untyped]
 
 from kai.kai_config import KaiSolutionServerConfig
-from kai.logging.logging import init_logging_from_config
+from kai.logging.logging import init_logging
 from kai_solution_server.routes import kai_routes
 from kai_solution_server.service.incident_store.incident_store import IncidentStore
 
@@ -49,7 +49,12 @@ def app() -> web.Application:
 
     print(f"Config loaded: {pprint.pformat(config)}")
 
-    init_logging_from_config(config)
+    init_logging(
+        config.log_level,
+        config.log_level,
+        config.log_dir,
+        "kai_solution_server.log",
+    )
 
     webapp = web.Application()
 

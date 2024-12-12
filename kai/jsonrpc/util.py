@@ -46,10 +46,17 @@ print(the_model.the_path)  #/path/to/build/build.spec
 ```
 """
 
+
+def auto_abs_path_exists_validator(x: Path) -> Path:
+    x = Path(os.path.abspath(x))
+    if not x.exists():
+        raise Exception(f"Path `{x}` does not exist!")
+    return x
+
+
 AutoAbsPathExists = Annotated[
     Path,
-    AfterValidator(lambda x: Path(os.path.abspath(x))),
-    AfterValidator(lambda x: x.exists()),
+    AfterValidator(auto_abs_path_exists_validator),
 ]
 
 AutoUpperStr = Annotated[str, AfterValidator(lambda x: x.upper())]

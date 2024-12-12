@@ -17,12 +17,12 @@ logger = get_logger(__name__)
 CONST_KAI_ANALYZER_LOG_FILE = "kai-analyzer-server.log"
 
 
-def get_logfile_dir() -> str:
+def get_logfile_dir() -> Path:
     if not log:
         return PATH_KAI
     for h in log.handlers:
         if isinstance(h, logging.FileHandler):
-            return os.path.dirname(h.baseFilename)
+            return Path(os.path.dirname(h.baseFilename))
     return PATH_KAI
 
 
