@@ -26,17 +26,23 @@ def search_fqdn_query(query: str) -> Optional[FQDNResponse] | list[FQDNResponse]
         ### context.
         all_found_deps = []
         for d in docs:
-            all_found_deps.append(
-                FQDNResponse(
-                    artifact_id=d["a"], group_id=d["g"], version=d["latestVersion"]
+            if "latestVersion" in d:
+                all_found_deps.append(
+                    FQDNResponse(
+                        artifact_id=d["a"], group_id=d["g"], version=d["latestVersion"]
+                    )
                 )
-            )
-        return all_found_deps
+        return all_found_deps if all_found_deps else None
     else:
         doc = docs[0]
-        return FQDNResponse(
-            artifact_id=doc["a"], group_id=doc["g"], version=doc["latestVersion"]
-        )
+
+        if "latestVersion" in doc:
+
+            return FQDNResponse(
+                artifact_id=doc["a"], group_id=doc["g"], version=doc["latestVersion"]
+            )
+
+        return None
 
 
 def search_fqdn(code: str) -> Optional[FQDNResponse] | list[FQDNResponse]:
