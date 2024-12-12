@@ -1,5 +1,6 @@
 import argparse
 import time
+import tomllib
 from pathlib import Path
 from typing import Any, Generator
 
@@ -125,8 +126,20 @@ def main() -> None:
 
     logger.info("Starting reactive codeplanner with configuration: %s", config)
 
-    kai_config = KaiRpcApplicationConfig.model_validate_filepath(args.kai_config)
+    kai_config_dict = {
+        **tomllib.load(open(args.kai_config, "rb")),
+        "root_path": args.source_directory,
+        "analyzer_lsp_lsp_path": args.analyzer_lsp_path,
+        "analyzer_lsp_rules_path": args.rules_directory,
+        "analyzer_lsp_rpc_path": args.analyzer_lsp_server_binary,
+        "analyzer_lsp_java_bundle_path": args.analyzer_lsp_java_bundle,
+        "analyzer_lsp_dep_labels_path": args.dep_open_source_labels_path,
+    }
+
+    kai_config = KaiRpcApplicationConfig.model_validate(kai_config_dict)
+
     logging.init_logging_from_log_config(kai_config.log_config)
+
     model_provider = ModelProvider(kai_config.models)
 
     analyzer = AnalyzerLSP(
