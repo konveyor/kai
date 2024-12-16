@@ -16,7 +16,6 @@ require (
 	github.com/antchfx/jsonquery v1.3.0 // indirect
 	github.com/antchfx/xmlquery v1.3.12 // indirect
 	github.com/antchfx/xpath v1.2.4 // indirect
-	github.com/bombsimon/logrusr/v3 v3.0.0 // indirect
 	github.com/bufbuild/protocompile v0.10.0 // indirect
 	github.com/cbroglie/mustache v1.3.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
@@ -29,7 +28,6 @@ require (
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
-	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/swaggest/jsonschema-go v0.3.70 // indirect
 	github.com/swaggest/openapi-go v0.2.50 // indirect
 	github.com/swaggest/refl v1.3.0 // indirect
