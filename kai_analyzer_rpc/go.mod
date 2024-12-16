@@ -4,8 +4,8 @@ go 1.23.1
 
 require (
 	github.com/go-logr/logr v1.4.2
-	github.com/konveyor/analyzer-lsp v0.6.0-alpha.2.0.20241213182016-4aa811cb59be
-	github.com/konveyor/analyzer-lsp/external-providers/java-external-provider v0.0.0-20241213182016-4aa811cb59be
+	github.com/konveyor/analyzer-lsp v0.6.0-alpha.2.0.20241216180535-51a951fe8a57
+	github.com/konveyor/analyzer-lsp/external-providers/java-external-provider v0.0.0-20241216180535-51a951fe8a57
 
 )
 
