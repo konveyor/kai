@@ -15,7 +15,7 @@ from git import GitCommandError, Repo
 from pydantic import BaseModel, Field
 
 from kai.analyzer_types import Report
-from kai.kai_config import KaiConfig
+from kai.kai_config import KaiSolutionServerConfig
 from kai_solution_server.service.incident_store.incident_store import (
     Application,
     IncidentStore,
@@ -171,11 +171,11 @@ Example: --loglevel debug (default: warning)""",
     else:
         KAI_LOG.addHandler(logging.StreamHandler())
 
-    config: KaiConfig
+    config: KaiSolutionServerConfig
     if os.path.exists(args.config_filepath):
-        config = KaiConfig.model_validate_filepath(args.config_filepath)
+        config = KaiSolutionServerConfig.model_validate_filepath(args.config_filepath)
     else:
-        config = KaiConfig()
+        config = KaiSolutionServerConfig()
 
     config.log_level = args.loglevel
     KAI_LOG.info(f"Config loaded: {pprint.pformat(config)}")

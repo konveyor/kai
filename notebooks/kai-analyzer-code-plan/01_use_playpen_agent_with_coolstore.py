@@ -45,7 +45,7 @@ from kai.reactive_codeplanner.task_runner.dependency.task_runner import Dependen
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import MavenDependencyAgent
 from kai.analyzer_types import Incident, RuleSet, Violation, Category
 from kai_solution_server.service.llm_interfacing.model_provider import ModelProvider
-from kai.kai_config import KaiConfig
+from kai.kai_config import KaiSolutionServerConfig
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
 import logging
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import AnalyzerDependencyRuleViolation, AnalyzerRuleViolation
@@ -68,7 +68,7 @@ config = RpcClientConfig(Path(coolstore_path),
                          "konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee",
                          None,
                          None)
-kai_config = KaiConfig.model_validate_filepath("01_config.toml")
+kai_config = KaiSolutionServerConfig.model_validate_filepath("01_config.toml")
 
 init_logging_from_config(kai_config)
 modelProvider = ModelProvider(kai_config.models)
@@ -78,7 +78,7 @@ rcm = RepoContextManager(config.repo_directory, reflection_agent, None)
 maven_dependency_agent = MavenDependencyAgent(modelProvider.llm, config.repo_directory)
 
 
-anayzer_task_runner= AnalyzerTaskRunner(modelProvider.llm)
+analyzer_task_runner= AnalyzerTaskRunner(modelProvider.llm)
 maven_compiler_task_runner= MavenCompilerTaskRunner(modelProvider.llm)
 dependency_task_runner = DependencyTaskRunner(maven_dependency_agent)
 
@@ -139,7 +139,7 @@ task_manager = TaskManager(
         # TODO: Set up with maven as well?
         validators=[AnalyzerLSPStep(config=config, analyzer=analyzer), MavenCompileStep(config)],
         # Agents are really task_runners
-        task_runners=[anayzer_task_runner, maven_compiler_task_runner, dependency_task_runner],
+        task_runners=[analyzer_task_runner, maven_compiler_task_runner, dependency_task_runner],
     )
 
 

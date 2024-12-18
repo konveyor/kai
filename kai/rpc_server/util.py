@@ -1,6 +1,7 @@
 import logging
 import os
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any, Generator
 
 import vcr  # type: ignore
@@ -23,7 +24,7 @@ KAI_LOG = logging.getLogger(__name__)
 def get_prompt(
     template_name: str,
     pb_vars: dict[Any, Any],
-    path_templates: str = PATH_TEMPLATES,
+    path_templates: Path = PATH_TEMPLATES,
     jinja_kwargs: Optional[dict[Any, Any]] = None,
     fallback: bool = True,
     add_ext_if_not_present: bool = True,
