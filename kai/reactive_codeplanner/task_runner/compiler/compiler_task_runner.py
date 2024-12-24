@@ -69,28 +69,32 @@ class MavenCompilerTaskRunner(TaskRunner):
         """Will determine if the task if a MavenCompilerError, and if we can handle these issues."""
         return isinstance(task, self.handled_type)
 
-    @tracer.start_as_current_span("maven_execute_task")
+    @tracer.start_as_current_span("maven_execute_task")  # type:ignore
     def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
         """This will be responsible for getting the full file from LLM and updating the file on disk"""
 
         # convert the task to the MavenCompilerError
         if not isinstance(task, MavenCompilerError):
-            return TaskResult(encountered_errors=[], modified_files=[])
+            return TaskResult(encountered_errors=[], modified_files=[], summary="")
 
         with open(task.file) as f:
             src_file_contents = f.read()
 
         result = self.agent.execute(
             MavenCompilerAgentRequest(
-                Path(task.file), src_file_contents, task.line, task.message
+                file_path=Path(task.file),
+                file_contents=src_file_contents,
+                line_number=task.line,
+                message=task.message,
+                background=task.background(),
             )
         )
 
         if not isinstance(result, MavenCompilerAgentResult):
-            return TaskResult(encountered_errors=[], modified_files=[])
+            return TaskResult(encountered_errors=[], modified_files=[], summary="")
 
         if result.updated_file_contents is None:
-            return TaskResult(encountered_errors=[], modified_files=[])
+            return TaskResult(encountered_errors=[], modified_files=[], summary="")
 
         # rewrite the file, based on the java file returned
         with open(task.file, "w") as f:
@@ -98,4 +102,8 @@ class MavenCompilerTaskRunner(TaskRunner):
 
         rcm.commit(f"MavenCompilerTaskRunner changed file {str(task.file)}", result)
 
-        return TaskResult(modified_files=[Path(task.file)], encountered_errors=[])
+        return TaskResult(
+            modified_files=[Path(task.file)],
+            encountered_errors=[],
+            summary=result.reasoning,
+        )

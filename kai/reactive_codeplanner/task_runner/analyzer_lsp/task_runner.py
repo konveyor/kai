@@ -42,13 +42,13 @@ class AnalyzerTaskRunner(TaskRunner):
         """Will determine if the task if a MavenCompilerError, and if we can handle these issues."""
         return isinstance(task, AnalyzerRuleViolation)
 
-    @tracer.start_as_current_span("analyzer_execute_task")
+    @tracer.start_as_current_span("analyzer_execute_task")  # type:ignore
     def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
         """This will be responsible for getting the full file from LLM and updating the file on disk"""
 
         # convert the task to the MavenCompilerError
         if not isinstance(task, AnalyzerRuleViolation):
-            return TaskResult(encountered_errors=[], modified_files=[])
+            return TaskResult(encountered_errors=[], modified_files=[], summary="")
 
         with open(task.file) as f:
             src_file_contents = f.read()
@@ -58,6 +58,9 @@ class AnalyzerTaskRunner(TaskRunner):
             file_path=Path(os.path.abspath(task.file)),
             file_content=src_file_contents,
             incidents=[task.incident],
+            background=task.background(),
+            sources=task.sources,
+            targets=task.targets,
         )
         result = self.agent.execute(agent_request)
 
@@ -65,6 +68,7 @@ class AnalyzerTaskRunner(TaskRunner):
             return TaskResult(
                 encountered_errors=["response from agent was invalid"],
                 modified_files=[],
+                summary="",
             )
 
         current_span = trace.get_current_span()
@@ -77,6 +81,7 @@ class AnalyzerTaskRunner(TaskRunner):
             return TaskResult(
                 encountered_errors=["file to modify was not returned"],
                 modified_files=[],
+                summary=result.reasoning,
             )
 
         # rewrite the file, based on the java file returned
@@ -94,12 +99,14 @@ class AnalyzerTaskRunner(TaskRunner):
                 ),
             )
             return TaskResult(
-                modified_files=[result.file_to_modify], encountered_errors=[]
+                modified_files=[result.file_to_modify],
+                encountered_errors=[],
+                summary=result.reasoning,
             )
         else:
             logger.info(f"did not update file {result.file_to_modify}")
 
-        return TaskResult(modified_files=[], encountered_errors=[])
+        return TaskResult(modified_files=[], encountered_errors=[], summary="")
 
 
 class AnalyzerTaskSpawningResult(SpawningResult):
@@ -121,4 +128,5 @@ class AnalyzerTaskSpawningResult(SpawningResult):
             original_file_contents=self.original_file_contents,
             updated_file_contents=self.updated_file_contents,
             issues=self.issues,
+            background="",
         )
