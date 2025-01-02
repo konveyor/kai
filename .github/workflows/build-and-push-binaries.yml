@@ -2,8 +2,16 @@ name: Build and Publish Binaries
 
 on:
   workflow_call:
+    outputs:
+      matrix_info:
+        description: List of os / arch information in the build matrix
+        value: ${{ jobs.share_matrix_info.outputs.matrix_info }}
   workflow_dispatch:
     inputs:
+      publish_artifacts_to_release:
+        type: boolean
+        default: true
+        description: Upload binaries to an existing github release. When not set, binaries will be uploaded as temporary github artifacts.
       use_latest_release:
         type: boolean
         default: true
@@ -18,30 +26,46 @@ on:
         default: false
   pull_request:
   push:
+
+# the build matrix exists as an env var so that we can
+# share that info reliably with the "calling" workflow
+env:
+  BUILD_MATRIX: | 
+    [ 
+      { "os": "ubuntu-latest", "shell": "bash" },
+      { "os": "macos-latest", "shell": "bash" },
+      { "os": "macos-13", "shell": "bash" },
+      { "os": "windows-latest", "shell": "cmd" },
+      { "os": "windows-11-preview-arm", "shell": "cmd" },
+      { "os": "ubuntu-24.04-arm", "shell": "bash" }
+    ]
 jobs:
+  # this job exists because we want to store the build matrix as output
+  # it will be used in the subsequent job as well as in a "calling" workflow
+  share_matrix_info:
+    name: Output platform info
+    runs-on: ubuntu-latest
+    outputs:
+      matrix_info: ${{ steps.matrix_info.outputs.matrix_info }}
+    steps:
+      - id: matrix_info
+        run: |
+          { 
+            echo 'matrix_info<<EOF'
+            echo '${{ env.BUILD_MATRIX }}'
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
   e2e_test:
+    needs: share_matrix_info
     name: Run e2e test
     strategy:
       matrix:
-        runs_on:
-          - os: ubuntu-latest
-            shell: bash
-          - os: macos-latest
-            shell: bash
-          - os: macos-13
-            shell: bash
-          - os: windows-latest
-            shell: cmd
-          - os: windows-11-preview-arm
-            shell: cmd
-          - os: ubuntu-24.04-arm
-            shell: bash
+        runs_on: ${{ fromJson(needs.share_matrix_info.outputs.matrix_info) }}
         models:
           - provider: ChatIBMGenAI
             model_id: meta-llama/llama-3-1-70b-instruct
             max_new_tokens: 2048
-    outputs:
-      runs_on_info: ${{ toJson(matrix.runs_on) }}
     runs-on: ${{ matrix.runs_on.os }}
     steps:
       - name: Checkout code
@@ -62,7 +86,7 @@ jobs:
           java-version: "17"
 
       - id: release_info
-        if: github.event_name == 'workflow_dispatch'
+        if: ${{ github.event.inputs.publish_artifacts_to_release || false }}
         uses: joutvhu/get-release@v1
         with:
           latest: ${{ github.event.inputs.use_latest_release }}
@@ -204,7 +228,7 @@ jobs:
           Compress-Archive -Path $filesToInclude -Destination kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip
 
       - name: Upload binary
-        if: github.event_name == 'workflow_dispatch'
+        if: ${{ github.event.inputs.publish_artifacts_to_release || false }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -215,7 +239,7 @@ jobs:
           asset_content_type: application/zip
 
       - name: Upload binaries as artifact
-        if: github.event_name == 'pull_request' || github.event_name == 'workflow_call'
+        if: ${{ !github.event.inputs.publish_artifacts_to_release || true }}
         uses: actions/upload-artifact@v4
         with:
           name: kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip
