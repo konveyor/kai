@@ -40,6 +40,31 @@ env:
       { "os": "ubuntu-24.04-arm", "shell": "bash" }
     ]
 jobs:
+  # these are specific java artifacts (cross-platform) that we
+  # download on linux and re-use on other platforms
+  download_artifacts:
+    name: Download cross-platform java dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          repository: konveyor/kai
+      
+      - name: Download deps
+        run: |
+          git config --global user.email "no-reply@konveyor.io"
+          git config --global user.name "Konveyor CI"
+          make get-analyzer-deps
+          make get-rulesets
+          cd example/analysis && zip -r java-deps.zip maven.default.index jdtls bundle.jar rulesets
+      
+      - name: Upload deps as temp artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: java-deps.zip
+          path: ./example/analysis/java-deps.zip
+
   # this job exists because we want to store the build matrix as output
   # it will be used in the subsequent job as well as in a "calling" workflow
   share_matrix_info:
@@ -57,7 +82,9 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   e2e_test:
-    needs: share_matrix_info
+    needs:
+    - share_matrix_info
+    - download_artifacts
     name: Run e2e test
     strategy:
       matrix:
@@ -137,21 +164,28 @@ jobs:
         run: |
           cd kai_analyzer_rpc; go build -ldflags="-extldflags=-static" -o kai-analyzer-rpc main.go; cd ..
 
-      - name: Setup analysis deps
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: java-deps.zip
+
+      - name: Setup analysis deps (linux & mac)
+        if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
+        run: |
+          unzip java-deps.zip -d java-deps
+          cp -r java-deps/* ./example/analysis
+  
+      - name: Setup analysis deps (windows)
+        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
+        run: |
+          Expand-Archive -Path java-deps.zip -DestinationPath java-deps
+
+      - name: Run e2e test
         if: ${{ startsWith(matrix.runs_on.os, 'ubuntu') }}
         run: |
           cp ./dist/kai-rpc-server ./example/analysis/
           cp ./kai_analyzer_rpc/kai-analyzer-rpc ./example/analysis/
-          docker run -d --name=bundle quay.io/konveyor/jdtls-server-base:latest
-          docker cp bundle:/usr/local/etc/maven.default.index ./example/analysis
-          docker cp bundle:/jdtls ./example/analysis
-          docker cp bundle:/jdtls/java-analyzer-bundle/java-analyzer-bundle.core/target/java-analyzer-bundle.core-1.0.0-SNAPSHOT.jar ./example/analysis/bundle.jar
-          docker cp bundle:/usr/local/etc/maven.default.index ./example/analysis
-          git config --global user.email "no-reply@konveyor.io"
-          git config --global user.name "Konveyor CI"
-          git clone https://github.com/konveyor/rulesets
-          mv ./rulesets ./example/analysis/rulesets
-
+          
           cat << EOF > ./example/config.toml
           log_level = "info"
           file_log_level = "debug"
@@ -169,10 +203,7 @@ jobs:
           EOF
           fi
           cat ./example/config.toml
-
-      - name: Run e2e test
-        if: ${{ startsWith(matrix.runs_on.os, 'ubuntu') }}
-        run: |
+          
           which python
           cd example
           ./fetch.sh
@@ -218,13 +249,14 @@ jobs:
       - name: Archive binaries (linux & mac)
         if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
         run: |
-          zip -j kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip dist/kai-rpc-server kai_analyzer_rpc/kai-analyzer-rpc
+          zip -j kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip dist/kai-rpc-server kai_analyzer_rpc/kai-analyzer-rpc ./example/analysis/maven.default.index ./example/analysis/bundle.jar 
+          zip -r kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }} ./example/analysis/jdtls ./example/analysis/rulesets
 
       - name: Archive binaries (windows)
         if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           mv kai_analyzer_rpc\kai-analyzer-rpc kai_analyzer_rpc\kai-analyzer-rpc.exe
-          $filesToInclude = "dist\kai-rpc-server.exe", "kai_analyzer_rpc\kai-analyzer-rpc.exe"
+          $filesToInclude = "dist\kai-rpc-server.exe", "kai_analyzer_rpc\kai-analyzer-rpc.exe", "java-deps\maven.default.index", "java-deps\rulesets", "java-deps\bundle.jar", "java-deps\jdtls"
           Compress-Archive -Path $filesToInclude -Destination kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip
 
       - name: Upload binary
