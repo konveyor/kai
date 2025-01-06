@@ -7,7 +7,7 @@ import pathlib
 import shutil
 from collections.abc import KeysView
 from enum import StrEnum
-from io import StringIO, TextIOWrapper
+from io import StringIO
 from pathlib import Path
 from typing import Any, Iterator, Optional
 from urllib.parse import urlparse
@@ -335,7 +335,7 @@ class Report:
 
     # TODO: Migrate to a jinja template
     def _write_markdown_snippet(
-        self, ruleset_name: str, ruleset: RuleSet, f: TextIOWrapper
+        self, ruleset_name: str, ruleset: RuleSet, f: StringIO
     ) -> None:
         f.write(f"# {ruleset_name}\n")
         f.write("## Description\n")
