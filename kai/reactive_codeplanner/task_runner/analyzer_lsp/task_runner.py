@@ -112,7 +112,7 @@ class AnalyzerTaskSpawningResult(SpawningResult):
         updated_contents: str,
         file_path: Path,
         issues: list[str],
-        task: Task,
+        task: AnalyzerRuleViolation,
     ) -> None:
         self.original_file_contents: str = original_contents
         self.updated_file_contents: str = updated_contents
@@ -126,5 +126,5 @@ class AnalyzerTaskSpawningResult(SpawningResult):
             original_file_contents=self.original_file_contents,
             updated_file_contents=self.updated_file_contents,
             issues=self.issues,
-            target=" and ".join(self.task.targets),
+            target_technology=" and ".join(self.task.targets),
         )
