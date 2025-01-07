@@ -31,7 +31,13 @@ class TestAnalyzerAgent(unittest.TestCase):
 
         agent = AnalyzerAgent(model_provider=model_provider)
         result = agent.execute(
-            AnalyzerFixRequest(file_path=Path(PATH_KAI), file_content="", incidents="")
+            AnalyzerFixRequest(
+                file_path=Path(PATH_KAI),
+                file_content="",
+                incidents="",
+                sources=[],
+                targets=[],
+            )
         )
         print(result)
         expected = AnalyzerFixResponse(

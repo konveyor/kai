@@ -60,7 +60,13 @@ class TestMavenCompilerAgent(unittest.TestCase):
 
         agent = MavenCompilerAgent(model_provider=model_provider)
         result = agent.execute(
-            AnalyzerFixRequest(file_path=Path(""), file_content="", incidents=[])
+            AnalyzerFixRequest(
+                file_path=Path(""),
+                file_content="",
+                incidents=[],
+                sources=[],
+                targets=[],
+            )
         )
         print(result)
         expected = AgentResult()
