@@ -183,11 +183,14 @@ jobs:
       - name: Run e2e test
         if: ${{ startsWith(matrix.runs_on.os, 'ubuntu') }}
         run: |
+          git config --global user.email "no-reply@konveyor.io"
+          git config --global user.name "Konveyor CI"
+
           cp ./dist/kai-rpc-server ./example/analysis/
           cp ./kai_analyzer_rpc/kai-analyzer-rpc ./example/analysis/
-          
+
           cat << EOF > ./example/config.toml
-          log_level = "info"
+          log_level = "debug"
           file_log_level = "debug"
           log_dir = "/home/runner/work/kai/kai/kai/../../logs/"
           demo_mode = true
