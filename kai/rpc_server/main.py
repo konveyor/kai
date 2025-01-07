@@ -37,6 +37,13 @@ ThreadingInstrumentor().instrument()
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.description = "Kai RPC Server"
     parser.add_argument(
+        "-c",
+        "--config",
+        help="This parameter is deprecated and should not be used.",
+        type=str,
+    )
+
+    parser.add_argument(
         "--log-level",
         help="The initial log level for the server",
         default="INFO",

@@ -24,7 +24,7 @@ class TestLogging(unittest.TestCase):
 
         self.assertEqual(log.getEffectiveLevel(), logging.NOTSET)
         self.assertTrue(isinstance(log, KaiLogger))
-        self.assertEqual(log.configLogLevel, logging.NOTSET)
+        self.assertEqual(log.config_log_level, logging.NOTSET)
         self.assertEqual(base_logger.filters, log.filters)
         self.assertEqual(base_logger.handlers, log.handlers)
 
@@ -65,11 +65,11 @@ class TestLogging(unittest.TestCase):
 
         self.assertTrue(isinstance(test_first_log, KaiLogger))
         self.assertEqual(test_first_log.level, logging.NOTSET)
-        self.assertEqual(test_first_log.configLogLevel, base_logger.level)
+        self.assertEqual(test_first_log.config_log_level, base_logger.level)
         self.assertEqual(len(test_first_log.filters), 0)
         self.assertEqual(len(test_first_log.handlers), 0)
         self.assertTrue(isinstance(test_second_log, KaiLogger))
         self.assertEqual(test_second_log.level, logging.NOTSET)
-        self.assertEqual(test_second_log.configLogLevel, base_logger.level)
+        self.assertEqual(test_second_log.config_log_level, base_logger.level)
         self.assertEqual(len(test_second_log.filters), 0)
         self.assertEqual(len(test_second_log.handlers), 0)
