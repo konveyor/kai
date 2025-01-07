@@ -31,7 +31,7 @@ class ReflectionTask(AgentRequest):
     # reasoning produced by previous agent
     reasoning: str = ""
     # a keyword describing target technology to act as a hint to agent
-    target_technology: str = "Quarkus"
+    target_technology: str = ""
     # keyword describing overall application's language
     app_language: str = "Java"
 
