@@ -48,7 +48,6 @@ get-analyzer-deps:
     ${CONTAINER_RUNTIME} cp bundle:/usr/local/etc/maven.default.index ./example/analysis &&\
     ${CONTAINER_RUNTIME} cp bundle:/jdtls ./example/analysis &&\
     ${CONTAINER_RUNTIME} cp bundle:/jdtls/java-analyzer-bundle/java-analyzer-bundle.core/target/java-analyzer-bundle.core-1.0.0-SNAPSHOT.jar ./example/analysis/bundle.jar &&\
-    ${CONTAINER_RUNTIME} cp bundle:/usr/local/etc/maven.default.index ./example/analysis &&\
 	${CONTAINER_RUNTIME} stop bundle &&\
 	${CONTAINER_RUNTIME} rm bundle
 
