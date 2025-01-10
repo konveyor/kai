@@ -6,11 +6,12 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import StrEnum
+from logging import INFO
 from pathlib import Path
 from typing import Any, Optional
 
 from kai.constants import ENV
-from kai.logging.logging import TRACE, get_logger
+from kai.logging.logging import get_logger
 from kai.reactive_codeplanner.agent.api import AgentResult
 from kai.reactive_codeplanner.agent.reflection_agent import (
     ReflectionAgent,
@@ -111,13 +112,13 @@ class RepoContextSnapshot:
             **popen_kwargs,
         }
 
-        log.log(TRACE, "\033[94mexecuting: \033[0m" + " ".join(GIT + args))
+        log.log(INFO, "\033[94mexecuting: \033[0m" + " ".join(GIT + args))
         proc = subprocess.Popen(GIT + args, **popen_kwargs)  # trunk-ignore(bandit/B603)
         stdout, stderr = proc.communicate()
 
-        log.log(TRACE, f"\033[94mreturncode:\033[0m {proc.returncode}")
-        log.log(TRACE, f"\033[94mstdout:\033[0m\n{stdout}")
-        log.log(TRACE, f"\033[94mstderr:\033[0m\n{stderr}")
+        log.log(INFO, f"\033[94mreturncode:\033[0m {proc.returncode}")
+        log.log(INFO, f"\033[94mstdout:\033[0m\n{stdout}")
+        log.log(INFO, f"\033[94mstderr:\033[0m\n{stderr}")
 
         return proc.returncode, stdout, stderr
 
@@ -134,7 +135,11 @@ class RepoContextSnapshot:
 
         git_work_tree = git_work_tree.resolve()
         snapshot_work_dir.mkdir(exist_ok=True)
-        git_dir = snapshot_work_dir / f".git-{datetime.now(timezone.utc).isoformat()}"
+        # fmt: off
+        # Note that windows can not use : characters in the filename/path, Black doesn't like this syntax on 3.11
+        git_dir = snapshot_work_dir / f".git-{datetime.now(timezone.utc).strftime("%Y-%m-%d-_%H-%M-%S")}"
+        # fmt: on
+        git_dir.mkdir(exist_ok=True)
 
         # Snapshot is immutable, so we create a temporary snapshot to get the
         # git sha of the initial commit
@@ -223,7 +228,9 @@ class RepoContextManager:
         snapshot_work_dir: Path | None = None,
     ):
         if snapshot_work_dir is None:
-            snapshot_work_dir = Path(tempfile.TemporaryDirectory(delete=False).name)
+            snapshot_work_dir = Path(
+                tempfile.TemporaryDirectory(delete=False).name
+            ).resolve()
 
         self.project_root = project_root
         self.snapshot = RepoContextSnapshot.initialize(

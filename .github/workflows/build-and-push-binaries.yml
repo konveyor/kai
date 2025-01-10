@@ -87,6 +87,7 @@ jobs:
     - download_artifacts
     name: Run e2e test
     strategy:
+      fail-fast: false
       matrix:
         runs_on: ${{ fromJson(needs.share_matrix_info.outputs.matrix_info) }}
         models:
@@ -132,13 +133,6 @@ jobs:
           go-version: "1.23"
           check-latest: true
 
-      - name: Set up venv (windows)
-        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
-        run: |
-          python -m venv venv
-          . venv\Scripts\activate
-          echo PATH=$PATH >> $GITHUB_ENV
-
       - name: Set up venv (linux & mac)
         if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
         run: |
@@ -179,17 +173,79 @@ jobs:
         if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           Expand-Archive -Path java-deps.zip -DestinationPath java-deps
+          Copy-Item -Verbose -Path .\java-deps\* -Destination .\example\analysis -Recurse
 
       - name: Run e2e test
-        if: ${{ startsWith(matrix.runs_on.os, 'ubuntu') }}
+        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
+        run: |
+          git config --global user.email "no-reply@konveyor.io"
+          git config --global user.name "Konveyor CI"
+
+          cp ./dist/kai-rpc-server.exe ./example/analysis/
+          cp ./kai_analyzer_rpc/kai-analyzer-rpc ./example/analysis/
+
+          Remove-Item -Path .\example\initialize.toml
+
+          New-Item -Path ".\example\initialize.toml" -ItemType File -Value @"
+          root_path = "./coolstore"
+          analyzer_lsp_java_bundle_path = "./analysis/bundle.jar"
+          analyzer_lsp_lsp_path = "./analysis/jdtls/bin/jdtls"
+          analyzer_lsp_rpc_path = "./analysis/kai-analyzer-rpc"
+          analyzer_lsp_rules_path = "./analysis/rulesets/default/generated"
+          analyzer_lsp_dep_labels_path = "./analysis/maven.default.index"
+
+          demo_mode = true
+          enable_reflection = false
+
+          [log_config]
+          log_level = "info"
+          file_log_level = "debug"
+          log_dir_path = '${{github.workspace}}\logs\'
+
+          [model_provider]
+          provider = "${{ matrix.models.provider }}"
+          [model_provider.args]
+          model_id = "${{ matrix.models.model_id }}"
+          
+          "@
+
+          if (${{ matrix.models.max_new_tokens }}) {
+            Add-Content -Path ".\example\initialize.toml" -Value "parameters.max_new_tokens = ${{ matrix.models.max_new_tokens }}"
+          }
+          
+          Get-Content -Path .\example\initialize.toml
+
+          Get-Command python
+          Set-Location -Path .\example
+
+          git clone https://github.com/konveyor-ecosystem/coolstore.git
+          pip list 
+          python run_demo.py
+          cd coolstore
+          $changed_files_count = (git diff --name-only | Measure-Object).Count
+          if ($changed_files_count -eq 26) {
+            echo "Tests passed"
+            exit 0
+          } 
+          else {
+            echo "Tests failed, only $changed_files_count where changed"
+            git diff --name-only
+            cat ../../logs/kai_server.log
+            cat ../../logs/kai_server.log
+            exit 1
+          }
+        env:
+          GENAI_KEY: "BWAHAHA"
+
+
+      - name: Run e2e test
+        if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           git config --global user.email "no-reply@konveyor.io"
           git config --global user.name "Konveyor CI"
 
           cp ./dist/kai-rpc-server ./example/analysis/
           cp ./kai_analyzer_rpc/kai-analyzer-rpc ./example/analysis/
-
-          rm -f ./example/initialize.toml
 
           cat << EOF > ./example/initialize.toml
           root_path = "./coolstore"
@@ -203,12 +259,13 @@ jobs:
           enable_reflection = false
 
           [log_config]
-          log_level = "debug"
+          log_level = "info"
           file_log_level = "debug"
-          log_dir_path = "/home/runner/work/kai/kai/kai/../../logs/"
-
+          log_dir_path = "${{github.workspace}}/logs/"
+          
           [model_provider]
           provider = "${{ matrix.models.provider }}"
+         
           [model_provider.args]
           model_id = "${{ matrix.models.model_id }}"
           EOF
@@ -232,8 +289,8 @@ jobs:
           else
             echo "Tests failed, only $changed_files_count where changed"
             git diff --name-only
-            cat /home/runner/work/kai/kai/kai/../../logs/kai_server.log
-            cat /home/runner/work/kai/kai/example/logs/kai_server.log
+            cat ../../logs/kai_server.log
+            cat ../../logs/kai_server.log
             exit 1
           fi
         env:
