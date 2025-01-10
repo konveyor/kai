@@ -198,6 +198,9 @@ class ModelProvider:
         stop: Optional[list[str]] = None,
         **kwargs: Any,
     ) -> BaseMessage:
+        LOG.debug("invoke called!")
+        LOG.debug(f"{self.demo_mode=}")
+        LOG.debug(f"{self.cache_dir=}")
         if self.demo_mode and self.cache_dir is not None:
             cache_file = self.__get_cache_filename(input)
 
