@@ -1,11 +1,11 @@
-# Kai Demo
+# Kai Demo (August 2024)
 
 Konveyor AI (kai) is Konveyor's approach to easing modernization of application
 source code to a new target by leveraging LLMs with guidance from static code
 analysis augmented with data in Konveyor that helps to learn how an Organization
 solved a similar problem in the past.
 
-- [Kai Demo](#kai-demo)
+- [Kai Demo](#kai-demo-august-2024)
   - [Overview](#overview)
   - [Prerequisites](#prerequisites)
   - [Step 1: Setup](#step-1-setup)
@@ -40,7 +40,6 @@ Konveyor AI (Kai) can assist and expedite the modernization process.
 
 ## Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/) to deploy the coolstore app
 - [VSCode](https://code.visualstudio.com/download)
 - [Git](https://git-scm.com/downloads)
 - [Kubernetes cluster (minikube)](https://minikube.sigs.k8s.io/docs/start/)
@@ -49,19 +48,15 @@ Konveyor AI (Kai) can assist and expedite the modernization process.
 - Quarkus 3.10
 - Java 17
 
-Additionally, you will need to have the Kai IDE plugin installed in VSCode. As
-of 2024-09-10, you should install **version 0.0.3**. You can follow the steps
-listed
-[here](https://github.com/konveyor-ecosystem/kai-vscode-plugin)
+Additionally, you will need to have the Kai IDE plugin installed in VSCode.
+Download the latest from
+[here](https://github.com/konveyor/editor-extensions/releases).
 
 ## Step 1: Setup
 
 [You can configure Kai in multiple ways](../contrib/configuration.md). The best
-way to configure Kai is with `config.toml` file. When running Kai using `podman
-compose up`, if the file `build/config.toml` exists, Kai will use it. An example
-config is present at `build/example_config.toml`.
-
-Create a new file at `build/config.toml` to begin.
+way to configure Kai is to follow the setup page to get started. After the
+basic setup, additional configuration can be made by modifying `settings.json`.
 
 You will need to select an LLM model to use with Kai. Here are some examples of
 how to configure Kai to use different models. For more options, see
@@ -88,22 +83,26 @@ mode, which uses cached responses.
    https://bam.res.ibm.com/. You will see a field embedded in the
    'Documentation' section where you can generate/obtain an API Key.
 3. Ensure you have exported the key via `export
-GENAI_KEY=my-secret-api-key-value`.
+GENAI_KEY=my-secret-api-key-value`. and this should exist in the shell where
+   VSCode is running
 
 <!-- End copy from llm_selection.md#ibm-bam-service -->
 
-Next, paste the following into your `build/config.toml` file:
+Next, ensure the following values are set in `settings.json`:
 
-```toml
-[models]
-provider = "ChatIBMGenAI"
-
-  [models.args]
-  model_id = "meta-llama/llama-3-70b-instruct"
-  parameters.max_new_tokens = 2048
+```json
+{
+  "konveyor.kai.providerName": "ChatIBMGenAI",
+  "konveyor.kai.providerArgs": {
+    "model_id": "meta-llama/llama-3-70b-instruct",
+    "parameters": {
+      "max_new_tokens": 2048
+    }
+  }
+}
 ```
 
-Finally, run the backend with `podman compose up`.
+Finally, start the Kai RPC server.
 
 ### Running Kai with Amazon Bedrock-served Llama 3
 
@@ -111,17 +110,19 @@ Finally, run the backend with `podman compose up`.
 2. Export your `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and
    `AWS_DEFAULT_REGION` environment variables.
 
-Next, paste the following into your `build/config.toml` file:
+Next, paste the following into your `settings.json` file:
 
-```toml
-[models]
-provider = "ChatBedrock"
-
-  [models.args]
-  model_id = "meta.llama3-70b-instruct-v1:0"
+```json
+{
+  "konveyor.kai.providerName": "ChatBedrock",
+  "konveyor.kai.providerArgs": {
+    "model_id": "meta.llama3-70b-instruct-v1:0",
+    "parameters": {}
+  }
+}
 ```
 
-Finally, run the backend with `podman compose up`.
+Finally, start the Kai RPC server.
 
 ### Running Kai with GPT-3.5-Turbo
 
@@ -134,25 +135,52 @@ OPENAI_API_KEY=my-secret-api-key-value`
 
 <!-- End copy from llm_selection.md#openai-service -->
 
-Next, paste the following into your `build/config.toml` file:
+Next, paste the following into your `settings.json` file:
 
-```toml
-[models]
-provider = "ChatOpenAI"
-
-  [models.args]
-  model = "gpt-3.5-turbo"
+```json
+{
+  "konveyor.kai.providerName": "ChatOpenAI",
+  "konveyor.kai.providerArgs": {
+    "model": "gpt-3.5-turbo",
+    "parameters": {}
+  }
+}
 ```
 
-Finally, run the backend with `podman compose up`.
+Finally, start the Kai RPC server.
+
+### Running Kai with GPT-4o
+
+<!-- Begin copy from llm_selection.md#openai-service -->
+
+1. Follow the directions from OpenAI
+   [here](https://help.openai.com/en/articles/4936850-where-do-i-find-my-openai-api-key).
+2. Ensure you have exported the key via `export
+OPENAI_API_KEY=my-secret-api-key-value`
+
+<!-- End copy from llm_selection.md#openai-service -->
+
+Next, paste the following into your `settings.json` file:
+
+```json
+{
+  "konveyor.kai.providerName": "ChatOpenAI",
+  "konveyor.kai.providerArgs": {
+    "model": "gpt-4o",
+    "parameters": {}
+  }
+}
+```
+
+Finally, start the Kai RPC server.
 
 ### Running Kai with Cached Responses Only (demo mode)
 
 If you don't have access to a `GEN_AI` key, you can run the server in demo mode
 which will use cached responses
 
-To run the Kai server in demo mode, `podman compose up`. `KAI__DEMO_MODE` is set
-to `true` inside the `compose.yaml` file.
+To run the Kai server in demo mode, ensure `konveyor.kai.demo_mode: true` is
+set in `settings.json`.
 
 ## Step 2: Clone the coolstore app
 
@@ -178,6 +206,7 @@ to identify potential areas for improvement:
 
 <!-- - containerization -->
 
+- cloud-readiness
 - jakarta-ee
 - jakarta-ee8
 - jakarta-ee9
@@ -187,7 +216,7 @@ Let's perform our initial analysis:
 
 1. Open VSCode and load coolstore project if it is not already loaded.
 2. Follow the steps to run the analysis listed
-   [here](https://github.com/konveyor-ecosystem/kai-vscode-plugin/blob/main/docs/user-guide.md#running-kantra-analysis)
+   [here](../getting_started.md#running-analysis)
 3. Once the analysis is complete you will see incidents listed on the following files
 
 - `src/main/java/com/redhat/coolstore/model/ShoppingCart.java`
