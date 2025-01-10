@@ -53,7 +53,7 @@ Only follow these steps if you decided to skip installing from the UI side and y
 
 1. Open walkthrough after installing the extension to setup Konveyor
    ![walkthrough](images/walkthrough.png)
-2. User has an option to override binaries and custom rules, however it comes with the defualt packaged binaries and custom rules.
+2. User has an option to override binaries and custom rules, however it comes with the default packaged binaries and custom rules.
    ![setup-konveyor](images/setup-konveyor.png)
 3. Configure analysis argument is necessary in order to know which rules apply to the project during analysis.
 4. Once the configuration is done, click on start server button. Logs are collected at output channel named konveyor-analyzer.
