@@ -39,6 +39,7 @@ class ModelProvider:
         self.llm_retry_delay: float = config.llm_retry_delay
         self.demo_mode: bool = demo_mode
         self.cache_dir = cache_dir
+        LOG.info("using cache dir: %s", self.cache_dir)
 
         model_class: type[BaseChatModel]
         defaults: dict[str, Any]

@@ -67,7 +67,7 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
     log_config: KaiLogConfig
 
     demo_mode: bool = False
-    cache_dir: Optional[AutoAbsPath] = PATH_LLM_CACHE
+    cache_dir: Optional[AutoAbsPath] = None
     enable_reflection: bool = True
 
     analyzer_lsp_lsp_path: AutoAbsPathExists
@@ -173,6 +173,9 @@ def initialize(
 
     try:
         app.config = params
+
+        if app.config.cache_dir is None:
+            app.config.cache_dir = PATH_LLM_CACHE
 
         try:
             model_provider = ModelProvider(
