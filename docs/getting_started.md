@@ -30,7 +30,7 @@ needs. This page can also be accessed by clicking "Help"->"Welcome" and finding
 ### Options
 
 All of the following settings can be configured via the setup page or via
-modifying `settings.json`. For more details; see [TODO]() for a full list of
+modifying `settings.json`. For more details; see [configuration](./contrib/configuration.md) for a full list of
 available settings.
 
 **Override Analyzer Binary**
@@ -55,6 +55,7 @@ information about what these values do; see
 [here](./presentations/2024-11-13-konveyor-community.md)
 
 ## Starting the server
+
 Click "Start Analyzer" to launch the RPC server. You can then click "Mark Done"
 to close the setup page.
 
@@ -74,6 +75,7 @@ the extension, you will see a tree view of these incidents and the files where
 those incidents are present.
 
 ### Generating fixes
+
 Now that you have violations from analysis, you will want to begin generating
 code fixes based on these incidents. This is done in the main analysis view by
 expanding the incident you want to fix and clicking the lightbulb icon. This
@@ -83,7 +85,7 @@ incident.
 Once the fix is generated, you will be presented with a list of files that
 would be changed, and you are given the option to view, accept, or reject those
 changes. You can view this from an in-view diff editor via the analysis view,
-or from the *Konveyor Resolutions* pane on the left side of the extension. When
+or from the _Konveyor Resolutions_ pane on the left side of the extension. When
 these changes are accepted, the changes will be reflected in the source code
 directly. Anytime a change is accepted, Kai will automatically rerun a partial
 analysis of the codebase that has changed to update whether an incident was

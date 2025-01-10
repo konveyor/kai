@@ -5,7 +5,7 @@ source code to a new target by leveraging LLMs with guidance from static code
 analysis augmented with data in Konveyor that helps to learn how an Organization
 solved a similar problem in the past.
 
-- [Kai Demo](#kai-demo)
+- [Kai Demo](#kai-demo-august-2024)
   - [Overview](#overview)
   - [Prerequisites](#prerequisites)
   - [Step 1: Setup](#step-1-setup)
@@ -84,7 +84,7 @@ mode, which uses cached responses.
    'Documentation' section where you can generate/obtain an API Key.
 3. Ensure you have exported the key via `export
 GENAI_KEY=my-secret-api-key-value`. and this should exist in the shell where
-VSCode is running
+   VSCode is running
 
 <!-- End copy from llm_selection.md#ibm-bam-service -->
 
@@ -96,9 +96,9 @@ Next, ensure the following values are set in `settings.json`:
   "konveyor.kai.providerArgs": {
     "model_id": "meta-llama/llama-3-70b-instruct",
     "parameters": {
-      "max_new_tokens": 2048,
-    },
-  },
+      "max_new_tokens": 2048
+    }
+  }
 }
 ```
 
@@ -117,8 +117,8 @@ Next, paste the following into your `settings.json` file:
   "konveyor.kai.providerName": "ChatBedrock",
   "konveyor.kai.providerArgs": {
     "model_id": "meta.llama3-70b-instruct-v1:0",
-    "parameters": {},
-  },
+    "parameters": {}
+  }
 }
 ```
 
@@ -142,8 +142,8 @@ Next, paste the following into your `settings.json` file:
   "konveyor.kai.providerName": "ChatOpenAI",
   "konveyor.kai.providerArgs": {
     "model": "gpt-3.5-turbo",
-    "parameters": {},
-  },
+    "parameters": {}
+  }
 }
 ```
 
@@ -167,13 +167,12 @@ Next, paste the following into your `settings.json` file:
   "konveyor.kai.providerName": "ChatOpenAI",
   "konveyor.kai.providerArgs": {
     "model": "gpt-4o",
-    "parameters": {},
-  },
+    "parameters": {}
+  }
 }
 ```
 
 Finally, start the Kai RPC server.
-
 
 ### Running Kai with Cached Responses Only (demo mode)
 

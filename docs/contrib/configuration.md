@@ -1,11 +1,11 @@
 # Configuration
 
 - [Configuration](#configuration)
-  - [Configuration Precedence](#configuration-precedence)
+  - [Configuration Precedence](#configuration-options)
   - [Demo Mode and Cached LLM Results](#demo-mode-and-cached-llm-results)
-    - [Notes on Cached Responses](#notes-on-cached-responses)
-    - [Updating Cached Responses](#updating-cached-responses)
-    - [Seeing a `401` while running with `KAI__DEMO_MODE=TRUE`?](#seeing-a-401-while-running-with-kai__demo_modetrue)
+    - [Notes on Cached Responses](#demo-mode---notes-on-cached-responses)
+    - [Updating Cached Responses](#demo-mode---updating-cached-responses)
+    - [Seeing a `401` while running with `KAI__DEMO_MODE=TRUE`?](#seeing-a-401-while-running-in-demo-mode)
 
 ## Configuration Options
 

@@ -1,5 +1,7 @@
 # Kai Demo
 
+<!-- markdownlint-disable-file MD014 -->
+
 Konveyor AI (kai) is Konveyor's approach to easing modernization of application
 source code to a new target by leveraging LLMs with guidance from static code
 analysis augmented with data in Konveyor that helps to learn how an Organization
@@ -54,7 +56,6 @@ started.
 When not running in demo mode, you will need to select an LLM model to use with
 Kai. Here are some examples of how to configure Kai to use different models.
 For more options, see [llm_selection.md](../llm_selection.md).
-
 
 > [!IMPORTANT]
 >
@@ -131,16 +132,18 @@ model = "gpt-3.5-turbo"
 ### Running Kai with Cached Responses Only (demo mode)
 
 By default, this example demo script will run Kai in demo mode, which uses
-cached responses.  This is helpful if you don't have access to an LLM.
+cached responses. This is helpful if you don't have access to an LLM.
 Additionally, the responses are determinstic rather than slight changes based
 oan LLM response.
 
 ### Install Kai
+
 Download Kai server and analyzer binaries for your machine and place them in
 our example directory. First, download the zip file for your OS
 [here](https://github.com/konveyor/kai/releases/tag/v0.0.1). Unzip the
 directory and copy the binaries to `example/analysis`.
-```
+
+```bash
 $ cp ~/Downloads/kai-rpc-server.linux-x86_64/kai-rpc-server example/analysis/
 $ cp ~/Downloads/kai-rpc-server.linux-x86_64/kai-analyzer-rpc example/analysis/
 ```
@@ -148,19 +151,22 @@ $ cp ~/Downloads/kai-rpc-server.linux-x86_64/kai-analyzer-rpc example/analysis/
 ### Setup analysis dependencies
 
 #### Start JDTLS in docker
+
 The simplest way to start JDTLS is to use docker:
-```
+
+```bash
 $ docker run -d --name=bundle quay.io/konveyor/jdtls-server-base:latest
 ```
 
 #### Copy dependencies
 
 Copy the JDTLS binary and other needed files out of the container:
-```
+
+```bash
 $ docker cp bundle:/usr/local/etc/maven.default.index ./example/analysis
 $ docker cp bundle:/jdtls ./example/analysis
 $ docker cp bundle:/jdtls/java-analyzer-bundle/java-analyzer-bundle.core/target/java-analyzer-bundle.core-1.0.0-SNAPSHOT.jar ./example/analysis/bundle.jar
-$ docker cp bundle:/usr/local/etc/maven.default.index ./example/analysis 
+$ docker cp bundle:/usr/local/etc/maven.default.index ./example/analysis
 ```
 
 Now `example/analysis` contains all of the needed dependencies to run Kai
@@ -176,7 +182,6 @@ Clone the Coolstore demo from its repository:
 $ cd example/
 $ git clone https://github.com/konveyor-ecosystem/coolstore.git
 ```
-
 
 ## Step 3: Run Automated Usage of Kai
 
