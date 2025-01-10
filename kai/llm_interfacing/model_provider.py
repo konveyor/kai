@@ -198,13 +198,10 @@ class ModelProvider:
         stop: Optional[list[str]] = None,
         **kwargs: Any,
     ) -> BaseMessage:
-        LOG.info("invoke called!")
-        LOG.info(f"{self.demo_mode=}")
-        LOG.info(f"{self.cache_dir=}")
         if self.demo_mode and self.cache_dir is not None:
             cache_file = self.__get_cache_filename(input)
 
-            LOG.info(f"Using cache file {cache_file}")
+            LOG.debug(f"Using cache file {cache_file}")
 
             if os.path.exists(cache_file):
                 try:
