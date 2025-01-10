@@ -99,6 +99,8 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 		cancelFunc:      cancelFunc,
 		initedProviders: providers,
 		ruleSets:        ruleSets,
+		cache:           map[string][]cacheValue{},
+		cacheMutex:      sync.RWMutex{},
 	}, nil
 
 }
