@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/go-logr/logr"
@@ -16,13 +17,14 @@ import (
 )
 
 func main() {
-
 	sourceDirectory := flag.String("source-directory", ".", "This will be the absolute path to the source code directory that should be analyzed")
 	rulesDirectory := flag.String("rules-directory", ".", "This will be the absolute path to the rules directory")
 	logFile := flag.String("log-file", "", "This is the file where logs should be stored. By default they will just be written to stderr")
 	lspServerPath := flag.String("lspServerPath", "/Users/shurley/repos/kai/jdtls/bin/jdtls", "this will be the path to the lsp")
 	bundles := flag.String("bundles", "/Users/shurley/repos/MTA/java-analyzer-bundle/java-analyzer-bundle.core/target/java-analyzer-bundle.core-1.0.0-SNAPSHOT.jar", "this is the path to the java analyzer bundle")
 	depOpenSourceLabelsFile := flag.String("depOpenSourceLabelsFile", "", "Path to the dep open source labels file")
+	var excludedPaths stringList
+	flag.Var(&excludedPaths, "excluded-paths", "Comma separated list of paths excluded from analysis. Can be specified more than once.")
 
 	// TODO(djzager): We should do verbosity type argument(s)
 	logLevel := slog.LevelDebug
@@ -82,6 +84,7 @@ func main() {
 		*bundles,
 		*depOpenSourceLabelsFile,
 		[]string{*rulesDirectory},
+		excludedPaths,
 		l,
 	)
 	if err != nil {
@@ -107,4 +110,20 @@ func main() {
 	l.Info("stopping server", "signal", sig)
 	analyzerService.Stop()
 
+}
+
+type stringList []string
+
+func (s *stringList) String() string {
+	return strings.Join(*s, ",")
+}
+
+func (s *stringList) Set(val string) error {
+	for _, strVal := range strings.Split(val, ",") {
+		strVal = strings.TrimSpace(strVal)
+		if strVal != "" {
+			*s = append(*s, strVal)
+		}
+	}
+	return nil
 }

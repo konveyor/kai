@@ -32,12 +32,13 @@ type Analyzer struct {
 
 	initedProviders map[string]provider.InternalProviderClient
 	ruleSets        []engine.RuleSet
+	excludedPaths   []string
 
 	cache      map[string][]cacheValue
 	cacheMutex sync.RWMutex
 }
 
-func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, lspServerPath, bundles, depOpenSourceLabelsFile string, ruleFiles []string, log logr.Logger) (*Analyzer, error) {
+func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, lspServerPath, bundles, depOpenSourceLabelsFile string, ruleFiles, excludedPaths []string, log logr.Logger) (*Analyzer, error) {
 	prefix, err := filepath.Abs(location)
 	if err != nil {
 		return nil, err
@@ -101,6 +102,7 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 		ruleSets:        ruleSets,
 		cache:           map[string][]cacheValue{},
 		cacheMutex:      sync.RWMutex{},
+		excludedPaths:   excludedPaths,
 	}, nil
 
 }
@@ -140,14 +142,21 @@ func (a *Analyzer) Analyze(args Args, response *Response) error {
 	}
 	a.Logger.Info("Have selectors", "selectors", selectors)
 
-	var scopes engine.Scope = nil
+	scopes := []engine.Scope{}
 	if len(args.IncludedPaths) > 0 {
-		scopes = engine.IncludedPathsScope(args.IncludedPaths, a.Logger)
-		a.Logger.V(2).Info("Using Scopes", "scopes", scopes.Name())
+		currScope := engine.IncludedPathsScope(args.IncludedPaths, a.Logger)
+		scopes = append(scopes, currScope)
+		a.Logger.V(2).Info("Using inclusion scope", "scope", currScope.Name())
+	}
+
+	if len(a.excludedPaths) > 0 {
+		currScope := engine.ExcludedPathsScope(a.excludedPaths, a.Logger)
+		scopes = append(scopes, currScope)
+		a.Logger.V(2).Info("Using exclusion scope", "scope", currScope.Name())
 	}
 
 	// This will already wait
-	rulesets := a.engine.RunRulesScoped(context.Background(), a.ruleSets, scopes, selectors...)
+	rulesets := a.engine.RunRulesScoped(context.Background(), a.ruleSets, engine.NewScope(scopes...), selectors...)
 
 	sort.SliceStable(rulesets, func(i, j int) bool {
 		return rulesets[i].Name < rulesets[j].Name

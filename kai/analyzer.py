@@ -40,6 +40,7 @@ class AnalyzerLSP:
         analyzer_lsp_path: Path,
         analyzer_java_bundle_path: Path,
         dep_open_source_labels_path: Optional[Path],
+        excluded_paths: Optional[list[Path]] = None,
     ) -> None:
         """This will start an analyzer-lsp jsonrpc server"""
         # trunk-ignore-begin(bandit/B603)
@@ -59,6 +60,9 @@ class AnalyzerLSP:
         if dep_open_source_labels_path is not None:
             args.append("-depOpenSourceLabelsFile")
             args.append(str(dep_open_source_labels_path))
+        if excluded_paths is not None:
+            args.append("-excluded-paths")
+            args.append(",".join([str(p) for p in excluded_paths]))
         logger.debug(f"Starting analyzer rpc server with {args}")
 
         self.rpc_server = subprocess.Popen(
