@@ -189,23 +189,36 @@ jobs:
           cp ./dist/kai-rpc-server ./example/analysis/
           cp ./kai_analyzer_rpc/kai-analyzer-rpc ./example/analysis/
 
-          cat << EOF > ./example/config.toml
+          rm -f ./example/initialize.toml
+
+          cat << EOF > ./example/initialize.toml
+          root_path = "./coolstore"
+          analyzer_lsp_java_bundle_path = "./analysis/bundle.jar"
+          analyzer_lsp_lsp_path = "./analysis/jdtls/bin/jdtls"
+          analyzer_lsp_rpc_path = "./analysis/kai-analyzer-rpc"
+          analyzer_lsp_rules_path = "./analysis/rulesets/default/generated"
+          analyzer_lsp_dep_labels_path = "./analysis/maven.default.index"
+
+          demo_mode = true
+          enable_reflection = false
+
+          [log_config]
           log_level = "debug"
           file_log_level = "debug"
-          log_dir = "/home/runner/work/kai/kai/kai/../../logs/"
-          demo_mode = true
-          [models]
+          log_dir_path = "/home/runner/work/kai/kai/kai/../../logs/"
+
+          [model_provider]
           provider = "${{ matrix.models.provider }}"
-          [models.args]
+          [model_provider.args]
           model_id = "${{ matrix.models.model_id }}"
           EOF
 
           if [[ -n "${{ matrix.models.max_new_tokens }}" ]]; then
-          cat << EOF >> ./example/config.toml
+          cat << EOF >> ./example/initialize.toml
           parameters.max_new_tokens = ${{ matrix.models.max_new_tokens }}
           EOF
           fi
-          cat ./example/config.toml
+          cat ./example/initialize.toml
           
           which python
           cd example
