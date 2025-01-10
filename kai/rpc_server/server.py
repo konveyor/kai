@@ -62,7 +62,7 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
     process_id: Optional[int] = None
 
     root_path: AutoAbsPath
-    models: KaiConfigModels
+    model_provider: KaiConfigModels
 
     log_config: KaiLogConfig
 
@@ -176,7 +176,7 @@ def initialize(
 
         try:
             model_provider = ModelProvider(
-                app.config.models, app.config.demo_mode, app.config.cache_dir
+                app.config.model_provider, app.config.demo_mode, app.config.cache_dir
             )
         except Exception as e:
             app.log.error("unable to get model provider:", e)
