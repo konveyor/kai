@@ -201,7 +201,7 @@ class ModelProvider:
         if self.demo_mode and self.cache_dir is not None:
             cache_file = self.__get_cache_filename(input)
 
-            LOG.debug(f"Using cache file {cache_file}")
+            LOG.info(f"Using cache file {cache_file}")
 
             if os.path.exists(cache_file):
                 try:
