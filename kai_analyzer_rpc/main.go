@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/go-logr/logr"
@@ -107,20 +106,4 @@ func main() {
 	l.Info("stopping server", "signal", sig)
 	analyzerService.Stop()
 
-}
-
-type stringList []string
-
-func (s *stringList) String() string {
-	return strings.Join(*s, ",")
-}
-
-func (s *stringList) Set(val string) error {
-	for _, strVal := range strings.Split(val, ",") {
-		strVal = strings.TrimSpace(strVal)
-		if strVal != "" {
-			*s = append(*s, strVal)
-		}
-	}
-	return nil
 }
