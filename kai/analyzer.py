@@ -60,9 +60,6 @@ class AnalyzerLSP:
         if dep_open_source_labels_path is not None:
             args.append("-depOpenSourceLabelsFile")
             args.append(str(dep_open_source_labels_path))
-        if excluded_paths is not None:
-            args.append("-excluded-paths")
-            args.append(",".join([str(p) for p in excluded_paths]))
         logger.debug(f"Starting analyzer rpc server with {args}")
 
         self.rpc_server = subprocess.Popen(
@@ -73,6 +70,7 @@ class AnalyzerLSP:
             env=ENV,
         )
         # trunk-ignore-end(bandit/B603)
+        self.excluded_paths = excluded_paths
 
         self.stderr_logging_thread = threading.Thread(
             target=log_stderr, args=(self.rpc_server.stderr,)
@@ -101,6 +99,7 @@ class AnalyzerLSP:
             "label_selector": label_selector,
             "included_paths": included_paths,
             "incident_selector": incident_selector,
+            "excluded_paths": self.excluded_paths,
         }
 
         if scoped_paths is not None:

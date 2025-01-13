@@ -15,7 +15,8 @@ class RpcClientConfig:
     analyzer_java_bundle_path: Path
     label_selector: Optional[str]
     incident_selector: Optional[str]
-    included_paths: Optional[list[str]]
+    included_paths: Optional[list[str]] = None
+    excluded_paths: Optional[list[str]] = None
     dep_open_source_labels_path: Optional[Path] = None
 
 

@@ -23,8 +23,6 @@ func main() {
 	lspServerPath := flag.String("lspServerPath", "/Users/shurley/repos/kai/jdtls/bin/jdtls", "this will be the path to the lsp")
 	bundles := flag.String("bundles", "/Users/shurley/repos/MTA/java-analyzer-bundle/java-analyzer-bundle.core/target/java-analyzer-bundle.core-1.0.0-SNAPSHOT.jar", "this is the path to the java analyzer bundle")
 	depOpenSourceLabelsFile := flag.String("depOpenSourceLabelsFile", "", "Path to the dep open source labels file")
-	var excludedPaths stringList
-	flag.Var(&excludedPaths, "excluded-paths", "Comma separated list of paths excluded from analysis. Can be specified more than once.")
 
 	// TODO(djzager): We should do verbosity type argument(s)
 	logLevel := slog.LevelDebug
@@ -84,7 +82,6 @@ func main() {
 		*bundles,
 		*depOpenSourceLabelsFile,
 		[]string{*rulesDirectory},
-		excludedPaths,
 		l,
 	)
 	if err != nil {

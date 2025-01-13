@@ -32,13 +32,12 @@ type Analyzer struct {
 
 	initedProviders map[string]provider.InternalProviderClient
 	ruleSets        []engine.RuleSet
-	excludedPaths   []string
 
 	cache      map[string][]cacheValue
 	cacheMutex sync.RWMutex
 }
 
-func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, lspServerPath, bundles, depOpenSourceLabelsFile string, ruleFiles, excludedPaths []string, log logr.Logger) (*Analyzer, error) {
+func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, lspServerPath, bundles, depOpenSourceLabelsFile string, ruleFiles []string, log logr.Logger) (*Analyzer, error) {
 	prefix, err := filepath.Abs(location)
 	if err != nil {
 		return nil, err
@@ -102,7 +101,6 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 		ruleSets:        ruleSets,
 		cache:           map[string][]cacheValue{},
 		cacheMutex:      sync.RWMutex{},
-		excludedPaths:   excludedPaths,
 	}, nil
 
 }
@@ -112,6 +110,7 @@ type Args struct {
 	LabelSelector    string   `json:"label_selector,omitempty"`
 	IncidentSelector string   `json:"incident_selector,omitempty"`
 	IncludedPaths    []string `json:"included_paths,omitempty"`
+	ExcludedPaths    []string `json:"excluded_paths,omitempty"`
 	// RulesFiles       []string
 }
 
@@ -149,8 +148,8 @@ func (a *Analyzer) Analyze(args Args, response *Response) error {
 		a.Logger.V(2).Info("Using inclusion scope", "scope", currScope.Name())
 	}
 
-	if len(a.excludedPaths) > 0 {
-		currScope := engine.ExcludedPathsScope(a.excludedPaths, a.Logger)
+	if len(args.ExcludedPaths) > 0 {
+		currScope := engine.ExcludedPathsScope(args.ExcludedPaths, a.Logger)
 		scopes = append(scopes, currScope)
 		a.Logger.V(2).Info("Using exclusion scope", "scope", currScope.Name())
 	}

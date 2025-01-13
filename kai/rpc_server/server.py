@@ -208,6 +208,7 @@ def initialize(
             label_selector="konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee",
             incident_selector=None,
             included_paths=None,
+            excluded_paths=app.config.analyzer_lsp_excluded_paths,
             dep_open_source_labels_path=app.config.analyzer_lsp_dep_labels_path,
         )
 
