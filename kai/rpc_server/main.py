@@ -18,7 +18,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 import kai.logging.logging as logging
 from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.streams import LspStyleStream
-from kai.kai_config import KaiConfig
+from kai.logging.logging import KaiLogConfig
 from kai.rpc_server.server import app
 
 DEFAULT_FORMATTER = core_logging.Formatter(
@@ -39,8 +39,39 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "-c",
         "--config",
-        help="This is the configuration file for the kai rpc server.",
+        help="This parameter is deprecated and should not be used.",
+        type=str,
+    )
+
+    parser.add_argument(
+        "--log-level",
+        help="The initial log level for the server",
+        default="INFO",
+        type=str,
+    )
+    parser.add_argument(
+        "--stderr-log-level",
+        help="The initial stderr log level for the server",
+        default="TRACE",
+        type=str,
+    )
+    parser.add_argument(
+        "--file-log-level",
+        help="The initial file log level for the server",
+        default="DEBUG",
+        type=str,
+    )
+    parser.add_argument(
+        "--log-dir-path",
+        help="The directory path for log files",
+        default=Path("./logs"),
         type=Path,
+    )
+    parser.add_argument(
+        "--log-file-name",
+        help="The name of the log file",
+        default="kai-rpc-server.log",
+        type=str,
     )
 
 
@@ -49,12 +80,17 @@ def main() -> None:
     add_arguments(parser)
     _args = parser.parse_args()
 
-    if _args.config:
-        config = KaiConfig.model_validate_filepath(_args.config)
-        logging.init_logging_from_config(config)
+    log_config = KaiLogConfig(
+        log_level=_args.log_level,
+        stderr_log_level=_args.stderr_log_level,
+        file_log_level=_args.file_log_level,
+        log_dir_path=_args.log_dir_path,
+        log_file_name=_args.log_file_name,
+    )
+    logging.init_logging_from_log_config(log_config)
 
     log = logging.get_logger("kai-rpc-logger")
-    log.info(f"using config: {config}")
+    log.info(f"using log config: {log_config}")
 
     if TRACING_ENABLED in os.environ:
         tracer_provider.add_span_processor(
@@ -81,5 +117,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    # We need this to have PyInstaller work properly
     multiprocessing.freeze_support()
+
     main()

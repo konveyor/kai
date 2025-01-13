@@ -1,13 +1,12 @@
 import argparse
 import time
+import tomllib
 from pathlib import Path
 from typing import Any, Generator
 
 import kai.logging.logging as logging
 from kai.analyzer import AnalyzerLSP
-from kai.kai_config import KaiConfig
 from kai.llm_interfacing.model_provider import ModelProvider
-from kai.logging.logging import init_logging_from_config
 from kai.reactive_codeplanner.agent.analyzer_fix.agent import AnalyzerAgent
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
@@ -30,6 +29,7 @@ from kai.reactive_codeplanner.task_runner.dependency.task_runner import (
     DependencyTaskRunner,
 )
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
+from kai.rpc_server.server import KaiRpcApplicationConfig
 
 logger = logging.get_logger(__name__)
 
@@ -126,9 +126,21 @@ def main() -> None:
 
     logger.info("Starting reactive codeplanner with configuration: %s", config)
 
-    kai_config = KaiConfig.model_validate_filepath(args.kai_config)
-    init_logging_from_config(kai_config)
-    model_provider = ModelProvider(kai_config.models)
+    kai_config_dict = {
+        **tomllib.load(open(args.kai_config, "rb")),
+        "root_path": args.source_directory,
+        "analyzer_lsp_lsp_path": args.analyzer_lsp_path,
+        "analyzer_lsp_rules_path": args.rules_directory,
+        "analyzer_lsp_rpc_path": args.analyzer_lsp_server_binary,
+        "analyzer_lsp_java_bundle_path": args.analyzer_lsp_java_bundle,
+        "analyzer_lsp_dep_labels_path": args.dep_open_source_labels_path,
+    }
+
+    kai_config = KaiRpcApplicationConfig.model_validate(kai_config_dict)
+
+    logging.init_logging_from_log_config(kai_config.log_config)
+
+    model_provider = ModelProvider(kai_config.model_provider)
 
     analyzer = AnalyzerLSP(
         analyzer_lsp_server_binary=Path(args.analyzer_lsp_server_binary),

@@ -17,12 +17,12 @@ logger = get_logger(__name__)
 CONST_KAI_ANALYZER_LOG_FILE = "kai-analyzer-server.log"
 
 
-def get_logfile_dir() -> str:
+def get_logfile_dir() -> Path:
     if not log:
         return PATH_KAI
     for h in log.handlers:
         if isinstance(h, logging.FileHandler):
-            return os.path.dirname(h.baseFilename)
+            return Path(os.path.dirname(h.baseFilename))
     return PATH_KAI
 
 
@@ -41,7 +41,7 @@ class AnalyzerLSP:
         analyzer_java_bundle_path: Path,
         dep_open_source_labels_path: Optional[Path],
     ) -> None:
-        """This will start and analyzer-lsp jsonrpc server"""
+        """This will start an analyzer-lsp jsonrpc server"""
         # trunk-ignore-begin(bandit/B603)
         args: list[str] = [
             str(analyzer_lsp_server_binary),

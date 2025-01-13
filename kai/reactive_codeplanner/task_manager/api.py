@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 
+# NOTE(@JonahSussman): Why is this necessary when we have
+# `KaiRpcApplicationConfig`?
 @dataclass
 class RpcClientConfig:
     repo_directory: Path

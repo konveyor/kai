@@ -1,3 +1,5 @@
+import os
+import tomllib
 import traceback
 from pathlib import Path
 from typing import (
@@ -13,6 +15,7 @@ from typing import (
 from unittest.mock import MagicMock
 from urllib.parse import urlparse
 
+import yaml
 from opentelemetry import trace
 from pydantic import BaseModel
 
@@ -21,10 +24,10 @@ from kai.analyzer_types import ExtendedIncident, Incident, RuleSet, Violation
 from kai.constants import PATH_LLM_CACHE
 from kai.jsonrpc.core import JsonRpcApplication, JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcId
-from kai.jsonrpc.util import CamelCaseBaseModel
-from kai.kai_config import KaiConfigModels, SolutionConsumerKind
+from kai.jsonrpc.util import AutoAbsPath, AutoAbsPathExists, CamelCaseBaseModel
+from kai.kai_config import KaiConfigModels
 from kai.llm_interfacing.model_provider import ModelProvider
-from kai.logging.logging import KaiLogger, get_logger
+from kai.logging.logging import KaiLogConfig, get_logger
 from kai.reactive_codeplanner.agent.analyzer_fix.agent import AnalyzerAgent
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
@@ -58,24 +61,42 @@ tracer = trace.get_tracer("kai_application")
 class KaiRpcApplicationConfig(CamelCaseBaseModel):
     process_id: Optional[int] = None
 
-    root_path: Path
+    root_path: AutoAbsPath
     model_provider: KaiConfigModels
-    solution_consumer: SolutionConsumerKind = SolutionConsumerKind.DIFF_ONLY
-    kai_backend_url: str
 
-    log_level: str = "INFO"
-    stderr_log_level: str = "TRACE"
-    file_log_level: Optional[str] = None
-    log_dir_path: Optional[Path] = None
+    log_config: KaiLogConfig
+
     demo_mode: bool = False
-    cache_dir: Optional[Path] = None
+    cache_dir: Optional[AutoAbsPath] = None
     enable_reflection: bool = True
 
-    analyzer_lsp_lsp_path: Path
-    analyzer_lsp_rpc_path: Path
-    analyzer_lsp_rules_path: Path
-    analyzer_lsp_java_bundle_path: Path
-    analyzer_lsp_dep_labels_path: Optional[Path] = None
+    analyzer_lsp_lsp_path: AutoAbsPathExists
+    analyzer_lsp_rpc_path: AutoAbsPathExists
+    analyzer_lsp_rules_path: AutoAbsPathExists
+    analyzer_lsp_java_bundle_path: AutoAbsPathExists
+    analyzer_lsp_dep_labels_path: Optional[AutoAbsPathExists] = None
+
+    @staticmethod
+    def model_validate_filepath(filepath: str | Path) -> "KaiRpcApplicationConfig":
+        """
+        Load a model config from a file and validate it.
+
+        Supported file formats:
+        - TOML
+        - YAML
+        - JSON
+        """
+        model_dict: dict[str, Any]
+        _, file_ext = os.path.splitext(filepath)
+
+        if file_ext == ".toml":
+            model_dict = tomllib.load(open(filepath, "rb"))
+        elif file_ext == ".yaml" or file_ext == ".yml" or file_ext == ".json":
+            model_dict = yaml.safe_load(open(filepath, "r"))
+        else:
+            raise ValueError(f"'{filepath}' has unsupported file type: {file_ext}")
+
+        return KaiRpcApplicationConfig(**model_dict)
 
 
 class KaiRpcApplication(JsonRpcApplication):
@@ -139,7 +160,6 @@ def initialize(
     server: JsonRpcServer,
     id: JsonRpcId,
     params: KaiRpcApplicationConfig,
-    log: Optional[KaiLogger] = None,
 ) -> None:
     if app.initialized:
         server.send_response(
@@ -154,25 +174,8 @@ def initialize(
     try:
         app.config = params
 
-        app.config.root_path = app.config.root_path.resolve()
-        if app.config.log_dir_path:
-            app.config.log_dir_path = app.config.log_dir_path.resolve()
-        if app.config.analyzer_lsp_dep_labels_path:
-            app.config.analyzer_lsp_dep_labels_path = (
-                app.config.analyzer_lsp_dep_labels_path.resolve()
-            )
-        app.config.analyzer_lsp_rpc_path = app.config.analyzer_lsp_rpc_path.resolve()
-        app.config.analyzer_lsp_java_bundle_path = (
-            app.config.analyzer_lsp_java_bundle_path.resolve()
-        )
-        app.config.analyzer_lsp_lsp_path = app.config.analyzer_lsp_lsp_path.resolve()
-        app.config.analyzer_lsp_rules_path = (
-            app.config.analyzer_lsp_rules_path.resolve()
-        )
-        if app.config.cache_dir is not None:
-            app.config.cache_dir = app.config.cache_dir.resolve()
-        else:
-            app.config.cache_dir = Path(PATH_LLM_CACHE)
+        if app.config.cache_dir is None:
+            app.config.cache_dir = PATH_LLM_CACHE
 
         try:
             model_provider = ModelProvider(
@@ -211,12 +214,13 @@ def initialize(
             reflection_agent = ReflectionAgent(
                 model_provider=model_provider, iterations=1, retries=3
             )
+
         app.rcm = RepoContextManager(
             project_root=app.config.root_path,
             reflection_agent=reflection_agent,
         )
 
-        app.log.debug("initalized the repo context manager")
+        app.log.debug("initialized the repo context manager")
 
         # Right now this is not usable by anything.
         # server.send_notification(
@@ -345,22 +349,6 @@ def analyze(
         )
 
 
-class GetRagSolutionParams(BaseModel):
-    file_path: Path
-    incidents: list[ExtendedIncident]
-    trace_enabled: bool = False
-    include_solved_incidents: bool = False
-
-
-class GetCodeplanAgentSolutionParams(BaseModel):
-    file_path: Path
-    incidents: list[ExtendedIncident]
-
-    max_iterations: Optional[int] = None
-    max_depth: Optional[int] = None
-    max_priority: Optional[int] = None
-
-
 class GitVFSUpdateParams(BaseModel):
     work_tree: str  # project root
     git_dir: str
@@ -393,8 +381,6 @@ class GitVFSUpdateParams(BaseModel):
             children=[cls.from_snapshot(c) for c in snapshot.children],
             spawning_result=spawning_result,
         )
-
-    # spawning_result: Optional[SpawningResult] = None
 
 
 class TestRCMParams(BaseModel):
@@ -433,6 +419,15 @@ def test_rcm(
             "diff": diff[1] + diff[2],
         },
     )
+
+
+class GetCodeplanAgentSolutionParams(BaseModel):
+    file_path: Path
+    incidents: list[ExtendedIncident]
+
+    max_iterations: Optional[int] = None
+    max_depth: Optional[int] = None
+    max_priority: Optional[int] = None
 
 
 @app.add_request(method="getCodeplanAgentSolution")

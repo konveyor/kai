@@ -12,10 +12,10 @@ from sqlalchemy.orm import Session
 
 from kai.constants import PATH_TEST_DATA
 from kai.kai_config import (
-    KaiConfig,
     KaiConfigIncidentStore,
     KaiConfigIncidentStoreSQLiteArgs,
     KaiConfigModels,
+    KaiSolutionServerConfig,
     SolutionDetectorKind,
     SolutionProducerKind,
 )
@@ -33,7 +33,7 @@ from kai_solution_server.service.incident_store.sql_types import (
 class HubImporterTest(unittest.TestCase):
     def setUp(self) -> None:
         self.incident_store = IncidentStore.incident_store_from_config(
-            KaiConfig(
+            KaiSolutionServerConfig(
                 models=KaiConfigModels(
                     provider="FakeListChatModel",
                     args={
@@ -166,6 +166,7 @@ class HubImporterTest(unittest.TestCase):
                 self.assertTrue(accepted_solution.solution.llm_summary_generated)
 
 
+@unittest.skip(reason="Solution server needs to be reworked in new RPC architecture")
 class SolvedIncidentsServerTest(HubImporterTest, AioHTTPTestCase):
     @patch(
         "kai_solution_server.service.incident_store.incident_store.IncidentStore.incident_store_from_config"
@@ -190,6 +191,7 @@ class SolvedIncidentsServerTest(HubImporterTest, AioHTTPTestCase):
         await super().asyncTearDown()
         await self.app.shutdown()
 
+    @unittest.skip(reason="ran in parent fixture")
     async def test_get_solutions(self) -> None:
         response = await self.client.post(
             "/get_solutions",

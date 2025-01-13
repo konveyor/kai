@@ -60,7 +60,7 @@ run-demo:
 
 run-debug-driver:
 	python kai/reactive_codeplanner/main.py \
-		--kai-config example/config.toml \
+		--kai-config example/initialize.toml \
 		--source-directory example/coolstore \
 		--rules-directory example/analysis/rulesets/default/generated \
 		--analyzer-lsp-server-binary example/analysis/kai-analyzer-rpc \
