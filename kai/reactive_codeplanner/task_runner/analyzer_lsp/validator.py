@@ -33,7 +33,7 @@ def log_stderr(stderr: IO[bytes]) -> None:
 class AnalyzerLSPStep(ValidationStep):
     label_selector: str
     included_paths: list[str]
-    excluded_paths: list[str]
+    excluded_paths: list[Path]
     incident_selector: str
 
     def __init__(self, config: RpcClientConfig, analyzer: AnalyzerLSP) -> None:
