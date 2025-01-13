@@ -1,14 +1,14 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, fields
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import List, Optional, Sequence
 
 
 @dataclass
 class RpcClientConfig:
     repo_directory: Path
     analyzer_lsp_server_binary: Path
-    rules_directory: Path
+    rules: List[Path]
     analyzer_lsp_path: Path
     analyzer_java_bundle_path: Path
     label_selector: Optional[str]

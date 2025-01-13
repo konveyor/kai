@@ -4,7 +4,7 @@ import subprocess  # trunk-ignore(bandit/B404)
 import threading
 from io import BufferedReader, BufferedWriter
 from pathlib import Path
-from typing import IO, Optional, cast
+from typing import IO, List, Optional, cast
 
 from kai.constants import ENV, PATH_KAI
 from kai.jsonrpc.core import JsonRpcServer
@@ -36,7 +36,7 @@ class AnalyzerLSP:
         self,
         analyzer_lsp_server_binary: Path,
         repo_directory: Path,
-        rules_directory: Path,
+        rules: List[Path],
         analyzer_lsp_path: Path,
         analyzer_java_bundle_path: Path,
         dep_open_source_labels_path: Optional[Path],
@@ -47,8 +47,6 @@ class AnalyzerLSP:
             str(analyzer_lsp_server_binary),
             "-source-directory",
             str(repo_directory),
-            "-rules-directory",
-            str(rules_directory),
             "-lspServerPath",
             str(analyzer_lsp_path),
             "-bundles",
@@ -59,6 +57,12 @@ class AnalyzerLSP:
         if dep_open_source_labels_path is not None:
             args.append("-depOpenSourceLabelsFile")
             args.append(str(dep_open_source_labels_path))
+
+        if rules:
+            for rule in rules:
+                args.append("--rules")
+                args.append(str(rule))
+
         logger.debug(f"Starting analyzer rpc server with {args}")
 
         self.rpc_server = subprocess.Popen(

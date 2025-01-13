@@ -4,6 +4,7 @@ from typing import (
     Any,
     Callable,
     Generator,
+    List,
     Optional,
     ParamSpec,
     TypedDict,
@@ -73,7 +74,7 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
 
     analyzer_lsp_lsp_path: Path
     analyzer_lsp_rpc_path: Path
-    analyzer_lsp_rules_path: Path
+    analyzer_lsp_rules_paths: List[Path]
     analyzer_lsp_java_bundle_path: Path
     analyzer_lsp_dep_labels_path: Optional[Path] = None
 
@@ -166,8 +167,8 @@ def initialize(
             app.config.analyzer_lsp_java_bundle_path.resolve()
         )
         app.config.analyzer_lsp_lsp_path = app.config.analyzer_lsp_lsp_path.resolve()
-        app.config.analyzer_lsp_rules_path = (
-            app.config.analyzer_lsp_rules_path.resolve()
+        app.config.analyzer_lsp_rules_paths = list(
+            map(lambda path: path.resolve(), app.config.analyzer_lsp_rules_paths)
         )
         if app.config.cache_dir is not None:
             app.config.cache_dir = app.config.cache_dir.resolve()
@@ -187,7 +188,7 @@ def initialize(
         app.analyzer = AnalyzerLSP(
             analyzer_lsp_server_binary=app.config.analyzer_lsp_rpc_path,
             repo_directory=app.config.root_path,
-            rules_directory=app.config.analyzer_lsp_rules_path,
+            rules=app.config.analyzer_lsp_rules_paths,
             analyzer_lsp_path=app.config.analyzer_lsp_lsp_path,
             analyzer_java_bundle_path=app.config.analyzer_lsp_java_bundle_path,
             dep_open_source_labels_path=app.config.analyzer_lsp_dep_labels_path
@@ -197,7 +198,7 @@ def initialize(
         internal_config = RpcClientConfig(
             repo_directory=app.config.root_path,
             analyzer_lsp_server_binary=app.config.analyzer_lsp_rpc_path,
-            rules_directory=app.config.analyzer_lsp_rules_path,
+            rules=app.config.analyzer_lsp_rules_paths,
             analyzer_lsp_path=app.config.analyzer_lsp_lsp_path,
             analyzer_java_bundle_path=app.config.analyzer_lsp_java_bundle_path,
             label_selector="konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee",

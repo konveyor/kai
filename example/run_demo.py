@@ -92,7 +92,7 @@ def initialize_rpc_server(
         analyzer_lsp_java_bundle_path=ANALYSIS_BUNDLE_PATH,
         analyzer_lsp_lsp_path=ANALYSIS_LSP_PATH,
         analyzer_lsp_rpc_path=ANALYSIS_RPC_PATH,
-        analyzer_lsp_rules_path=ANALYSIS_RULES_PATH,
+        analyzer_lsp_rules_paths=[ANALYSIS_RULES_PATH],
         analyzer_lsp_dep_labels_path=ANALYSIS_DEP_LABELS_FILE,
         enable_reflection=False,
     )
