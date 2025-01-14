@@ -87,7 +87,7 @@ jobs:
     - download_artifacts
     name: Run e2e test
     strategy:
-      fail-fast: false
+      #fail-fast: false
       matrix:
         runs_on: ${{ fromJson(needs.share_matrix_info.outputs.matrix_info) }}
         models:
@@ -96,6 +96,35 @@ jobs:
             max_new_tokens: 2048
     runs-on: ${{ matrix.runs_on.os }}
     steps:
+      - name: Download Git for Windows (aarch64)
+        uses: robinraju/release-downloader@v1
+        if: ${{ matrix.runs_on.os == 'windows-11-preview-arm'}}
+        with:
+          repository: "git-for-windows/git"
+          tag: "v2.48.0-rc1.windows.1"
+          filename: "Git-2.48.0-rc1-arm64.exe"
+
+      - name: Install Git for Windows (aarch64)
+        if: ${{ matrix.runs_on.os == 'windows-11-preview-arm'}}
+        run: |
+          Start-Process -FilePath "Git-2.48.0-rc1-arm64.exe" -ArgumentList "/VERYSILENT" -NoNewWindow -Wait
+          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\cmd" -Encoding utf8
+          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\bin" -Encoding utf8
+
+      - name: install windows compilers
+        if: ${{ matrix.runs_on.os == 'windows-11-preview-arm'}}
+        run: |
+          Set-ExecutionPolicy Bypass -Scope Process
+          Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')) 
+          echo "C:\ProgramData\chocolatey\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          choco install -y llvm
+          Get-ChildItem -Path "C:\Program Files\LLVM\bin" -ErrorAction Ignore
+          Get-ChildItem -Path "C:\Program Files (x86)\LLVM\bin" -ErrorAction Ignore
+          clang --version
+          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\LLVM\bin" -Encoding utf8
+
+      
+      
       - name: Checkout code
         uses: actions/checkout@v3
         with:
