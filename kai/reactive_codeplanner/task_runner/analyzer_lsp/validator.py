@@ -32,7 +32,7 @@ def log_stderr(stderr: IO[bytes]) -> None:
 
 class AnalyzerLSPStep(ValidationStep):
     label_selector: str
-    included_paths: list[str]
+    included_paths: list[Path]
     excluded_paths: list[Path]
     incident_selector: str
 
