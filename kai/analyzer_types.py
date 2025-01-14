@@ -277,7 +277,7 @@ class Report:
                     file_path = pathlib.Path(
                         remove_known_prefixes(urlparse(incident.uri).path)
                     )
-                    if str(file_path).startswith("root/.m2/"):
+                    if file_path.as_posix().startswith(Path("root", ".m2").as_posix()):
                         ## Workaround for bug found in Kantra 0.5.0
                         ## See:  https://github.com/konveyor/kantra/issues/321
                         ## Extra files are being reported in the analysis
