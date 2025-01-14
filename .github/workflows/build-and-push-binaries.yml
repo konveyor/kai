@@ -96,6 +96,21 @@ jobs:
             max_new_tokens: 2048
     runs-on: ${{ matrix.runs_on.os }}
     steps:
+      - name: Download Git for Windows (aarch64)
+        uses: robinraju/release-downloader@v1
+        if: ${{ matrix.runs_on.os == 'windows-11-preview-arm'}}
+        with:
+          repository: "git-for-windows/git"
+          tag: "v2.48.0-rc1.windows.1"
+          filename: "Git-2.48.0-rc1-arm64.exe"
+
+      - name: Install Git for Windows (aarch64)
+        if: ${{ matrix.runs_on.os == 'windows-11-preview-arm'}}
+        run: |
+          Start-Process -FilePath "Git-2.48.0-rc1-arm64.exe" -ArgumentList "/VERYSILENT" -NoNewWindow -Wait
+          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\cmd" -Encoding utf8
+          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\bin" -Encoding utf8
+      
       - name: Checkout code
         uses: actions/checkout@v3
         with:
