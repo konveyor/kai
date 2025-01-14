@@ -75,6 +75,7 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
     analyzer_lsp_rules_path: AutoAbsPathExists
     analyzer_lsp_java_bundle_path: AutoAbsPathExists
     analyzer_lsp_dep_labels_path: Optional[AutoAbsPathExists] = None
+    analyzer_lsp_excluded_paths: Optional[list[AutoAbsPathExists]] = None
 
     @staticmethod
     def model_validate_filepath(filepath: str | Path) -> "KaiRpcApplicationConfig":
@@ -195,6 +196,7 @@ def initialize(
             analyzer_java_bundle_path=app.config.analyzer_lsp_java_bundle_path,
             dep_open_source_labels_path=app.config.analyzer_lsp_dep_labels_path
             or Path(),
+            excluded_paths=app.config.analyzer_lsp_excluded_paths,
         )
 
         internal_config = RpcClientConfig(
@@ -206,6 +208,7 @@ def initialize(
             label_selector="konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee",
             incident_selector=None,
             included_paths=None,
+            excluded_paths=app.config.analyzer_lsp_excluded_paths,
             dep_open_source_labels_path=app.config.analyzer_lsp_dep_labels_path,
         )
 

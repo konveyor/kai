@@ -110,6 +110,7 @@ type Args struct {
 	LabelSelector    string   `json:"label_selector,omitempty"`
 	IncidentSelector string   `json:"incident_selector,omitempty"`
 	IncludedPaths    []string `json:"included_paths,omitempty"`
+	ExcludedPaths    []string `json:"excluded_paths,omitempty"`
 	// RulesFiles       []string
 }
 
@@ -140,14 +141,21 @@ func (a *Analyzer) Analyze(args Args, response *Response) error {
 	}
 	a.Logger.Info("Have selectors", "selectors", selectors)
 
-	var scopes engine.Scope = nil
+	scopes := []engine.Scope{}
 	if len(args.IncludedPaths) > 0 {
-		scopes = engine.IncludedPathsScope(args.IncludedPaths, a.Logger)
-		a.Logger.V(2).Info("Using Scopes", "scopes", scopes.Name())
+		currScope := engine.IncludedPathsScope(args.IncludedPaths, a.Logger)
+		scopes = append(scopes, currScope)
+		a.Logger.V(2).Info("Using inclusion scope", "scope", currScope.Name())
+	}
+
+	if len(args.ExcludedPaths) > 0 {
+		currScope := engine.ExcludedPathsScope(args.ExcludedPaths, a.Logger)
+		scopes = append(scopes, currScope)
+		a.Logger.V(2).Info("Using exclusion scope", "scope", currScope.Name())
 	}
 
 	// This will already wait
-	rulesets := a.engine.RunRulesScoped(context.Background(), a.ruleSets, scopes, selectors...)
+	rulesets := a.engine.RunRulesScoped(context.Background(), a.ruleSets, engine.NewScope(scopes...), selectors...)
 
 	sort.SliceStable(rulesets, func(i, j int) bool {
 		return rulesets[i].Name < rulesets[j].Name

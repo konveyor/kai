@@ -4,7 +4,7 @@ import subprocess  # trunk-ignore(bandit/B404)
 import threading
 from io import BufferedReader, BufferedWriter
 from pathlib import Path
-from typing import IO, Optional, cast
+from typing import IO, Any, Optional, cast
 
 from kai.constants import ENV, PATH_KAI
 from kai.jsonrpc.core import JsonRpcServer
@@ -40,6 +40,7 @@ class AnalyzerLSP:
         analyzer_lsp_path: Path,
         analyzer_java_bundle_path: Path,
         dep_open_source_labels_path: Optional[Path],
+        excluded_paths: Optional[list[Path]] = None,
     ) -> None:
         """This will start an analyzer-lsp jsonrpc server"""
         # trunk-ignore-begin(bandit/B603)
@@ -69,6 +70,7 @@ class AnalyzerLSP:
             env=ENV,
         )
         # trunk-ignore-end(bandit/B603)
+        self.excluded_paths = excluded_paths
 
         self.stderr_logging_thread = threading.Thread(
             target=log_stderr, args=(self.rpc_server.stderr,)
@@ -89,15 +91,18 @@ class AnalyzerLSP:
     def run_analyzer_lsp(
         self,
         label_selector: str,
-        included_paths: list[str],
+        included_paths: list[Path],
         incident_selector: str,
         scoped_paths: Optional[list[Path]] = None,
     ) -> JsonRpcResponse | JsonRpcError | None:
-        request_params = {
+        request_params: dict[str, Any] = {
             "label_selector": label_selector,
-            "included_paths": included_paths,
             "incident_selector": incident_selector,
+            "excluded_paths": self.excluded_paths,
         }
+
+        if included_paths is not None:
+            request_params["included_paths"] = [str(p) for p in included_paths]
 
         if scoped_paths is not None:
             request_params["included_paths"] = [str(p) for p in scoped_paths]

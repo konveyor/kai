@@ -16,7 +16,6 @@ import (
 )
 
 func main() {
-
 	sourceDirectory := flag.String("source-directory", ".", "This will be the absolute path to the source code directory that should be analyzed")
 	rulesDirectory := flag.String("rules-directory", ".", "This will be the absolute path to the rules directory")
 	logFile := flag.String("log-file", "", "This is the file where logs should be stored. By default they will just be written to stderr")
