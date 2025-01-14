@@ -6,7 +6,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import StrEnum
-from logging import INFO
 from pathlib import Path
 from typing import Any, Optional
 
