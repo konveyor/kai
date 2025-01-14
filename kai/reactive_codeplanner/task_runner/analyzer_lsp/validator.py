@@ -111,6 +111,7 @@ class AnalyzerLSPStep(ValidationStep):
                 violation = r.rulesets[key].violations[violationKey]
                 violation.incidents.sort()
                 for i in violation.incidents:
+                    violation.id = violationKey
                     if i.line_number < 0:
                         continue
                     class_to_use = AnalyzerRuleViolation
