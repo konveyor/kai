@@ -41,7 +41,27 @@ def __clean_env() -> dict[str, Any]:
     """
     Returns the environment that should be used when calling out to a subprocess
     """
+    if not getattr(sys, "frozen", False) or not hasattr(sys, "_MEIPASS"):
+        return dict(os.environ)
+
     env: dict[str, Any] = dict(os.environ)  # make a copy of the environment
+    # fix for windows in common pitfalls
+    # https://pyinstaller.org/en/stable/common-issues-and-pitfalls.html#windows
+    if sys.platform == "win32":
+        import ctypes
+
+        ctypes.windll.kernel32.SetDllDirectoryW(None)
+        return env
+
+    # fix for mac os in common pitfalls
+    # https://pyinstaller.org/en/stable/common-issues-and-pitfalls.html#macos
+    if sys.platform == "darwin":
+        for key, path in os.environ.items():
+            if sys._MEIPASS in path:
+                env.pop(key)
+
+        return env
+
     lp_key = "LD_LIBRARY_PATH"  # for GNU/Linux and *BSD.
     lp_orig = env.get(lp_key + "_ORIG")
     if lp_orig is not None:

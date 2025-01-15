@@ -134,7 +134,11 @@ class RepoContextSnapshot:
 
         git_work_tree = git_work_tree.resolve()
         snapshot_work_dir.mkdir(exist_ok=True)
-        git_dir = snapshot_work_dir / f".git-{datetime.now(timezone.utc).isoformat()}"
+        # fmt: off
+        # Note that windows can not use : characters in the filename/path, Black doesn't like this syntax on 3.11
+        git_dir = snapshot_work_dir / f".git-{datetime.now(timezone.utc).strftime("%Y-%m-%d-_%H-%M-%S")}"
+        # fmt: on
+        git_dir.mkdir(exist_ok=True)
 
         # Snapshot is immutable, so we create a temporary snapshot to get the
         # git sha of the initial commit
@@ -223,7 +227,9 @@ class RepoContextManager:
         snapshot_work_dir: Path | None = None,
     ):
         if snapshot_work_dir is None:
-            snapshot_work_dir = Path(tempfile.TemporaryDirectory(delete=False).name)
+            snapshot_work_dir = Path(
+                tempfile.TemporaryDirectory(delete=False).name
+            ).resolve()
 
         self.project_root = project_root
         self.snapshot = RepoContextSnapshot.initialize(
