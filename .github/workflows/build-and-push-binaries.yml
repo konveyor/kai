@@ -110,6 +110,12 @@ jobs:
           Start-Process -FilePath "Git-2.48.0-rc1-arm64.exe" -ArgumentList "/VERYSILENT" -NoNewWindow -Wait
           Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\cmd" -Encoding utf8
           Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\bin" -Encoding utf8
+
+      - name: Setup C/C++ Compiler
+        if: ${{ matrix.runs_on.os == 'windows-11-preview-arm'}}
+        uses: rlalik/setup-cpp-compiler@master
+        with:
+          compiler: gcc-latest
       
       - name: Checkout code
         uses: actions/checkout@v3
