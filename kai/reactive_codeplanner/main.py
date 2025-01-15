@@ -56,11 +56,12 @@ def main() -> None:
     )
 
     parser.add_argument(
-        "--rules-directory",
+        "--rules",
         "-r",
-        help="The root directory of the rules to use during analysis",
+        help="The root directories of the rules to use during analysis",
         type=Path,
         required=True,
+        nargs="+",
     )
 
     parser.add_argument(
@@ -80,11 +81,12 @@ def main() -> None:
     )
 
     parser.add_argument(
-        "--analyzer-lsp-java-bundle",
+        "--analyzer-lsp-java-bundles",
         "-j",
-        help="The path to the analyzer java bundle",
+        help="The path(s) to the analyzer java bundle(s)",
         type=Path,
         required=True,
+        nargs="+",
     )
 
     parser.add_argument(
@@ -115,9 +117,9 @@ def main() -> None:
     config = RpcClientConfig(
         args.source_directory,
         args.analyzer_lsp_server_binary,
-        args.rules_directory,
+        args.rules,
         args.analyzer_lsp_path,
-        args.analyzer_lsp_java_bundle,
+        args.analyzer_lsp_java_bundles,
         args.label_selector,
         args.incident_selector,
         None,
@@ -130,9 +132,9 @@ def main() -> None:
         **tomllib.load(open(args.kai_config, "rb")),
         "root_path": args.source_directory,
         "analyzer_lsp_lsp_path": args.analyzer_lsp_path,
-        "analyzer_lsp_rules_path": args.rules_directory,
+        "analyzer_lsp_rules_paths": args.rules,
         "analyzer_lsp_rpc_path": args.analyzer_lsp_server_binary,
-        "analyzer_lsp_java_bundle_path": args.analyzer_lsp_java_bundle,
+        "analyzer_lsp_java_bundle_paths": args.analyzer_lsp_java_bundles,
         "analyzer_lsp_dep_labels_path": args.dep_open_source_labels_path,
     }
 
@@ -145,9 +147,9 @@ def main() -> None:
     analyzer = AnalyzerLSP(
         analyzer_lsp_server_binary=Path(args.analyzer_lsp_server_binary),
         repo_directory=Path(args.source_directory),
-        rules_directory=Path(args.rules_directory),
+        rules=[Path(args.rules)],
         analyzer_lsp_path=Path(args.analyzer_lsp_path),
-        analyzer_java_bundle_path=Path(args.analyzer_lsp_java_bundle),
+        java_bundles=[Path(args.analyzer_lsp_java_bundle)],
         dep_open_source_labels_path=(
             Path(args.dep_open_source_labels_path)
             if args.dep_open_source_labels_path

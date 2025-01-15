@@ -124,9 +124,9 @@ seed_task = AnalyzerRuleViolation(
 analyzer =  AnalyzerLSP(
     analyzer_lsp_server_binary=config.analyzer_lsp_server_binary,
     repo_directory=config.repo_directory,
-    rules_directory=config.rules_directory,
+    rules=[config.rules_directory],
     analyzer_lsp_path=config.analyzer_lsp_path,
-    analyzer_java_bundle_path=config.analyzer_java_bundle_path,
+    java_bundles=[config.analyzer_java_bundle_path],
     dep_open_source_labels_path=config.dep_open_source_labels_path
     or Path(),
 )
