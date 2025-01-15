@@ -147,7 +147,7 @@ def main() -> None:
     analyzer = AnalyzerLSP(
         analyzer_lsp_server_binary=Path(args.analyzer_lsp_server_binary),
         repo_directory=Path(args.source_directory),
-        rules=[Path(args.rules_directory)],
+        rules=[Path(args.rules)],
         analyzer_lsp_path=Path(args.analyzer_lsp_path),
         java_bundles=[Path(args.analyzer_lsp_java_bundle)],
         dep_open_source_labels_path=(

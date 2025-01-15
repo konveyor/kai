@@ -17,7 +17,7 @@ import (
 
 func main() {
 	sourceDirectory := flag.String("source-directory", ".", "This will be the absolute path to the source code directory that should be analyzed")
-	rules := flag.String("rules-directory", "", "Comma separated list of absolute path to rules directories")
+	rules := flag.String("rules", "", "Comma separated list of absolute path to rules directories")
 	logFile := flag.String("log-file", "", "This is the file where logs should be stored. By default they will just be written to stderr")
 	lspServerPath := flag.String("lspServerPath", "", "this will be the path to the lsp")
 	bundles := flag.String("bundles", "", "Comma separated list of path to java analyzer bundles")
