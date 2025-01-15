@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/go-logr/logr"
@@ -37,7 +38,7 @@ type Analyzer struct {
 	cacheMutex sync.RWMutex
 }
 
-func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, lspServerPath, bundles, depOpenSourceLabelsFile string, ruleFiles []string, log logr.Logger) (*Analyzer, error) {
+func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, lspServerPath, bundles, depOpenSourceLabelsFile, rules string, log logr.Logger) (*Analyzer, error) {
 	prefix, err := filepath.Abs(location)
 	if err != nil {
 		return nil, err
@@ -82,8 +83,8 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 	}
 
 	ruleSets := []engine.RuleSet{}
-	for _, f := range ruleFiles {
-		internRuleSet, _, err := parser.LoadRules(f)
+	for _, f := range strings.Split(rules, ",") {
+		internRuleSet, _, err := parser.LoadRules(strings.TrimSpace(f))
 		if err != nil {
 			log.Error(err, "unable to parse all the rules for ruleset", "file", f)
 			cancelFunc()

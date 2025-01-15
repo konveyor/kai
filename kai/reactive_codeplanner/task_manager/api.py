@@ -10,9 +10,9 @@ from typing import Optional, Sequence
 class RpcClientConfig:
     repo_directory: Path
     analyzer_lsp_server_binary: Path
-    rules_directory: Path
+    analyzer_rules: list[Path]
     analyzer_lsp_path: Path
-    analyzer_java_bundle_path: Path
+    analyzer_bundle_paths: list[Path]
     label_selector: Optional[str]
     incident_selector: Optional[str]
     included_paths: Optional[list[Path]] = None

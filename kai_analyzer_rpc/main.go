@@ -17,10 +17,10 @@ import (
 
 func main() {
 	sourceDirectory := flag.String("source-directory", ".", "This will be the absolute path to the source code directory that should be analyzed")
-	rulesDirectory := flag.String("rules-directory", ".", "This will be the absolute path to the rules directory")
+	rules := flag.String("rules-directory", "", "Comma separated list of absolute path to rules directories")
 	logFile := flag.String("log-file", "", "This is the file where logs should be stored. By default they will just be written to stderr")
-	lspServerPath := flag.String("lspServerPath", "/Users/shurley/repos/kai/jdtls/bin/jdtls", "this will be the path to the lsp")
-	bundles := flag.String("bundles", "/Users/shurley/repos/MTA/java-analyzer-bundle/java-analyzer-bundle.core/target/java-analyzer-bundle.core-1.0.0-SNAPSHOT.jar", "this is the path to the java analyzer bundle")
+	lspServerPath := flag.String("lspServerPath", "", "this will be the path to the lsp")
+	bundles := flag.String("bundles", "", "Comma separated list of path to java analyzer bundles")
 	depOpenSourceLabelsFile := flag.String("depOpenSourceLabelsFile", "", "Path to the dep open source labels file")
 
 	// TODO(djzager): We should do verbosity type argument(s)
@@ -34,8 +34,16 @@ func main() {
 		panic(fmt.Errorf("source directory must be valid"))
 	}
 
-	if rulesDirectory == nil || *rulesDirectory == "" {
-		panic(fmt.Errorf("rules directory must be valid"))
+	if rules == nil || *rules == "" {
+		panic(fmt.Errorf("rules must be set"))
+	}
+
+	if lspServerPath == nil || *lspServerPath == "" {
+		panic(fmt.Errorf("lspServerPath must be set"))
+	}
+
+	if bundles == nil || *bundles == "" {
+		panic(fmt.Errorf("bundles must be set"))
 	}
 
 	// TODO(djzager): Handle log level/location more like reputable LSP servers
@@ -71,7 +79,7 @@ func main() {
 	}
 	l.Info("Maven is installed")
 
-	l.Info("Starting Analyzer", "source-dir", *sourceDirectory, "rules-dir", *rulesDirectory, "lspServerPath", *lspServerPath, "bundles", *bundles, "depOpenSourceLabelsFile", *depOpenSourceLabelsFile)
+	l.Info("Starting Analyzer", "source-dir", *sourceDirectory, "rules-dir", *rules, "lspServerPath", *lspServerPath, "bundles", *bundles, "depOpenSourceLabelsFile", *depOpenSourceLabelsFile)
 	// We need to start up the JSON RPC server and start listening for messages
 	analyzerService, err := service.NewAnalyzer(
 		10000, 10, 10,
@@ -80,7 +88,7 @@ func main() {
 		*lspServerPath,
 		*bundles,
 		*depOpenSourceLabelsFile,
-		[]string{*rulesDirectory},
+		*rules,
 		l,
 	)
 	if err != nil {

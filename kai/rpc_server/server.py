@@ -72,8 +72,8 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
 
     analyzer_lsp_lsp_path: AutoAbsPathExists
     analyzer_lsp_rpc_path: AutoAbsPathExists
-    analyzer_lsp_rules_path: AutoAbsPathExists
-    analyzer_lsp_java_bundle_path: AutoAbsPathExists
+    analyzer_lsp_rules_paths: list[AutoAbsPathExists]
+    analyzer_lsp_java_bundle_paths: list[AutoAbsPathExists]
     analyzer_lsp_dep_labels_path: Optional[AutoAbsPathExists] = None
     analyzer_lsp_excluded_paths: Optional[list[AutoAbsPathExists]] = None
 
@@ -191,9 +191,9 @@ def initialize(
         app.analyzer = AnalyzerLSP(
             analyzer_lsp_server_binary=app.config.analyzer_lsp_rpc_path,
             repo_directory=app.config.root_path,
-            rules_directory=app.config.analyzer_lsp_rules_path,
+            rules=app.config.analyzer_lsp_rules_paths,
+            java_bundles=app.config.analyzer_lsp_java_bundle_paths,
             analyzer_lsp_path=app.config.analyzer_lsp_lsp_path,
-            analyzer_java_bundle_path=app.config.analyzer_lsp_java_bundle_path,
             dep_open_source_labels_path=app.config.analyzer_lsp_dep_labels_path
             or Path(),
             excluded_paths=app.config.analyzer_lsp_excluded_paths,
@@ -202,9 +202,9 @@ def initialize(
         internal_config = RpcClientConfig(
             repo_directory=app.config.root_path,
             analyzer_lsp_server_binary=app.config.analyzer_lsp_rpc_path,
-            rules_directory=app.config.analyzer_lsp_rules_path,
+            analyzer_rules=app.config.analyzer_lsp_rules_paths,
             analyzer_lsp_path=app.config.analyzer_lsp_lsp_path,
-            analyzer_java_bundle_path=app.config.analyzer_lsp_java_bundle_path,
+            analyzer_bundle_paths=app.config.analyzer_lsp_java_bundle_paths,
             label_selector="konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee",
             incident_selector=None,
             included_paths=None,
