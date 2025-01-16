@@ -29,6 +29,9 @@ on:
 
 # the build matrix exists as an env var so that we can
 # share that info reliably with the "calling" workflow
+# removing  "os": "windows-11-preview-arm", "shell": "cmd" }, from the matrix
+# we have to wait for the a real image to be published that actually has what we
+# need to use it. This wil be fine for now.
 env:
   BUILD_MATRIX: | 
     [ 
@@ -36,7 +39,6 @@ env:
       { "os": "macos-latest", "shell": "bash" },
       { "os": "macos-13", "shell": "bash" },
       { "os": "windows-latest", "shell": "cmd" },
-      { "os": "windows-11-preview-arm", "shell": "cmd" },
       { "os": "ubuntu-24.04-arm", "shell": "bash" }
     ]
 jobs:
@@ -91,11 +93,11 @@ jobs:
       matrix:
         runs_on: ${{ fromJson(needs.share_matrix_info.outputs.matrix_info) }}
         models:
-          - provider: ChatIBMGenAI
-            model_id: meta-llama/llama-3-1-70b-instruct
-            max_new_tokens: 2048
+          - provider: ChatOpenAI
+            model_id: kai-test-generation
     runs-on: ${{ matrix.runs_on.os }}
     steps:
+      # Keeping these steps, because if we must, we may need to use them to get arm builds for windows.
       - name: Download Git for Windows (aarch64)
         uses: robinraju/release-downloader@v1
         if: ${{ matrix.runs_on.os == 'windows-11-preview-arm'}}
@@ -117,11 +119,14 @@ jobs:
           Set-ExecutionPolicy Bypass -Scope Process
           Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')) 
           echo "C:\ProgramData\chocolatey\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          choco install visualstudio2022buildtools -y --package-parameters "--allWorkloads --includeRecommended --includeOptional --passive --locale en-US"
           choco install -y llvm
           Get-ChildItem -Path "C:\Program Files\LLVM\bin" -ErrorAction Ignore
           Get-ChildItem -Path "C:\Program Files (x86)\LLVM\bin" -ErrorAction Ignore
-          clang --version
+          & "C:\Program Files\LLVM\bin\clang.exe" --version
           Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\LLVM\bin" -Encoding utf8
+          Set-Alias -Name clang -Value "C:\Program Files\LLVM\bin\clang.exe"
+          clang --version
 
       
       
@@ -207,6 +212,8 @@ jobs:
       - name: Run e2e test
         if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
         run: |
+          Get-ChildItem -Path "C:\hostedtoolscache" -ErrorAction Ignore
+          Get-ChildItem -Path "C:\hostedtoolscache/maven/3.9.9" -ErrorAction Ignore
           git config --global user.email "no-reply@konveyor.io"
           git config --global user.name "Konveyor CI"
 
@@ -217,10 +224,10 @@ jobs:
 
           New-Item -Path ".\example\initialize.toml" -ItemType File -Value @"
           root_path = "./coolstore"
-          analyzer_lsp_java_bundle_path = "./analysis/bundle.jar"
+          analyzer_lsp_java_bundle_paths = [ "./analysis/bundle.jar" ]
           analyzer_lsp_lsp_path = "./analysis/jdtls/bin/jdtls"
           analyzer_lsp_rpc_path = "./analysis/kai-analyzer-rpc"
-          analyzer_lsp_rules_path = "./analysis/rulesets/default/generated"
+          analyzer_lsp_rules_paths = [ "./analysis/rulesets/default/generated" ]
           analyzer_lsp_dep_labels_path = "./analysis/maven.default.index"
 
           demo_mode = true
@@ -234,11 +241,11 @@ jobs:
           [model_provider]
           provider = "${{ matrix.models.provider }}"
           [model_provider.args]
-          model_id = "${{ matrix.models.model_id }}"
+          model = "${{ matrix.models.model_id }}"
           
           "@
 
-          if (${{ matrix.models.max_new_tokens }}) {
+          if ("${{ matrix.models.max_new_tokens }}") {
             Add-Content -Path ".\example\initialize.toml" -Value "parameters.max_new_tokens = ${{ matrix.models.max_new_tokens }}"
           }
           
@@ -265,6 +272,7 @@ jobs:
           }
         env:
           GENAI_KEY: "BWAHAHA"
+          OPENAI_API_KEY: "BWAHAHA"
 
 
       - name: Run e2e test
@@ -325,6 +333,7 @@ jobs:
         env:
           PATH: ${{ env.PATH }}
           GENAI_KEY: "BWAHAHA"
+          OPENAI_API_KEY: "BWAHAHA"
 
       - name: lowercase runner.os (linux & mac)
         if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}

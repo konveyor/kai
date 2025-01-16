@@ -41,7 +41,7 @@ class AnalyzerRuleViolation(ValidationError):
             and self.incident.message == error2.incident.message
             and self.file == error2.file
         ):
-            logger.info("should match on line numbers %s -- %s", self.line, error2.line)
+            logger.debug("found match line numbers may be off %s -- %s", self, error2)
             return True
 
         return False
