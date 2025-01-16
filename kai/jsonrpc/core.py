@@ -1,3 +1,4 @@
+import re
 import threading
 from typing import Any, Callable, Literal, Optional, overload
 
@@ -72,9 +73,18 @@ class JsonRpcApplication:
 
                 log.log(TRACE, "Calling method: %s", request.method)
 
-                self.notify_callbacks[request.method](
-                    request=request, server=server, app=self
-                )
+                any_executed = False
+                for method, callback in self.notify_callbacks.items():
+                    # method is a regex, check if request.method matches it
+                    if re.match(method, request.method):
+                        log.log(TRACE, "Calling method: %s", request.method)
+
+                        callback(request=request, server=server, app=self)
+                        any_executed = True
+
+                if not any_executed:
+                    log.error(f"Notify method not found: {request.method}")
+                    log.error(f"Notify methods: {self.notify_callbacks.keys()}")
 
     @overload
     def add(
