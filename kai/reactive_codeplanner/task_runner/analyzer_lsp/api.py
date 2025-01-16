@@ -46,8 +46,80 @@ class AnalyzerRuleViolation(ValidationError):
 
         return False
 
+    def __lt__(self, other: object) -> bool:
+
+        if not isinstance(other, Task):
+            return False
+        # If it has a higher priority, then it needs to be bumped up
+        if self.priority < other.priority:
+            return True
+        if self.oldest_ancestor().priority < other.oldest_ancestor().priority:
+            return True
+
+        # Always handle Maven issues if same priority first.
+        if not isinstance(other, AnalyzerRuleViolation):
+            return False
+
+        # We should group similar files under test together, even across ruleset and violation.
+        if self.file < other.file:
+            return True
+
+        # Handle rulesets with names first
+        if self.ruleset.name is None:
+            return False
+
+        if other.ruleset.name is None:
+            return False
+
+        if self.ruleset.name < other.ruleset.name:
+            return True
+
+        if self.violation.id < other.violation.id:
+            return True
+
+        if self.line < other.line:
+            return True
+
+        return False
+
 
 class AnalyzerDependencyRuleViolation(AnalyzerRuleViolation):
     """The same as a AnalyzerRuleValidation but higher priority and used by the dependency task_runner"""
 
     priority: int = 1
+
+    def __lt__(self, other: object) -> bool:
+
+        if not isinstance(other, Task):
+            return False
+        # If it has a higher priority, then it needs to be bumped up
+        if self.priority < other.priority:
+            return True
+        if self.oldest_ancestor().priority < other.oldest_ancestor().priority:
+            return True
+
+        # Always handle Maven issues if same priority first.
+        if not isinstance(other, AnalyzerDependencyRuleViolation):
+            return False
+
+        # We should group similar files under test together, even across ruleset and violation.
+        if self.file < other.file:
+            return True
+
+        # Handle rulesets with names first
+        if self.ruleset.name is None:
+            return False
+
+        if other.ruleset.name is None:
+            return False
+
+        if self.ruleset.name < other.ruleset.name:
+            return True
+
+        if self.violation.id < other.violation.id:
+            return True
+
+        if self.line < other.line:
+            return True
+
+        return False

@@ -119,7 +119,8 @@ jobs:
           Set-ExecutionPolicy Bypass -Scope Process
           Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')) 
           echo "C:\ProgramData\chocolatey\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          choco install visualstudio2022buildtools -y --package-parameters "--allWorkloads --includeRecommended --includeOptional --passive --locale en-US"
+          choco feature enable -n allowGlobalConfirmation
+          choco install visualstudio2022-workload-vctools --package-parameters "--includeOptional"
           choco install -y llvm
           Get-ChildItem -Path "C:\Program Files\LLVM\bin" -ErrorAction Ignore
           Get-ChildItem -Path "C:\Program Files (x86)\LLVM\bin" -ErrorAction Ignore
@@ -146,6 +147,12 @@ jobs:
         with:
           distribution: "microsoft"
           java-version: "17"
+
+      - name: Set up Maven
+        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
+        uses: stCarolas/setup-maven@v5
+        with:
+          maven-version: 3.9.9
 
       - id: release_info
         if: ${{ github.event.inputs.publish_artifacts_to_release || false }}
@@ -304,7 +311,7 @@ jobs:
           provider = "${{ matrix.models.provider }}"
          
           [model_provider.args]
-          model_id = "${{ matrix.models.model_id }}"
+          model = "${{ matrix.models.model_id }}"
           EOF
 
           if [[ -n "${{ matrix.models.max_new_tokens }}" ]]; then
