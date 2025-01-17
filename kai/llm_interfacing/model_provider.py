@@ -19,7 +19,7 @@ from langchain_core.load import dumps, loads
 from langchain_core.messages import BaseMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_openai import ChatOpenAI
+from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from pydantic.v1.utils import deep_update
 
 from kai.kai_config import KaiConfigModels
@@ -158,6 +158,22 @@ class ModelProvider:
                 }
                 model_args = deep_update(defaults, config.args)
                 model_id = model_args["model"]
+
+            case "AzureChatOpenAI":
+                model_class = AzureChatOpenAI
+
+                # TODO: Someone please check these defaults
+                defaults = {
+                    "azure_deployment": "gpt-35-turbo",
+                    "api_version": "2023-06-01-preview",
+                    "temperature": 0.1,
+                    "max_tokens": None,
+                    "timeout": None,
+                    "max_retries": 2,
+                }
+
+                model_args = deep_update(defaults, config.args)
+                model_id = model_args["azure_deployment"]
 
             case _:
                 raise Exception(f"Unrecognized provider '{config.provider}'")
