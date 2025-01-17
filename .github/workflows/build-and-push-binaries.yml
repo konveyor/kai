@@ -128,8 +128,6 @@ jobs:
           Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\LLVM\bin" -Encoding utf8
           Set-Alias -Name clang -Value "C:\Program Files\LLVM\bin\clang.exe"
           clang --version
-
-      
       
       - name: Checkout code
         uses: actions/checkout@v3
@@ -153,6 +151,14 @@ jobs:
         uses: stCarolas/setup-maven@v5
         with:
           maven-version: 3.9.9
+
+      - name: Add things to path
+        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
+        run: |
+          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\cmd" -Encoding utf8
+          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\bin" -Encoding utf8
+          Add-Content -Path $env:GITHUB_PATH -Value "C:\hostedtoolcache\windows\maven\3.9.9\x64\bin" -Encoding utf8
+          Add-Content -Path $env:GITHUB_ENV -Value "Path=$env:Path;C:\hostedtoolcache\windows\maven\3.9.9\x64\bin" -Encoding utf8
 
       - id: release_info
         if: ${{ github.event.inputs.publish_artifacts_to_release || false }}
@@ -219,8 +225,6 @@ jobs:
       - name: Run e2e test
         if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
         run: |
-          Get-ChildItem -Path "C:\hostedtoolscache" -ErrorAction Ignore
-          Get-ChildItem -Path "C:\hostedtoolscache/maven/3.9.9" -ErrorAction Ignore
           git config --global user.email "no-reply@konveyor.io"
           git config --global user.name "Konveyor CI"
 

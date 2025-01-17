@@ -221,7 +221,6 @@ def run_demo(report: Report, server: JsonRpcServer) -> None:
 
             incidents.sort()
 
-            KAI_LOG.info("debugging incident selection")
             for incident in incidents:
                 KAI_LOG.info(
                     f"incident: {incident.violation_name} --- {incident.line_number}"
