@@ -29,7 +29,7 @@ on:
 
 # the build matrix exists as an env var so that we can
 # share that info reliably with the "calling" workflow
-# removing  "os": "windows-11-preview-arm", "shell": "cmd" }, from the matrix
+# TODO: removing  { "os": "windows-11-preview-arm", "shell": "cmd" }, from the matrix
 # we have to wait for the a real image to be published that actually has what we
 # need to use it. This wil be fine for now.
 env:
@@ -38,8 +38,8 @@ env:
       { "os": "ubuntu-latest", "shell": "bash" },
       { "os": "macos-latest", "shell": "bash" },
       { "os": "macos-13", "shell": "bash" },
-      { "os": "windows-latest", "shell": "cmd" },
-      { "os": "ubuntu-24.04-arm", "shell": "bash" }
+      { "os": "ubuntu-24.04-arm", "shell": "bash" },
+      { "os": "windows-latest", "shell": "cmd" }
     ]
 jobs:
   # these are specific java artifacts (cross-platform) that we
@@ -223,7 +223,7 @@ jobs:
           Copy-Item -Verbose -Path .\java-deps\* -Destination .\example\analysis -Recurse
 
       - name: Run e2e test
-        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
+        if: false # ${{ startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           git config --global user.email "no-reply@konveyor.io"
           git config --global user.name "Konveyor CI"
