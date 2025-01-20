@@ -197,6 +197,10 @@ class TaskManager:
     def initialize_priority_queue(self) -> None:
         logger.info("Initializing task stacks.")
 
+        # When we re-initialze the priorty queue we need to start fresh
+        # Assume that something has changed in the project and we nned
+        # to re-create the priority queue
+        self._stale_validated_files = []
         new_tasks = self.run_validators()
         for task in new_tasks:
             if not self.should_skip_task(task):

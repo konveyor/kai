@@ -83,7 +83,7 @@ Structure your output in Markdown format such as:
 ## Reasoning
 Write the step by step reasoning in this markdown section. If you are unsure of a step or reasoning, clearly state you are unsure and why.
 
-## Updated Java File
+## Updated File
 ```java
 // Write the updated file for Quarkus in this section. If the file should be removed, make the content of the updated file a comment explaining it should be removed.
 ```
@@ -155,7 +155,7 @@ If you have any additional details or steps that need to be performed, put it he
                 in_java_file = False
                 in_additional_details = False
                 continue
-            if line.strip() == "## Updated Java File":
+            if line.strip() == "## Updated File":
                 in_java_file = True
                 in_reasoning = False
                 in_additional_details = False
@@ -168,11 +168,11 @@ If you have any additional details or steps that need to be performed, put it he
             if in_java_file:
                 if "```java" in line or "```" in line:
                     continue
-                java_file = "\n".join([java_file, line])
+                java_file = os.linesep.join([java_file, line])
             if in_reasoning:
-                reasoning = "\n".join([reasoning, line])
+                reasoning = os.linesep.join([reasoning, line])
             if in_additional_details:
-                additional_details = "\n".join([additional_details, line])
+                additional_details = os.linesep.join([additional_details, line])
         return _llm_response(
             reasoning=reasoning,
             java_file=java_file,

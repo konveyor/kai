@@ -4,6 +4,7 @@ import re
 import subprocess  # trunk-ignore(bandit/B404)
 from dataclasses import dataclass, field
 from pathlib import Path
+from shutil import which
 from typing import Optional, Type
 
 from opentelemetry import trace
@@ -142,7 +143,8 @@ def run_maven(source_directory: Path = Path(".")) -> tuple[int, str, Optional[Pa
     Runs 'mvn compile' and returns the combined stdout and stderr output.
     Also returns the path to the pom.xml file.
     """
-    cmd = ["mvn", "compile"]
+    mavenPath = which("mvn") or "mvn"
+    cmd = [mavenPath, "compile"]
     #  trunk-ignore-begin(bandit/B603)
     try:
         process = subprocess.run(

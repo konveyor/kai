@@ -464,7 +464,6 @@ def get_codeplan_agent_solution(
         seed_tasks: list[Task] = []
 
         params.incidents.sort()
-        app.log.info("params: %s", params.incidents)
         for incident in params.incidents:
 
             class_to_use = AnalyzerRuleViolation
@@ -491,8 +490,6 @@ def get_codeplan_agent_solution(
                 )
             )
         app.task_manager.set_seed_tasks(*seed_tasks)
-
-        app.log.info(f"get_codeplan_agent_solution: {seed_tasks}")
 
         app.log.info(
             f"starting code plan loop with iterations: {params.max_iterations}, max depth: {params.max_depth}, and max priority: {params.max_priority}"
