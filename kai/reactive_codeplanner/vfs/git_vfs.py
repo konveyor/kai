@@ -152,6 +152,10 @@ class RepoContextSnapshot:
         with open(git_dir / "info" / "exclude", "a") as f:
             f.write(f"/{str(snapshot_work_dir.name)}\n")
 
+        returncode, _, stderr = tmp_snapshot.git(["config", "commit.gpgsign", "false"])
+        if returncode != 0:
+            raise Exception(f"Failed to disable gpgsign: {stderr}")
+
         tmp_snapshot = tmp_snapshot.commit(msg)
 
         return RepoContextSnapshot(
