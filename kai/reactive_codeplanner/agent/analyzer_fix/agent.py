@@ -168,11 +168,11 @@ If you have any additional details or steps that need to be performed, put it he
             if in_java_file:
                 if "```java" in line or "```" in line:
                     continue
-                java_file = os.linesep.join([java_file, line])
+                java_file = "\n".join([java_file, line])
             if in_reasoning:
-                reasoning = os.linesep.join([reasoning, line])
+                reasoning = "\n".join([reasoning, line])
             if in_additional_details:
-                additional_details = os.linesep.join([additional_details, line])
+                additional_details = "\n".join([additional_details, line])
         return _llm_response(
             reasoning=reasoning,
             java_file=java_file,
