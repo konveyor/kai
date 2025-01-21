@@ -118,9 +118,13 @@ class AnalyzerLSPStep(ValidationStep):
                     if "pom.xml" in i.uri:
                         class_to_use = AnalyzerDependencyRuleViolation
 
+                    logger.info("testing url path windows", "original", i.uri, "path as of today", urlparse(i.uri).path, "attempt from Path", str(Path(urlparse(i.uri).path).absolute()))
+                    logger.info(i.uri)
+                    uri_path = urlparse(i.uri).path.removeprefix("/")
+
                     validation_errors.append(
                         class_to_use(
-                            file=urlparse(i.uri).path,
+                            file=str(Path(uri_path).absolute()),
                             line=i.line_number,
                             column=-1,
                             message=i.message,
