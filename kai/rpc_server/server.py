@@ -1,4 +1,5 @@
 import os
+import platform
 import tomllib
 import traceback
 from pathlib import Path
@@ -471,8 +472,9 @@ def get_codeplan_agent_solution(
                 class_to_use = AnalyzerDependencyRuleViolation
 
             # handle windows paths
-            uri_path = urlparse(incident.uri).path.removeprefix("/")
-
+            uri_path = urlparse(incident.uri).path
+            if platform.system() == "Windows":
+                uri_path.removeprefix("/")
 
             seed_tasks.append(
                 class_to_use(
