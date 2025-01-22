@@ -77,7 +77,7 @@ Searched dependencies:
             query.append(get_maven_query_from_code(ask.code))
 
         msg = [HumanMessage(content=self.message.render(message=ask.msg, query=query))]
-        fix_gen_response = self._model_provider.invoke(msg)
+        fix_gen_response = self._model_provider.invoke(msg, ask.cache_path_resolver)
         llm_response = self.parse_llm_response(fix_gen_response.content)
         # Really we need to re-call the agent
         if not llm_response:
@@ -101,6 +101,7 @@ Searched dependencies:
                     code="",
                     query=query,
                     times=ask.times + 1,
+                    task=ask.task,
                 )
             )
         if isinstance(response, list):

@@ -1,5 +1,6 @@
 import os
 import platform
+import re
 import tomllib
 import traceback
 from pathlib import Path
@@ -22,6 +23,7 @@ from pydantic import BaseModel, ConfigDict
 
 from kai.analyzer import AnalyzerLSP
 from kai.analyzer_types import ExtendedIncident, Incident, RuleSet, Violation
+from kai.cache import JSONCacheWithTrace
 from kai.constants import PATH_LLM_CACHE
 from kai.jsonrpc.core import JsonRpcApplication, JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcId
@@ -69,6 +71,8 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
 
     demo_mode: bool = False
     cache_dir: Optional[AutoAbsPath] = None
+    trace_enabled: bool = False
+    fail_on_cache_mismatch: bool = False
     enable_reflection: bool = True
 
     analyzer_lsp_lsp_path: AutoAbsPathExists
@@ -182,9 +186,17 @@ def initialize(
             app.config.cache_dir = PATH_LLM_CACHE
 
         try:
-            model_provider = ModelProvider(
-                app.config.model_provider, app.config.demo_mode, app.config.cache_dir
+            cache = JSONCacheWithTrace(
+                cache_dir=app.config.cache_dir,
+                model_id="",
+                enable_trace=app.config.trace_enabled,
+                trace_dir=app.config.log_config.log_dir_path / "traces",
+                fail_on_cache_mismatch=app.config.fail_on_cache_mismatch,
             )
+            model_provider = ModelProvider(
+                app.config.model_provider, app.config.demo_mode, cache
+            )
+            cache.model_id = re.sub(r"[\.:\\/]", "_", model_provider.model_id)
         except Exception as e:
             app.log.error("unable to get model provider:", e)
             raise

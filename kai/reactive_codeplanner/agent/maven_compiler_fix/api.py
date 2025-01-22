@@ -3,6 +3,7 @@ from typing import Optional
 
 from kai.reactive_codeplanner.agent.api import AgentRequest, AgentResult
 from kai.reactive_codeplanner.agent.reflection_agent import ReflectionTask
+from kai.reactive_codeplanner.task_manager.api import Task
 from kai.reactive_codeplanner.vfs.git_vfs import SpawningResult
 
 
@@ -13,12 +14,22 @@ class MavenCompilerAgentRequest(AgentRequest):
     message: str
 
 
-@dataclass
 class MavenCompilerAgentResult(AgentResult, SpawningResult):
-    updated_file_contents: str | None = None
-    additional_information: str | None = None
-    original_file: str | None = None
-    message: str | None = None
+    def __init__(
+        self,
+        task: Task,
+        reasoning: str = "",
+        updated_file_contents: str = "",
+        additional_information: str = "",
+        original_file: str = "",
+        message: str = "",
+    ):
+        self.task = task
+        self.updated_file_contents = updated_file_contents
+        self.additional_information = additional_information
+        self.original_file = original_file
+        self.message = message
+        self.reasoning = reasoning
 
     def to_reflection_task(self) -> Optional[ReflectionTask]:
 
@@ -38,4 +49,5 @@ class MavenCompilerAgentResult(AgentResult, SpawningResult):
             reasoning=self.reasoning,
             updated_file_contents=self.updated_file_contents,
             original_file_contents=self.original_file,
+            task=self.task,
         )
