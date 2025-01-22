@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, fields
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
 
 # NOTE(@JonahSussman): Why is this necessary when we have
@@ -28,40 +28,28 @@ class Task:
     children: list["Task"] = field(default_factory=list, compare=False)
     retry_count: int = 0
     max_retries: int = 3
-    creation_order: int = field(init=False)
-
-    _creation_counter = 0
 
     def oldest_ancestor(self) -> "Task":
         if self.parent:
             return self.parent.oldest_ancestor()
         return self
 
-    def __post_init__(self) -> None:
-        self.creation_order = Task._creation_counter
-        Task._creation_counter += 1
-
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Task) and self.__dict__ == other.__dict__
+
+    def sort_key(self) -> tuple[Any, ...]:
+        """
+        By default, we want to:
+          - sort by depth descending (so a deeper node is considered "less" first),
+          - then by priority ascending (lower number means higher priority),
+          - then by type-level priority (if child classes override priority).
+        """
+        return (-self.depth, self.priority, self.__class__.priority)
 
     def __lt__(self, other: object) -> bool:
         if not isinstance(other, Task):
             raise ValueError(f"Cannot compare Task with {type(other)}")
-
-        # Lower priority number means higher priority
-        # For same priority, higher depth means process children first (DFS)
-        # For same priority and depth, rely on creation order just to make it deterministic
-        return (
-            -self.depth,
-            self.priority,
-            self.__class__.priority,
-            self.creation_order,
-        ) < (
-            -other.depth,
-            other.priority,
-            other.__class__.priority,
-            other.creation_order,
-        )
+        return self.sort_key() < other.sort_key()
 
     def __hash__(self) -> int:
         return hash(tuple(sorted(self.__dict__.items())))
@@ -123,6 +111,15 @@ class ValidationError(Task):
                 and self.message == error2.message
             )
         return False
+
+    def sort_key(self) -> tuple[Any, ...]:
+        """
+        Extend the parent's sort_key with file, line, column, and message.
+        So all ValidationErrors are ordered by (depth, priority, ...) first,
+        then by file, line, column, message.
+        """
+        base_key = super().sort_key()  # from Task
+        return base_key + (self.file, self.line, self.column, self.message)
 
     def __str__(self) -> str:
         shadowed_priority: int

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 from kai.analyzer_types import Incident, RuleSet, Violation
 from kai.logging.logging import get_logger
@@ -46,80 +47,17 @@ class AnalyzerRuleViolation(ValidationError):
 
         return False
 
-    def __lt__(self, other: object) -> bool:
-
-        if not isinstance(other, Task):
-            return False
-        # If it has a higher priority, then it needs to be bumped up
-        if self.priority < other.priority:
-            return True
-        if self.oldest_ancestor().priority < other.oldest_ancestor().priority:
-            return True
-
-        # Always handle Maven issues if same priority first.
-        if not isinstance(other, AnalyzerRuleViolation):
-            return False
-
-        # We should group similar files under test together, even across ruleset and violation.
-        if self.file < other.file:
-            return True
-
-        # Handle rulesets with names first
-        if self.ruleset.name is None:
-            return False
-
-        if other.ruleset.name is None:
-            return False
-
-        if self.ruleset.name < other.ruleset.name:
-            return True
-
-        if self.violation.id < other.violation.id:
-            return True
-
-        if self.line < other.line:
-            return True
-
-        return False
+    def sort_key(self) -> tuple[Any, ...]:
+        base_key = super().sort_key()
+        ruleset_name = self.ruleset.name if self.ruleset and self.ruleset.name else ""
+        viol_id = self.violation.id if self.violation else 0
+        inc_msg = (
+            self.incident.message if self.incident and self.incident.message else ""
+        )
+        return base_key + (ruleset_name, viol_id, inc_msg)
 
 
 class AnalyzerDependencyRuleViolation(AnalyzerRuleViolation):
     """The same as a AnalyzerRuleValidation but higher priority and used by the dependency task_runner"""
 
     priority: int = 1
-
-    def __lt__(self, other: object) -> bool:
-
-        if not isinstance(other, Task):
-            return False
-        # If it has a higher priority, then it needs to be bumped up
-        if self.priority < other.priority:
-            return True
-        if self.oldest_ancestor().priority < other.oldest_ancestor().priority:
-            return True
-
-        # Always handle Maven issues if same priority first.
-        if not isinstance(other, AnalyzerDependencyRuleViolation):
-            return False
-
-        # We should group similar files under test together, even across ruleset and violation.
-        if self.file < other.file:
-            return True
-
-        # Handle rulesets with names first
-        if self.ruleset.name is None:
-            return False
-
-        if other.ruleset.name is None:
-            return False
-
-        if self.ruleset.name < other.ruleset.name:
-            return True
-
-        if self.violation.id < other.violation.id:
-            return True
-
-        if self.line < other.line:
-            return True
-
-        return False
