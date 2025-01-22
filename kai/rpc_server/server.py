@@ -1,4 +1,5 @@
 import os
+import platform
 import tomllib
 import traceback
 from pathlib import Path
@@ -469,9 +470,15 @@ def get_codeplan_agent_solution(
             class_to_use = AnalyzerRuleViolation
             if "pom.xml" in incident.uri:
                 class_to_use = AnalyzerDependencyRuleViolation
+
+            # handle windows paths
+            uri_path = urlparse(incident.uri).path
+            if platform.system() == "Windows":
+                uri_path.removeprefix("/")
+
             seed_tasks.append(
                 class_to_use(
-                    file=urlparse(incident.uri).path,
+                    file=str(Path(uri_path).absolute()),
                     line=incident.line_number,
                     column=-1,  # Not contained within report?
                     message=incident.message,

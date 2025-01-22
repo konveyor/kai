@@ -1,3 +1,4 @@
+import platform
 from pathlib import Path
 from typing import IO, Any, Optional, cast
 from urllib.parse import urlparse
@@ -118,9 +119,13 @@ class AnalyzerLSPStep(ValidationStep):
                     if "pom.xml" in i.uri:
                         class_to_use = AnalyzerDependencyRuleViolation
 
+                    uri_path = urlparse(i.uri).path
+                    if platform.system() == "Windows":
+                        uri_path = uri_path.removeprefix("/")
+
                     validation_errors.append(
                         class_to_use(
-                            file=urlparse(i.uri).path,
+                            file=str(Path(uri_path).absolute()),
                             line=i.line_number,
                             column=-1,
                             message=i.message,
