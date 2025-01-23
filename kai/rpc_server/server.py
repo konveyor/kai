@@ -474,7 +474,7 @@ def get_codeplan_agent_solution(
             # handle windows paths
             uri_path = urlparse(incident.uri).path
             if platform.system() == "Windows":
-                uri_path.removeprefix("/")
+                uri_path = uri_path.removeprefix("/")
 
             seed_tasks.append(
                 class_to_use(
