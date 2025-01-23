@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from functools import cached_property
 from typing import Any
 
 from kai.analyzer_types import Incident, RuleSet, Violation
@@ -29,6 +30,28 @@ class AnalyzerRuleViolation(ValidationError):
             shadowed_priority = self.__class__.priority
 
         return f"{self.__class__.__name__}<loc={self.file}:{self.line}:{self.column}, violation.id={self.violation.id}>(priority={self.priority}({shadowed_priority}), depth={self.depth}, retries={self.retry_count})"
+
+    @cached_property
+    def sources(self) -> list[str]:
+        source_key = "konveyor.io/source="
+        source = [
+            label.replace(source_key, "")
+            for label in self.violation.labels
+            if source_key in label
+        ]
+        source.sort()
+        return source
+
+    @cached_property
+    def targets(self) -> list[str]:
+        target_key = "konveyor.io/target="
+        target = [
+            label.replace(target_key, "")
+            for label in self.violation.labels
+            if target_key in label
+        ]
+        target.sort()
+        return target
 
     __repr__ = __str__
 

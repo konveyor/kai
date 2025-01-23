@@ -23,30 +23,26 @@ logger = get_logger(__name__)
 @dataclass
 class _llm_response:
     reasoning: str | None
-    java_file: str | None
+    source_file: str | None
     addional_information: str | None
 
 
 class AnalyzerAgent(Agent):
-    system_message = SystemMessage(
-        content="""
-    You are an experienced java developer, who specializes in migrating code to the Quarkus Framework
+    system_message_template = Template(
+        """
+    You are an experienced {{ language }} developer, who specializes in migrating code from {{ source }} to {{ target }}
     """
     )
 
     chat_message_template = Template(
         """
-    I will give you a JavaEE file for which I want to take one step towards migrating to Quarkus.
+    I will give you a {{ source }} file for which I want to take one step towards migrating to {{ target }}.
 
 I will provide you with static source code analysis information highlighting an issue which needs to be addressed.
 
-I will also provide you with an example of how a similar issue was solved in the past via a solved example.
-
-You can refer to the solved example for a pattern of how to update the input Java EE file to Quarkus.
-
 Fix only the problem described. Other problems will be solved in subsequent steps so it is unnecessary to handle them now.
 
-Before attempting to migrate the code to Quarkus reason through what changes are required and why.
+Before attempting to migrate the code to {{ target }} reason through what changes are required and why.
 
 Pay attention to changes you make and impacts to external dependencies in the pom.xml as well as changes to imports we need to consider.
 
@@ -83,9 +79,9 @@ Structure your output in Markdown format such as:
 ## Reasoning
 Write the step by step reasoning in this markdown section. If you are unsure of a step or reasoning, clearly state you are unsure and why.
 
-## Updated File
-```java
-// Write the updated file for Quarkus in this section. If the file should be removed, make the content of the updated file a comment explaining it should be removed.
+## Updated {{ language }} File
+```{{ language }}
+// Write the updated file in this section. If the file should be removed, make the content of the updated file a comment explaining it should be removed.
 ```
 
 ## Additional Information (optional)
@@ -118,7 +114,21 @@ If you have any additional details or steps that need to be performed, put it he
 
         language = guess_language(ask.file_content, file_name)
 
+        source = " and ".join(ask.sources)
+        target = " and ".join(ask.targets)
+
+        system_message = SystemMessage(
+            content=self.system_message_template.render(
+                language=language,
+                source=source,
+                target=target,
+            )
+        )
+
         content = self.chat_message_template.render(
+            source=source,
+            target=target,
+            language=language,
             src_file_contents=ask.file_content,
             src_file_name=file_name,
             src_file_language=language,
@@ -126,56 +136,56 @@ If you have any additional details or steps that need to be performed, put it he
         )
 
         aimessage = self._model_provider.invoke(
-            [self.system_message, HumanMessage(content=content)]
+            [system_message, HumanMessage(content=content)]
         )
 
-        resp = self.parse_llm_response(aimessage)
+        resp = self.parse_llm_response(aimessage, language)
         return AnalyzerFixResponse(
             encountered_errors=[],
             file_to_modify=Path(os.path.abspath(ask.file_path)),
             reasoning=resp.reasoning,
             additional_information=resp.addional_information,
-            updated_file_content=resp.java_file,
+            updated_file_content=resp.source_file,
         )
 
-    def parse_llm_response(self, message: BaseMessage) -> _llm_response:
+    def parse_llm_response(self, message: BaseMessage, language: str) -> _llm_response:
         """Private method that will be used to parse the contents and get the results"""
 
         lines_of_output = cast(str, message.content).splitlines()
 
-        in_java_file = False
+        in_source_file = False
         in_reasoning = False
         in_additional_details = False
-        java_file = ""
+        source_file = ""
         reasoning = ""
         additional_details = ""
         for line in lines_of_output:
             if line.strip() == "## Reasoning":
                 in_reasoning = True
-                in_java_file = False
+                in_source_file = False
                 in_additional_details = False
                 continue
-            if line.strip() == "## Updated File":
-                in_java_file = True
+            if line.strip() == f"## Updated {language} File":
+                in_source_file = True
                 in_reasoning = False
                 in_additional_details = False
                 continue
             if "## Additional Information" in line.strip():
                 in_reasoning = False
-                in_java_file = False
+                in_source_file = False
                 in_additional_details = True
                 continue
-            if in_java_file:
-                if "```java" in line or "```" in line:
+            if in_source_file:
+                if f"```{language}" in line or "```" in line:
                     continue
-                java_file = "\n".join([java_file, line])
+                source_file = "\n".join([source_file, line])
             if in_reasoning:
                 reasoning = "\n".join([reasoning, line])
             if in_additional_details:
                 additional_details = "\n".join([additional_details, line])
         return _llm_response(
             reasoning=reasoning,
-            java_file=java_file,
+            source_file=source_file,
             addional_information=additional_details,
         )
 

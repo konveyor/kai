@@ -58,6 +58,8 @@ class AnalyzerTaskRunner(TaskRunner):
             file_path=Path(os.path.abspath(task.file)),
             file_content=src_file_contents,
             incidents=[task.incident],
+            sources=task.sources,
+            targets=task.targets,
         )
         result = self.agent.execute(agent_request)
 
@@ -91,6 +93,7 @@ class AnalyzerTaskRunner(TaskRunner):
                     file_path=Path(task.file),
                     original_contents=src_file_contents,
                     updated_contents=result.updated_file_content,
+                    task=task,
                 ),
             )
             return TaskResult(
@@ -109,11 +112,13 @@ class AnalyzerTaskSpawningResult(SpawningResult):
         updated_contents: str,
         file_path: Path,
         issues: list[str],
+        task: AnalyzerRuleViolation,
     ) -> None:
         self.original_file_contents: str = original_contents
         self.updated_file_contents: str = updated_contents
         self.file_path: Path = file_path
         self.issues: list[str] = issues
+        self.task = task
 
     def to_reflection_task(self) -> Optional[ReflectionTask]:
         return ReflectionTask(
@@ -121,4 +126,5 @@ class AnalyzerTaskSpawningResult(SpawningResult):
             original_file_contents=self.original_file_contents,
             updated_file_contents=self.updated_file_contents,
             issues=self.issues,
+            target_technology=" and ".join(self.task.targets),
         )

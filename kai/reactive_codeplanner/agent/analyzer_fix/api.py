@@ -8,6 +8,8 @@ from kai.reactive_codeplanner.agent.api import AgentRequest, AgentResult
 class AnalyzerFixRequest(AgentRequest):
     file_content: str
     incidents: list[Incident]
+    sources: list[str]
+    targets: list[str]
 
 
 @dataclass

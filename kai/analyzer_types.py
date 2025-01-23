@@ -296,6 +296,7 @@ class Report:
                             "violation_name": violation_name,
                             "ruleset_description": ruleset.description,
                             "violation_description": violation.description,
+                            "violation_labels": violation.labels,
                         }
                     )
 

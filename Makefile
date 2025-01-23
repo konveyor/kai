@@ -53,7 +53,7 @@ get-analyzer-deps:
 
 # This will get the rulesets and set them to be used by run_demo.py
 get-rulesets:
-	(cd example/analysis && rm -rf rulesets && git clone https://github.com/konveyor/rulesets); rm -rf example/analysis/rulesets/preview
+	(cd example/analysis && rm -rf rulesets && git clone --depth 1 --branch v0.6.0 https://github.com/konveyor/rulesets); rm -rf example/analysis/rulesets/preview
 
 run-demo:
 	cd example && python run_demo.py
