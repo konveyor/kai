@@ -1,4 +1,3 @@
-import itertools
 from dataclasses import dataclass
 from functools import cached_property
 from typing import Any
@@ -34,24 +33,22 @@ class AnalyzerRuleViolation(ValidationError):
 
     @cached_property
     def sources(self) -> list[str]:
-        labels = set(
-            itertools.chain(*[v.labels for v in self.ruleset.violations.values()])
-        )
         source_key = "konveyor.io/source="
         source = [
-            label.replace(source_key, "") for label in labels if source_key in label
+            label.replace(source_key, "")
+            for label in self.violation.labels
+            if source_key in label
         ]
         source.sort()
         return source
 
     @cached_property
     def targets(self) -> list[str]:
-        labels = set(
-            itertools.chain(*[v.labels for v in self.ruleset.violations.values()])
-        )
         target_key = "konveyor.io/target="
         target = [
-            label.replace(target_key, "") for label in labels if target_key in label
+            label.replace(target_key, "")
+            for label in self.violation.labels
+            if target_key in label
         ]
         target.sort()
         return target

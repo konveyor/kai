@@ -232,7 +232,11 @@ class ModelProvider:
                 except Exception as e:
                     LOG.error(f"Failed retrieving response from cache - {e}")
 
-            response = self.llm.invoke(input, config, stop=stop, **kwargs)
+            try:
+                response = self.llm.invoke(input, config, stop=stop, **kwargs)
+            except Exception as e:
+                LOG.info("unable to call LLM, LLM input: %s", dumps({"input": input}))
+                raise e
             to_cache = response.model_copy()
             to_cache.response_metadata.get("meta", {}).pop("created_at", None)
             try:
