@@ -274,7 +274,7 @@ class TaskManager:
 
     def should_skip_task(self, task: Task) -> bool:
         skip = task in self.processed_tasks or task in self.ignored_tasks
-        logger.debug("Should skip task %s: %s", task, skip)
+        logger.log(logging.TRACE, "Should skip task %s: %s", task, skip)
         return skip
 
     def is_similar_to_task(self, task1: Task, task2: Optional[Task]) -> bool:
@@ -282,16 +282,27 @@ class TaskManager:
             return False
         same = task2 == task1
         if same:
-            logger.debug("Task %s is same to prior task %s: %s", task1, task2, same)
+            logger.log(
+                logging.TRACE,
+                "Task %s is same to prior task %s: %s",
+                task1,
+                task2,
+                same,
+            )
+            return same
         # TODO(fabianvf): Give tasks the ability to provide a specific fuzzy equals function?
         similar = False
         if hasattr(task1, "fuzzy_equals"):
             similar = task1.fuzzy_equals(task2, offset=2)
             if similar:
-                logger.debug(
-                    "Task %s is similar to prior task %s: %s", task1, task2, similar
+                logger.log(
+                    logging.TRACE,
+                    "Task %s is similar to prior task %s: %s",
+                    task1,
+                    task2,
+                    similar,
                 )
-        return same or similar
+        return False
 
     def handle_ignored_task(self, task: Task) -> None:
         logger.info("Handling ignored task: %s", task)

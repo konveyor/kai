@@ -21,14 +21,16 @@ class PriorityTaskQueue:
                     existing_task.priority = task.priority
                     # Overwrite with the existing task since it could carry history with it
                     task = task_stack.pop(idx)
-                    logger.debug(
+                    logger.log(
+                        logging.TRACE,
                         "Task %s already exists in priority %s stack. New task takes precedence.",
                         task,
                         priority_level,
                     )
                     break
                 else:
-                    logger.debug(
+                    logger.log(
+                        logging.TRACE,
                         "Task %s already exists in priority %s stack. Existing task takes precedence.",
                         task,
                         priority_level,
@@ -41,17 +43,20 @@ class PriorityTaskQueue:
         priority = task.oldest_ancestor().priority
         if priority not in self.task_stacks:
             self.task_stacks[priority] = []
-            logger.debug("Created new task stack for priority %s.", priority)
+            logger.log(
+                logging.TRACE, "Created new task stack for priority %s.", priority
+            )
         self.task_stacks[priority].append(task)
         self.task_stacks[priority].sort(reverse=True)
-        logger.debug("Task %s added to priority %s stack.", task, priority)
+        logger.log(logging.TRACE, "Task %s added to priority %s stack.", task, priority)
 
     def pop(self, max_depth: Optional[int] = None) -> Task:
         for priority in sorted(self.task_stacks.keys()):
             task_stack = self.task_stacks[priority]
             if self._stack_has_tasks_within_depth(task_stack, max_depth):
                 task = self._pop_task_within_depth(task_stack, max_depth)
-                logger.debug(
+                logger.log(
+                    logging.TRACE,
                     "Popped task %s from priority %s stack with max_depth %s.",
                     task,
                     priority,
@@ -59,7 +64,11 @@ class PriorityTaskQueue:
                 )
                 if not task_stack:
                     del self.task_stacks[priority]
-                    logger.debug("Priority %s stack is empty and removed.", priority)
+                    logger.log(
+                        logging.TRACE,
+                        "Priority %s stack is empty and removed.",
+                        priority,
+                    )
                 return task
         if max_depth is not None:
             raise IndexError(
@@ -100,13 +109,18 @@ class PriorityTaskQueue:
             task_stack = self.task_stacks[priority_level]
             if task in task_stack:
                 task_stack.remove(task)
-                logger.debug(
-                    "Removed task %s from priority %s stack.", task, priority_level
+                logger.log(
+                    logging.TRACE,
+                    "Removed task %s from priority %s stack.",
+                    task,
+                    priority_level,
                 )
                 if not task_stack:
                     del self.task_stacks[priority_level]
-                    logger.debug(
-                        "Priority %s stack is empty and removed.", priority_level
+                    logger.log(
+                        logging.TRACE,
+                        "Priority %s stack is empty and removed.",
+                        priority_level,
                     )
                 break  # Since tasks should only be in one stack, we can break
 
