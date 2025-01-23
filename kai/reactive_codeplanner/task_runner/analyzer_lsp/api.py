@@ -1,7 +1,7 @@
 import itertools
 from dataclasses import dataclass
-from typing import Any
 from functools import cached_property
+from typing import Any
 
 from kai.analyzer_types import Incident, RuleSet, Violation
 from kai.logging.logging import get_logger
