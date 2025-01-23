@@ -18,7 +18,7 @@ from urllib.parse import urlparse
 
 import yaml
 from opentelemetry import trace
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from kai.analyzer import AnalyzerLSP
 from kai.analyzer_types import ExtendedIncident, Incident, RuleSet, Violation
@@ -77,6 +77,8 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
     analyzer_lsp_java_bundle_paths: list[AutoAbsPathExists]
     analyzer_lsp_dep_labels_path: Optional[AutoAbsPathExists] = None
     analyzer_lsp_excluded_paths: Optional[list[AutoAbsPathExists]] = None
+
+    model_config = ConfigDict(protected_namespaces=())
 
     @staticmethod
     def model_validate_filepath(filepath: str | Path) -> "KaiRpcApplicationConfig":
