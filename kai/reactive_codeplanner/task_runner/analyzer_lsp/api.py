@@ -38,9 +38,11 @@ class AnalyzerRuleViolation(ValidationError):
             itertools.chain(*[v.labels for v in self.ruleset.violations.values()])
         )
         source_key = "konveyor.io/source="
-        return [
+        source = [
             label.replace(source_key, "") for label in labels if source_key in label
         ]
+        source.sort()
+        return source
 
     @cached_property
     def targets(self) -> list[str]:
@@ -48,9 +50,11 @@ class AnalyzerRuleViolation(ValidationError):
             itertools.chain(*[v.labels for v in self.ruleset.violations.values()])
         )
         target_key = "konveyor.io/target="
-        return [
+        target = [
             label.replace(target_key, "") for label in labels if target_key in label
         ]
+        target.sort()
+        return target
 
     __repr__ = __str__
 

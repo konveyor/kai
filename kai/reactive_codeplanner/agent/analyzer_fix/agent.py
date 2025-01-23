@@ -178,7 +178,7 @@ If you have any additional details or steps that need to be performed, put it he
             if in_source_file:
                 if f"```{language}" in line or "```" in line:
                     continue
-                source_file = os.linesep.join([source_file, line])
+                source_file = "\n".join([source_file, line])
             if in_reasoning:
                 reasoning = "\n".join([reasoning, line])
             if in_additional_details:
