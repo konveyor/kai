@@ -1,0 +1,32 @@
+# - Install
+#   https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker
+#
+# - Add this to your settings.json
+#   ```
+#   "cSpell.customDictionaries": {
+#     "custom-words": {
+#       "name": "custom-words",
+#       "path": "./.trunk/configs/custom-words.txt",
+#       "addWords": true,
+#     }
+#   },
+#   "cSpell.enabled": true,
+#   ```
+#
+# - Misspelled words will have a blue underline. Access the quick fix menu (Ctrl
+#   + .) and add the word to the `custom-words` dictionary.
+
+version: "0.2"
+# Suggestions can sometimes take longer on CI machines,
+# leading to inconsistent results.
+suggestionsTimeout: 5000 # ms
+dictionaries:
+  - python
+  - typescript
+  - go
+  - java
+  - custom-words
+
+dictionaryDefinitions:
+  - name: custom-words
+    path: ./.trunk/configs/custom-words.txt
