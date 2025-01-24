@@ -96,7 +96,7 @@ class AnalyzerLSP:
 
         except Exception as e:
             self.stop()
-            raise Exception(f"Analyzer failed to start: {str(e)}")
+            raise Exception(f"Analyzer failed to start: {str(e)}") from e
 
     def run_analyzer_lsp(
         self,
