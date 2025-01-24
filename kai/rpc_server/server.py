@@ -198,6 +198,7 @@ def initialize(
                 analyzer_lsp_path=app.config.analyzer_lsp_lsp_path,
                 dep_open_source_labels_path=app.config.analyzer_lsp_dep_labels_path
                 or Path(),
+                excluded_paths=app.config.analyzer_lsp_excluded_paths,
             )
         except Exception as e:
             server.shutdown_flag = True
