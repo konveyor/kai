@@ -24,6 +24,7 @@ lint:
         - name: lint
           run: bandit --exit-zero -c bandit.yaml --format json --output ${tmpfile} ${target}
   enabled:
+    - cspell@8.17.2
     - gofmt@1.20.4
     - golangci-lint@1.61.0
     - actionlint@1.7.3
@@ -65,6 +66,8 @@ lint:
         - notebooks/**
         # Complaining about intentionally empty values
         - .github/workflows/**
+        #  Weird recursive cspell thing doesn't check this file properly
+        - .trunk/configs/custom-words.txt
 actions:
   enabled:
     - trunk-announce

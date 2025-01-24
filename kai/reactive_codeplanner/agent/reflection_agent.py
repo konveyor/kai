@@ -468,7 +468,7 @@ Here's the input information:
         if isinstance(content, list):
             return None
         match_updated_file = re.search(
-            r"[##|\*\*] [U|u]pdated [F|f]ile\s+.*?```\w+\n([\s\S]*?)```",
+            r"[##|\*\*] [U|u]pdated [F|f]ile\s+.*?```\w+\n([\s\S]*?)```",  # trunk-ignore(cspell)
             content,
             re.DOTALL,
         )

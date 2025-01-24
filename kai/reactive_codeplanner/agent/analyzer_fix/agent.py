@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 class _llm_response:
     reasoning: str | None
     source_file: str | None
-    addional_information: str | None
+    additional_information: str | None
 
 
 class AnalyzerAgent(Agent):
@@ -135,16 +135,16 @@ If you have any additional details or steps that need to be performed, put it he
             incidents=ask.incidents,
         )
 
-        aimessage = self._model_provider.invoke(
+        ai_message = self._model_provider.invoke(
             [system_message, HumanMessage(content=content)]
         )
 
-        resp = self.parse_llm_response(aimessage, language)
+        resp = self.parse_llm_response(ai_message, language)
         return AnalyzerFixResponse(
             encountered_errors=[],
             file_to_modify=Path(os.path.abspath(ask.file_path)),
             reasoning=resp.reasoning,
-            additional_information=resp.addional_information,
+            additional_information=resp.additional_information,
             updated_file_content=resp.source_file,
         )
 
@@ -186,7 +186,7 @@ If you have any additional details or steps that need to be performed, put it he
         return _llm_response(
             reasoning=reasoning,
             source_file=source_file,
-            addional_information=additional_details,
+            additional_information=additional_details,
         )
 
 

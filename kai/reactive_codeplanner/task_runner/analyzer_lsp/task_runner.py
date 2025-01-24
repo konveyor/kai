@@ -21,10 +21,12 @@ tracer = trace.get_tracer("analyzer_task_runner")
 
 
 class AnalyzerTaskRunner(TaskRunner):
-    """This agent is reponsible for taking a given Incident and determining a fix for that incident.
+    """
+    This agent is responsible for taking a given Incident and determining a fix
+    for that incident.
 
-    For a given file it will asking LLM's for the changes that are needed for the at whole file
-    returning the results.
+    For a given file it will asking LLM's for the changes that are needed for
+    the at whole file returning the results.
     """
 
     def __init__(self, agent: AnalyzerAgent) -> None:
