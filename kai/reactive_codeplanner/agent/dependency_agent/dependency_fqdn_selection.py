@@ -44,7 +44,7 @@ class FQDNDependencySelectorAgent(Agent):
         """
 You are an excellent Java developer with expertise in dependency management.
 
-Given an initial Maven compiler and a list of attempted searchs, provide an updated dependency to use.
+Given an initial Maven compiler and a list of attempted searches, provide an updated dependency to use.
 Do not use a dependency that has already been tried.
                        
 Think through the problem fully. Do not update the dependency if it has moved to newer versions; we want to find the version that matches, regardless of whether it is old or not. 
@@ -89,7 +89,7 @@ Searched dependencies:
             artifact_id=llm_response.artifact_id, group_id=llm_response.group_id
         )
         response = search_fqdn_query(new_query)
-        logger.debug("got response: %r from searchign FQDN")
+        logger.debug("got response: %r from searching FQDN")
         ## only run this 5 times
         if (not response or isinstance(response, list)) and ask.times < 5:
             ## need to recursively call execute.

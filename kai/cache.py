@@ -49,7 +49,7 @@ class BadCacheError(ValueError): ...
 
 
 class JSONCacheWithTrace(Cache):
-    """This is a simple file based JSON cache that uses Langchains dump / load api
+    """This is a simple file based JSON cache that uses Langchain's dump / load api
     In addition to caching, also supports generating traces of cache in a separate dir
     """
 
@@ -170,7 +170,7 @@ class JSONCacheWithTrace(Cache):
 
 class TaskBasedPathResolver(CachePathResolver):
     """Generates cache paths unique to each Task in reactive codeplanner.
-    The generated path mimicks the original spawn hieararchy of the task.
+    The generated path mimics the original spawn hierarchy of the task.
     """
 
     def __init__(self, task: Task, request_type: str = "llm_request"):

@@ -91,7 +91,9 @@ class TestCache(unittest.TestCase):
 
     def test_task_based_path_resolver(self) -> None:
         # level 1 dir
-        path_resolver = TaskBasedPathResolver(task=self.t1, request_type="analyzerfix")
+        path_resolver = TaskBasedPathResolver(
+            task=self.t1, request_type="analyzerfix"
+        )  # cspell: disable-line
         t1_cache_path = path_resolver.cache_path()
         self.assertEqual(t1_cache_path, self.t1_cache_expected_path)
 

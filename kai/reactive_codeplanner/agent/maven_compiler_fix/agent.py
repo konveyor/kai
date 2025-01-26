@@ -67,19 +67,18 @@ class MavenCompilerAgent(Agent):
             ask.cache_path_resolver,
         )
 
-        resp = self.parse_llm_response(ask.task, ai_message)
+        resp = self.parse_llm_response(ai_message)
+        resp.task = ask.task
         resp.file_to_modify = ask.file_path
         resp.message = ask.message
         resp.original_file = ask.file_contents
         return resp
 
-    def parse_llm_response(
-        self, task: Task, message: BaseMessage
-    ) -> MavenCompilerAgentResult:
+    def parse_llm_response(self, message: BaseMessage) -> MavenCompilerAgentResult:
         """Private method that will be used to parse the contents and get the results"""
 
         if isinstance(message.content, list):
-            return MavenCompilerAgentResult(task)
+            return MavenCompilerAgentResult()
 
         lines_of_output = message.content.splitlines()
 
@@ -114,7 +113,6 @@ class MavenCompilerAgent(Agent):
             if in_additional_details:
                 additional_details = "\n".join([additional_details, line])
         return MavenCompilerAgentResult(
-            task=task,
             reasoning=reasoning,
             updated_file_contents=java_file,
             additional_information=additional_details,

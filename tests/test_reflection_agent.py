@@ -8,6 +8,7 @@ from kai.reactive_codeplanner.agent.reflection_agent import (
     ReflectionAgent,
     ReflectionTask,
 )
+from kai.reactive_codeplanner.task_manager.api import ValidationError
 
 
 class TestReflectionAgent(unittest.TestCase):
@@ -73,6 +74,7 @@ class TestReflectionAgent(unittest.TestCase):
         self.tc_pom_path.write_text(updated_pom_content)
 
         task = ReflectionTask(
+            task=ValidationError(file="test", message="test", line=1, column=1),
             file_path=self.tc_pom_path,
             app_language="Java",
             issues=[
@@ -97,6 +99,7 @@ class TestReflectionAgent(unittest.TestCase):
 
         # testing that we terminate as expected when LLM says so
         task = ReflectionTask(
+            task=ValidationError(file="test", message="test", line=1, column=1),
             file_path=self.tc_pom_path,
             app_language="Java",
             issues=[

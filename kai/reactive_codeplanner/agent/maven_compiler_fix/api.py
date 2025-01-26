@@ -14,22 +14,13 @@ class MavenCompilerAgentRequest(AgentRequest):
     message: str
 
 
+@dataclass
 class MavenCompilerAgentResult(AgentResult, SpawningResult):
-    def __init__(
-        self,
-        task: Task,
-        reasoning: str = "",
-        updated_file_contents: str = "",
-        additional_information: str = "",
-        original_file: str = "",
-        message: str = "",
-    ):
-        self.task = task
-        self.updated_file_contents = updated_file_contents
-        self.additional_information = additional_information
-        self.original_file = original_file
-        self.message = message
-        self.reasoning = reasoning
+    updated_file_contents: str | None = None
+    additional_information: str | None = None
+    original_file: str | None = None
+    message: str | None = None
+    task: Task | None = None
 
     def to_reflection_task(self) -> Optional[ReflectionTask]:
 
@@ -40,6 +31,7 @@ class MavenCompilerAgentResult(AgentResult, SpawningResult):
             or self.message is None
             or self.file_to_modify is None
             or self.reasoning is None
+            or self.task is None
         ):
             return None
 
