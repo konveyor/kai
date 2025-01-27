@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 
 from kai.analyzer_types import Category, Incident, RuleSet, Violation
 from kai.cache import BadCacheError, JSONCacheWithTrace, TaskBasedPathResolver
@@ -167,10 +167,18 @@ class TestCache(unittest.TestCase):
             cache.get(input="test_bad_input", path=cache_path)
 
         # test that a trace file is generated
-        expected_trace_file = (
-            Path(self.trace_dir) / "dummy" / self.t1_cache_expected_path
+        path_resolver = TaskBasedPathResolver(task=self.t1, request_type="analyzerfix")
+        cache_path = path_resolver.cache_path()
+        cache.put(
+            path=cache_path,
+            input=[HumanMessage(content="human"), AIMessage(content="ai")],
+            output=AIMessage("response"),
         )
-        self.assertTrue(expected_trace_file.exists())
+        expected_trace_dir = (
+            Path(self.trace_dir) / "dummy" / self.t1_cache_expected_path.with_suffix("")
+        )
+        self.assertTrue((expected_trace_dir / "input").exists())
+        self.assertTrue((expected_trace_dir / "output").exists())
 
         cache_path = path_resolver.cache_path()
         # another request on the same cache path

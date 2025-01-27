@@ -1,5 +1,4 @@
 import re
-import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Optional
@@ -7,6 +6,7 @@ from typing import Any, Optional
 from langchain_core.language_models import LanguageModelInput
 from langchain_core.load import dumps, loads
 from langchain_core.messages import BaseMessage
+from langchain_core.prompt_values import PromptValue
 
 from kai.jsonrpc.util import AutoAbsPath
 from kai.logging.logging import TRACE, get_logger
@@ -76,15 +76,52 @@ class JSONCacheWithTrace(Cache):
         self.fail_on_cache_mismatch = fail_on_cache_mismatch
         LOG.info("Using cache dir: %s", self.cache_dir)
 
-    def _trace(self, cache_file: Path) -> None:
+    def _to_str(self, input: LanguageModelInput) -> str:
+        match input:
+            case PromptValue():
+                repr = ""
+                for idx, msg in enumerate(input.to_messages()):
+                    repr = f"{repr}\n\nMessage-{idx}\n{msg.pretty_repr()}"
+                return repr
+            case str():
+                return input
+            case list():
+                repr = ""
+                for idx, item in enumerate(input):
+                    match item:
+                        case _ if isinstance(item, BaseMessage) or issubclass(
+                            item, BaseMessage
+                        ):
+                            repr = f"{repr}\n\nMessage-{idx}\n{item.pretty_repr()}"
+                        case str():
+                            repr = f"{repr}\n\nMessage-{idx}\n{item}"
+                        case tuple():
+                            repr = f"{repr}\n\nMessage-{idx}\n{item[0]}\n{item[1]}"
+                        case dict():
+                            repr = f"{repr}\n\nMessage-{idx}\n{str(item)}"
+                return repr
+        return ""
+
+    def _trace(
+        self,
+        cache_file: Path,
+        input: Optional[LanguageModelInput],
+        output: Optional[BaseMessage],
+    ) -> None:
         if not self.enable_trace or self.trace_dir is None:
             return None
-        dest_path = self.trace_dir / cache_file.relative_to(self.cache_dir)
-        if dest_path.exists():
-            return None
+        dest_dir = self.trace_dir / cache_file.relative_to(self.cache_dir).with_suffix(
+            ""
+        )
+
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
         try:
-            dest_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy(cache_file, dest_path, follow_symlinks=False)
+            if input is not None:
+                input_repr = self._to_str(input)
+                (dest_dir / "input").write_text(input_repr)
+            if output is not None:
+                (dest_dir / "output").write_text(output.pretty_repr())
         except Exception as e:
             LOG.log(TRACE, f"Failed to generate cache trace {e}")
 
@@ -103,19 +140,19 @@ class JSONCacheWithTrace(Cache):
         try:
             if cache_file.exists():
                 LOG.debug(f"Cache exists, loading from {cache_file}")
-                self._trace(cache_file)
                 content = cache_file.read_text()
                 cache_entry: dict[str, Any] = loads(content)
                 cached_input: Optional[LanguageModelInput] = cache_entry.get(
                     "input", None
                 )
+                cached_res: Optional[BaseMessage] = cache_entry.get("output", None)
+                self._trace(cache_file, cached_input, cached_res)
                 if cached_input != input:
                     LOG.debug("Cache miss, cached input does not match given input")
                     LOG.debug(f"Cached input: {cached_input}")
                     LOG.debug(f"Given input: {input}")
                     if self.fail_on_cache_mismatch:
                         raise BadCacheError("Cache file content mismatch")
-                cached_res: Optional[BaseMessage] = cache_entry.get("output", None)
                 if cached_res is not None:
                     return cached_res
                 else:
@@ -163,7 +200,7 @@ class JSONCacheWithTrace(Cache):
             )
             cache_file.touch()
             cache_file.write_text(json_repr)
-            self._trace(cache_file)
+            self._trace(cache_file, input, to_cache)
         except Exception as e:
             LOG.error(f"Failed to store response to cache - {e}")
 
