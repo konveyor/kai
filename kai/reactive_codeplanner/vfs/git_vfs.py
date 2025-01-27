@@ -111,15 +111,13 @@ class RepoContextSnapshot:
             **popen_kwargs,
         }
 
-        BLUE = "\033[94m"
-
-        log.log(TRACE, f"{BLUE}executing: \033[0m" + " ".join(GIT + args))
+        log.log(TRACE, "executing: " + " ".join(GIT + args))
         proc = subprocess.Popen(GIT + args, **popen_kwargs)  # trunk-ignore(bandit/B603)
         stdout, stderr = proc.communicate()
 
-        log.log(TRACE, f"{BLUE}returncode:\033[0m {proc.returncode}")
-        log.log(TRACE, f"{BLUE}stdout:\033[0m\n{stdout}")
-        log.log(TRACE, f"{BLUE}stderr:\033[0m\n{stderr}")
+        log.log(TRACE, f"returncode: {proc.returncode}")
+        log.log(TRACE, f"stdout:\n{stdout}")
+        log.log(TRACE, f"stderr:\n{stderr}")
 
         return proc.returncode, stdout, stderr
 
