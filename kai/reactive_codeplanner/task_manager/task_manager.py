@@ -59,6 +59,11 @@ class TaskManager:
         logger.info("TaskManager initialized.")
 
     def set_seed_tasks(self, *tasks: Task) -> None:
+        # Clear ignored/processed tasks, assuming the user is going to want
+        # to resolve any issues found even if they've been seen before
+        self.processed_tasks = set()
+        self.ignored_tasks = list()
+
         # Clear existing seed tasks
         existing_tasks = self.priority_queue.task_stacks.get(0, [])
         for task in existing_tasks:
