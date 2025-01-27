@@ -18,7 +18,7 @@ class MavenCompilerAgent(Agent):
 
     You must reason through the required changes and rewrite the Java file to make it compile. 
 
-    You will then provide an step-by-step explanation of the changes required tso that someone could recreate it in a similar situation.
+    You will then provide an step-by-step explanation of the changes required so that someone could recreate it in a similar situation.
     """
     )
 
