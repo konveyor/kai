@@ -7,7 +7,6 @@ from kai.reactive_codeplanner.agent.maven_compiler_fix.api import (
     MavenCompilerAgentRequest,
     MavenCompilerAgentResult,
 )
-from kai.reactive_codeplanner.task_manager.api import Task
 
 
 class MavenCompilerAgent(Agent):

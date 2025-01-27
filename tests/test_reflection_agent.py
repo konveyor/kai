@@ -14,9 +14,7 @@ from kai.reactive_codeplanner.task_manager.api import ValidationError
 class TestReflectionAgent(unittest.TestCase):
     def setUp(self) -> None:
         super().setUp()
-        from dotenv import load_dotenv
 
-        load_dotenv()
         self.reflection_agent: ReflectionAgent = ReflectionAgent(
             model_provider=ModelProvider(KaiConfigModels(provider="FakeListChatModel"))
         )
