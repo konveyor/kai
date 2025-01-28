@@ -62,6 +62,7 @@ class AnalyzerTaskRunner(TaskRunner):
             incidents=[task.incident],
             sources=task.sources,
             targets=task.targets,
+            task=task,
         )
         result = self.agent.execute(agent_request)
 
@@ -129,4 +130,5 @@ class AnalyzerTaskSpawningResult(SpawningResult):
             updated_file_contents=self.updated_file_contents,
             issues=self.issues,
             target_technology=" and ".join(self.task.targets),
+            task=self.task,
         )

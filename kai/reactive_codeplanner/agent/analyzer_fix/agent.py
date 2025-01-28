@@ -136,7 +136,8 @@ If you have any additional details or steps that need to be performed, put it he
         )
 
         ai_message = self._model_provider.invoke(
-            [system_message, HumanMessage(content=content)]
+            [system_message, HumanMessage(content=content)],
+            ask.cache_path_resolver,
         )
 
         resp = self.parse_llm_response(ai_message, language)

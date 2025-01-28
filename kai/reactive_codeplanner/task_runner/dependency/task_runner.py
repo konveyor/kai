@@ -59,7 +59,7 @@ class DependencyTaskRunner(TaskRunner):
             msg = f"Maven Compiler Error:\n{task.message}"
 
         maven_dep_response = self._agent.execute(
-            MavenDependencyRequest(Path(task.file), msg)
+            MavenDependencyRequest(Path(task.file), task, msg)
         )
         logger.info("got mvn dep response: %r", maven_dep_response)
 
@@ -75,7 +75,7 @@ class DependencyTaskRunner(TaskRunner):
 
         if not maven_dep_response.fqdn_response:
             logger.info(
-                "we got a final answer, but it must have skipped steps in the LLM, we need to review the LLM call resposne %r",
+                "we got a final answer, but it must have skipped steps in the LLM, we need to review the LLM call response %r",
                 maven_dep_response,
             )
             return TaskResult(encountered_errors=[], modified_files=[])

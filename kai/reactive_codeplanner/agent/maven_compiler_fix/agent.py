@@ -62,10 +62,12 @@ class MavenCompilerAgent(Agent):
         )
 
         ai_message = self.model_provider.invoke(
-            [self.system_message, HumanMessage(content=content)]
+            [self.system_message, HumanMessage(content=content)],
+            ask.cache_path_resolver,
         )
 
         resp = self.parse_llm_response(ai_message)
+        resp.task = ask.task
         resp.file_to_modify = ask.file_path
         resp.message = ask.message
         resp.original_file = ask.file_contents

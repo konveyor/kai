@@ -82,7 +82,11 @@ class MavenCompilerTaskRunner(TaskRunner):
 
         result = self.agent.execute(
             MavenCompilerAgentRequest(
-                Path(task.file), src_file_contents, task.line, task.message
+                Path(task.file),
+                task,
+                src_file_contents,
+                task.line,
+                task.message,
             )
         )
 

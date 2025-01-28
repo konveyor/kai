@@ -381,7 +381,10 @@ Here's the input information:
         while curr_iter < self._iterations:
             curr_iter += 1
             try:
-                reflection_response = self._model_provider.invoke(chat_reflect)
+                reflection_response = self._model_provider.invoke(
+                    chat_reflect,
+                    task.cache_path_resolver,
+                )
                 chat_reflect.append(AIMessage(content=reflection_response.content))
                 chat_fix_gen.append(HumanMessage(content=reflection_response.content))
                 fix_gen_attempts = 0
@@ -394,7 +397,9 @@ Here's the input information:
                     return AgentResult()
                 while fix_gen_attempts < self._retries:
                     fix_gen_attempts += 1
-                    fix_gen_response = self._model_provider.invoke(chat_fix_gen)
+                    fix_gen_response = self._model_provider.invoke(
+                        chat_fix_gen, task.cache_path_resolver
+                    )
                     updated_file_contents = self._parse_llm_response(
                         fix_gen_response.content
                     )

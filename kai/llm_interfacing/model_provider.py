@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import datetime
-import hashlib
 import json
 import os
-from pathlib import Path
 from typing import Any, Optional
 
 from genai import Client, Credentials
@@ -15,13 +13,13 @@ from langchain_community.chat_models import ChatOllama
 from langchain_community.chat_models.fake import FakeListChatModel
 from langchain_core.language_models.base import LanguageModelInput
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.load import dumps, loads
 from langchain_core.messages import BaseMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from pydantic.v1.utils import deep_update
 
+from kai.cache import Cache, CachePathResolver
 from kai.kai_config import KaiConfigModels
 from kai.logging.logging import get_logger
 
@@ -33,13 +31,12 @@ class ModelProvider:
         self,
         config: KaiConfigModels,
         demo_mode: bool = False,
-        cache_dir: Path | None = None,
+        cache: Optional[Cache] = None,
     ):
         self.llm_retries: int = config.llm_retries
         self.llm_retry_delay: float = config.llm_retry_delay
         self.demo_mode: bool = demo_mode
-        self.cache_dir = cache_dir
-        LOG.info("using cache dir: %s", self.cache_dir)
+        self.cache = cache
 
         model_class: type[BaseChatModel]
         defaults: dict[str, Any]
@@ -209,62 +206,32 @@ class ModelProvider:
     def invoke(
         self,
         input: LanguageModelInput,
+        cache_path_resolver: CachePathResolver,
         config: Optional[RunnableConfig] = None,
         *,
         stop: Optional[list[str]] = None,
         **kwargs: Any,
     ) -> BaseMessage:
-        if self.demo_mode and self.cache_dir is not None:
-            cache_file = self.__get_cache_filename(input)
+        cache_path = cache_path_resolver.cache_path()
+        cache_meta = cache_path_resolver.cache_meta()
 
-            LOG.info(f"Using cache file {cache_file}")
+        if self.demo_mode and self.cache:
+            cache_entry = self.cache.get(path=cache_path, input=input)
 
-            if os.path.exists(cache_file):
-                try:
-                    LOG.debug(f"Cache exists, loading from {cache_file}")
-                    content = ""
-                    with open(cache_file, "r") as f:
-                        content = f.read()
-                    entry: dict[str, Any] = loads(content)
-                    cached_res: BaseMessage | None = entry.get("output", None)
-                    if cached_res is not None:
-                        return cached_res
-                except Exception as e:
-                    LOG.error(f"Failed retrieving response from cache - {e}")
+            if cache_entry:
+                return cache_entry
 
-            try:
-                response = self.llm.invoke(input, config, stop=stop, **kwargs)
-            except Exception as e:
-                LOG.info("unable to call LLM, LLM input: %s", dumps({"input": input}))
-                raise e
-            to_cache = response.model_copy()
-            to_cache.response_metadata.get("meta", {}).pop("created_at", None)
-            try:
-                json_repr = dumps(
-                    {
-                        "input": input,
-                        "output": to_cache,
-                    },
-                    pretty=True,
-                )
-                LOG.debug("Storing response to cache")
-                with open(cache_file, "w+") as f:
-                    f.write(json_repr)
-            except Exception as e:
-                LOG.error(f"Failed to store response to cache - {e}")
-            return response
-        return self.llm.invoke(input, config, stop=stop, **kwargs)
+        response = self.llm.invoke(input, config, stop=stop, **kwargs)
 
-    def __get_cache_filename(self, input: LanguageModelInput) -> str:
-        if self.cache_dir is None:
-            return ""
-        param_str = json.dumps(
-            {"input": input, "model_id": self.model_id}, sort_keys=True, default=str
-        )
-        hash_value = hashlib.sha256(param_str.encode()).hexdigest()
-        dir = os.path.join(self.cache_dir, self.model_id)
-        os.makedirs(dir, exist_ok=True)
-        return os.path.join(dir, f"{hash_value}.json")
+        if self.cache:
+            self.cache.put(
+                path=cache_path,
+                input=input,
+                output=response,
+                cache_meta=cache_meta,
+            )
+
+        return response
 
 
 # TODO(Shawn): Remove when we get to config update that

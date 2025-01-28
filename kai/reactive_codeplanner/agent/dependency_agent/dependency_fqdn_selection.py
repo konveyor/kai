@@ -44,7 +44,7 @@ class FQDNDependencySelectorAgent(Agent):
         """
 You are an excellent Java developer with expertise in dependency management.
 
-Given an initial Maven compiler and a list of attempted searchs, provide an updated dependency to use.
+Given an initial Maven compiler and a list of attempted searches, provide an updated dependency to use.
 Do not use a dependency that has already been tried.
                        
 Think through the problem fully. Do not update the dependency if it has moved to newer versions; we want to find the version that matches, regardless of whether it is old or not. 
@@ -77,7 +77,7 @@ Searched dependencies:
             query.append(get_maven_query_from_code(ask.code))
 
         msg = [HumanMessage(content=self.message.render(message=ask.msg, query=query))]
-        fix_gen_response = self._model_provider.invoke(msg)
+        fix_gen_response = self._model_provider.invoke(msg, ask.cache_path_resolver)
         llm_response = self.parse_llm_response(fix_gen_response.content)
         # Really we need to re-call the agent
         if not llm_response:
@@ -89,7 +89,7 @@ Searched dependencies:
             artifact_id=llm_response.artifact_id, group_id=llm_response.group_id
         )
         response = search_fqdn_query(new_query)
-        logger.debug("got response: %r from searchign FQDN")
+        logger.debug("got response: %r from searching FQDN")
         ## only run this 5 times
         if (not response or isinstance(response, list)) and ask.times < 5:
             ## need to recursively call execute.
@@ -101,6 +101,7 @@ Searched dependencies:
                     code="",
                     query=query,
                     times=ask.times + 1,
+                    task=ask.task,
                 )
             )
         if isinstance(response, list):

@@ -1,6 +1,7 @@
 import unittest
 from pathlib import Path
 
+from kai.analyzer_types import Incident, RuleSet, Violation
 from kai.kai_config import KaiConfigModels
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.reactive_codeplanner.agent.analyzer_fix.api import AnalyzerFixRequest
@@ -9,6 +10,10 @@ from kai.reactive_codeplanner.agent.maven_compiler_fix.agent import MavenCompile
 from kai.reactive_codeplanner.agent.maven_compiler_fix.api import (
     MavenCompilerAgentRequest,
     MavenCompilerAgentResult,
+)
+from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import AnalyzerRuleViolation
+from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
+    MavenCompilerError,
 )
 
 
@@ -30,17 +35,22 @@ class TestMavenCompilerAgent(unittest.TestCase):
         agent = MavenCompilerAgent(model_provider=model_provider)
         result = agent.execute(
             MavenCompilerAgentRequest(
-                file_path=Path(""), file_contents="", line_number=0, message=""
+                file_path=Path(""),
+                file_contents="",
+                line_number=0,
+                message="",
+                task=MavenCompilerError(file="test", line=1, column=1, message="test"),
             )
         )
         print(result)
         expected = MavenCompilerAgentResult(
-            file_to_modify=Path(""),
+            file_to_modify=Path("."),
             reasoning="\n1. Frobinate the widget\n",
             updated_file_contents="import str\nimport class",
             additional_information="\ntesting added info",
             original_file="",
             message="",
+            task=MavenCompilerError(file="test", line=1, column=1, message="test"),
         )
         print(expected)
         self.assertEqual(expected, result)
@@ -66,6 +76,21 @@ class TestMavenCompilerAgent(unittest.TestCase):
                 incidents=[],
                 sources=[],
                 targets=[],
+                task=AnalyzerRuleViolation(
+                    file="test",
+                    message="message",
+                    line=1,
+                    column=1,
+                    violation=Violation(),
+                    ruleset=RuleSet(),
+                    incident=Incident(
+                        uri="test",
+                        message="test",
+                        code_snip="test",
+                        line_number=1,
+                        variables={},
+                    ),
+                ),
             )
         )
         print(result)

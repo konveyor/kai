@@ -12,6 +12,7 @@ from kai.reactive_codeplanner.agent.analyzer_fix.api import (
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyRequest,
 )
+from kai.reactive_codeplanner.task_manager.api import ValidationError
 
 
 class TestAnalyzerAgent(unittest.TestCase):
@@ -29,6 +30,7 @@ class TestAnalyzerAgent(unittest.TestCase):
             )
         )
 
+        task = ValidationError(message="test", file="test.yaml", line=1, column=4)
         agent = AnalyzerAgent(model_provider=model_provider)
         result = agent.execute(
             AnalyzerFixRequest(
@@ -37,6 +39,7 @@ class TestAnalyzerAgent(unittest.TestCase):
                 incidents="",
                 sources=[],
                 targets=[],
+                task=task,
             )
         )
         print(result)
@@ -64,7 +67,12 @@ class TestAnalyzerAgent(unittest.TestCase):
         )
 
         agent = AnalyzerAgent(model_provider=model_provider)
-        result = agent.execute(MavenDependencyRequest(Path("")))
+        result = agent.execute(
+            MavenDependencyRequest(
+                Path(""),
+                task=ValidationError(message="test", file="test", column=1, line=10),
+            )
+        )
         print(result)
         expected = AnalyzerFixResponse(
             encountered_errors=["invalid request type"],

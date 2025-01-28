@@ -203,7 +203,9 @@ Message:{message}
         while fix_gen_attempts < self._max_retries:
             fix_gen_attempts += 1
 
-            fix_gen_response = self._model_provider.invoke(msg)
+            fix_gen_response = self._model_provider.invoke(
+                msg, cache_path_resolver=ask.cache_path_resolver
+            )
             llm_response = self.parse_llm_response(fix_gen_response.content)
 
             # if we don't have a final answer, we need to retry, otherwise break
@@ -253,6 +255,7 @@ Message:{message}
                         r = self.child_agent.execute(
                             FQDNDependencySelectorRequest(
                                 request.file_path,
+                                ask.task,
                                 request.message,
                                 a.code,
                                 query=[],
