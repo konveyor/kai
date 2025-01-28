@@ -39,8 +39,13 @@ class JsonRpcApplication:
         self.request_callbacks = request_callbacks
         self.notify_callbacks = notify_callbacks
 
+        self.request_threads = set()
+        self.notify_threads = set()
+
     def handle_request(self, request: JsonRpcRequest, server: "JsonRpcServer") -> None:
         log.log(TRACE, "Handling request: %s", request)
+        log.log(TRACE, "Calling method: %s", request.method)
+
         tracer = trace.get_tracer("json_rpc")
         with tracer.start_as_current_span("handle_request"):
             if request.id is not None:
@@ -56,11 +61,14 @@ class JsonRpcApplication:
                     )
                     return
 
-                log.log(TRACE, "Calling method: %s", request.method)
+                def request_thread() -> None:
+                    self.request_callbacks[request.method](
+                        request=request, server=server, app=self
+                    )
 
-                self.request_callbacks[request.method](
-                    request=request, server=server, app=self
-                )
+                thread = threading.Thread(target=request_thread)
+                self.request_threads.add(thread)
+                thread.start()
 
             else:
                 log.log(TRACE, "Request is a notification")
@@ -70,11 +78,14 @@ class JsonRpcApplication:
                     log.error(f"Notify methods: {self.notify_callbacks.keys()}")
                     return
 
-                log.log(TRACE, "Calling method: %s", request.method)
+                def notify_thread() -> None:
+                    self.notify_callbacks[request.method](
+                        request=request, server=server, app=self
+                    )
 
-                self.notify_callbacks[request.method](
-                    request=request, server=server, app=self
-                )
+                thread = threading.Thread(target=notify_thread)
+                self.notify_threads.add(thread)
+                thread.start()
 
     @overload
     def add(
@@ -229,7 +240,7 @@ class JsonRpcServer(threading.Thread):
         self.shutdown_flag = True
         self.log.info("JsonRpcServer stopping")
         self.jsonrpc_stream.close()
-        self.log.info("JsonRpcServer stoped")
+        self.log.info("JsonRpcServer stopped")
 
     def run(self) -> None:
         self.log.debug("Server thread started")
@@ -241,7 +252,7 @@ class JsonRpcServer(threading.Thread):
             if msg is None:
                 self.log.info("Server quit")
                 break
-            with tracer.start_as_current_span("recieved_message") as span:
+            with tracer.start_as_current_span("received_message") as span:
                 if isinstance(msg, JsonRpcError):
                     span.add_event(
                         "rpc_error_receiving_message", attributes={"message": f"{msg}"}
