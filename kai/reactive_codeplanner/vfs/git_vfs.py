@@ -111,13 +111,13 @@ class RepoContextSnapshot:
             **popen_kwargs,
         }
 
-        log.log(TRACE, "\033[94mexecuting: \033[0m" + " ".join(GIT + args))
+        log.log(TRACE, "executing: " + " ".join(GIT + args))
         proc = subprocess.Popen(GIT + args, **popen_kwargs)  # trunk-ignore(bandit/B603)
         stdout, stderr = proc.communicate()
 
-        log.log(TRACE, f"\033[94mreturncode:\033[0m {proc.returncode}")
-        log.log(TRACE, f"\033[94mstdout:\033[0m\n{stdout}")
-        log.log(TRACE, f"\033[94mstderr:\033[0m\n{stderr}")
+        log.log(TRACE, f"returncode: {proc.returncode}")
+        log.log(TRACE, f"stdout:\n{stdout}")
+        log.log(TRACE, f"stderr:\n{stderr}")
 
         return proc.returncode, stdout, stderr
 
@@ -136,7 +136,8 @@ class RepoContextSnapshot:
         snapshot_work_dir.mkdir(exist_ok=True)
         # fmt: off
         # Note that windows can not use : characters in the filename/path, Black doesn't like this syntax on 3.11
-        git_dir = snapshot_work_dir / f".git-{datetime.now(timezone.utc).strftime("%Y-%m-%d-_%H-%M-%S")}"
+        git_dir_suffix = datetime.now(timezone.utc).strftime("%Y-%m-%d-_%H-%M-%S")
+        git_dir = snapshot_work_dir / f".git-{git_dir_suffix}"
         # fmt: on
         git_dir.mkdir(exist_ok=True)
 
@@ -159,6 +160,15 @@ class RepoContextSnapshot:
         returncode, _, stderr = tmp_snapshot.git(["config", "commit.gpgsign", "false"])
         if returncode != 0:
             raise Exception(f"Failed to disable gpgsign: {stderr}")
+
+        returncode, _, stderr = tmp_snapshot.git(
+            ["config", "user.email", "kai-agent@example.com"]
+        )
+        if returncode != 0:
+            raise Exception(f"Failed to set user.email: {stderr}")
+        returncode, _, stderr = tmp_snapshot.git(["config", "user.name", "KaiAgent"])
+        if returncode != 0:
+            raise Exception(f"Failed to set user.name: {stderr}")
 
         tmp_snapshot = tmp_snapshot.commit(msg)
 
