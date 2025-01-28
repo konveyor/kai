@@ -302,6 +302,7 @@ class TaskManager:
                     task2,
                     similar,
                 )
+                return similar
         return False
 
     def handle_ignored_task(self, task: Task) -> None:
