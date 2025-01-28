@@ -15,6 +15,7 @@ from langchain_core.language_models.base import LanguageModelInput
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
 from langchain_core.runnables import RunnableConfig
+from langchain_deepseek import ChatDeepSeek
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from pydantic.v1.utils import deep_update
@@ -159,7 +160,6 @@ class ModelProvider:
             case "AzureChatOpenAI":
                 model_class = AzureChatOpenAI
 
-                # TODO: Someone please check these defaults
                 defaults = {
                     "azure_deployment": "gpt-35-turbo",
                     "api_version": "2023-06-01-preview",
@@ -171,6 +171,20 @@ class ModelProvider:
 
                 model_args = deep_update(defaults, config.args)
                 model_id = model_args["azure_deployment"]
+
+            case "ChatDeepSeek":
+                model_class = ChatDeepSeek
+
+                defaults = {
+                    "model": "deepseek-chat",
+                    "temperature": 0,
+                    "max_tokens": None,
+                    "timeout": None,
+                    "max_retries": 2,
+                }
+
+                model_args = deep_update(defaults, config.args)
+                model_id = model_args["model"]
 
             case _:
                 raise Exception(f"Unrecognized provider '{config.provider}'")
