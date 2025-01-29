@@ -7,7 +7,7 @@ import sys
 import time
 from io import BufferedReader, BufferedWriter
 from pathlib import Path
-from typing import Generator, cast
+from typing import Any, Generator, cast
 
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -20,9 +20,9 @@ from pydantic import BaseModel
 sys.path.append("../../")
 from kai.analyzer_types import ExtendedIncident, Report
 from kai.jsonrpc.core import JsonRpcServer
-from kai.jsonrpc.models import JsonRpcError, JsonRpcResponse
+from kai.jsonrpc.models import JsonRpcError, JsonRpcId, JsonRpcResponse
 from kai.jsonrpc.streams import LspStyleStream
-from kai.logging.logging import get_logger, init_logging_from_log_config
+from kai.logging.logging import TRACE, get_logger, init_logging_from_log_config
 from kai.rpc_server.server import (
     GetCodeplanAgentSolutionParams,
     KaiRpcApplication,
@@ -93,6 +93,16 @@ def initialize_rpc_server(
     log.info(rpc_subprocess.args)
 
     app = KaiRpcApplication()
+    log.setLevel(TRACE)
+
+    @app.add_notify(method="$/progress")
+    def blah(
+        app: KaiRpcApplication,
+        server: JsonRpcServer,
+        id: JsonRpcId,
+        params: dict[str, Any],
+    ) -> None:
+        log.info(f"Received $/progress: {params}")
 
     rpc_server = JsonRpcServer(
         json_rpc_stream=LspStyleStream(

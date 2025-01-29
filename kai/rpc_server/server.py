@@ -469,6 +469,7 @@ def get_codeplan_agent_solution(
     params: GetCodeplanAgentSolutionParams,
 ) -> None:
     def simple_chat_message(msg: str) -> None:
+        app.log.info("simple_chat_message!")
         server.send_notification(
             method="$/progress",
             params={
