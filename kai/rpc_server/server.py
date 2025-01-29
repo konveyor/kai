@@ -571,7 +571,9 @@ def get_codeplan_agent_solution(
 
         for task in next_task_fn(params.max_priority, params.max_depth):
             app.log.debug(f"Executing task {task.__class__.__name__}: {task}")
-            simple_chat_message(f"Executing task {task.__class__.__name__}: {task}")
+            simple_chat_message(
+                f"Executing task {task.__class__.__name__}\nOldest ancestor is {task.oldest_ancestor().__class__.__name__}"
+            )
 
             # get the solved tasks set
             pre_task_solved_tasks = app.task_manager.processed_tasks
@@ -581,7 +583,7 @@ def get_codeplan_agent_solution(
             result = app.task_manager.execute_task(task)
 
             app.log.debug(f"Task {task.__class__.__name__} result: {result}")
-            simple_chat_message(f"Task {task.__class__.__name__} result: {result}")
+            simple_chat_message(f"Got result: {result.__class__.__name__}")
 
             app.task_manager.supply_result(result)
 
@@ -652,12 +654,6 @@ def get_codeplan_agent_solution(
         overall_result["diff"] = diff[1] + diff[2]
 
         app.rcm.reset(agent_solution_snapshot)
-
-        simple_chat_message("Queue state:")
-
-        queue_state = str(app.task_manager.priority_queue)
-        for line in queue_state.splitlines():
-            simple_chat_message(f"- {line}")
 
         simple_chat_message("Finished!")
 
