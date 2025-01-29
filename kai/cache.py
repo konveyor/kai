@@ -90,9 +90,7 @@ class JSONCacheWithTrace(Cache):
                 repr = ""
                 for idx, item in enumerate(input):
                     match item:
-                        case _ if isinstance(item, BaseMessage) or issubclass(
-                            item, BaseMessage
-                        ):
+                        case _ if isinstance(item, BaseMessage):
                             repr = f"{repr}\n\nMessage-{idx}\n{item.pretty_repr()}"
                         case str():
                             repr = f"{repr}\n\nMessage-{idx}\n{item}"
