@@ -575,15 +575,16 @@ def get_codeplan_agent_solution(
                 # If we have seed tasks, we are fixing a set of issues,
                 # Lets only focus on this when showing the queue.
                 all_tasks = app.task_manager.priority_queue.all_tasks()
-                tasks = app.task_manager.priority_queue.task_stacks[0]
-                app.log.debug("QUEUE_STATE_SEED_TASK: START")
-                for task in tasks:
-                    lines = app.task_manager.priority_queue._stringify_tasks(
-                        task, 0, set(), all_tasks
-                    )
-                    for line in lines:
-                        app.log.debug(f"QUEUE_STATE_SEED_TASK: {line}")
-                app.log.debug("QUEUE_STATE_SEED_TASK: END")
+                tasks = app.task_manager.priority_queue.task_stacks.get(0)
+                if tasks is not None:
+                    app.log.debug("QUEUE_STATE_SEED_TASK: START")
+                    for task in tasks:
+                        lines = app.task_manager.priority_queue._stringify_tasks(
+                            task, 0, set(), all_tasks
+                        )
+                        for line in lines:
+                            app.log.debug(f"QUEUE_STATE_SEED_TASK: {line}")
+                    app.log.debug("QUEUE_STATE_SEED_TASK: END")
                 app.log.debug("QUEUE_STATE_SEED_TASKS: SUCCESSFUL_TASKS: START")
                 for task in app.task_manager.processed_tasks - pre_task_solved_tasks:
                     app.log.debug(f"QUEUE_STATE_SEED_TASKS: SUCCESSFUL_TASKS: {task}")
