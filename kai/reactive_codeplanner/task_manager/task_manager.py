@@ -183,6 +183,11 @@ class TaskManager:
         seed_tasks_only = max_depth == 0 and self.priority_queue.has_tasks_within_depth(
             0
         )
+        logger.info(
+            "seed tasks only: %s, priority_quue: %s",
+            seed_tasks_only,
+            self.priority_queue.task_stacks,
+        )
         if not seed_tasks_only:
             self.initialize_priority_queue()
 
@@ -205,10 +210,10 @@ class TaskManager:
             # If our depth is 0, we won't follow up on issues anyway
             # We do lose the ability to verify a solution worked, so
             # TODO(@fabianvf) we may have to adjust that at some point
-            if max_depth != 0:
-                self.handle_new_tasks_after_processing(task)
-            else:
+            if max_depth == 0:
                 self.handle_depth_0_task_after_processing(task)
+            else:
+                self.handle_new_tasks_after_processing(task)
 
     def initialize_priority_queue(self) -> None:
         logger.info("Initializing task stacks.")

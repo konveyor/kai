@@ -1,4 +1,6 @@
 import platform
+from itertools import groupby
+from operator import attrgetter
 from pathlib import Path
 from typing import IO, Any, Optional, cast
 from urllib.parse import urlparse
@@ -111,28 +113,30 @@ class AnalyzerLSPStep(ValidationStep):
             for violationKey in violationsSortedKeys:
                 violation = r.rulesets[key].violations[violationKey]
                 violation.incidents.sort()
-                for i in violation.incidents:
-                    violation.id = violationKey
-                    if i.line_number < 0:
-                        continue
-                    class_to_use = AnalyzerRuleViolation
-                    if "pom.xml" in i.uri:
-                        class_to_use = AnalyzerDependencyRuleViolation
+                grouped_violations = [
+                    list((g))
+                    for _, g in groupby(violation.incidents, key=attrgetter("uri"))
+                ]
 
-                    uri_path = urlparse(i.uri).path
+                for incidents in grouped_violations:
+                    violation.id = violationKey
+                    uri_path = urlparse(incidents[0].uri).path
                     if platform.system() == "Windows":
                         uri_path = uri_path.removeprefix("/")
+                    class_to_use = AnalyzerRuleViolation
+                    if "pom.xml" in incidents[0].uri:
+                        class_to_use = AnalyzerDependencyRuleViolation
 
-                    validation_errors.append(
-                        class_to_use(
-                            file=str(Path(uri_path).absolute()),
-                            line=i.line_number,
-                            column=-1,
-                            message=i.message,
-                            incident=i,
-                            violation=violation,
-                            ruleset=r.rulesets[key],
-                        )
+                    validation_error = class_to_use(
+                        file=str(Path(uri_path).absolute()),
+                        violation=violation,
+                        ruleset=r.rulesets[key],
+                        line=0,
+                        column=-1,
+                        message="",
+                        incidents=incidents,
                     )
+
+                    validation_errors.append(validation_error)
 
         return validation_errors

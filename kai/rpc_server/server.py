@@ -3,6 +3,8 @@ import platform
 import re
 import tomllib
 import traceback
+from itertools import groupby
+from operator import attrgetter
 from pathlib import Path
 from typing import (
     Any,
@@ -506,37 +508,51 @@ def get_codeplan_agent_solution(
         seed_tasks: list[Task] = []
 
         params.incidents.sort()
-        for incident in params.incidents:
+        grouped_incidents_by_files = [
+            list((g)) for _, g in groupby(params.incidents, key=attrgetter("uri"))
+        ]
+        for incidents in grouped_incidents_by_files:
 
-            class_to_use = AnalyzerRuleViolation
-            if "pom.xml" in incident.uri:
-                class_to_use = AnalyzerDependencyRuleViolation
+            # group incidents by violation
+            grouped_violations = [
+                list((g))
+                for _, g in groupby(incidents, key=attrgetter("violation_name"))
+            ]
+            for violation_incidents in grouped_violations:
+                incident_base = violation_incidents[0]
+                uri_path = urlparse(incident_base.uri).path
+                if platform.system() == "Windows":
+                    uri_path = uri_path.removeprefix("/")
 
-            # handle windows paths
-            uri_path = urlparse(incident.uri).path
-            if platform.system() == "Windows":
-                uri_path = uri_path.removeprefix("/")
+                class_to_use = AnalyzerRuleViolation
+                if "pom.xml" in incident_base.uri:
+                    class_to_use = AnalyzerDependencyRuleViolation
 
-            seed_task = class_to_use(
-                file=str(Path(uri_path).absolute()),
-                line=incident.line_number,
-                column=-1,  # Not contained within report?
-                message=incident.message,
-                priority=0,
-                incident=Incident(**incident.model_dump()),
-                violation=Violation(
-                    id=incident.violation_name or "",
-                    description=incident.violation_description or "",
-                    category=incident.violation_category,
-                    labels=incident.violation_labels,
-                ),
-                ruleset=RuleSet(
-                    name=incident.ruleset_name,
-                    description=incident.ruleset_description or "",
-                ),
-            )
+                validation_error = class_to_use(
+                    file=str(Path(uri_path).absolute()),
+                    violation=Violation(
+                        id=incident_base.violation_name or "",
+                        description=incident_base.violation_description or "",
+                        category=incident_base.violation_category,
+                        labels=incident_base.violation_labels,
+                    ),
+                    ruleset=RuleSet(
+                        name=incident_base.ruleset_name,
+                        description=incident_base.ruleset_description or "",
+                    ),
+                    line=0,
+                    column=-1,
+                    message="",
+                    incidents=[],
+                )
+                validation_error.incidents = []
+                for i in incidents:
+                    if i.line_number < 0:
+                        continue
+                    validation_error.incidents.append(Incident(**i.model_dump()))
 
-            seed_tasks.append(seed_task)
+                if validation_error.incidents:
+                    seed_tasks.append(validation_error)
 
         app.task_manager.set_seed_tasks(*seed_tasks)
 
