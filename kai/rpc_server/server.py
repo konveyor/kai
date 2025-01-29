@@ -471,7 +471,7 @@ def get_codeplan_agent_solution(
     def simple_chat_message(msg: str) -> None:
         app.log.info("simple_chat_message!")
         server.send_notification(
-            method="$/progress",
+            method="my_progress",
             params={
                 "chatToken": params.chat_token,
                 "kind": "SimpleChatMessage",

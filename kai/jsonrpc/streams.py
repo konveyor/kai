@@ -68,7 +68,9 @@ class JsonRpcStream(ABC):
 
 def dump_json_no_infinite_recursion(msg: JsonRpcRequest | JsonRpcResponse) -> str:
     if not isinstance(msg, JsonRpcRequest) or msg.method != "logMessage":
-        return msg.model_dump_json()
+        # exclude_none = True because `None` serializes as `null`, which is not
+        # the same thing as `undefined` in JS
+        return msg.model_dump_json(exclude_none=True)
     else:
         log_msg = msg.model_copy()
         if log_msg.params is None:
@@ -80,7 +82,7 @@ def dump_json_no_infinite_recursion(msg: JsonRpcRequest | JsonRpcResponse) -> st
             if hasattr(log_msg.params, "message"):
                 log_msg.params.message = "<omitted>"
 
-        return log_msg.model_dump_json()
+        return log_msg.model_dump_json(exclude_none=True)
 
 
 class LspStyleStream(JsonRpcStream):
@@ -94,7 +96,7 @@ class LspStyleStream(JsonRpcStream):
     TYPE_HEADER = "Content-Type: "
 
     def send(self, msg: JsonRpcRequest | JsonRpcResponse) -> None:
-        json_str = msg.model_dump_json()
+        json_str = msg.model_dump_json(exclude_none=True)
         json_req = f"Content-Length: {len(json_str.encode('utf-8'))}\r\n\r\n{json_str}"
 
         log.log(TRACE, "Sending request: %s", dump_json_no_infinite_recursion(msg))
@@ -198,7 +200,7 @@ class BareJsonStream(JsonRpcStream):
             self.log = log
 
     def send(self, msg: JsonRpcRequest | JsonRpcResponse) -> None:
-        json_req = f"{msg.model_dump_json()}\n"
+        json_req = f"{msg.model_dump_json(exclude_none=True)}\n"
 
         log.log(TRACE, "Sending request: %s", dump_json_no_infinite_recursion(msg))
 

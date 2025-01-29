@@ -95,14 +95,14 @@ def initialize_rpc_server(
     app = KaiRpcApplication()
     log.setLevel(TRACE)
 
-    @app.add_notify(method="$/progress")
+    @app.add_notify(method="my_progress")
     def blah(
         app: KaiRpcApplication,
         server: JsonRpcServer,
         id: JsonRpcId,
         params: dict[str, Any],
     ) -> None:
-        log.info(f"Received $/progress: {params}")
+        log.info(f"Received my_progress: {params}")
 
     rpc_server = JsonRpcServer(
         json_rpc_stream=LspStyleStream(
