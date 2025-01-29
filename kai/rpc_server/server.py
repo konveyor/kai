@@ -457,6 +457,8 @@ class GetCodeplanAgentSolutionParams(BaseModel):
     max_depth: Optional[int] = None
     max_priority: Optional[int] = None
 
+    chat_token: str
+
 
 @app.add_request(method="getCodeplanAgentSolution")
 @tracer.start_as_current_span("get_codeplan_solution")
@@ -466,6 +468,20 @@ def get_codeplan_agent_solution(
     id: JsonRpcId,
     params: GetCodeplanAgentSolutionParams,
 ) -> None:
+    def simple_chat_message(msg: str) -> None:
+        server.send_notification(
+            method="$/progress",
+            params={
+                "chatToken": params.chat_token,
+                "kind": "SimpleChatMessage",
+                "value": {
+                    "message": msg,
+                },
+            },
+        )
+
+    simple_chat_message("Starting!")
+
     try:
         # create a set of AnalyzerRuleViolations
         # seed the task manager with these violations
@@ -500,31 +516,38 @@ def get_codeplan_agent_solution(
             if platform.system() == "Windows":
                 uri_path = uri_path.removeprefix("/")
 
-            seed_tasks.append(
-                class_to_use(
-                    file=str(Path(uri_path).absolute()),
-                    line=incident.line_number,
-                    column=-1,  # Not contained within report?
-                    message=incident.message,
-                    priority=0,
-                    incident=Incident(**incident.model_dump()),
-                    violation=Violation(
-                        id=incident.violation_name or "",
-                        description=incident.violation_description or "",
-                        category=incident.violation_category,
-                        labels=incident.violation_labels,
-                    ),
-                    ruleset=RuleSet(
-                        name=incident.ruleset_name,
-                        description=incident.ruleset_description or "",
-                    ),
-                )
+            seed_task = class_to_use(
+                file=str(Path(uri_path).absolute()),
+                line=incident.line_number,
+                column=-1,  # Not contained within report?
+                message=incident.message,
+                priority=0,
+                incident=Incident(**incident.model_dump()),
+                violation=Violation(
+                    id=incident.violation_name or "",
+                    description=incident.violation_description or "",
+                    category=incident.violation_category,
+                    labels=incident.violation_labels,
+                ),
+                ruleset=RuleSet(
+                    name=incident.ruleset_name,
+                    description=incident.ruleset_description or "",
+                ),
             )
+
+            seed_tasks.append(seed_task)
+
+            simple_chat_message(f"Seeded task: {seed_task}")
+
         app.task_manager.set_seed_tasks(*seed_tasks)
 
         app.log.info(
-            f"starting code plan loop with iterations: {params.max_iterations}, max depth: {params.max_depth}, and max priority: {params.max_priority}"
+            f"Starting code plan loop with iterations: {params.max_iterations}, max depth: {params.max_depth}, and max priority: {params.max_priority}"
         )
+        simple_chat_message(
+            f"Starting processing with iterations: {params.max_iterations}, max depth: {params.max_depth}, and max priority: {params.max_priority}"
+        )
+
         next_task_fn = scoped_task_fn(
             params.max_iterations, app.task_manager.get_next_task
         )
@@ -547,6 +570,7 @@ def get_codeplan_agent_solution(
 
         for task in next_task_fn(params.max_priority, params.max_depth):
             app.log.debug(f"Executing task {task.__class__.__name__}: {task}")
+            simple_chat_message(f"Executing task {task.__class__.__name__}: {task}")
 
             # get the solved tasks set
             pre_task_solved_tasks = app.task_manager.processed_tasks
@@ -556,6 +580,7 @@ def get_codeplan_agent_solution(
             result = app.task_manager.execute_task(task)
 
             app.log.debug(f"Task {task.__class__.__name__} result: {result}")
+            simple_chat_message(f"Task {task.__class__.__name__} result: {result}")
 
             app.task_manager.supply_result(result)
 
@@ -626,6 +651,14 @@ def get_codeplan_agent_solution(
         overall_result["diff"] = diff[1] + diff[2]
 
         app.rcm.reset(agent_solution_snapshot)
+
+        simple_chat_message("Queue state:")
+
+        queue_state = str(app.task_manager.priority_queue)
+        for line in queue_state.splitlines():
+            simple_chat_message(f"- {line}")
+
+        simple_chat_message("Finished!")
 
         server.send_response(
             id=id,
