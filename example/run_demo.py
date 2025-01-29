@@ -179,6 +179,7 @@ def process_file(
         max_priority=0,
         max_depth=0,
         max_iterations=len(incidents),
+        chat_token=str("123e4567-e89b-12d3-a456-426614174000"),
     )
 
     KAI_LOG.debug(f"Request is: {params.model_dump()}")
