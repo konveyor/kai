@@ -168,8 +168,7 @@ func (a *Analyzer) Analyze(args Args, response *Response) error {
 		a.setCache(rulesets)
 	} else {
 		a.Logger.V(5).Info("updating cache for filepath", "paths", args.IncludedPaths)
-		a.invlaidateCachePerFile(args.IncludedPaths)
-		a.updateCache(rulesets)
+		a.updateCache(rulesets, args.IncludedPaths)
 	}
 
 	// Now we need to invalidate anything, from the files in included paths
@@ -182,12 +181,15 @@ func (a *Analyzer) setCache(rulesets []konveyor.RuleSet) {
 	a.cache = map[string][]cacheValue{}
 	a.cacheMutex.Unlock()
 
-	a.updateCache(rulesets)
+	a.updateCache(rulesets, nil)
 }
 
-func (a *Analyzer) updateCache(rulesets []konveyor.RuleSet) {
+func (a *Analyzer) updateCache(rulesets []konveyor.RuleSet, includedPaths []string) {
 	a.cacheMutex.Lock()
 	defer a.cacheMutex.Unlock()
+	if includedPaths != nil {
+		a.invalidateCachePerFile(includedPaths)
+	}
 
 	for _, r := range rulesets {
 		for violationName, v := range r.Violations {
@@ -236,9 +238,7 @@ func (a *Analyzer) updateCache(rulesets []konveyor.RuleSet) {
 	}
 }
 
-func (a *Analyzer) invlaidateCachePerFile(paths []string) {
-	a.cacheMutex.Lock()
-	defer a.cacheMutex.Unlock()
+func (a *Analyzer) invalidateCachePerFile(paths []string) {
 	for _, p := range paths {
 		a.Logger.Info("deleting cache entry for path", "path", p)
 		delete(a.cache, p)
