@@ -57,12 +57,14 @@ class TestCache(unittest.TestCase):
         self.t1_cache_expected_path = Path(
             "AnalyzerRuleViolation",
             "konveyor_main_java",
+            "rule-id-000",
             "line_10",
             "0_analyzerfix.json",
         )
         self.t2_cache_expected_path = Path(
             "AnalyzerRuleViolation",
             "konveyor_main_java",
+            "rule-id-000",
             "line_10",
             "PackageDoesNotExistError",
             "test_pom_xml",
@@ -72,6 +74,7 @@ class TestCache(unittest.TestCase):
         self.t3_cache_expected_path = Path(
             "AnalyzerRuleViolation",
             "konveyor_main_java",
+            "rule-id-000",
             "line_10",
             "PackageDoesNotExistError",
             "test_pom_xml",

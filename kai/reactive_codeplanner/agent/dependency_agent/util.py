@@ -12,7 +12,11 @@ from kai.reactive_codeplanner.agent.dependency_agent.api import (
 
 
 def search_fqdn_query(query: str) -> Optional[FQDNResponse] | list[FQDNResponse]:
-    resp = requests.get(
+    # Not trusting the session, because proxy/ssl configuration
+    # From the session is meant for the LLM.
+    session = requests.Session()
+    session.trust_env = False
+    resp = session.get(
         f"https://search.maven.org/solrsearch/select?q={query}", timeout=10
     )
     if resp.status_code != 200:
@@ -106,6 +110,8 @@ def find_in_pom(path: Path) -> Callable[[str], FindInPomResponse]:
         kwargs = {}
         for p in parts:
             arg = p.split(":")
+            if len(arg) != 2:
+                return FindInPomResponse(override=False)
             kwargs[arg[0].strip(' ""')] = (  # trunk-ignore(ruff/B005)
                 arg[1].strip(' ""').strip()  # trunk-ignore(ruff/B005)
             )

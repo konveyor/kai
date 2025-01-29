@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from logging import DEBUG
 from pathlib import Path
 from typing import Optional, cast
 
@@ -193,13 +194,35 @@ If you have any additional details or steps that need to be performed, put it he
 
 def guess_language(code: str, filename: Optional[str] = None) -> str:
     try:
-        if filename is not None:
-            lexer = lexers.guess_lexer_for_filename(filename, code)
-            logger.debug(f"{filename} classified as {lexer.aliases[0]}")
+        all_lexers = lexers.get_all_lexers()
+        largest_rv_lexer = None
+        largest_rv = 0.0
+        for name, _, _, _ in all_lexers:
+            try:
+                lexer_found = cast(LexerMeta, lexers.get_lexer_by_name(name))
+            except ClassNotFound:
+                logger.log(DEBUG, "unable to find lexer class for name: %s", name)
+                continue
+            if filename:
+                file_path = Path(filename)
+                if "*" + file_path.suffix not in lexer_found.filenames:
+                    continue
+
+            rv = lexer_found.analyse_text(code)
+            if largest_rv <= rv:
+                largest_rv = rv
+                largest_rv_lexer = lexer_found
+
+        if largest_rv_lexer:
+            # Remove all the extra information after the + sign
+            logger.debug(
+                "finding lexer %s, lexer aliases: %s",
+                lexer_found,
+                lexer_found.aliases,
+            )
+            return largest_rv_lexer.aliases[0]
         else:
-            lexer = cast(LexerMeta, lexers.guess_lexer(code))
-            logger.debug(f"Code content classified as {lexer.aliases[0]}\n{code}")
-        return lexer.aliases[0]
+            raise ClassNotFound(filename)
     except ClassNotFound:
         logger.debug(
             f"Code content for filename {filename} could not be classified\n{code}"

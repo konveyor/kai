@@ -11,6 +11,7 @@ from langchain_core.prompt_values import PromptValue
 from kai.jsonrpc.util import AutoAbsPath
 from kai.logging.logging import TRACE, get_logger
 from kai.reactive_codeplanner.task_manager.api import Task, ValidationError
+from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import AnalyzerRuleViolation
 
 LOG = get_logger(__name__)
 
@@ -224,12 +225,10 @@ class TaskBasedPathResolver(CachePathResolver):
             segments = filename.split("_")
             filename = "_".join(segments[-min(3, len(segments)) :])
             filename = filename[-min(50, len(filename)) :]
-            return (
-                self._dfs(task.parent)
-                / task.__class__.__name__
-                / filename
-                / f"line_{task.line}"
-            )
+            base_path = self._dfs(task.parent) / task.__class__.__name__ / filename
+            if isinstance(task, AnalyzerRuleViolation):
+                base_path = base_path / task.violation.id
+            return base_path / f"line_{task.line}"
         else:
             return (
                 self._dfs(task.parent)
