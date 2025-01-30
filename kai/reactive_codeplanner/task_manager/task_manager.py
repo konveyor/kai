@@ -179,7 +179,12 @@ class TaskManager:
         max_priority: Optional[int] = None,
         max_depth: Optional[int] = None,
     ) -> Generator[Task, Any, None]:
-        self.initialize_priority_queue()
+        # If we're being run at depth 0 and seed tasks have been set, don't bother running validators
+        seed_tasks_only = max_depth == 0 and self.priority_queue.has_tasks_within_depth(
+            0
+        )
+        if not seed_tasks_only:
+            self.initialize_priority_queue()
 
         while self.priority_queue.has_tasks_within_depth(max_depth):
             task = self.priority_queue.pop(max_depth=max_depth)
@@ -197,7 +202,11 @@ class TaskManager:
 
             logger.info("Yielding task: %s", task)
             yield task
-            self.handle_new_tasks_after_processing(task)
+            # If our depth is 0, we won't follow up on issues anyway
+            # We do lose the ability to verify a solution worked, so
+            # TODO(@fabianvf) we may have to adjust that at some point
+            if max_depth != 0:
+                self.handle_new_tasks_after_processing(task)
 
     def initialize_priority_queue(self) -> None:
         logger.info("Initializing task stacks.")
