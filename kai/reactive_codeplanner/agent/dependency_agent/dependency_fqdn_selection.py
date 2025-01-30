@@ -89,7 +89,7 @@ Searched dependencies:
             artifact_id=llm_response.artifact_id, group_id=llm_response.group_id
         )
         response = search_fqdn_query(new_query)
-        logger.debug("got response: %r from searching FQDN")
+        logger.debug("got response: %s from searching FQDN", response)
         ## only run this 5 times
         if (not response or isinstance(response, list)) and ask.times < 5:
             ## need to recursively call execute.
