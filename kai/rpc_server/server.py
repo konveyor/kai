@@ -566,7 +566,7 @@ def get_codeplan_agent_solution(
         initial_solved_tasks = app.task_manager.processed_tasks
         # get the ignored tasks set
         initial_ignored_tasks = app.task_manager.ignored_tasks
-        
+
         simple_chat_message("Running validators...")
 
         for task in next_task_fn(params.max_priority, params.max_depth):
