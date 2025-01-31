@@ -207,6 +207,8 @@ class TaskManager:
             # TODO(@fabianvf) we may have to adjust that at some point
             if max_depth != 0:
                 self.handle_new_tasks_after_processing(task)
+            else:
+                self.handle_depth_0_task_after_processing(task)
 
     def initialize_priority_queue(self) -> None:
         logger.info("Initializing task stacks.")
@@ -219,6 +221,12 @@ class TaskManager:
         for task in new_tasks:
             if not self.should_skip_task(task):
                 self.priority_queue.push(task)
+
+    def handle_depth_0_task_after_processing(self, task: Task) -> None:
+        logger.info(
+            "Handling depth 0 task, assuming fix has applied for task: %s", task
+        )
+        self.priority_queue.remove(task)
 
     def handle_new_tasks_after_processing(self, task: Task) -> None:
         logger.info("Handling new tasks after processing task: %s", task)
