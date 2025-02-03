@@ -136,7 +136,12 @@ class AnalyzerLSPStep(ValidationStep):
                         message="",
                         incidents=incidents,
                     )
-
+                    logger.log(
+                        TRACE,
+                        "validation_error adding to list: %s -- incident_messages: %s",
+                        validation_error,
+                        validation_error.incident_message,
+                    )
                     validation_errors.append(validation_error)
 
         return validation_errors

@@ -163,6 +163,12 @@ class AnalyzerRuleViolation(ValidationError):
                 TRACE,
                 "found all old incidents and some new ones, making task retry, with all the new incidents",
             )
+            logger.log(
+                TRACE,
+                "incdident messages for self: %s --- incident messages for fuzzy equals: %s",
+                self.incident_message,
+                error2.incident_message,
+            )
             return True
 
         # here we handle the second case

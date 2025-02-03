@@ -32,7 +32,7 @@ from kai.jsonrpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcId
 from kai.jsonrpc.util import AutoAbsPath, AutoAbsPathExists, CamelCaseBaseModel
 from kai.kai_config import KaiConfigModels
 from kai.llm_interfacing.model_provider import ModelProvider
-from kai.logging.logging import KaiLogConfig, get_logger
+from kai.logging.logging import TRACE, KaiLogConfig, get_logger
 from kai.reactive_codeplanner.agent.analyzer_fix.agent import AnalyzerAgent
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
@@ -519,6 +519,7 @@ def get_codeplan_agent_solution(
                 for _, g in groupby(incidents, key=attrgetter("violation_name"))
             ]
             for violation_incidents in grouped_violations:
+
                 incident_base = violation_incidents[0]
                 uri_path = urlparse(incident_base.uri).path
                 if platform.system() == "Windows":
@@ -546,12 +547,18 @@ def get_codeplan_agent_solution(
                     incidents=[],
                 )
                 validation_error.incidents = []
-                for i in incidents:
+                for i in violation_incidents:
                     if i.line_number < 0:
                         continue
                     validation_error.incidents.append(Incident(**i.model_dump()))
 
                 if validation_error.incidents:
+                    app.log.log(
+                        TRACE,
+                        "seed_tasks adding to list: %s -- incident_messages: %s",
+                        validation_error,
+                        validation_error.incident_message,
+                    )
                     seed_tasks.append(validation_error)
 
         app.task_manager.set_seed_tasks(*seed_tasks)

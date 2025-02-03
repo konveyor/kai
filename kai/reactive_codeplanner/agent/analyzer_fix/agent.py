@@ -41,7 +41,7 @@ class AnalyzerAgent(Agent):
 
 I will provide you with static source code analysis information highlighting an issue which needs to be addressed.
 
-Fix only the problem described. Other problems will be solved in subsequent steps so it is unnecessary to handle them now.
+Fix all the issues described. Other problems will be solved in subsequent steps so it is unnecessary to handle them now.
 
 Before attempting to migrate the code to {{ target }} reason through what changes are required and why.
 

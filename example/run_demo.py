@@ -228,8 +228,6 @@ def run_demo(report: Report, server: JsonRpcServer) -> None:
         )
 
         for count, (file_path, incidents) in enumerate(impacted_files.items(), 1):
-            if "pom.xml" not in file_path.as_posix():
-                continue
             for incident in incidents:
                 incident.uri = os.path.join(SAMPLE_APP_DIR, file_path)
                 incident.uri = os.path.abspath(Path(incident.uri))
