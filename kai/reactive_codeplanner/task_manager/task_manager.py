@@ -183,11 +183,6 @@ class TaskManager:
         seed_tasks_only = max_depth == 0 and self.priority_queue.has_tasks_within_depth(
             0
         )
-        logger.info(
-            "seed tasks only: %s, priority_queue: %s",
-            seed_tasks_only,
-            self.priority_queue.task_stacks,
-        )
         if not seed_tasks_only:
             self.initialize_priority_queue()
 
