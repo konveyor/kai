@@ -43,7 +43,6 @@ class TestMavenCompilerAgent(unittest.TestCase):
                 background="",
             )
         )
-        print(result)
         expected = MavenCompilerAgentResult(
             file_to_modify=Path("."),
             reasoning="\n1. Frobinate the widget\n",
@@ -53,7 +52,6 @@ class TestMavenCompilerAgent(unittest.TestCase):
             message="",
             task=MavenCompilerError(file="test", line=1, column=1, message="test"),
         )
-        print(expected)
         self.assertEqual(expected, result)
 
     def test_invalid_request_type(self):

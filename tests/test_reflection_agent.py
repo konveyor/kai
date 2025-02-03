@@ -81,6 +81,7 @@ class TestReflectionAgent(unittest.TestCase):
             original_file_contents=self.original_pom_content,
             updated_file_contents=updated_pom_content,
             reasoning="We have updated `javaee-api` with `jakarta.jakartaee-api`",
+            background="",
         )
 
         result = self.reflection_agent.execute(task=task)
@@ -108,6 +109,7 @@ class TestReflectionAgent(unittest.TestCase):
                 self.data_dir_path, "expected_pom.xml"
             ).read_text(),
             reasoning="We have updated the dependency to jakarta.jakartaee-api",
+            background="",
         )
 
         result = self.reflection_agent.execute(task=task)

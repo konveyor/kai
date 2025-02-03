@@ -28,7 +28,6 @@ class Task:
     children: list["Task"] = field(default_factory=list, compare=False)
     retry_count: int = 0
     max_retries: int = 3
-    creation_order: int = field(init=False)
     result: Optional["TaskResult"] = None
 
     _creation_counter = 0
