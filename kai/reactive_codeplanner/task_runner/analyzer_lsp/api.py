@@ -151,7 +151,7 @@ class AnalyzerRuleViolation(ValidationError):
 
         # Here we handle the third case, where they are new issues.
         if len(still_found_incidents) == 0:
-            logger.log(TRACE, "no incidents from orignal found")
+            logger.log(TRACE, "no incidents from original found")
             return False
 
         # here we handle the first case, we will update self to add the context of new issues
@@ -165,7 +165,7 @@ class AnalyzerRuleViolation(ValidationError):
             )
             logger.log(
                 TRACE,
-                "incdident messages for self: %s --- incident messages for fuzzy equals: %s",
+                "incident messages for self: %s --- incident messages for fuzzy equals: %s",
                 self.incident_message,
                 error2.incident_message,
             )

@@ -23,7 +23,7 @@ from kai.analyzer_types import ExtendedIncident, Report
 from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcId, JsonRpcResponse
 from kai.jsonrpc.streams import LspStyleStream
-from kai.logging.logging import TRACE, get_logger, init_logging_from_log_config
+from kai.logging.logging import get_logger, init_logging_from_log_config
 from kai.rpc_server.server import (
     GetCodeplanAgentSolutionParams,
     KaiRpcApplication,
@@ -277,7 +277,7 @@ def get_analysis_from_analyzer(server: JsonRpcServer) -> Report:
         report_model = Report.load_report_from_object(rulesets, "base_run")
         return report_model
     except Exception as e:
-        raise Exception(f"Failed to get analysis: {e}")
+        raise Exception(f"Failed to get analysis: {e}") from e
 
 
 def main() -> None:

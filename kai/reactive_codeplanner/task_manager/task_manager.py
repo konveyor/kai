@@ -184,7 +184,7 @@ class TaskManager:
             0
         )
         logger.info(
-            "seed tasks only: %s, priority_quue: %s",
+            "seed tasks only: %s, priority_queue: %s",
             seed_tasks_only,
             self.priority_queue.task_stacks,
         )
