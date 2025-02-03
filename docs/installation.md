@@ -7,10 +7,8 @@ We provide pre-built versions of the IDE plugin as a `vsix` file at [editor-exte
 ## Pre-requisite
 
 1. Install **Java 17 or later** and the latest version of **Maven**.
-2. Set up the required environment variables for the LLM service you plan to use. Refer to the [LLM Selection Guide](/docs/llm_selection.md) for details.
 
-   - For OpenAI: `OPENAI_API_KEY=my-secret-api-key-value`
-   - For IBM BAM: `GENAI_KEY=my-secret-api-key-value`
+2. Required LLM model and key to use the Kai. Refer to the [LLM Selection Guide](/docs/llm_selection.md) for details.
 
 ## IDE Plugin Installation Methods
 
@@ -38,23 +36,3 @@ Only follow these steps if you decided to skip installing from the UI side and y
    code --install-extension path/to/your-extension.vsix
    ```
 3. Restart/reload VSCode.
-
-## Using the IDE Plugin
-
-### Get a Demo App
-
-1. Clone the Cool-store application:
-   ```bash
-   git clone https://github.com/konveyor-ecosystem/coolstore.git
-   ```
-2. Navigate to File > Open in VSCode and locate the folder we just cloned.
-
-### Running Kai RPC server
-
-1. Open walkthrough after installing the extension to setup Konveyor
-   ![walkthrough](images/walkthrough.png)
-2. User has an option to override binaries and custom rules, however it comes with the default packaged binaries and custom rules.
-   ![setup-konveyor](images/setup-konveyor.png)
-3. Configure analysis argument is necessary in order to know which rules apply to the project during analysis.
-4. Once the configuration is done, click on start server button. Logs are collected at output channel named konveyor-analyzer.
-   ![start-server](images/start-server.png)

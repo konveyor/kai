@@ -9,18 +9,17 @@ solved a similar problem in the past.
   - [Overview](#overview)
   - [Prerequisites](#prerequisites)
   - [Step 1: Setup](#step-1-setup)
-    - [Running Kai with IBM-served Llama 3](#running-kai-with-ibm-served-llama-3)
-    - [Running Kai with Amazon Bedrock-served Llama 3](#running-kai-with-amazon-bedrock-served-llama-3)
-    - [Running Kai with GPT-3.5-Turbo](#running-kai-with-gpt-35-turbo)
-    - [Running Kai with Cached Responses Only (demo mode)](#running-kai-with-cached-responses-only-demo-mode)
-  - [Step 2: Clone the coolstore app](#step-2-clone-the-coolstore-app)
-  - [Step 3: Run Analysis](#step-3-run-analysis)
-    - [3.1 Change import namespaces](#31-change-import-namespaces)
-    - [3.2 Modify Scope from CDI bean requirements](#32-modify-scope-from-cdi-bean-requirements)
-    - [3.3 EJB Remote and Message Driven Bean(MDB) changes](#33-ejb-remote-and-message-driven-beanmdb-changes)
+    - [Install Kai](#installation)
+    - [Clone Coolstore app](#get-a-demo-app)
+    - [Configure Konveyor](#configure-konveyor)
+  - [Step 2: Run Analysis](#step-2-run-analysis)
+    - [2.1 Change import namespaces](#21-change-import-namespaces)
+    - [2.2 Modify Scope from CDI bean requirements](#22-modify-scope-from-cdi-bean-requirements)
+    - [2.3 EJB Remote and Message Driven Bean(MDB) changes](#23-ejb-remote-and-message-driven-beanmdb-changes)
       - [EJB Remote](#ejb-remote)
       - [Message Driven Bean (MDB)](#message-driven-bean-mdb)
-    - [Step 4: Deploy app to Kubernetes](#step-4-deploy-app-to-kubernetes)
+  - [Step 3: Deploy app to Kubernetes](#step-3-deploy-app-to-kubernetes)
+  - [Step 4: Debug and File Incidents](#debug-and-file-incidents)
   - [Conclusion](#conclusion)
 
 ## Overview
@@ -54,170 +53,82 @@ Download the latest from
 
 ## Step 1: Setup
 
-[You can configure Kai in multiple ways](../contrib/configuration.md). The best
-way to configure Kai is to follow the setup page to get started. After the
-basic setup, additional configuration can be made by modifying `settings.json`.
+### Installation
 
-You will need to select an LLM model to use with Kai. Here are some examples of
-how to configure Kai to use different models. For more options, see
-[llm_selection.md](../llm_selection.md).
+Follow the steps in the [installation guide](../installation.md) to install Kai. It will help you find the latest build and complete the setup.
 
-If you don't have access to an LLM, you also have the option to run Kai in demo
-mode, which uses cached responses.
+### Get a Demo App
 
-> [!IMPORTANT]
->
-> The demo assumes you are using IBM-served Llama 3. If you are using a different
-> model, the responses you get back may be different.
+1. Clone the Cool-store application:
 
-### Running Kai with IBM-served Llama 3
+   ```bash
+   git clone https://github.com/konveyor-ecosystem/coolstore.git
+   ```
 
-<!-- Begin copy from llm_selection.md#ibm-bam-service -->
+   Next, switch to the branch of the Coolstore app that's been partially migrated:
 
-> [!WARNING]  
-> In order to use this service an individual needs to obtain a w3id
-> from IBM. The kai development team is unable to help obtaining this access.
+   ```sh
+   git checkout partial-migration
+   ```
 
-1. Login to https://bam.res.ibm.com/.
-2. To access via an API you can look at ‘Documentation’ after logging into
-   https://bam.res.ibm.com/. You will see a field embedded in the
-   'Documentation' section where you can generate/obtain an API Key.
-3. Ensure you have exported the key via `export
-GENAI_KEY=my-secret-api-key-value`. and this should exist in the shell where
-   VSCode is running
+2. Navigate to File > Open in VSCode and locate the folder we just cloned.
+   Make sure you have GenAI credentials before you start configuring Kai.
 
-<!-- End copy from llm_selection.md#ibm-bam-service -->
+### Configure Konveyor
 
-Next, ensure the following values are set in `settings.json`:
+1.  When you launch the extension, you will land on the Welcome Page, as shown below. If the Welcome Page does not appear, proceed to the step 2.
+    ![walkthrough](../images/walkthrough-1.png)
+    If "Set up Konveyor" is not available in the list, click the More button for additional options.
+    ![walkthrough](../images/walkthrough-2.png)
+2.  If the welcome page does not appear, open the command palette by pressing Command + Shift + P. This will bring up a list of commands.
+    ![walkthrough](../images/walkthrough-3.png)
+    From the command palette, locate and select the "Set up Konveyor" option. This will guide you through the configuration process.
+    ![walkthrough](../images/walkthrough-4.png)
+3.  Configure Konveyor for your project.
 
-```json
-{
-  "konveyor.kai.providerName": "ChatIBMGenAI",
-  "konveyor.kai.providerArgs": {
-    "model_id": "meta-llama/llama-3-70b-instruct",
-    "parameters": {
-      "max_new_tokens": 2048
-    }
-  }
-}
-```
+    - User has an option to override binaries and custom rules, however it comes with the default packaged binaries and custom rules.
+      ![setup-konveyor](../images/setup-konveyor.png)
+    - The Konveyor extension allows you to add custom rules to the analyzer. This is useful when you want to apply your own rules during analysis.
+    - Configuring analysis arguments is necessary to determine which rules apply to the project during analysis. Set up analysis arguments specific to your project by selecting the appropriate options and pressing "OK" to save the changes.
+      ![setup-konveyor](../images/setup-konveyor-2.png)
 
-Finally, start the Kai RPC server.
+    We will analyze the Coolstore application using the following migration targets to identify potential areas for improvement:
 
-### Running Kai with Amazon Bedrock-served Llama 3
+       <!-- - containerization -->
 
-1. Obtain your AWS API key from Amazon Bedrock.
-2. Export your `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and
-   `AWS_DEFAULT_REGION` environment variables.
+    - cloud-readiness
+    - jakarta-ee
+    - jakarta-ee8
+    - jakarta-ee9
+    - quarkus
 
-Next, paste the following into your `settings.json` file:
+    - To verify your arguments, go to your project directory and open `/.vscode/settings.json`. This serves as a reference for how `settings.json` should look.
 
-```json
-{
-  "konveyor.kai.providerName": "ChatBedrock",
-  "konveyor.kai.providerArgs": {
-    "model_id": "meta.llama3-70b-instruct-v1:0",
-    "parameters": {}
-  }
-}
-```
+      ```json
+      {
+        "konveyor.analysis.labelSelector": "(konveyor.io/target=cloud-readiness || konveyor.io/target=jakarta-ee || konveyor.io/target=jakarta-ee8 || konveyor.io/target=jakarta-ee9 || konveyor.io/target=quarkus) || (discovery)"
+      }
+      ```
 
-Finally, start the Kai RPC server.
+    - Next, set up the Generative AI key for your project. This step will open the `provider-settings.yaml` file. By default, it is configured to use OpenAI. To change the model, update the anchor `&active` to the desired block. Modify this file with the required arguments, such as the model and API key, to complete the setup. Sample of the `provider-settings.yaml` can be found [here.](https://github.com/konveyor/editor-extensions/blob/main/vscode/resources/sample-provider-settings.yaml)
 
-### Running Kai with GPT-3.5-Turbo
+4.  Once the configuration is done, click on start server button. Logs are collected at output channel named konveyor-analyzer.
+    ![start-server](../images/start-server.png)
 
-<!-- Begin copy from llm_selection.md#openai-service -->
-
-1. Follow the directions from OpenAI
-   [here](https://help.openai.com/en/articles/4936850-where-do-i-find-my-openai-api-key).
-2. Ensure you have exported the key via `export
-OPENAI_API_KEY=my-secret-api-key-value`
-
-<!-- End copy from llm_selection.md#openai-service -->
-
-Next, paste the following into your `settings.json` file:
-
-```json
-{
-  "konveyor.kai.providerName": "ChatOpenAI",
-  "konveyor.kai.providerArgs": {
-    "model": "gpt-3.5-turbo",
-    "parameters": {}
-  }
-}
-```
-
-Finally, start the Kai RPC server.
-
-### Running Kai with GPT-4o
-
-<!-- Begin copy from llm_selection.md#openai-service -->
-
-1. Follow the directions from OpenAI
-   [here](https://help.openai.com/en/articles/4936850-where-do-i-find-my-openai-api-key).
-2. Ensure you have exported the key via `export
-OPENAI_API_KEY=my-secret-api-key-value`
-
-<!-- End copy from llm_selection.md#openai-service -->
-
-Next, paste the following into your `settings.json` file:
-
-```json
-{
-  "konveyor.kai.providerName": "ChatOpenAI",
-  "konveyor.kai.providerArgs": {
-    "model": "gpt-4o",
-    "parameters": {}
-  }
-}
-```
-
-Finally, start the Kai RPC server.
-
-### Running Kai with Cached Responses Only (demo mode)
-
-If you don't have access to a `GEN_AI` key, you can run the server in demo mode
-which will use cached responses
-
-To run the Kai server in demo mode, ensure `konveyor.kai.demo_mode: true` is
-set in `settings.json`.
-
-## Step 2: Clone the coolstore app
-
-Let's clone the Coolstore application, which we will be used demo the migration
-process to Quarkus.
-
-First, clone the Coolstore demo from its repository:
-
-```sh
-git clone https://github.com/konveyor-ecosystem/coolstore.git
-```
-
-Next, switch to the branch of the Coolstore app that's been partially migrated:
-
-```sh
-git checkout partial-migration
-```
-
-## Step 3: Run Analysis
-
-We will analyze the Coolstore application using the following migration targets
-to identify potential areas for improvement:
-
-<!-- - containerization -->
-
-- cloud-readiness
-- jakarta-ee
-- jakarta-ee8
-- jakarta-ee9
-- quarkus
+## Step 2: Run Analysis
 
 Let's perform our initial analysis:
 
-1. Open VSCode and load coolstore project if it is not already loaded.
-2. Follow the steps to run the analysis listed
-   [here](../getting_started.md#running-analysis)
-3. Once the analysis is complete you will see incidents listed on the following files
+1. Once you have RPC server initialized, navigate to "Konveyor Analysis View" and click `Run Analysis`. Open the command palette by pressing Command + Shift + P to find it.
+   ![run_analysis](../images/run_analysis.png)
+
+2. The Konveyor Analysis View lists issues, allowing you to filter them by file issues. On the left side, the Konveyor Issue Panel groups files based on similar issues for easier navigation.
+   ![konveyor_analysis_view](../images/konveyor_analysis_view.png)
+
+If you lose the "Konveyor Analysis View" window, press Command + Shift + P to open the Command Palette, then search for and select the Analysis View window. Alternatively, click the editor icon under the Konveyor Issue panel to reopen it.
+![konveyor_analysis_view_1](../images/konveyor_analysis_view_1.png)
+
+Once the analysis is complete, you will see many incidents. However, let's focus on fixing only the 5 files necessary to migrate the Coolstore application.
 
 - `src/main/java/com/redhat/coolstore/model/ShoppingCart.java`
 - `src/main/java/com/redhat/coolstore/model/InventoryEntity.java`
@@ -234,60 +145,51 @@ Let's perform our initial analysis:
 The incidents in the above files will provide insights into potential issues or
 areas that require attention during the migration process.
 
-### 3.1 Change import namespaces
+### 2.1 Change import namespaces
 
-- Right-click on the file
-  `src/main/java/com/redhat/coolstore/model/ShoppingCart.java`.
-- Select Kai Fix-All.
-- Accept the proposed changes.
-- Repeat the same process for the file -
-  `src/main/java/com/redhat/coolstore/model/InventoryEntity.java`.
+Open “Konveyor Analysis View” and search for `InventoryEntity.java` file. Click on `Resolve 6 incidents` to resolve all incidents or individual incidents as shown below.
+![request_fix](request_fix.png)
 
-![Change import namespaces](model.png)
+The “Resolution Details” window will display the requested fix information as shown below.
+![resolution_details](resolution_details.png)
 
-The above steps show how Kai simplifies the translation of import namespaces,
-ensuring seamless automated migration of javax libraries to jakarta persistence
+Click on the eye symbol to view the differences.
+![change_import_namespaces.png](change_import_namespaces.png)
+
+Accept the changes by clicking on the symbol shown above on the screenshot. This will trigger analysis and reduce the number of incidents.
+
+The above steps show how Kai simplifies the translation of import namespaces, ensuring seamless automated migration of javax libraries to jakarta persistence
 libraries.
 
-### 3.2 Modify Scope from CDI bean requirements
+Just like we fixed `InventoryEntity.java`, repeat the same steps for `ShoppingCart.java`.
 
-In this step, we will use Kai to modify the scope in `CatalogService.java` to
-adhere to Quarkus CDI bean requirements. Kai will handle this automatically,
-ensuring seamless migration.
+### 2.2 Modify Scope from CDI bean requirements
 
-- Right-click on the file
-  `src/main/java/com/redhat/coolstore/service/CatalogService.java`.
-- Select Kai Fix-All.
-- Accept the proposed changes.
+In this step, we will use Kai to update the scope definitions in `CatalogService.java`, `ShippingService.java`, and `ShoppingCartOrderProcessor.java` to align with Quarkus CDI bean requirements. Kai will automate this process, ensuring a smooth migration.
 
-![Modify Scope from CDI bean requirements](kai_type2.png)
+As you can see, the files are grouped by common incidents. Request a fix for all three files shown below.
+![cdi_bean_requirement](cdi_bean_requirement.png)
 
-### 3.3 EJB Remote and Message Driven Bean(MDB) changes
+Verify each solution one by one and ensure the requested changes are applied. In this case, Kai understands the problem and proactively fixes future issues as well.
+![multi_file_fix](multi_file_fix.png)
 
-We will address EJB Remote and MDB functionalities in `ShippingService.java` and
-`ShoppingCartOrderProcessor.java` respectively. Kai will guide us through
-replacing EJBs with REST functionality and updating related imports and
-annotations.
+In `CatalogService.java` Stateless EJB is converted to a CDI bean by replacing the @Stateless annotation with a scope @ApplicationScoped.
+
+![catalogService - diff](catalogService.png)
+
+### 2.3 EJB Remote and Message Driven Bean(MDB) changes
+
+From the previous request, Kai not only modified the scope definitions but also addressed EJB Remote and MDB functionalities in `ShippingService.java` and `ShoppingCartOrderProcessor.java`, respectively. Kai replaced EJBs with REST functionality and updated related imports and annotations.
 
 #### EJB Remote
 
-- Right-click on the file
-  `src/main/java/com/redhat/coolstore/service/ShippingService.java`.
-- Select `Kai Fix-All`.
-- Accept the proposed changes.
+![shippingService - diff](shippingService.png)
 
-![EJB Remote - Before/After](ejb_remote.png)
-
-Due to the absence of support for Remote EJBs in Quarkus, you will notice that
-these functionalities are removed and replaced with REST functionality.
+Due to the absence of support for Remote EJBs in Quarkus, you will notice that these functionalities are removed and replaced with REST functionality.
 
 #### Message Driven Bean (MDB)
 
-- Right-click on the file `src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java`.
-
-- Select `Kai Fix-All` and accept the changes.
-
-![MDB - before/after](mdb.png)
+![shoppingCartOrderProcessor - before/after](shoppingCartOrderProcessor.png)
 
 - Note the changes made to `ordersEmitter` channel:
 
@@ -324,7 +226,7 @@ these functionalities are removed and replaced with REST functionality.
 
 ![MDB - Manual updates](mdbchanges.png)
 
-### Step 4: Deploy app to Kubernetes
+### Step 3: Deploy app to Kubernetes
 
 Although the app is deployable to any [Kubernetes](https://kubernetes.io/)
 distribution. For the sake of simplicity we choose
@@ -380,6 +282,10 @@ minikube service list
 ```
 
 ![deploy app](deploy.gif)
+
+## Debug and File Incidents
+
+Please review this [page](../debug.md) for information on Logs, Troubleshooting, and Filing Issues.
 
 ## Conclusion
 
