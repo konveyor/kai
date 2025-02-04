@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Callable, Optional, cast
+from typing import Any, Optional
 
 from langchain_aws import ChatBedrock
 from langchain_community.chat_models.fake import FakeListChatModel
@@ -164,9 +164,9 @@ class ModelProvider:
         """
 
         cpr = SimplePathResolver("validate_environment.json")
-        challenge: Callable[[str], BaseMessage] = lambda k: self.invoke(
-            "", cpr, configurable_fields={k: 1}
-        )
+
+        def challenge(k: str) -> BaseMessage:
+            return self.invoke("", cpr, configurable_fields={k: 1})
 
         if isinstance(self.llm, ChatOllama):
             challenge("max_tokens")

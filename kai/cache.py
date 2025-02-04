@@ -1,6 +1,5 @@
 import re
 from abc import ABC, abstractmethod
-from os import PathLike
 from pathlib import Path
 from typing import Any, Optional
 

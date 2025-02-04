@@ -62,13 +62,15 @@ class TestModelProvider(unittest.TestCase):
             blank_provider("ChatOpenAI")
         os.environ.clear()
 
-        os.environ["AWS_SECRET_ACCESS_KEY"] = "obviously_fake"
+        os.environ["AWS_SECRET_ACCESS_KEY"] = (  # trunk-ignore(bandit/B105)
+            "obviously_fake"
+        )
         os.environ["AWS_ACCESS_KEY_ID"] = "obviously_fake"
-        with self.assertRaises(Exception):
+        with self.assertRaises(Exception):  # trunk-ignore(ruff/B017)
             blank_provider("ChatBedrock")
         os.environ.clear()
 
         os.environ["GOOGLE_API_KEY"] = "obviously_fake"
-        with self.assertRaises(Exception):
+        with self.assertRaises(Exception):  # trunk-ignore(ruff/B017)
             blank_provider("ChatGoogleGenerativeAI")
         os.environ.clear()
