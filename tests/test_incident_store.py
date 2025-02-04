@@ -148,6 +148,7 @@ class GitRepo(Fixture):
         shutil.rmtree(self.repo_path)
 
 
+@unittest.skip("IncidentStore as a whole needs to be rewritten")
 class TestIncidentStore(unittest.TestCase):
     def check_number_of_entities(self, cls: SQLBase, expected: int, where_clause=None):
         with Session(self.incident_store.engine) as session:

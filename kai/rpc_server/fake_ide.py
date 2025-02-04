@@ -16,7 +16,7 @@ from typing import IO, Any, cast
 from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.models import JsonRpcId
 from kai.jsonrpc.streams import BareJsonStream
-from kai.kai_config import KaiConfigModels
+from kai.kai_config import KaiConfigModels, SupportedModelProviders
 from kai.logging.logging import get_logger
 from kai.rpc_server.server import KaiRpcApplication
 
@@ -100,7 +100,7 @@ def main() -> None:
                 "rootUri": "file:///path/to/root",
                 "kantraUri": "file:///path/to/kantra",
                 "modelProvider": KaiConfigModels(
-                    provider="fake_provider",
+                    provider=SupportedModelProviders.FAKE_LIST_CHAT_MODEL,
                     args={},
                 ),
                 "kaiBackendUrl": "http://localhost:8080",

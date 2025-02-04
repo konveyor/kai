@@ -193,8 +193,6 @@ class ModelProvider:
         stop: Optional[list[str]] = None,
         **kwargs: Any,
     ) -> BaseMessage:
-        # cache_path_resolver = cast(CachePathResolver, cache_path_resolver)
-
         # Some fields can only be configured when the model is instantiated.
         # This side-steps that by creating a new instance of the model with the
         # configurable fields set, then invoking that new instance.
@@ -202,8 +200,8 @@ class ModelProvider:
             invoke_llm = self.llm.configurable_fields(
                 **{k: ConfigurableField(id=k) for k in configurable_fields}
             ).with_config(
-                configurable_fields
-            )  # type: ignore[arg-type]
+                configurable_fields  # type: ignore[arg-type]
+            )
         else:
             invoke_llm = self.llm
 

@@ -41,7 +41,10 @@ class TestModelProvider(unittest.TestCase):
                 args={},
             )
 
-            return ModelProvider(config)
+            model = ModelProvider(config)
+            model.validate_environment()
+
+            return model
 
         os.environ.clear()
 

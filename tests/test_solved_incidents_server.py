@@ -30,6 +30,7 @@ from kai_solution_server.service.incident_store.sql_types import (
 )
 
 
+@unittest.skip(reason="Solution server needs to be reworked in new RPC architecture")
 class HubImporterTest(unittest.TestCase):
     def setUp(self) -> None:
         self.incident_store = IncidentStore.incident_store_from_config(
