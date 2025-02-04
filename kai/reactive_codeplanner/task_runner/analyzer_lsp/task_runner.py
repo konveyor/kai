@@ -56,10 +56,11 @@ class AnalyzerTaskRunner(TaskRunner):
             src_file_contents = f.read()
 
         logger.info(f"file -- {task.file}")
+
         agent_request = AnalyzerFixRequest(
             file_path=Path(os.path.abspath(task.file)),
             file_content=src_file_contents,
-            incidents=[task.incident],
+            incidents=task.incidents,
             sources=task.sources,
             targets=task.targets,
             task=task,
@@ -92,7 +93,7 @@ class AnalyzerTaskRunner(TaskRunner):
             rcm.commit(
                 f"AnalyzerTaskRunner changed file {str(task.file)}",
                 AnalyzerTaskSpawningResult(
-                    issues=[task.incident.message],
+                    issues=[i.message for i in task.incidents],
                     file_path=Path(task.file),
                     original_contents=src_file_contents,
                     updated_contents=result.updated_file_content,

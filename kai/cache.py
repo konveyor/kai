@@ -226,7 +226,7 @@ class TaskBasedPathResolver(CachePathResolver):
             base_path = self._dfs(task.parent) / task.__class__.__name__ / filename
             if isinstance(task, AnalyzerRuleViolation):
                 base_path = base_path / task.violation.id
-            return base_path / f"line_{task.line}"
+            return base_path
         else:
             return (
                 self._dfs(task.parent)

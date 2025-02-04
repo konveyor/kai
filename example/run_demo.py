@@ -6,6 +6,7 @@ import subprocess  # trunk-ignore(bandit/B404)
 import sys
 import time
 from io import BufferedReader, BufferedWriter
+from logging import DEBUG
 from pathlib import Path
 from typing import Any, Generator, cast
 
@@ -217,6 +218,8 @@ def process_file(
 def run_demo(report: Report, server: JsonRpcServer) -> None:
     with trace.get_tracer("demo_tracer").start_as_current_span("run_demo"):
         impacted_files = report.get_impacted_files()
+        sorted_file_key = list(impacted_files.keys())
+        sorted_file_key.sort()
         num_impacted_files = len(impacted_files)
 
         total_incidents = sum(len(incidents) for incidents in impacted_files.values())
@@ -245,6 +248,38 @@ def run_demo(report: Report, server: JsonRpcServer) -> None:
             )
 
 
+def get_analysis_from_analyzer(server: JsonRpcServer) -> Report:
+    params = {
+        "label_selector": "(konveyor.io/target=cloud-readiness || konveyor.io/target=jakarta-ee || konveyor.io/target=jakarta-ee8 || konveyor.io/target=jakarta-ee9 || konveyor.io/target=openjdk17 || konveyor.io/target=quarkus) || (discovery)"
+    }
+    KAI_LOG.info("setting analysis report labels: %s", params)
+    response = server.send_request("analysis_engine.Analyze", params=params)
+    try:
+        if response is None:
+            raise Exception("Analyzer LSP failed to return a result")
+        elif isinstance(response, JsonRpcError):
+            raise Exception(f"Analyzer output is a JsonRpcError. Error: {response}")
+        elif response.result is None:
+            raise Exception("Analyzer lsp's output is None")
+        elif isinstance(response.result, BaseModel):
+            KAI_LOG.log(DEBUG, "analyzer_output.result is a BaseModel, dumping it")
+            report = response.result.model_dump()
+            rulesets = report.get("Rulesets")
+        else:
+            KAI_LOG.log(DEBUG, "analyzer_output.result is not a BaseModel")
+            KAI_LOG.log(DEBUG, response.result)
+            rulesets = response.result.get("Rulesets")
+
+        if not rulesets or not isinstance(rulesets, list):
+            KAI_LOG.info("parsed zero results from validator")
+            raise Exception("parsed zero results")
+
+        report_model = Report.load_report_from_object(rulesets, "base_run")
+        return report_model
+    except Exception as e:
+        raise Exception(f"Failed to get analysis: {e}") from e
+
+
 def main() -> None:
     kai_config = KaiRpcApplicationConfig.model_validate_filepath("initialize.toml")
     init_logging_from_log_config(kai_config.log_config)
@@ -259,14 +294,15 @@ def main() -> None:
         )
         trace.set_tracer_provider(tracer_provider=tracer_provider)
 
-    coolstore_analysis_dir = "./analysis/coolstore/output.yaml"
-    report = Report.load_report_from_file(coolstore_analysis_dir)
     try:
         pre_flight_checks()
         with initialize_rpc_server(kai_config) as server:
+            KAI_LOG.info("starting to load report")
+            report = get_analysis_from_analyzer(server)
+            KAI_LOG.info("done loading report")
             run_demo(report, server)
         KAI_LOG.info(
-            f"Total time to process '{coolstore_analysis_dir}' was {time.time()-start}s"
+            f"Total time to process '{SAMPLE_APP_DIR}' was {time.time()-start}s"
         )
     except Exception as e:
         KAI_LOG.error(f"Error running demo - {e}")

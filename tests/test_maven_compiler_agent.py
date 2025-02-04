@@ -83,13 +83,15 @@ class TestMavenCompilerAgent(unittest.TestCase):
                     column=1,
                     violation=Violation(),
                     ruleset=RuleSet(),
-                    incident=Incident(
-                        uri="test",
-                        message="test",
-                        code_snip="test",
-                        line_number=1,
-                        variables={},
-                    ),
+                    incidents=[
+                        Incident(
+                            uri="test",
+                            message="test",
+                            code_snip="test",
+                            line_number=1,
+                            variables={},
+                        )
+                    ],
                 ),
             )
         )

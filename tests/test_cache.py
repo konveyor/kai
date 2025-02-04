@@ -32,12 +32,14 @@ class TestCache(unittest.TestCase):
                 incidents=[],
             ),
             message="Fix this",
-            incident=Incident(
-                message="test",
-                uri="file://test/src/main/java/io/konveyor/main.java",
-                code_snip="test",
-                line_number=10,
-            ),
+            incidents=[
+                Incident(
+                    message="test",
+                    uri="file://test/src/main/java/io/konveyor/main.java",
+                    code_snip="test",
+                    line_number=10,
+                )
+            ],
         )
         self.t2 = PackageDoesNotExistError(
             file="file://test/pom.xml",
@@ -58,30 +60,24 @@ class TestCache(unittest.TestCase):
             "AnalyzerRuleViolation",
             "konveyor_main_java",
             "rule-id-000",
-            "line_10",
             "0_analyzerfix.json",
         )
         self.t2_cache_expected_path = Path(
             "AnalyzerRuleViolation",
             "konveyor_main_java",
             "rule-id-000",
-            "line_10",
             "PackageDoesNotExistError",
             "test_pom_xml",
-            "line_10",
             "0_analyzerfix.json",
         )
         self.t3_cache_expected_path = Path(
             "AnalyzerRuleViolation",
             "konveyor_main_java",
             "rule-id-000",
-            "line_10",
             "PackageDoesNotExistError",
             "test_pom_xml",
-            "line_10",
             "DependencyResolutionError",
             "test_pom_xml",
-            "line_10",
             "0_analyzerfix.json",
         )
 
@@ -110,7 +106,6 @@ class TestCache(unittest.TestCase):
             / Path(
                 "PackageDoesNotExistError",
                 "test_pom_xml",
-                "line_10",
                 "0_analyzerfix.json",
             ),
         )
@@ -125,7 +120,6 @@ class TestCache(unittest.TestCase):
             / Path(
                 "DependencyResolutionError",
                 "test_pom_xml",
-                "line_10",
                 "0_analyzerfix.json",
             ),
         )

@@ -274,9 +274,13 @@ class Report:
                     if self.should_we_skip_incident(incident):
                         continue
 
-                    file_path = pathlib.Path(
-                        remove_known_prefixes(urlparse(incident.uri).path)
-                    )
+                    uri_path = Path(urlparse(incident.uri).path)
+                    if uri_path.exists():
+                        file_path = uri_path
+                    else:
+                        file_path = pathlib.Path(
+                            remove_known_prefixes(urlparse(incident.uri).path)
+                        )
                     if file_path.as_posix().startswith(Path("root", ".m2").as_posix()):
                         ## Workaround for bug found in Kantra 0.5.0
                         ## See:  https://github.com/konveyor/kantra/issues/321
