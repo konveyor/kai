@@ -509,14 +509,13 @@ def get_codeplan_agent_solution(
 
         params.incidents.sort()
         grouped_incidents_by_files = [
-            list((g)) for _, g in groupby(params.incidents, key=attrgetter("uri"))
+            list(g) for _, g in groupby(params.incidents, key=attrgetter("uri"))
         ]
         for incidents in grouped_incidents_by_files:
 
             # group incidents by violation
             grouped_violations = [
-                list((g))
-                for _, g in groupby(incidents, key=attrgetter("violation_name"))
+                list(g) for _, g in groupby(incidents, key=attrgetter("violation_name"))
             ]
             for violation_incidents in grouped_violations:
 
