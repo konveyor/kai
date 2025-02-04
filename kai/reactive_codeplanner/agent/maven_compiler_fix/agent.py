@@ -2,11 +2,14 @@ from jinja2 import Template
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
 from kai.llm_interfacing.model_provider import ModelProvider
+from kai.logging.logging import get_logger
 from kai.reactive_codeplanner.agent.api import Agent, AgentRequest, AgentResult
 from kai.reactive_codeplanner.agent.maven_compiler_fix.api import (
     MavenCompilerAgentRequest,
     MavenCompilerAgentResult,
 )
+
+logger = get_logger(__name__)
 
 
 class MavenCompilerAgent(Agent):
@@ -54,7 +57,13 @@ class MavenCompilerAgent(Agent):
         if not isinstance(ask, MavenCompilerAgentRequest):
             return AgentResult()
 
-        line_of_code = ask.file_contents.split("\n")[ask.line_number]
+        try:
+            line_of_code = ask.file_contents.split("\n")[ask.line_number]
+        except Exception:
+            logger.exception(
+                "unable to  split file contents and get line from linenumber"
+            )
+            return MavenCompilerAgentResult()
 
         compile_errors = f"Line of code: {line_of_code};\n{ask.message}"
         content = self.chat_message_template.render(

@@ -150,8 +150,10 @@ When completed, add Final Answer that tells the steps taken
 
 If you are at the point of editing, add the final answer of what you did
 
-Message:{message}
-    """
+Message:
+
+    {message}
+"""
     )
 
     AgentMethods = TypedDict(

@@ -2,6 +2,7 @@
 
 import re
 import subprocess  # trunk-ignore(bandit/B404)
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
@@ -87,9 +88,11 @@ class MavenCompilerError(ValidationError):
             details=details.copy(),
         )
 
+    def compiler_error_message(self) -> str:
+        return self.message
 
-@dataclass
-class CollapsedMavenCompilerError(MavenCompilerError):
+
+class CollapsedMavenCompilerError(ABC, MavenCompilerError):
     lines: list[int] | None = None
 
     def __eq__(self, other: object) -> bool:
@@ -138,6 +141,10 @@ class CollapsedMavenCompilerError(MavenCompilerError):
             self.lines.sort()
         return self.lines
 
+    @abstractmethod
+    def get_collapsable_key(self) -> str:
+        pass
+
 
 # Subclasses for specific error categories
 @dataclass(eq=False)
@@ -151,6 +158,9 @@ class DependencyResolutionError(MavenCompilerError):
     project: str = ""
     goal: str = ""
 
+    def compiler_error_message(self) -> str:
+        return self.message
+
 
 @dataclass(eq=False)
 class SymbolNotFoundError(CollapsedMavenCompilerError):
@@ -158,11 +168,31 @@ class SymbolNotFoundError(CollapsedMavenCompilerError):
     symbol_location: Optional[str] = None
     priority: int = 2
 
+    def compiler_error_message(self) -> str:
+        if self.missing_symbol and self.symbol_location:
+            return f"{self.message}: {self.missing_symbol} at {self.symbol_location}"
+        if self.missing_symbol:
+            return f"{self.message}: {self.missing_symbol}"
+        return self.message
+
+    def get_collapsable_key(self) -> str:
+        return f"{self.file}-{self.__class__}-{self.missing_symbol}"
+
 
 @dataclass(eq=False)
 class PackageDoesNotExistError(CollapsedMavenCompilerError):
     priority: int = 1
     missing_package: Optional[str] = None
+
+    def compiler_error_message(self) -> str:
+        if self.missing_package:
+            return f"{self.message}: {self.missing_package}"
+        else:
+            return self.message
+
+    # This does not have to be for file, because the package not existing is at the project level
+    def get_collapsable_key(self) -> str:
+        return f"{self.__class__}-{self.missing_package}"
 
 
 @dataclass(eq=False)
@@ -174,6 +204,12 @@ class SyntaxError(MavenCompilerError):
 class TypeMismatchError(MavenCompilerError):
     expected_type: Optional[str] = None
     found_type: Optional[str] = None
+
+    def compiler_error_message(self) -> str:
+        if self.expected_type and self.found_type:
+            return f"{self.message}\nexpected type: {self.expected_type}\nfound type: {self.found_type}"
+        else:
+            return self.message
 
 
 @dataclass(eq=False)
@@ -549,7 +585,7 @@ def deduplicate_errors(errors: list[MavenCompilerError]) -> list[MavenCompilerEr
         if error_id not in seen_errors:
             seen_errors.add(error_id)
             if isinstance(error, CollapsedMavenCompilerError):
-                dict_key = f"{error.file}-{error.__class__}"
+                dict_key = error.get_collapsable_key()
                 if dict_key in file_type_to_collapsable_error.keys():
                     new_error = file_type_to_collapsable_error.get(dict_key)
                     if not new_error:
@@ -557,7 +593,7 @@ def deduplicate_errors(errors: list[MavenCompilerError]) -> list[MavenCompilerEr
                     if not new_error.lines:
                         new_error.lines = [new_error.line]
                         ## Setting this, because we don't want these collapsed errors
-                        ## to every skip fuzzy matching.
+                        ## to ever skip fuzzy matching, which not matching line numbers will do
                         new_error.line = 0
                     new_error.lines.append(error.line)
                 else:
