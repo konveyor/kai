@@ -22,7 +22,7 @@ from kai.analyzer_types import ExtendedIncident, Report
 from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcId, JsonRpcResponse
 from kai.jsonrpc.streams import LspStyleStream
-from kai.logging.logging import TRACE, get_logger, init_logging_from_log_config
+from kai.logging.logging import get_logger, init_logging_from_log_config
 from kai.rpc_server.server import (
     GetCodeplanAgentSolutionParams,
     KaiRpcApplication,
@@ -93,7 +93,6 @@ def initialize_rpc_server(
     log.info(rpc_subprocess.args)
 
     app = KaiRpcApplication()
-    log.setLevel(TRACE)
 
     @app.add_notify(method="my_progress")
     def blah(
