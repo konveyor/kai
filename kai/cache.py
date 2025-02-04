@@ -1,5 +1,6 @@
 import re
 from abc import ABC, abstractmethod
+from os import PathLike
 from pathlib import Path
 from typing import Any, Optional
 
@@ -248,3 +249,15 @@ class TaskBasedPathResolver(CachePathResolver):
         path = self._dfs(self.task) / f"{self._req_count}_{self.request_type}.json"
         self._req_count += 1
         return path
+
+
+class SimplePathResolver(CachePathResolver):
+    def __init__(self, path: Path | str, meta: Optional[dict[str, str]] = None) -> None:
+        self.path = Path(path)
+        self.meta = meta
+
+    def cache_path(self) -> Path:
+        return self.path
+
+    def cache_meta(self) -> dict[str, str]:
+        return self.meta or {}

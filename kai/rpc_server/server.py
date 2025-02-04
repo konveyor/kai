@@ -199,13 +199,15 @@ def initialize(
                 app.config.model_provider, app.config.demo_mode, cache
             )
             cache.model_id = re.sub(r"[\.:\\/]", "_", model_provider.model_id)
+
+            model_provider.validate_environment()
         except Exception as e:
             server.shutdown_flag = True
             server.send_response(
                 id=id,
                 error=JsonRpcError(
                     code=JsonRpcErrorCode.InternalError,
-                    message=str(e),
+                    message=f"Failed to create model provider: {str(e)}",
                 ),
             )
             return
@@ -229,7 +231,7 @@ def initialize(
                 id=id,
                 error=JsonRpcError(
                     code=JsonRpcErrorCode.InternalError,
-                    message=str(e),
+                    message=f"Failed to start AnalyzerLSP: {str(e)}",
                 ),
             )
             return
