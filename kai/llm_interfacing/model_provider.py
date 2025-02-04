@@ -40,6 +40,7 @@ class ModelProvider:
         defaults: dict[str, Any]
         model_args: dict[str, Any]
         model_id: str
+
         # Set the model class, model args, and model id based on the provider
         match config.provider:
             case "ChatOllama":
@@ -154,44 +155,50 @@ class ModelProvider:
         self.llm: BaseChatModel = model_class(**model_args)
         self.model_id: str = model_id
 
+        self.validate_environment()
+
         if config.template is None:
             self.template = self.model_id
         else:
             self.template = config.template
 
-        if config.llama_header is None:
-            self.llama_header = self.model_id in [
-                "mistralai/mistral-7b-instruct-v0-2",
-                "mistralai/mixtral-8x7b-instruct-v01",
-                "codellama/codellama-34b-instruct",
-                "codellama/codellama-70b-instruct",
-                "deepseek-ai/deepseek-coder-33b-instruct",
-                "tiiuae/falcon-180b",
-                "tiiuae/falcon-40b",
-                "ibm/falcon-40b-8lang-instruct",
-                "meta-llama/llama-2-70b-chat",
-                "meta-llama/llama-2-13b-chat",
-                "meta-llama/llama-2-7b",
-                "meta-llama/llama-3-70b-instruct",
-                "meta-llama/llama-3-8b-instruct",
-            ]
-        else:
-            self.llama_header = config.llama_header
+    def validate_environment(self) -> None:
+        """
+        Raises an exception if the environment is not set up correctly for the
+        current model provider.
+        """
 
+        if isinstance(self.llm, ChatGoogleGenerativeAI):
+            self.llm.validate_environment()
+
+        if isinstance(self.llm, ChatOllama):
+            prompts = [self.llm._convert_input("")]
+            prompt_messages = [p.to_messages() for p in prompts]
+            messages = prompt_messages[0]
+            chat_params = self.llm._chat_params(messages)
+            _chat_client = self.llm._client.chat(**chat_params)
+            try:
+                iterator = iter(_chat_client)
+            except TypeError:
+                pass
+            else:
+                next(iterator)
+
+    # NOTE(JonahSussman): Should cache_path_resolver be a parameter here? It's
+    # only used when self.cache not None.
     def invoke(
         self,
         input: LanguageModelInput,
-        cache_path_resolver: CachePathResolver,
+        cache_path_resolver: Optional[CachePathResolver] = None,
         config: Optional[RunnableConfig] = None,
         *,
         stop: Optional[list[str]] = None,
         **kwargs: Any,
     ) -> BaseMessage:
-        cache_path = cache_path_resolver.cache_path()
-        cache_meta = cache_path_resolver.cache_meta()
-
         if self.demo_mode and self.cache:
-            cache_entry = self.cache.get(path=cache_path, input=input)
+            cache_entry = self.cache.get(
+                path=cache_path_resolver.cache_path(), input=input
+            )
 
             if cache_entry:
                 return cache_entry
@@ -200,10 +207,10 @@ class ModelProvider:
 
         if self.cache:
             self.cache.put(
-                path=cache_path,
+                path=cache_path_resolver.cache_path(),
                 input=input,
                 output=response,
-                cache_meta=cache_meta,
+                cache_meta=cache_path_resolver.cache_meta(),
             )
 
         return response

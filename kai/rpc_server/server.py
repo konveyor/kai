@@ -200,8 +200,15 @@ def initialize(
             )
             cache.model_id = re.sub(r"[\.:\\/]", "_", model_provider.model_id)
         except Exception as e:
-            app.log.error("unable to get model provider:", e)
-            raise
+            server.shutdown_flag = True
+            server.send_response(
+                id=id,
+                error=JsonRpcError(
+                    code=JsonRpcErrorCode.InternalError,
+                    message=str(e),
+                ),
+            )
+            return
 
         app.log.info(f"Initialized with config: {app.config}")
 
@@ -226,6 +233,7 @@ def initialize(
                 ),
             )
             return
+
         internal_config = RpcClientConfig(
             repo_directory=app.config.root_path,
             analyzer_lsp_server_binary=app.config.analyzer_lsp_rpc_path,
