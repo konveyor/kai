@@ -5,11 +5,7 @@ import json
 import os
 from typing import Any, Optional
 
-from genai import Client, Credentials
-from genai.extensions.langchain.chat_llm import LangChainChatInterface
-from genai.schema import DecodingMethod
 from langchain_aws import ChatBedrock
-from langchain_community.chat_models import ChatOllama
 from langchain_community.chat_models.fake import FakeListChatModel
 from langchain_core.language_models.base import LanguageModelInput
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -17,6 +13,7 @@ from langchain_core.messages import BaseMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_deepseek import ChatDeepSeek
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_ollama import ChatOllama
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from pydantic.v1.utils import deep_update
 
@@ -72,42 +69,6 @@ class ModelProvider:
 
                 model_args = deep_update(defaults, config.args)
                 model_id = model_args["model"]
-
-            case "ChatIBMGenAI":
-                model_class = LangChainChatInterface
-                if get_env_bool("KAI__DEMO_MODE", False):
-                    api_key = os.getenv("GENAI_KEY", "dummy_value")
-                    api_endpoint = os.getenv("GENAI_API", "")
-                    credentials = Credentials(
-                        api_key=api_key, api_endpoint=api_endpoint
-                    )
-                else:
-                    credentials = Credentials.from_env()
-                defaults = {
-                    "client": Client(credentials=credentials),
-                    "model_id": "ibm-mistralai/mixtral-8x7b-instruct-v01-q",
-                    "parameters": {
-                        "decoding_method": DecodingMethod.SAMPLE,
-                        # NOTE: probably have to do some more clever stuff regarding
-                        # config. max_new_tokens and such varies between models
-                        "max_new_tokens": 4096,
-                        "min_new_tokens": 10,
-                        "temperature": 0.05,
-                        "top_k": 20,
-                        "top_p": 0.9,
-                        "return_options": {"input_text": False, "input_tokens": True},
-                    },
-                    "moderations": {
-                        # Threshold is set to very low level to flag everything
-                        # (testing purposes) or set to True to enable HAP with
-                        # default settings
-                        "hap": {"input": True, "output": False, "threshold": 0.01}
-                    },
-                    "streaming": True,
-                }
-
-                model_args = deep_update(defaults, config.args)
-                model_id = model_args["model_id"]
 
             case "ChatBedrock":
                 model_class = ChatBedrock

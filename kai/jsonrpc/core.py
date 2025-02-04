@@ -104,11 +104,6 @@ class JsonRpcApplication:
         if method is None:
             raise ValueError("Method name must be provided")
 
-        if kind == "request":
-            callbacks = self.request_callbacks
-        else:
-            callbacks = self.notify_callbacks
-
         def decorator(
             func: JsonRpcCallable,
         ) -> JsonRpcCallback:
@@ -117,7 +112,13 @@ class JsonRpcApplication:
                 kind=kind,
                 method=method,
             )
-            callbacks[method] = callback
+
+            if kind == "request":
+                self.request_callbacks[method] = callback
+            else:
+                self.notify_callbacks[method] = callback
+
+            log.error(f"Added {kind} callback: {method}")
 
             return callback
 
