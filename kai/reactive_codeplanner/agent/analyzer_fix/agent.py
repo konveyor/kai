@@ -1,8 +1,8 @@
 import os
+import re
 from dataclasses import dataclass
 from logging import DEBUG
 from pathlib import Path
-import re
 from typing import Optional, cast
 
 from jinja2 import Template

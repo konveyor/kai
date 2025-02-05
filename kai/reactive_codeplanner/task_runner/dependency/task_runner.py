@@ -48,7 +48,7 @@ class DependencyTaskRunner(TaskRunner):
     def can_handle_task(self, task: Task) -> bool:
         return isinstance(task, self.handled_type)
 
-    @tracer.start_as_current_span("dependency_task_execute")  # type:ignore
+    @tracer.start_as_current_span("dependency_task_execute")
     def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
         if not isinstance(task, self.handled_type):
             logger.error("Unexpected task type %r", task)

@@ -1,4 +1,5 @@
 import re
+
 from jinja2 import Template
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
@@ -65,7 +66,7 @@ class MavenCompilerAgent(Agent):
                 "unable to  split file contents and get line from linenumber"
             )
             return MavenCompilerAgentResult()
-        
+
         system_message = SystemMessage(
             content=self.system_message_template.render(background=ask.background)
         )

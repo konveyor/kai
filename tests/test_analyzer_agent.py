@@ -1,11 +1,15 @@
 import unittest
 from pathlib import Path
 
+from langchain_core.messages import AIMessage
+
 from kai.constants import PATH_KAI
 from kai.kai_config import KaiConfigModels
-from langchain_core.messages import AIMessage
 from kai.llm_interfacing.model_provider import ModelProvider
-from kai.reactive_codeplanner.agent.analyzer_fix.agent import AnalyzerAgent, _llm_response
+from kai.reactive_codeplanner.agent.analyzer_fix.agent import (
+    AnalyzerAgent,
+    _llm_response,
+)
 from kai.reactive_codeplanner.agent.analyzer_fix.api import (
     AnalyzerFixRequest,
     AnalyzerFixResponse,

@@ -44,7 +44,7 @@ class AnalyzerTaskRunner(TaskRunner):
         """Will determine if the task if a MavenCompilerError, and if we can handle these issues."""
         return isinstance(task, AnalyzerRuleViolation)
 
-    @tracer.start_as_current_span("analyzer_execute_task")  # type:ignore
+    @tracer.start_as_current_span("analyzer_execute_task")
     def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
         """This will be responsible for getting the full file from LLM and updating the file on disk"""
 

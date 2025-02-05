@@ -17,7 +17,7 @@ from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
 
 
 class TestDependencyTaskRunner(unittest.TestCase):
-    
+
     def setUp(self):
         self.project_base = Path(
             os.path.abspath(
@@ -63,7 +63,7 @@ print(result)
 Observation: This action will insert the MicroProfile Reactive Messaging dependency into the `pom.xml` file at the correct location, ensuring that the package is available for use in the project.
 
 Final Answer: Added the MicroProfile Reactive Messaging dependency with groupId `org.eclipse.microprofile.reactive.messaging`, artifactId `microprofile-reactive-messaging-api`, and version `3.0.1` to the `pom.xml` file.""",
-            ]
+            ],
         ]
         return DependencyTaskRunner(
             MavenDependencyAgent(
@@ -121,14 +121,13 @@ Final Answer: Added the MicroProfile Reactive Messaging dependency with groupId 
             max_retries=3,
             column=27,
         )
-        
-        
+
         runner = self._task_runner(project_base=self.project_base, response_variant=1)
 
         rcm = RepoContextManager(project_root=self.project_base)
         snapshot = rcm.snapshot
         result = runner.execute_task(rcm=rcm, task=task)
-        
+
         self.assertEqual(len(result.modified_files), 1)
 
         if result.modified_files:
@@ -138,5 +137,5 @@ Final Answer: Added the MicroProfile Reactive Messaging dependency with groupId 
             with open(self.project_base / "expected_pom_bug_616.xml") as f:
                 expected_pom_contents = f.read()
             self.assertEqual(actual_pom_contents, expected_pom_contents)
-        
+
         rcm.reset(snapshot)
