@@ -91,10 +91,8 @@ class AnalyzerRuleViolation(ValidationError):
         if self.parent is not None:
             return self.oldest_ancestor().background()
         if self.children:
-            message = f"""You attempted to solve an issue in a repository you are migrating:
-Message:
-{self.incident.message}
-However your solution caused additional problems elsewhere in the repository, which you are now going to solve."""
+            message = f"""You attempted to solve the following issues in the source code you are migrating:
+Issues: {"\n".join(self.incident_message)}"""
 
             if self.result and self.result.summary:
                 message += f"\n\nHere is the reasoning you provided for your initial solution:\n\n{self.result.summary}"

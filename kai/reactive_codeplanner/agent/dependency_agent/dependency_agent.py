@@ -58,6 +58,7 @@ class MavenDependencyAgent(Agent):
         """
 You are an excellent java developer focused on updating dependencies in a maven `pom.xml` file. 
 {{ background }}
+
 ### Guidelines:
 1  Only use the provided and predefined functions as the functions. Do not use any other functions.
 2 always search for the fqdn for the dependency to be added or updated
@@ -116,7 +117,7 @@ result = search_fqdn.run(artifact_id="commons-collections4", group_id="org.apach
 ```
 Observation: We now have the fqdn for the commons-collections4 dependency
 
-Though: Now I have the latest version information I need to find the where guava is in the file to replace it.
+Thought: Now I have the latest version information I need to find the where guava is in the file to replace it.
 Action: ```python
 start_line, end_line = find_in_pom._run(relative_file_path="module/file.py", keywords={"groupId": "com.google.guava"", "artifactId": "guava")
 ```
@@ -137,7 +138,6 @@ Updated the guava to the commons-collections4 dependency
 
     inst_msg_template = HumanMessagePromptTemplate.from_template(
         """
-[INST]
 Given the message, you should determine the dependency that needs to be changed.
 
 You must use the following format:
@@ -245,8 +245,11 @@ Message:
                             )
                             if to_llm_message is not None and callable(to_llm_message):
                                 tool_outputs.append(method_out.to_llm_message().content)
-
-            msg.append(HumanMessage(content="\n".join(tool_outputs)))
+            if tool_outputs:
+                msg.append(HumanMessage(content="\n".join(tool_outputs)))
+            else:
+                # we cannot continue the chat when we dont have any tool outputs
+                break
 
         if llm_response is None or fix_gen_response is None:
             return AgentResult()
