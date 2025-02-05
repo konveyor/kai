@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import datetime
-import json
 import os
 from typing import Any, Optional
 
@@ -10,14 +8,14 @@ from langchain_community.chat_models.fake import FakeListChatModel
 from langchain_core.language_models.base import LanguageModelInput
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
-from langchain_core.runnables import RunnableConfig
+from langchain_core.runnables import ConfigurableField, RunnableConfig
 from langchain_deepseek import ChatDeepSeek
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from pydantic.v1.utils import deep_update
 
-from kai.cache import Cache, CachePathResolver
+from kai.cache import Cache, CachePathResolver, SimplePathResolver
 from kai.kai_config import KaiConfigModels
 from kai.logging.logging import get_logger
 
@@ -40,6 +38,7 @@ class ModelProvider:
         defaults: dict[str, Any]
         model_args: dict[str, Any]
         model_id: str
+
         # Set the model class, model args, and model id based on the provider
         match config.provider:
             case "ChatOllama":
@@ -61,9 +60,6 @@ class ModelProvider:
                 defaults = {
                     "model": "gpt-3.5-turbo",
                     "temperature": 0.1,
-                    # "model_kwargs": {
-                    #     "max_tokens": None,
-                    # },
                     "streaming": True,
                 }
 
@@ -159,86 +155,75 @@ class ModelProvider:
         else:
             self.template = config.template
 
-        if config.llama_header is None:
-            self.llama_header = self.model_id in [
-                "mistralai/mistral-7b-instruct-v0-2",
-                "mistralai/mixtral-8x7b-instruct-v01",
-                "codellama/codellama-34b-instruct",
-                "codellama/codellama-70b-instruct",
-                "deepseek-ai/deepseek-coder-33b-instruct",
-                "tiiuae/falcon-180b",
-                "tiiuae/falcon-40b",
-                "ibm/falcon-40b-8lang-instruct",
-                "meta-llama/llama-2-70b-chat",
-                "meta-llama/llama-2-13b-chat",
-                "meta-llama/llama-2-7b",
-                "meta-llama/llama-3-70b-instruct",
-                "meta-llama/llama-3-8b-instruct",
-            ]
-        else:
-            self.llama_header = config.llama_header
+    def validate_environment(
+        self,
+    ) -> None:
+        """
+        Raises an exception if the environment is not set up correctly for the
+        current model provider.
+        """
+
+        cpr = SimplePathResolver("validate_environment.json")
+
+        def challenge(k: str) -> BaseMessage:
+            return self.invoke("", cpr, configurable_fields={k: 1})
+
+        if isinstance(self.llm, ChatOllama):
+            challenge("max_tokens")
+        elif isinstance(self.llm, ChatOpenAI):
+            challenge("max_tokens")
+        elif isinstance(self.llm, ChatBedrock):
+            challenge("max_tokens")
+        elif isinstance(self.llm, FakeListChatModel):
+            pass
+        elif isinstance(self.llm, ChatGoogleGenerativeAI):
+            challenge("max_output_tokens")
+        elif isinstance(self.llm, AzureChatOpenAI):
+            challenge("max_tokens")
+        elif isinstance(self.llm, ChatDeepSeek):
+            challenge("max_tokens")
 
     def invoke(
         self,
         input: LanguageModelInput,
-        cache_path_resolver: CachePathResolver,
+        cache_path_resolver: Optional[CachePathResolver] = None,
         config: Optional[RunnableConfig] = None,
         *,
+        configurable_fields: Optional[dict[str, Any]] = None,
         stop: Optional[list[str]] = None,
         **kwargs: Any,
     ) -> BaseMessage:
+        # Some fields can only be configured when the model is instantiated.
+        # This side-steps that by creating a new instance of the model with the
+        # configurable fields set, then invoking that new instance.
+        if configurable_fields is not None:
+            invoke_llm = self.llm.configurable_fields(
+                **{k: ConfigurableField(id=k) for k in configurable_fields}
+            ).with_config(
+                configurable_fields  # type: ignore[arg-type]
+            )
+        else:
+            invoke_llm = self.llm
+
+        if not (self.cache and cache_path_resolver):
+            return invoke_llm.invoke(input, config, stop=stop, **kwargs)
+
         cache_path = cache_path_resolver.cache_path()
         cache_meta = cache_path_resolver.cache_meta()
 
-        if self.demo_mode and self.cache:
+        if self.demo_mode:
             cache_entry = self.cache.get(path=cache_path, input=input)
 
             if cache_entry:
                 return cache_entry
 
-        response = self.llm.invoke(input, config, stop=stop, **kwargs)
+        response = invoke_llm.invoke(input, config, stop=stop, **kwargs)
 
-        if self.cache:
-            self.cache.put(
-                path=cache_path,
-                input=input,
-                output=response,
-                cache_meta=cache_meta,
-            )
+        self.cache.put(
+            path=cache_path,
+            input=input,
+            output=response,
+            cache_meta=cache_meta,
+        )
 
         return response
-
-
-# TODO(Shawn): Remove when we get to config update that
-def str_to_bool(val: str) -> bool:
-    """
-    Convert a string representation of truth to true (1) or false (0).
-    True values are 'y', 'yes', 't', 'true', 'on', and '1'; false values
-    are 'n', 'no', 'f', 'false', 'off', and '0'.  Raises ValueError if
-    'val' is anything else.
-    """
-    val = val.lower()
-    if val in ("y", "yes", "t", "true", "on", "1"):
-        return True
-    elif val in ("n", "no", "f", "false", "off", "0"):
-        return False
-    else:
-        raise ValueError("invalid truth value %r" % (val,))
-
-
-def get_env_bool(key: str, default: Optional[bool] = None) -> bool | None:
-    """
-    Get a boolean value from an environment variable, returning the default if
-    the variable is not set.
-    """
-    val = os.getenv(key)
-    if val is None:
-        return default
-    return str_to_bool(val)
-
-
-class DatetimeEncoder(json.JSONEncoder):
-    def default(self, obj: Any) -> Any:
-        if isinstance(obj, datetime.datetime):
-            return obj.isoformat()
-        return super().default(obj)

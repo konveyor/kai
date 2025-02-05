@@ -106,7 +106,8 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 
 }
 
-// These will be the args that the client can use to tell the anlayzer LSP what to do.
+// These will be the args that the client can use to tell the analyzer LSP what
+// to do.
 type Args struct {
 	LabelSelector    string   `json:"label_selector,omitempty"`
 	IncidentSelector string   `json:"incident_selector,omitempty"`
@@ -275,7 +276,7 @@ func (a *Analyzer) createRulesetsFromCache() []konveyor.RuleSet {
 				ruleSetMap[ruleset.Name] = ruleset
 			}
 		}
-		a.Logger.V(8).Info("ruleset from cachevalue", "rulesets", ruleSetMap, "filePath", filePath)
+		a.Logger.V(8).Info("ruleset from cacheValue", "rulesets", ruleSetMap, "filePath", filePath)
 	}
 
 	r := []konveyor.RuleSet{}

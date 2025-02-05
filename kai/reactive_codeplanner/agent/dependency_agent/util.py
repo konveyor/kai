@@ -86,9 +86,14 @@ def get_maven_query_from_code(code: str) -> str:
 
 
 def find_in_pom(path: Path) -> Callable[[str], FindInPomResponse]:
-    ## Open XML file
-    ## parse XML, find the dependency node if we have group and artifact we will return start_line and end_line for the full node
-    ## If we don't have group and artifact, but we have dependencies, then we will find the start of the dependecies node. start_line and end_line will be the same. The start of the dependencies.
+    """
+    - Open XML file
+    - Parse XML, find the dependency node if we have group and artifact we
+      will return start_line and end_line for the full node
+    - If we don't have group and artifact, but we have dependencies, then we
+      will find the start of the dependencies node. start_line and end_line
+      will be the same. The start of the dependencies.
+    """
     tag_to_kwargs = {
         "{http://maven.apache.org/POM/4.0.0}artifactId": "artifactId",
         "{http://maven.apache.org/POM/4.0.0}groupId": "groupId",
@@ -100,9 +105,10 @@ def find_in_pom(path: Path) -> Callable[[str], FindInPomResponse]:
         root = tree.getroot()
         deps = root.findall("*//{http://maven.apache.org/POM/4.0.0}dependency")
         index = code.index("keywords")
-        # Remove 8 chars to get ride of keyword=
+        # Remove 8 chars to get rid of keyword=
         code_string = code[index + 9 :].strip("(){}")
-        ## We know when it is just an add operation, that the LLM gives us just the word dependencies
+        # We know when it is just an add operation, that the LLM gives us just
+        # the word dependencies
         if "dependencies" in code_string:
             return FindInPomResponse(override=False)
 

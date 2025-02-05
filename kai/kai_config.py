@@ -149,8 +149,18 @@ class KaiConfigIncidentStore(BaseModel):
 # Model providers
 
 
+class SupportedModelProviders(StrEnum):
+    CHAT_OLLAMA = "ChatOllama"
+    CHAT_OPENAI = "ChatOpenAI"
+    CHAT_BEDROCK = "ChatBedrock"
+    FAKE_LIST_CHAT_MODEL = "FakeListChatModel"
+    CHAT_GOOGLE_GENERATIVE_AI = "ChatGoogleGenerativeAI"
+    AZURE_CHAT_OPENAI = "AzureChatOpenAI"
+    CHAT_DEEP_SEEK = "ChatDeepSeek"
+
+
 class KaiConfigModels(BaseModel):
-    provider: str
+    provider: SupportedModelProviders
     args: dict[str, Any] = Field(default_factory=dict)
     template: Optional[str] = Field(default=None)
     llama_header: Optional[bool] = Field(default=None)
