@@ -365,6 +365,7 @@ Message:
                             code_block = ""
                             thought_str = ""
                             observation_str = ""
+                        final_answer = " ".join(parts[1:]).strip()
                         in_final_answer = True
                         in_code = False
                         in_thought = False
