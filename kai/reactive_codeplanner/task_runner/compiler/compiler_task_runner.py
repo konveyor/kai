@@ -86,7 +86,7 @@ class MavenCompilerTaskRunner(TaskRunner):
                 task,
                 src_file_contents,
                 task.line,
-                task.message,
+                task.compiler_error_message(),
             )
         )
 

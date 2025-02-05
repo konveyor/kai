@@ -2,7 +2,9 @@
 
 import re
 import subprocess  # trunk-ignore(bandit/B404)
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from functools import cached_property
 from pathlib import Path
 from shutil import which
 from typing import Optional, Type
@@ -10,9 +12,10 @@ from typing import Optional, Type
 from opentelemetry import trace
 
 from kai.constants import ENV
-from kai.logging.logging import get_logger
+from kai.logging.logging import TRACE, get_logger
 from kai.reactive_codeplanner.task_manager.api import (
     RpcClientConfig,
+    Task,
     ValidationError,
     ValidationResult,
     ValidationStep,
@@ -85,6 +88,63 @@ class MavenCompilerError(ValidationError):
             details=details.copy(),
         )
 
+    def compiler_error_message(self) -> str:
+        return self.message
+
+
+class CollapsedMavenCompilerError(ABC, MavenCompilerError):
+    lines: list[int] | None = None
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, self.__class__):
+            return False
+        if not super().__eq__(other):
+            return False
+        if self.error_lines and other.error_lines:
+            return self.error_lines == other.error_lines
+        return False
+
+    def __hash__(self) -> int:
+        if self.error_lines:
+            return hash((super().__hash__(), tuple(self.error_lines)))
+        return super().__hash__()
+
+    def fuzzy_equals(self, error2: Task, offset: int = 1) -> bool:
+        if not isinstance(error2, self.__class__):
+            return False
+        if not super().__eq__(error2):
+            return False
+        if not self.error_lines or not error2.error_lines:
+            return False
+        matching_lines: list[int] = []
+        for line in self.error_lines:
+            for error2_line in error2.error_lines:
+                if line == error2_line:
+                    matching_lines.append(line)
+
+        # All the errors from this are still in the error, this makes them equal
+        if len(matching_lines) == len(self.error_lines):
+            return True
+
+        # we didn't find any matches, so error2 is a wholly new set of issues
+        if len(matching_lines) == 0:
+            return False
+
+        # Now, we have some errors that have not be resolved and some that have, We will continue to process this task
+        # in the future we should have a way of creating a new task, with the same priority as this one
+        # that makes it so we take all the problems
+        return True
+
+    @cached_property
+    def error_lines(self) -> list[int] | None:
+        if self.lines:
+            self.lines.sort()
+        return self.lines
+
+    @abstractmethod
+    def get_collapsable_key(self) -> str:
+        pass
+
 
 # Subclasses for specific error categories
 @dataclass(eq=False)
@@ -98,18 +158,41 @@ class DependencyResolutionError(MavenCompilerError):
     project: str = ""
     goal: str = ""
 
+    def compiler_error_message(self) -> str:
+        return self.message
+
 
 @dataclass(eq=False)
-class SymbolNotFoundError(MavenCompilerError):
+class SymbolNotFoundError(CollapsedMavenCompilerError):
     missing_symbol: Optional[str] = None
     symbol_location: Optional[str] = None
     priority: int = 2
 
+    def compiler_error_message(self) -> str:
+        if self.missing_symbol and self.symbol_location:
+            return f"{self.message}: {self.missing_symbol} at {self.symbol_location}"
+        if self.missing_symbol:
+            return f"{self.message}: {self.missing_symbol}"
+        return self.message
+
+    def get_collapsable_key(self) -> str:
+        return f"{self.file}-{self.__class__}-{self.missing_symbol}"
+
 
 @dataclass(eq=False)
-class PackageDoesNotExistError(MavenCompilerError):
+class PackageDoesNotExistError(CollapsedMavenCompilerError):
     priority: int = 1
     missing_package: Optional[str] = None
+
+    def compiler_error_message(self) -> str:
+        if self.missing_package:
+            return f"{self.message}: {self.missing_package}"
+        else:
+            return self.message
+
+    # This does not have to be for file, because the package not existing is at the project level
+    def get_collapsable_key(self) -> str:
+        return f"{self.__class__}-{self.missing_package}"
 
 
 @dataclass(eq=False)
@@ -121,6 +204,12 @@ class SyntaxError(MavenCompilerError):
 class TypeMismatchError(MavenCompilerError):
     expected_type: Optional[str] = None
     found_type: Optional[str] = None
+
+    def compiler_error_message(self) -> str:
+        if self.expected_type and self.found_type:
+            return f"{self.message}\nexpected type: {self.expected_type}\nfound type: {self.found_type}"
+        else:
+            return self.message
 
 
 @dataclass(eq=False)
@@ -144,7 +233,7 @@ def run_maven(source_directory: Path = Path(".")) -> tuple[int, str, Optional[Pa
     Also returns the path to the pom.xml file.
     """
     mavenPath = which("mvn") or "mvn"
-    cmd = [mavenPath, "compile"]
+    cmd = [mavenPath, "clean", "compile"]
     #  trunk-ignore-begin(bandit/B603)
     try:
         process = subprocess.run(
@@ -157,6 +246,7 @@ def run_maven(source_directory: Path = Path(".")) -> tuple[int, str, Optional[Pa
             env=ENV,
         )
         pom_file_path = source_directory / "pom.xml"
+        logger.log(TRACE, "running maven process: %s", process)
         return (process.returncode, process.stdout, pom_file_path)
     #  trunk-ignore-end(bandit/B603)
     except FileNotFoundError:
@@ -487,13 +577,45 @@ def deduplicate_errors(errors: list[MavenCompilerError]) -> list[MavenCompilerEr
     """
     Deduplicates errors based on file, line, column, and message.
     """
+    file_type_to_collapsable_error: dict[str, CollapsedMavenCompilerError] = {}
     unique_errors = []
     seen_errors = set()
     for error in errors:
         error_id = (error.file, error.line, error.column, error.message)
         if error_id not in seen_errors:
             seen_errors.add(error_id)
-            unique_errors.append(error)
+            if isinstance(error, CollapsedMavenCompilerError):
+                dict_key = error.get_collapsable_key()
+                if dict_key in file_type_to_collapsable_error.keys():
+                    new_error = file_type_to_collapsable_error.get(dict_key)
+                    if not new_error:
+                        continue
+                    if not new_error.lines:
+                        new_error.lines = [new_error.line]
+                        ## Setting this, because we don't want these collapsed errors
+                        ## to ever skip fuzzy matching, which not matching line numbers will do
+                        new_error.line = 0
+                    new_error.lines.append(error.line)
+                else:
+                    file_type_to_collapsable_error[dict_key] = error
+            else:
+                unique_errors.append(error)
+
+    for file_path_type, collapsed_error in file_type_to_collapsable_error.items():
+        logger.debug(
+            "adding collapsed_error: %s-lines:%s -- for key: %s",
+            collapsed_error,
+            collapsed_error.error_lines,
+            file_path_type,
+        )
+        if not isinstance(collapsed_error, MavenCompilerError):
+            logger.debug(
+                "something went wrong, invalid error in collapsable: %s",
+                collapsed_error,
+            )
+            continue
+        unique_errors.append(collapsed_error)
+
     return unique_errors
 
 

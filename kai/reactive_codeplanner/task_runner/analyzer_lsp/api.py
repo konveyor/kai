@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, List
+from typing import Any
 
 from kai.analyzer_types import Incident, RuleSet, Violation
 from kai.logging.logging import TRACE, get_logger
@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 
 @dataclass(eq=False, kw_only=True)
 class AnalyzerRuleViolation(ValidationError):
-    incidents: List[Incident]
+    incidents: list[Incident]
 
     # NOTE(JonahSussman): Violation contains a list of Incidents, and RuleSet
     # contains a list of Violations. We have another class, ExtendedIncident,
