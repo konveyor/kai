@@ -22,10 +22,22 @@ class CachePathResolver(ABC):
     """
 
     @abstractmethod
-    def cache_path(self) -> Path: ...
+    def cache_path(self) -> Path:
+        """
+        Generates a path to store cache
+
+        NOTE: This method should only be called once per desired path! You
+        should store the result in a variable if you need to use it multiple
+        times.
+        """
+        ...
 
     @abstractmethod
-    def cache_meta(self) -> dict[str, str]: ...
+    def cache_meta(self) -> dict[str, str]:
+        """
+        Generates metadata to store with cache
+        """
+        ...
 
 
 class Cache(ABC):

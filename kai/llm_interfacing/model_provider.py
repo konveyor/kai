@@ -205,22 +205,25 @@ class ModelProvider:
         else:
             invoke_llm = self.llm
 
-        if self.demo_mode and self.cache and cache_path_resolver:
-            cache_entry = self.cache.get(
-                path=cache_path_resolver.cache_path(), input=input
-            )
+        if not (self.cache and cache_path_resolver):
+            return invoke_llm.invoke(input, config, stop=stop, **kwargs)
+
+        cache_path = cache_path_resolver.cache_path()
+        cache_meta = cache_path_resolver.cache_meta()
+
+        if self.demo_mode:
+            cache_entry = self.cache.get(path=cache_path, input=input)
 
             if cache_entry:
                 return cache_entry
 
         response = invoke_llm.invoke(input, config, stop=stop, **kwargs)
 
-        if self.cache and cache_path_resolver:
-            self.cache.put(
-                path=cache_path_resolver.cache_path(),
-                input=input,
-                output=response,
-                cache_meta=cache_path_resolver.cache_meta(),
-            )
+        self.cache.put(
+            path=cache_path,
+            input=input,
+            output=response,
+            cache_meta=cache_meta,
+        )
 
         return response

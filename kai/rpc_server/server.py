@@ -202,7 +202,6 @@ def initialize(
 
             model_provider.validate_environment()
         except Exception as e:
-            server.shutdown_flag = True
             server.send_response(
                 id=id,
                 error=JsonRpcError(
@@ -226,7 +225,6 @@ def initialize(
                 excluded_paths=app.config.analyzer_lsp_excluded_paths,
             )
         except Exception as e:
-            server.shutdown_flag = True
             server.send_response(
                 id=id,
                 error=JsonRpcError(
