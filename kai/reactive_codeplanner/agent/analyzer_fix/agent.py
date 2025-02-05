@@ -82,7 +82,7 @@ Structure your output in Markdown format such as:
 ## Reasoning
 Write the step by step reasoning in this markdown section. If you are unsure of a step or reasoning, clearly state you are unsure and why.
 
-## Updated File
+## Updated {{ language }} File
 ```{{ language }}
 // Write the updated file in this section. If the file should be removed, make the content of the updated file a comment explaining it should be removed.
 ```

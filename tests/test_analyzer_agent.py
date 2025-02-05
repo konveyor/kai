@@ -25,7 +25,7 @@ class TestAnalyzerAgent(unittest.TestCase):
                 args={
                     "sleep": None,
                     "responses": [
-                        "## Reasoning\n1. Frobinate the widget\n\n## Updated unknown File\n```unknown\nimport str\nimport class\n```\n## ## Additional Information\ntesting added info",
+                        "## Reasoning\n1. Frobinate the widget\n\n## Updated unknown File\n```unknown\nimport str\nimport class\n```\n## Additional Information\ntesting added info",
                     ],
                 },
             )

@@ -1,3 +1,4 @@
+import re
 from jinja2 import Template
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
@@ -101,23 +102,26 @@ class MavenCompilerAgent(Agent):
         reasoning = ""
         additional_details = ""
         for line in lines_of_output:
-            if line.strip() == "## Updated Java File":
+            # trunk-ignore(cspell/error)
+            if re.match(r"(?:##|\*\*)\s+[Uu]pdated.*[Ff]ile", line.strip()):
                 in_java_file = True
                 in_reasoning = False
                 in_additional_details = False
                 continue
-            if line.strip() == "## Reasoning":
+            # trunk-ignore(cspell/error)
+            if re.match(r"(?:##|\*\*)\s+[Rr]easoning", line.strip()):
                 in_java_file = False
                 in_reasoning = True
                 in_additional_details = False
                 continue
-            if line.strip() == "## Additional Information (optional)":
+            # trunk-ignore(cspell/error)
+            if re.match(r"(?:##|\*\*)\s+[Aa]dditional\s+[Ii]nformation", line.strip()):
                 in_reasoning = False
                 in_java_file = False
                 in_additional_details = True
                 continue
             if in_java_file:
-                if "```java" in line or "```" in line or line == "\n":
+                if re.match(r"```(?:\w*)", line):
                     continue
                 java_file = "\n".join([java_file, line]).strip()
             if in_reasoning:

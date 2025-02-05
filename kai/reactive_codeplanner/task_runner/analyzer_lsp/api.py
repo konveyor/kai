@@ -92,10 +92,12 @@ class AnalyzerRuleViolation(ValidationError):
             return self.oldest_ancestor().background()
         if self.children:
             message = f"""You attempted to solve the following issues in the source code you are migrating:
-Issues: {"\n".join(self.incident_message)}"""
+Issues: {"\n".join(list(set(self.incident_message)))}"""
 
-            if self.result and self.result.summary:
-                message += f"\n\nHere is the reasoning you provided for your initial solution:\n\n{self.result.summary}"
+            # TODO(pgaikwad): we need to ensure this doesn't confuse the agents more than it helps before adding it back
+            # if self.result and self.result.summary:
+            #     message += f"\n\nHere is the reasoning you provided for your initial solution:\n\n{self.result.summary}"
+
             message += "\n\nHowever your solution caused additional problems elsewhere in the repository."
             return message
 
