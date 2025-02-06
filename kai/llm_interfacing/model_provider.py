@@ -66,6 +66,34 @@ class ModelProvider:
                 model_args = deep_update(defaults, config.args)
                 model_id = model_args["model"]
 
+                # NOTE(JonahSussman): This is a hack to prevent `max_tokens`
+                # from getting converted to `max_completion_tokens` for every
+                # model, except for the o1 and o3 family of models.
+
+                @property  # type: ignore[misc]
+                def _default_params(self: ChatOpenAI) -> dict[str, Any]:
+                    return super(ChatOpenAI, self)._default_params
+
+                def _get_request_payload(
+                    self: ChatOpenAI,
+                    input_: LanguageModelInput,
+                    *,
+                    stop: list[str] | None = None,
+                    **kwargs: Any,
+                ) -> dict:  # type: ignore[type-arg]
+                    return super(ChatOpenAI, self)._get_request_payload(
+                        input_, stop=stop, **kwargs
+                    )
+
+                if not (model_id.startswith("o1") or model_id.startswith("o3")):
+                    ChatOpenAI._default_params = _default_params  # type: ignore[method-assign]
+                    ChatOpenAI._get_request_payload = _get_request_payload  # type: ignore[method-assign]
+                else:
+                    if "streaming" in model_args:
+                        del model_args["streaming"]
+                    if "temperature" in model_args:
+                        del model_args["temperature"]
+
             case "ChatBedrock":
                 model_class = ChatBedrock
 
