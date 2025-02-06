@@ -1,4 +1,5 @@
 import asyncio
+import time
 from typing import Any, Callable, Literal, Optional, overload
 
 from opentelemetry import trace
@@ -270,7 +271,10 @@ class JsonRpcServer:
                 self.log.error(f"Error during recv: {msg}")
 
             elif isinstance(msg, JsonRpcRequest):
-                task = loop.create_task(self.app.handle_request(msg, self))
+                task = loop.create_task(
+                    self.app.handle_request(msg, self),
+                    name=f"{msg.method} {msg.id or -1} {time.time():.2f}",
+                )
 
                 if msg.id is not None:
                     self.outstanding_requests[msg.id] = (msg, task)

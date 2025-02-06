@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import asyncio
 import contextlib
 import os
 import platform
@@ -8,7 +9,7 @@ import time
 from io import BufferedReader, BufferedWriter
 from logging import DEBUG
 from pathlib import Path
-from typing import Any, Generator, cast
+from typing import Any, AsyncGenerator, Generator, cast
 
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -62,10 +63,12 @@ def pre_flight_checks() -> None:
             sys.exit(1)
 
 
-@contextlib.contextmanager
-def initialize_rpc_server(
+@contextlib.asynccontextmanager
+async def initialize_rpc_server(
     config: KaiRpcApplicationConfig,
-) -> Generator[JsonRpcServer, None, None]:
+) -> AsyncGenerator[JsonRpcServer, None]:
+    loop = asyncio.get_running_loop()
+
     # NOTE: This is a hack. Config should probably be globally accessible in
     # this script.
     global SAMPLE_APP_DIR
@@ -99,7 +102,7 @@ def initialize_rpc_server(
     app = KaiRpcApplication()
 
     @app.add_notify(method="my_progress")
-    def blah(
+    async def blah(
         app: KaiRpcApplication,
         server: JsonRpcServer,
         id: JsonRpcId,
@@ -116,13 +119,13 @@ def initialize_rpc_server(
         request_timeout=None,
         log=log,
     )
-    rpc_server.start()
+    _ = loop.create_task(rpc_server.start())
 
     # wait for server to start up
     time.sleep(3)
 
     try:
-        response = rpc_server.send_request(
+        response = await rpc_server.send_request(
             method="initialize", params=config.model_dump()
         )
         if response is None:
@@ -144,12 +147,12 @@ def initialize_rpc_server(
         log.error("Failed to initialize the server:", e)
     finally:
         # send shutdown
-        response = rpc_server.send_request("shutdown", params={})
+        response = await rpc_server.send_request("shutdown", params={})
         log.debug(f"shutdown response -- {response}")
         log.info("Stopping RPC Server")
         rpc_subprocess.wait()
         log.info("Stopped RPC Server")
-        rpc_server.stop()
+        await rpc_server.stop()
 
 
 def apply_diff(filepath: Path, solution: GetCodeplanAgentSolutionResult) -> None:
@@ -169,7 +172,7 @@ def apply_diff(filepath: Path, solution: GetCodeplanAgentSolutionResult) -> None
         return
 
 
-def process_file(
+async def process_file(
     server: JsonRpcServer,
     file_path: Path,
     incidents: list[ExtendedIncident],
@@ -192,7 +195,9 @@ def process_file(
     )
 
     KAI_LOG.debug(f"Request is: {params.model_dump()}")
-    response = server.send_request("getCodeplanAgentSolution", params.model_dump())
+    response = await server.send_request(
+        "getCodeplanAgentSolution", params.model_dump()
+    )
     KAI_LOG.debug(f"Response is: {response}")
 
     KAI_LOG.info("got response for code plan solution: %s", response)
@@ -214,7 +219,7 @@ def process_file(
     return f"Took {end-start}s to process {file_path} with {len(incidents)} violations"
 
 
-def run_demo(report: Report, server: JsonRpcServer) -> None:
+async def run_demo(report: Report, server: JsonRpcServer) -> None:
     with trace.get_tracer("demo_tracer").start_as_current_span("run_demo"):
         impacted_files = report.get_impacted_files()
         sorted_file_key = list(impacted_files.keys())
@@ -239,7 +244,7 @@ def run_demo(report: Report, server: JsonRpcServer) -> None:
                     f"incident: {incident.violation_name} --- {incident.line_number}"
                 )
 
-            process_file(
+            await process_file(
                 server=server,
                 incidents=incidents,
                 file_path=SAMPLE_APP_DIR / file_path,
@@ -248,13 +253,13 @@ def run_demo(report: Report, server: JsonRpcServer) -> None:
             )
 
 
-def get_analysis_from_analyzer(server: JsonRpcServer) -> Report:
+async def get_analysis_from_analyzer(server: JsonRpcServer) -> Report:
     params = {
         "label_selector": "(konveyor.io/target=cloud-readiness || konveyor.io/target=jakarta-ee || konveyor.io/target=jakarta-ee8 || konveyor.io/target=jakarta-ee9 || konveyor.io/target=openjdk17 || konveyor.io/target=quarkus) || (discovery)",
         "reset_cache": True,
     }
     KAI_LOG.info("setting analysis report labels: %s", params)
-    response = server.send_request("analysis_engine.Analyze", params=params)
+    response = await server.send_request("analysis_engine.Analyze", params=params)
     try:
         if response is None:
             raise Exception("Analyzer LSP failed to return a result")
@@ -281,7 +286,7 @@ def get_analysis_from_analyzer(server: JsonRpcServer) -> Report:
         raise Exception(f"Failed to get analysis: {e}") from e
 
 
-def main() -> None:
+async def main() -> None:
     kai_config = KaiRpcApplicationConfig.model_validate_filepath("initialize.toml")
     init_logging_from_log_config(kai_config.log_config)
     start = time.time()
@@ -297,11 +302,13 @@ def main() -> None:
 
     try:
         pre_flight_checks()
-        with initialize_rpc_server(kai_config) as server:
+
+        async with initialize_rpc_server(kai_config) as server:
             KAI_LOG.info("starting to load report")
-            report = get_analysis_from_analyzer(server)
+            report = await get_analysis_from_analyzer(server)
             KAI_LOG.info("done loading report")
-            run_demo(report, server)
+            await run_demo(report, server)
+
         KAI_LOG.info(
             f"Total time to process '{SAMPLE_APP_DIR}' was {time.time()-start}s"
         )
@@ -313,4 +320,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
