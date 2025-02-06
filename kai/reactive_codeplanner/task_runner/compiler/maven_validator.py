@@ -114,6 +114,10 @@ class CollapsedMavenCompilerError(ABC, MavenCompilerError):
             return False
         if not super().__eq__(error2):
             return False
+        # if both errors don't have error lines and super()
+        # is equal, then these must be equal
+        if not self.error_lines and not error2.error_lines:
+            return True
         if not self.error_lines or not error2.error_lines:
             return False
         matching_lines: list[int] = []
