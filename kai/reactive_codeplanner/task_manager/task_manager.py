@@ -4,6 +4,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Generator, Optional
 
+from opentelemetry import trace
+
 import kai.logging.logging as logging
 from kai.reactive_codeplanner.task_manager.api import (
     RpcClientConfig,
@@ -17,6 +19,7 @@ from kai.reactive_codeplanner.task_runner.api import TaskRunner
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
 
 logger = logging.get_logger(__name__)
+tracer = trace.get_tracer("task_manager")
 
 
 class TaskManager:
@@ -112,9 +115,9 @@ class TaskManager:
     def supply_result(self, result: TaskResult) -> None:
         logger.info("Supplying result: %s", result)
         for file_path in result.modified_files:
+            self._stale_validated_files.append(file_path)
             if file_path not in self.unprocessed_files:
                 self.unprocessed_files.append(file_path)
-                self._stale_validated_files.append(file_path)
                 self._validators_are_stale = True
                 logger.debug("File %s marked as unprocessed.", file_path)
 
@@ -125,6 +128,7 @@ class TaskManager:
         logger.info("Running validators.")
         validation_tasks: list[Task] = []
 
+        @tracer.start_as_current_span("run_validator")
         def run_validator(
             validator: ValidationStep,
         ) -> tuple[ValidationStep, Optional[ValidationResult]]:
@@ -177,6 +181,7 @@ class TaskManager:
         logger.debug("Validators are up to date.")
         return validation_tasks
 
+    @tracer.start_as_current_span("get_next_task")
     def get_next_task(
         self,
         max_priority: Optional[int] = None,

@@ -2,6 +2,7 @@ import threading
 from typing import Any, Callable, Literal, Optional, overload
 
 from opentelemetry import trace
+from opentelemetry.propagate import get_global_textmap
 from pydantic import BaseModel
 
 from kai.jsonrpc.callbacks import JsonRpcCallable, JsonRpcCallback
@@ -294,6 +295,20 @@ class JsonRpcServer(threading.Thread):
         tracer = trace.get_tracer("json_rpc")
         with tracer.start_as_current_span("send_request") as span:
             self.log.log(TRACE, "Sending request: %s", method)
+            carrier: dict[str, str] = {}
+            # Inject the current span context into the headers
+            propagator = get_global_textmap()
+            propagator.inject(carrier)
+            if isinstance(params, dict):
+                params["carrier"] = carrier
+            if isinstance(params, list):
+                # this handles the very specific case when talking the
+                # go analyzer service.
+                if len(params) == 1 and isinstance(params[0], dict):
+                    params[0]["carrier"] = carrier
+                else:
+                    params.append(carrier)
+
             current_id = self.next_id
             self.next_id += 1
             span.add_event(

@@ -328,6 +328,7 @@ def set_config(
 
 
 @app.add_request(method="analysis_engine.Analyze")
+@tracer.start_as_current_span("server_analysis_endpoint")
 def analyze(
     app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
@@ -340,6 +341,8 @@ def analyze(
             label_selector=params.get("label_selector", ""),
             included_paths=params.get("included_paths", []),
             incident_selector=params.get("incident_selector", ""),
+            scoped_paths=params.get("scoped_paths", None),
+            reset_cache=params.get("reset_cache", None),
         )
 
         if isinstance(analyzer_output, JsonRpcError):
@@ -471,7 +474,7 @@ class GetCodeplanAgentSolutionParams(BaseModel):
 
 
 @app.add_request(method="getCodeplanAgentSolution")
-@tracer.start_as_current_span("get_codeplan_solution")
+@tracer.start_as_current_span("get_code_plan_solution")
 def get_codeplan_agent_solution(
     app: KaiRpcApplication,
     server: JsonRpcServer,
@@ -492,7 +495,6 @@ def get_codeplan_agent_solution(
         )
 
     simple_chat_message("Starting!")
-
     try:
         # create a set of AnalyzerRuleViolations
         # seed the task manager with these violations
@@ -720,6 +722,7 @@ def scoped_task_fn(
         log.debug("No max_iterations, returning default get_next_task")
         return next_task_fn
 
+    @tracer.start_as_current_span("scoped_task")
     def inner(*args: P.args, **kwargs: P.kwargs) -> Generator[R, Any, None]:
         log.info(f"In inner {args}, {kwargs}")
         generator = next_task_fn(*args, **kwargs)

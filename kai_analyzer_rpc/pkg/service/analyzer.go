@@ -14,7 +14,20 @@ import (
 	"github.com/konveyor/analyzer-lsp/parser"
 	"github.com/konveyor/analyzer-lsp/provider"
 	"github.com/konveyor/analyzer-lsp/provider/lib"
+	"github.com/konveyor/kai-analyzer/pkg/scope"
 	"github.com/konveyor/kai-analyzer/provider/java"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+)
+
+const (
+	name                 = "konveyor.io/analysis-engine-rpc"
+	DISCOVERY_LABEL      = "konveyor.io/target=discovery"
+	ALWAYS_INCLUDE_LABEL = "konveyor.io/include=always"
+)
+
+var (
+	tracer = otel.Tracer(name)
 )
 
 type cacheValue struct {
@@ -31,11 +44,14 @@ type Analyzer struct {
 	engineCtx  context.Context
 	cancelFunc context.CancelFunc
 
-	initedProviders map[string]provider.InternalProviderClient
-	ruleSets        []engine.RuleSet
+	initedProviders   map[string]provider.InternalProviderClient
+	discoveryRulesets []engine.RuleSet
+	violationRulesets []engine.RuleSet
 
-	cache      map[string][]cacheValue
-	cacheMutex sync.RWMutex
+	discoveryCacheMutex sync.Mutex
+	discoveryCache      []konveyor.RuleSet
+	cache               map[string][]cacheValue
+	cacheMutex          sync.RWMutex
 }
 
 func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, lspServerPath, bundles, depOpenSourceLabelsFile, rules string, log logr.Logger) (*Analyzer, error) {
@@ -82,37 +98,96 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 		Log:                  log.WithName("parser"),
 	}
 
-	ruleSets := []engine.RuleSet{}
+	discoveryRulesets := []engine.RuleSet{}
+	violationRulesets := []engine.RuleSet{}
 	for _, f := range strings.Split(rules, ",") {
-		internRuleSet, _, err := parser.LoadRules(strings.TrimSpace(f))
+		internRuleSets, _, err := parser.LoadRules(strings.TrimSpace(f))
 		if err != nil {
 			log.Error(err, "unable to parse all the rules for ruleset", "file", f)
 			cancelFunc()
 			return nil, err
 		}
-		ruleSets = append(ruleSets, internRuleSet...)
+
+		for _, interimRuleSet := range internRuleSets {
+			runCacheResetRuleset := engine.RuleSet{
+				Name:        interimRuleSet.Name,
+				Description: interimRuleSet.Description,
+				Labels:      interimRuleSet.Labels,
+				Tags:        interimRuleSet.Tags,
+				Rules:       []engine.Rule{},
+			}
+			allOtherRuleSet := engine.RuleSet{
+				Name:        interimRuleSet.Name,
+				Description: interimRuleSet.Description,
+				Labels:      interimRuleSet.Labels,
+				Tags:        interimRuleSet.Tags,
+				Rules:       []engine.Rule{},
+			}
+			for _, interimRule := range interimRuleSet.Rules {
+				hasDiscovery, hasAlways := labelsContainDiscoveryOrAlways(append(interimRule.Labels, interimRuleSet.Labels...))
+				if len(interimRule.Labels) == 2 && hasDiscovery && hasAlways {
+					runCacheResetRuleset.Rules = append(runCacheResetRuleset.Rules, interimRule)
+				} else if interimRule.Perform.Tag != nil && !(interimRule.Perform.Message.Text != nil && interimRule.Effort != nil && *interimRule.Effort != 0) {
+					// We want to pull out tagging rules and insight only rules
+					// These don't generate violations, and we should treat them
+					// like discovery rules
+					runCacheResetRuleset.Rules = append(runCacheResetRuleset.Rules, interimRule)
+				} else {
+					allOtherRuleSet.Rules = append(allOtherRuleSet.Rules, interimRule)
+				}
+			}
+
+			if len(allOtherRuleSet.Rules) > 0 {
+				violationRulesets = append(violationRulesets, allOtherRuleSet)
+			}
+			if len(runCacheResetRuleset.Rules) > 0 {
+				discoveryRulesets = append(discoveryRulesets, runCacheResetRuleset)
+			}
+		}
 	}
 
+	log.Info("using rulesets", "discoverRulesets", len(discoveryRulesets), "violationRulesets", len(violationRulesets))
+	// Generate discoveryRulesetCache here??
+
 	return &Analyzer{
-		Logger:          log,
-		engine:          eng,
-		engineCtx:       ctx,
-		cancelFunc:      cancelFunc,
-		initedProviders: providers,
-		ruleSets:        ruleSets,
-		cache:           map[string][]cacheValue{},
-		cacheMutex:      sync.RWMutex{},
+		Logger:              log,
+		engine:              eng,
+		engineCtx:           ctx,
+		cancelFunc:          cancelFunc,
+		initedProviders:     providers,
+		discoveryRulesets:   discoveryRulesets,
+		violationRulesets:   violationRulesets,
+		discoveryCache:      []konveyor.RuleSet{},
+		discoveryCacheMutex: sync.Mutex{},
+		cache:               map[string][]cacheValue{},
+		cacheMutex:          sync.RWMutex{},
 	}, nil
 
+}
+
+func labelsContainDiscoveryOrAlways(labels []string) (bool, bool) {
+	foundDiscoveryLabel := false
+	foundIncludeAlways := false
+	for _, label := range labels {
+		if label == DISCOVERY_LABEL {
+			foundDiscoveryLabel = true
+		}
+		if label == ALWAYS_INCLUDE_LABEL {
+			foundIncludeAlways = true
+		}
+	}
+	return foundDiscoveryLabel, foundIncludeAlways
 }
 
 // These will be the args that the client can use to tell the analyzer LSP what
 // to do.
 type Args struct {
-	LabelSelector    string   `json:"label_selector,omitempty"`
-	IncidentSelector string   `json:"incident_selector,omitempty"`
-	IncludedPaths    []string `json:"included_paths,omitempty"`
-	ExcludedPaths    []string `json:"excluded_paths,omitempty"`
+	LabelSelector    string                 `json:"label_selector,omitempty"`
+	IncidentSelector string                 `json:"incident_selector,omitempty"`
+	IncludedPaths    []string               `json:"included_paths,omitempty"`
+	ExcludedPaths    []string               `json:"excluded_paths,omitempty"`
+	ResetCache       bool                   `json:"reset_cache,omitempty"`
+	Carrier          propagation.MapCarrier `json:"carrier,omitempty"`
 	// RulesFiles       []string
 }
 
@@ -132,6 +207,11 @@ func (a *Analyzer) Stop() {
 }
 
 func (a *Analyzer) Analyze(args Args, response *Response) error {
+	prop := otel.GetTextMapPropagator()
+	ctx := prop.Extract(context.Background(), args.Carrier)
+	ctx, span := tracer.Start(ctx, "analyze")
+	defer span.End()
+
 	selectors := []engine.RuleSelector{}
 	if args.LabelSelector != "" {
 		selector, err := labels.NewLabelSelector[*engine.RuleMeta](args.LabelSelector, nil)
@@ -156,8 +236,33 @@ func (a *Analyzer) Analyze(args Args, response *Response) error {
 		a.Logger.V(2).Info("Using exclusion scope", "scope", currScope.Name())
 	}
 
+	// If we don't have scopes to test a single thing, and we don't have a reset cache request
+	// Then we should return early, with results from the cache
+	if len(scopes) == 0 && !args.ResetCache {
+		a.Logger.Info("no scopes and not resetting cache, return early with results from cache")
+		a.Logger.Info("Current cache len", len(a.cache))
+		response.Rulesets = a.createRulesetsFromCache()
+		return nil
+	}
+
+	// Adding spans to the discovery rules run and for the violation rules run
+	// to determine if discovery rule segmentation saves us enough
+	if len(a.discoveryRulesets) != 0 && args.ResetCache {
+		// Here we want to refresh the discovery ruleset cache
+		ctx, span := tracer.Start(ctx, "discovery-rules")
+		rulesets := a.engine.RunRulesScoped(ctx, a.discoveryRulesets, engine.NewScope(scopes...), selectors...)
+		a.discoveryCacheMutex.Lock()
+		a.discoveryCache = rulesets
+		a.discoveryCacheMutex.Unlock()
+		span.End()
+	}
+	scopes = append(scopes, scope.NewDiscoveryRuleScope(a.Logger, a.discoveryCache))
+
 	// This will already wait
-	rulesets := a.engine.RunRulesScoped(context.Background(), a.ruleSets, engine.NewScope(scopes...), selectors...)
+	//
+	violationCTX, violationSpan := tracer.Start(ctx, "violation-rules")
+	rulesets := a.engine.RunRulesScoped(violationCTX, a.violationRulesets, engine.NewScope(scopes...), selectors...)
+	violationSpan.End()
 
 	sort.SliceStable(rulesets, func(i, j int) bool {
 		return rulesets[i].Name < rulesets[j].Name
