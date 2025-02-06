@@ -166,6 +166,7 @@ class KaiConfigModels(BaseModel):
     llama_header: Optional[bool] = Field(default=None)
     llm_retries: int = 5
     llm_retry_delay: float = 10.0
+    llm_call_budget: int = -1
 
 
 # Main config

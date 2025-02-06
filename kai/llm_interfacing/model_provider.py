@@ -22,7 +22,17 @@ from kai.logging.logging import get_logger
 LOG = get_logger(__name__)
 
 
+class LLMCallBudgetReached(Exception):
+    def __init__(
+        self, message: str = "The defined LLM call budget has been reached"
+    ) -> None:
+        super().__init__(message)
+
+
 class ModelProvider:
+
+    llm_call_budget: int = -1
+
     def __init__(
         self,
         config: KaiConfigModels,
@@ -33,6 +43,7 @@ class ModelProvider:
         self.llm_retry_delay: float = config.llm_retry_delay
         self.demo_mode: bool = demo_mode
         self.cache = cache
+        self.llm_call_budget = config.llm_call_budget
 
         model_class: type[BaseChatModel]
         defaults: dict[str, Any]
@@ -193,6 +204,8 @@ class ModelProvider:
         stop: Optional[list[str]] = None,
         **kwargs: Any,
     ) -> BaseMessage:
+        if self.llm_call_budget == 0:
+            raise LLMCallBudgetReached
         # Some fields can only be configured when the model is instantiated.
         # This side-steps that by creating a new instance of the model with the
         # configurable fields set, then invoking that new instance.
@@ -206,6 +219,7 @@ class ModelProvider:
             invoke_llm = self.llm
 
         if not (self.cache and cache_path_resolver):
+            self.llm_call_budget -= 1
             return invoke_llm.invoke(input, config, stop=stop, **kwargs)
 
         cache_path = cache_path_resolver.cache_path()
@@ -217,6 +231,7 @@ class ModelProvider:
             if cache_entry:
                 return cache_entry
 
+        self.llm_call_budget -= 1
         response = invoke_llm.invoke(input, config, stop=stop, **kwargs)
 
         self.cache.put(
