@@ -1,3 +1,4 @@
+import asyncio
 import os
 import platform
 import re
@@ -8,8 +9,8 @@ from operator import attrgetter
 from pathlib import Path
 from typing import (
     Any,
+    AsyncIterator,
     Callable,
-    Generator,
     Optional,
     ParamSpec,
     TypedDict,
@@ -121,6 +122,7 @@ class KaiRpcApplication(JsonRpcApplication):
         self.analysis_validator: Optional[AnalyzerLSPStep] = None
         self.task_manager: Optional[TaskManager] = None
         self.rcm: Optional[RepoContextManager] = None
+        self.filesystem_lock: asyncio.Lock = asyncio.Lock()
 
 
 app = KaiRpcApplication()
@@ -226,6 +228,8 @@ async def initialize(
                 or Path(),
                 excluded_paths=app.config.analyzer_lsp_excluded_paths,
             )
+
+            await app.analyzer.start()
         except Exception as e:
             await server.send_response(
                 id=id,
@@ -448,7 +452,12 @@ class GetCodeplanAgentSolutionParams(BaseModel):
     chat_token: str
 
 
-@app.add_request(method="getCodeplanAgentSolution")
+@app.add_request(
+    method="getCodeplanAgentSolution",
+    # NOTE(JonahSussman): This will make the entire get_codeplan_agent_solution
+    # function run in a lock. We need to figure out a concurrent VFS ASAP.
+    sync="error",
+)
 @tracer.start_as_current_span("get_codeplan_solution")
 async def get_codeplan_agent_solution(
     app: KaiRpcApplication,
@@ -577,7 +586,7 @@ async def get_codeplan_agent_solution(
 
         await simple_chat_message("Running validators...")
 
-        for task in next_task_fn(params.max_priority, params.max_depth):
+        async for task in next_task_fn(params.max_priority, params.max_depth):
             app.log.debug(f"Executing task {task.__class__.__name__}: {task}")
             if hasattr(task, "message"):
                 await simple_chat_message(
@@ -593,7 +602,7 @@ async def get_codeplan_agent_solution(
             # get the ignored tasks set
             pre_task_ignored_tasks = set(app.task_manager.ignored_tasks)
 
-            result = app.task_manager.execute_task(task)
+            result = await app.task_manager.execute_task(task)
 
             app.log.debug(f"Task {task.__class__.__name__}, result: {result}")
             # await simple_chat_message(f"Got result! Encountered errors: {result.encountered_errors}. Modified files: {result.modified_files}.")
@@ -691,22 +700,26 @@ R = TypeVar("R")
 
 
 def scoped_task_fn(
-    max_iterations: Optional[int], next_task_fn: Callable[P, Generator[R, Any, None]]
-) -> Callable[P, Generator[R, Any, None]]:
+    max_iterations: Optional[int], next_task_fn: Callable[P, AsyncIterator[R]]
+) -> Callable[P, AsyncIterator[R]]:
     log = get_logger("fn_selection")
     if max_iterations is None:
         log.debug("No max_iterations, returning default get_next_task")
         return next_task_fn
 
-    def inner(*args: P.args, **kwargs: P.kwargs) -> Generator[R, Any, None]:
+    async def inner(*args: P.args, **kwargs: P.kwargs) -> AsyncIterator[R]:
         log.info(f"In inner {args}, {kwargs}")
-        generator = next_task_fn(*args, **kwargs)
-        for i in range(max_iterations):
-            try:
-                log.debug(f"Yielding on iteration {i}")
-                yield next(generator)
-            except StopIteration:
+
+        i = 0
+        async for task in next_task_fn(*args, **kwargs):
+            if i >= max_iterations:
+                log.debug(f"Reached max iterations: {max_iterations}")
                 break
+
+            log.debug(f"Yielding on iteration {i}")
+            yield task
+
+            i += 1
 
     log.debug("Returning the iteration-scoped get_next_task function")
 

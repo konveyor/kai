@@ -53,8 +53,6 @@ class JsonRpcStream(ABC):
         if json_loads_kwargs is None:
             json_loads_kwargs = {}
 
-        self.loop = asyncio.get_running_loop()
-
         self.recv_file = recv_file
         self.recv_lock = asyncio.Lock()  # NOTE(JonahSussman): Might not need?
 
@@ -75,28 +73,31 @@ class JsonRpcStream(ABC):
 
         if self._writer is not None and not self._writer.is_closing():
             self._writer.close()
-            await self._writer.wait_closed()
 
     async def get_reader(self) -> asyncio.StreamReader:
+        loop = asyncio.get_running_loop()
+
         if self._reader is not None:
             return self._reader
 
-        reader = asyncio.StreamReader(loop=self.loop)
-        read_transport, read_protocol = await self.loop.connect_read_pipe(
-            lambda: asyncio.StreamReaderProtocol(reader, loop=self.loop), self.recv_file
+        reader = asyncio.StreamReader(loop=loop)
+        read_transport, read_protocol = await loop.connect_read_pipe(
+            lambda: asyncio.StreamReaderProtocol(reader, loop=loop), self.recv_file
         )
 
         self._reader = reader
         return self._reader
 
     async def get_writer(self) -> asyncio.StreamWriter:
+        loop = asyncio.get_running_loop()
+
         if self._writer is not None:
             return self._writer
 
-        write_transport, write_protocol = await self.loop.connect_write_pipe(
-            lambda: asyncio.streams.FlowControlMixin(loop=self.loop), self.send_file
+        write_transport, write_protocol = await loop.connect_write_pipe(
+            lambda: asyncio.streams.FlowControlMixin(loop=loop), self.send_file
         )
-        writer = asyncio.StreamWriter(write_transport, write_protocol, None, self.loop)
+        writer = asyncio.StreamWriter(write_transport, write_protocol, None, loop)
 
         self._writer = writer
         return self._writer
@@ -156,7 +157,6 @@ class LspStyleStream(JsonRpcStream):
 
         log.debug("Waiting for message")
 
-        log.log(TRACE, "Reading headers")
         content_length = -1
 
         while True:
@@ -251,6 +251,24 @@ class BareJsonStream(JsonRpcStream):
         else:
             log.error("Writer is closed or closing, cannot send message")
 
+    async def unlimited_readline(self, reader: asyncio.StreamReader) -> bytes:
+        result = b""
+
+        while True:
+            try:
+                result += await reader.readuntil(b"\n")
+                break
+
+            # except asyncio.IncompleteReadError as e:
+            #     result += e.partial
+            #     return result
+
+            except asyncio.LimitOverrunError as e:
+                chunk = await reader.readexactly(e.consumed)
+                result += chunk
+
+        return result
+
     async def recv(self) -> JsonRpcError | JsonRpcRequest | JsonRpcResponse | None:
         reader = await self.get_reader()
 
@@ -258,7 +276,7 @@ class BareJsonStream(JsonRpcStream):
             return None
 
         try:
-            result = await reader.readline()
+            result = await self.unlimited_readline(reader)
             # EOF
             if not result:
                 return None

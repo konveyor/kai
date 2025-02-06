@@ -33,7 +33,7 @@ class TestMavenCompilerAgent(unittest.TestCase):
         )
 
         agent = MavenCompilerAgent(model_provider=model_provider)
-        result = agent.execute(
+        result = await agent.execute(
             MavenCompilerAgentRequest(
                 file_path=Path(""),
                 file_contents="",
@@ -69,7 +69,7 @@ class TestMavenCompilerAgent(unittest.TestCase):
         )
 
         agent = MavenCompilerAgent(model_provider=model_provider)
-        result = agent.execute(
+        result = await agent.execute(
             AnalyzerFixRequest(
                 file_path=Path(""),
                 file_content="",

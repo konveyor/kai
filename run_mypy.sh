@@ -1,10 +1,10 @@
 #!/bin/sh
 
 echo "Running mypy..."
-mypy kai kai_solution_server --exclude=kai_solution_server/samples.* --namespace-packages
+mypy kai kai_solution_server --exclude=kai_solution_server/samples.* --namespace-packages --enable-error-code unused-awaitable
 mypy_result=$?
 if [ "${mypy_result}" -ne 0 ]; then
-	echo "mypy failed.."
+	echo "mypy failed."
 	exit "${mypy_result}"
 fi
 

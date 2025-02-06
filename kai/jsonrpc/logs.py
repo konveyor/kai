@@ -42,7 +42,7 @@ class JsonRpcLoggingHandler(core_logging.Handler):
 
             loop = asyncio.get_running_loop()
 
-            loop.create_task(
+            _ = loop.create_task(
                 self.server.send_notification(
                     method=self.method,
                     params=params,
