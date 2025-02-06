@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 
 from kai.analyzer_types import Incident, RuleSet, Violation
-from kai.kai_config import KaiConfigModels
+from kai.kai_config import KaiConfigModels, SupportedModelProviders
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.reactive_codeplanner.agent.analyzer_fix.api import AnalyzerFixRequest
 from kai.reactive_codeplanner.agent.api import AgentResult
@@ -17,12 +17,12 @@ from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
 )
 
 
-class TestMavenCompilerAgent(unittest.TestCase):
+class TestMavenCompilerAgent(unittest.IsolatedAsyncioTestCase):
 
-    def test_parse_llm_response_one_thought(self):
+    async def test_parse_llm_response_one_thought(self) -> None:
         model_provider = ModelProvider.from_config(
             KaiConfigModels(
-                provider="FakeListChatModel",
+                provider=SupportedModelProviders.FAKE_LIST_CHAT_MODEL,
                 args={
                     "sleep": None,
                     "responses": [
@@ -54,10 +54,10 @@ class TestMavenCompilerAgent(unittest.TestCase):
         )
         self.assertEqual(expected, result)
 
-    def test_invalid_request_type(self):
+    async def test_invalid_request_type(self):
         model_provider = ModelProvider.from_config(
             KaiConfigModels(
-                provider="FakeListChatModel",
+                provider=SupportedModelProviders.FAKE_LIST_CHAT_MODEL,
                 args={
                     "sleep": None,
                     "responses": [
