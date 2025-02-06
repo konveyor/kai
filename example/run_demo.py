@@ -43,6 +43,7 @@ SERVER_URL = "http://0.0.0.0:8080"
 SAMPLE_APP_DIR = Path("coolstore")
 ANALYSIS_RPC_PATH = get_binary_path("./analysis/kai-analyzer-rpc")
 RPC_BINARY_PATH = get_binary_path("./analysis/kai-rpc-server")
+# RPC_BINARY_PATH = Path("../kai/rpc_server/main.py")
 TRACING_ENABLED = "ENABLE_TRACING"
 
 KAI_LOG = get_logger("run_demo")
@@ -95,7 +96,8 @@ async def initialize_rpc_server(
         env=os.environ,
     )
 
-    log.info(f"RPC Server started with pid: {rpc_subprocess.pid}")
+    log.info(f"run_demo pid:   {os.getpid()}")
+    log.info(f"rpc server pid: {rpc_subprocess.pid}")
 
     log.info(rpc_subprocess.args)
 
@@ -150,7 +152,7 @@ async def initialize_rpc_server(
         response = await rpc_server.send_request("shutdown", params={})
         log.debug(f"shutdown response -- {response}")
         log.info("Stopping RPC Server")
-        rpc_subprocess.wait()
+        rpc_subprocess.terminate()
         log.info("Stopped RPC Server")
         await rpc_server.stop()
 

@@ -132,7 +132,7 @@ class TestJsonRpc(IsolatedAsyncioTestCase):
 
         self.assertEqual(result, expected)
 
-        server.terminate()
+        server.kill()
         await rpc.stop()
 
 

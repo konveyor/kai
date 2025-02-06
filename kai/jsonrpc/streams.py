@@ -206,7 +206,18 @@ class LspStyleStream(JsonRpcStream):
         log.log(TRACE, "Got message with content length: %s", content_length)
 
         try:
-            msg_str = (await reader.read(content_length)).decode("utf-8")
+            # NOTE(JonahSussman): If you try and read more bytes that a
+            # StreamReader's limit, it will just straight up not repopulate the
+            # buffer with fresh data. Thus, we need to read in chunks.
+            left = content_length
+            chunk_size = 1024
+            msg_str = ""
+
+            while left > 0:
+                chunk = await reader.read(min(left, chunk_size))
+                left -= len(chunk)
+                msg_str += chunk.decode("utf-8")
+
             msg_dict = json.loads(msg_str, **self.json_loads_kwargs)
         except Exception as e:
             return JsonRpcError(
@@ -288,14 +299,18 @@ class BareJsonStream(JsonRpcStream):
             else:
                 return JsonRpcResponse.model_validate(msg)
         except json.JSONDecodeError as e:
+            with open("result.txt", "wb") as f:
+                f.write(result)
+
             return JsonRpcError(
                 code=JsonRpcErrorCode.ParseError,
-                message=f"Invalid JSON: {e}",
+                message=f"BareJsonStream: Invalid JSON: {e}",
             )
+
         except Exception as e:
             return JsonRpcError(
                 code=JsonRpcErrorCode.ParseError,
-                message=f"Unknown parsing error: {e}",
+                message=f"BareJsonStream: Unknown parsing error: {e}",
             )
         except CancelledError:
             return None
