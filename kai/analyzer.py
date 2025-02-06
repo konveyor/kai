@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import subprocess  # trunk-ignore(bandit/B404)
@@ -43,8 +44,7 @@ class AnalyzerLSP:
         excluded_paths: Optional[list[Path]] = None,
     ) -> None:
         """This will start an analyzer-lsp jsonrpc server"""
-        # trunk-ignore-begin(bandit/B603)
-        args: list[str] = [
+        self.args: list[str] = [
             str(analyzer_lsp_server_binary),
             "-source-directory",
             str(repo_directory),
@@ -57,14 +57,32 @@ class AnalyzerLSP:
             "-log-file",
             os.path.join(get_logfile_dir(), CONST_KAI_ANALYZER_LOG_FILE),
         ]
-        if dep_open_source_labels_path is not None:
-            args.append("-depOpenSourceLabelsFile")
-            args.append(str(dep_open_source_labels_path))
-        logger.debug(f"Starting analyzer rpc server with {args}")
 
+        if dep_open_source_labels_path is not None:
+            self.args.append("-depOpenSourceLabelsFile")
+            self.args.append(str(dep_open_source_labels_path))
+
+        self.excluded_paths = excluded_paths
+
+        self.rpc_server: subprocess.Popen | None = None  # type: ignore[type-arg]
+
+    async def stop(self) -> None:
+        logger.info("stopping analyzer")
+        # This should really call the a shutdown method for the server
+        # then wait for the process to be finished
+        if self.rpc_server is not None:
+            self.rpc_server.terminate()
+        # self.rpc.stop()
+        logger.info("ending analyzer stop")
+
+    async def start(self) -> None:
+        if self.rpc_server is not None:
+            raise Exception("Analyzer is already started")
+
+        logger.debug(f"Starting analyzer rpc server with {self.args}")
         try:
-            self.rpc_server = subprocess.Popen(
-                args,
+            self.rpc_server = subprocess.Popen(  # trunk-ignore(bandit/B603)
+                self.args,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -72,11 +90,8 @@ class AnalyzerLSP:
             )
 
             if self.rpc_server.poll() is not None:
-                self.stop()
+                await self.stop()
                 raise Exception("Analyzer failed to start: process exited immediately")
-
-            # trunk-ignore-end(bandit/B603)
-            self.excluded_paths = excluded_paths
 
             self.stderr_logging_thread = threading.Thread(
                 target=log_stderr, args=(self.rpc_server.stderr,)
@@ -91,20 +106,25 @@ class AnalyzerLSP:
                 request_timeout=4 * 60,
                 log=get_logger("kai.analyzer-rpc-client"),
             )
-            self.rpc.start()
+
+            loop = asyncio.get_running_loop()
+            loop.create_task(self.rpc.start())
             logger.debug("analyzer rpc server started")
 
         except Exception as e:
-            self.stop()
+            await self.stop()
             raise Exception(f"Analyzer failed to start: {str(e)}") from e
 
-    def run_analyzer_lsp(
+    async def run_analyzer_lsp(
         self,
         label_selector: str,
         included_paths: list[Path],
         incident_selector: str,
         scoped_paths: Optional[list[Path]] = None,
     ) -> JsonRpcResponse | JsonRpcError | None:
+        if self.rpc_server is None:
+            raise Exception("Analyzer is not started")
+
         request_params: dict[str, Any] = {
             "label_selector": label_selector,
             "incident_selector": incident_selector,
@@ -121,7 +141,7 @@ class AnalyzerLSP:
         logger.debug("Request params: %s", request_params)
 
         try:
-            return self.rpc.send_request(
+            return await self.rpc.send_request(
                 "analysis_engine.Analyze",
                 params=[request_params],
             )
@@ -131,11 +151,3 @@ class AnalyzerLSP:
                 code=JsonRpcErrorCode.InternalError,
                 message=str(e),
             )
-
-    def stop(self) -> None:
-        logger.info("stopping analyzer")
-        # This should really call the a shutdown method for the server
-        # then wait for the process to be finished
-        self.rpc_server.terminate()
-        # self.rpc.stop()
-        logger.info("ending analyzer stop")

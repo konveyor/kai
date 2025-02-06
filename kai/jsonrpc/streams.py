@@ -1,7 +1,7 @@
+import asyncio
 import json
-import threading
+import logging
 from abc import ABC, abstractmethod
-from concurrent import futures
 from concurrent.futures import CancelledError
 from io import BufferedReader, BufferedWriter
 from typing import Any, Optional
@@ -14,7 +14,7 @@ from kai.jsonrpc.models import (
     JsonRpcRequest,
     JsonRpcResponse,
 )
-from kai.logging.logging import TRACE, KaiLogger, get_logger
+from kai.logging.logging import TRACE, get_logger
 
 log = get_logger("jsonrpc")
 
@@ -25,45 +25,87 @@ class JsonRpcStream(ABC):
     communicate with the JSON-RPC server and client.
     """
 
+    recv_file: BufferedReader
+    send_file: BufferedWriter
+
+    recv_lock: asyncio.Lock
+    send_lock: asyncio.Lock
+
+    json_dumps_kwargs: dict[Any, Any]
+    json_loads_kwargs: dict[Any, Any]
+
+    _writer: asyncio.StreamWriter | None
+    _reader: asyncio.StreamReader | None
+
+    loop: asyncio.AbstractEventLoop
+
     def __init__(
         self,
         recv_file: BufferedReader,
         send_file: BufferedWriter,
         json_dumps_kwargs: Optional[dict[Any, Any]] = None,
         json_loads_kwargs: Optional[dict[Any, Any]] = None,
-    ):
+        *,
+        log: logging.Logger | None = None,
+    ) -> None:
         if json_dumps_kwargs is None:
             json_dumps_kwargs = {}
         if json_loads_kwargs is None:
             json_loads_kwargs = {}
 
+        self.loop = asyncio.get_running_loop()
+
         self.recv_file = recv_file
-        self.recv_lock = threading.Lock()
+        self.recv_lock = asyncio.Lock()  # NOTE(JonahSussman): Might not need?
 
         self.send_file = send_file
-        self.send_lock = threading.Lock()
+        self.send_lock = asyncio.Lock()  # NOTE(JonahSussman): Might not need?
 
         self.json_dumps_kwargs = json_dumps_kwargs
         self.json_loads_kwargs = json_loads_kwargs
 
-    def close(self) -> None:  # trunk-ignore(ruff/B027)
-        pass
-        # The only thing that this has is the pipes for std in and std out
-        # but the recv() methods have blocking I/O on readline
-        # because of this we can not close the PIPEs because the read lock
-        # stays open forever, and we have a deadlock.
-        # We may be able in the future to rewrite readline with a non blocking i/o
-        # by keeping a pointer to the last read index, seeking past that index to see if
-        # more data is in the pipe and when it is, to seek til we get the new line
-        # then read that many bytes.
-        # For now, the thread approach works, because we terminate the server command
-        # which will close the streams, sending a EOF, and that stops readline.
+        self._reader = None
+        self._writer = None
+
+        self.log = log or get_logger("jsonrpc")
+
+    async def close(self) -> None:
+        if self._reader is not None and not self._reader.at_eof():
+            self._reader.feed_eof()
+
+        if self._writer is not None and not self._writer.is_closing():
+            self._writer.close()
+            await self._writer.wait_closed()
+
+    async def get_reader(self) -> asyncio.StreamReader:
+        if self._reader is not None:
+            return self._reader
+
+        reader = asyncio.StreamReader(loop=self.loop)
+        read_transport, read_protocol = await self.loop.connect_read_pipe(
+            lambda: asyncio.StreamReaderProtocol(reader, loop=self.loop), self.recv_file
+        )
+
+        self._reader = reader
+        return self._reader
+
+    async def get_writer(self) -> asyncio.StreamWriter:
+        if self._writer is not None:
+            return self._writer
+
+        write_transport, write_protocol = await self.loop.connect_write_pipe(
+            lambda: asyncio.streams.FlowControlMixin(loop=self.loop), self.send_file
+        )
+        writer = asyncio.StreamWriter(write_transport, write_protocol, None, self.loop)
+
+        self._writer = writer
+        return self._writer
 
     @abstractmethod
-    def send(self, msg: JsonRpcRequest | JsonRpcResponse) -> None: ...
+    async def send(self, msg: JsonRpcRequest | JsonRpcResponse) -> None: ...
 
     @abstractmethod
-    def recv(self) -> JsonRpcError | JsonRpcRequest | JsonRpcResponse | None: ...
+    async def recv(self) -> JsonRpcError | JsonRpcRequest | JsonRpcResponse | None: ...
 
 
 def dump_json_no_infinite_recursion(msg: JsonRpcRequest | JsonRpcResponse) -> str:
@@ -95,155 +137,147 @@ class LspStyleStream(JsonRpcStream):
     LEN_HEADER = "Content-Length: "
     TYPE_HEADER = "Content-Type: "
 
-    def send(self, msg: JsonRpcRequest | JsonRpcResponse) -> None:
+    async def send(self, msg: JsonRpcRequest | JsonRpcResponse) -> None:
+        writer = await self.get_writer()
+
         json_str = msg.model_dump_json(exclude_none=True)
         json_req = f"Content-Length: {len(json_str.encode('utf-8'))}\r\n\r\n{json_str}"
 
-        log.log(TRACE, "Sending request: %s", dump_json_no_infinite_recursion(msg))
+        if not writer.is_closing():
+            log.log(TRACE, "Sending request: %s", dump_json_no_infinite_recursion(msg))
 
-        with self.send_lock:
-            self.send_file.write(json_req.encode("utf-8"))
-            self.send_file.flush()
+            writer.write(json_req.encode("utf-8"))
+            await writer.drain()
+        else:
+            log.error("Writer is closed or closing, cannot send message")
 
-    def recv(self) -> JsonRpcError | JsonRpcRequest | JsonRpcResponse | None:
+    async def recv(self) -> JsonRpcError | JsonRpcRequest | JsonRpcResponse | None:
+        reader = await self.get_reader()
+
         log.debug("Waiting for message")
 
-        with self.recv_lock:
-            log.log(TRACE, "Reading headers")
-            content_length = -1
+        log.log(TRACE, "Reading headers")
+        content_length = -1
 
-            while True:
-                if self.recv_file.closed:
-                    return None
+        while True:
+            if reader.at_eof():
+                return None
 
-                log.log(TRACE, "Reading header line")
-                line_bytes = self.recv_file.readline()
+            log.log(TRACE, "Reading header line")
+            line_bytes = await reader.readline()
 
-                log.log(TRACE, "Read header line: %s", line_bytes)
-                if not line_bytes:
-                    return None
+            log.log(TRACE, "Read header line: %s", line_bytes)
+            if not line_bytes:
+                return None
 
-                line = line_bytes.decode("utf-8")
-                if not line.endswith("\r\n"):
+            line = line_bytes.decode("utf-8")
+            if not line.endswith("\r\n"):
+                return JsonRpcError(
+                    code=JsonRpcErrorCode.ParseError,
+                    message="Bad header: missing newline",
+                )
+
+            line = line[:-2]
+
+            if line == "":
+                break
+            elif line.startswith(self.LEN_HEADER):
+                line = line[len(self.LEN_HEADER) :]
+                if not line.isdigit():
                     return JsonRpcError(
                         code=JsonRpcErrorCode.ParseError,
-                        message="Bad header: missing newline",
+                        message="Bad header: size is not int",
                     )
-
-                line = line[:-2]
-
-                if line == "":
-                    break
-                elif line.startswith(self.LEN_HEADER):
-                    line = line[len(self.LEN_HEADER) :]
-                    if not line.isdigit():
-                        return JsonRpcError(
-                            code=JsonRpcErrorCode.ParseError,
-                            message="Bad header: size is not int",
-                        )
-                    content_length = int(line)
-                elif line.startswith(self.TYPE_HEADER):
-                    pass
-                else:
-                    return JsonRpcError(
-                        code=JsonRpcErrorCode.ParseError,
-                        message=f"Bad header: unknown header {line}",
-                    )
-
-            if content_length < 0:
+                content_length = int(line)
+            elif line.startswith(self.TYPE_HEADER):
+                pass
+            else:
                 return JsonRpcError(
                     code=JsonRpcErrorCode.ParseError,
-                    message="Bad header: missing Content-Length",
+                    message=f"Bad header: unknown header {line}",
                 )
 
-            log.log(TRACE, "Got message with content length: %s", content_length)
+        if content_length < 0:
+            return JsonRpcError(
+                code=JsonRpcErrorCode.ParseError,
+                message="Bad header: missing Content-Length",
+            )
 
-            try:
-                msg_str = self.recv_file.read(content_length).decode("utf-8")
-                msg_dict = json.loads(msg_str, **self.json_loads_kwargs)
-            except Exception as e:
-                return JsonRpcError(
-                    code=JsonRpcErrorCode.ParseError,
-                    message=f"Invalid JSON: {e}",
-                )
+        log.log(TRACE, "Got message with content length: %s", content_length)
 
-            log.log(TRACE, "Got message: %s", msg_dict)
+        try:
+            msg_str = (await reader.read(content_length)).decode("utf-8")
+            msg_dict = json.loads(msg_str, **self.json_loads_kwargs)
+        except Exception as e:
+            return JsonRpcError(
+                code=JsonRpcErrorCode.ParseError,
+                message=f"Invalid JSON: {e}",
+            )
 
-            try:
-                if "method" in msg_dict:
-                    return JsonRpcRequest.model_validate(msg_dict)
-                else:
-                    return JsonRpcResponse.model_validate(msg_dict)
-            except Exception as e:
-                return JsonRpcError(
-                    code=JsonRpcErrorCode.ParseError,
-                    message=f"Could not validate JSON: {e}",
-                )
+        log.log(TRACE, "Got message: %s", msg_dict)
+
+        try:
+            if "method" in msg_dict:
+                return JsonRpcRequest.model_validate(msg_dict)
+            else:
+                return JsonRpcResponse.model_validate(msg_dict)
+        except Exception as e:
+            return JsonRpcError(
+                code=JsonRpcErrorCode.ParseError,
+                message=f"Could not validate JSON: {e}",
+            )
 
 
 class BareJsonStream(JsonRpcStream):
-    def __init__(
-        self,
-        recv_file: BufferedReader,
-        send_file: BufferedWriter,
-        json_dumps_kwargs: dict[Any, Any] | None = None,
-        json_loads_kwargs: dict[Any, Any] | None = None,
-        log: KaiLogger | None = None,
-    ):
-        super().__init__(recv_file, send_file, json_dumps_kwargs, json_loads_kwargs)
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
 
         self.buffer: str = ""
         self.decoder = json.JSONDecoder()
         self.chunk_size = 512
-        self.log = get_logger("jsonrpc")
-        if log is not None:
-            self.log = log
 
-    def send(self, msg: JsonRpcRequest | JsonRpcResponse) -> None:
+    async def send(self, msg: JsonRpcRequest | JsonRpcResponse) -> None:
+        writer = await self.get_writer()
+
         json_req = f"{msg.model_dump_json(exclude_none=True)}\n"
 
-        log.log(TRACE, "Sending request: %s", dump_json_no_infinite_recursion(msg))
+        if not writer.is_closing():
+            log.log(TRACE, "Sending request: %s", dump_json_no_infinite_recursion(msg))
 
-        with self.send_lock:
-            self.send_file.write(json_req.encode())
-            self.send_file.flush()
+            writer.write(json_req.encode("utf-8"))
+            # TODO(JonahSussman): Do we need this? If you drain a closed stream,
+            # you get an exception.
+            # await writer.drain()
+        else:
+            log.error("Writer is closed or closing, cannot send message")
 
-    def readline(self) -> bytes | None:
+    async def recv(self) -> JsonRpcError | JsonRpcRequest | JsonRpcResponse | None:
+        reader = await self.get_reader()
+
+        if reader.at_eof():
+            return None
+
         try:
-            return self.recv_file.readline()
-        except CancelledError:
-            self.log.info("cancelling readline")
-            raise
-
-    def recv(self) -> JsonRpcError | JsonRpcRequest | JsonRpcResponse | None:
-        with self.recv_lock:
-            if self.recv_file.closed:
+            result = await reader.readline()
+            # EOF
+            if not result:
                 return None
 
-            with futures.ThreadPoolExecutor(1, "readline") as executor:
-                self.readline_task = executor.submit(self.readline)
-
-                try:
-                    result = self.readline_task.result()
-                    # EOF
-                    if not result:
-                        return None
-
-                    msg, idx = self.decoder.raw_decode(result.decode("utf-8"))
-                    self.log.log(TRACE, "recv msg: %s", msg)
-                    if "method" in msg:
-                        return JsonRpcRequest.model_validate(msg)
-                    else:
-                        return JsonRpcResponse.model_validate(msg)
-                except json.JSONDecodeError as e:
-                    return JsonRpcError(
-                        code=JsonRpcErrorCode.ParseError,
-                        message=f"Invalid JSON: {e}",
-                    )
-                except Exception as e:
-                    return JsonRpcError(
-                        code=JsonRpcErrorCode.ParseError,
-                        message=f"Unknown parsing error: {e}",
-                    )
-                except CancelledError:
-                    return None
+            msg, idx = self.decoder.raw_decode(result.decode("utf-8"))
+            self.log.log(TRACE, "recv msg: %s", msg)
+            if "method" in msg:
+                return JsonRpcRequest.model_validate(msg)
+            else:
+                return JsonRpcResponse.model_validate(msg)
+        except json.JSONDecodeError as e:
+            return JsonRpcError(
+                code=JsonRpcErrorCode.ParseError,
+                message=f"Invalid JSON: {e}",
+            )
+        except Exception as e:
+            return JsonRpcError(
+                code=JsonRpcErrorCode.ParseError,
+                message=f"Unknown parsing error: {e}",
+            )
+        except CancelledError:
+            return None

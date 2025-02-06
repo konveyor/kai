@@ -100,8 +100,7 @@ If you have any additional details or steps that need to be performed, put it he
         self._model_provider = model_provider
         self._retries = retries
 
-    def execute(self, ask: AgentRequest) -> AnalyzerFixResponse:
-
+    async def execute(self, ask: AgentRequest) -> AnalyzerFixResponse:
         if not isinstance(ask, AnalyzerFixRequest):
             return AnalyzerFixResponse(
                 encountered_errors=["invalid request type"],
@@ -136,7 +135,7 @@ If you have any additional details or steps that need to be performed, put it he
             incidents=ask.incidents,
         )
 
-        ai_message = self._model_provider.invoke(
+        ai_message = await self._model_provider.ainvoke(
             [system_message, HumanMessage(content=content)],
             ask.cache_path_resolver,
         )

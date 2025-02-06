@@ -1,19 +1,17 @@
 # Need to initialize this before we start getting the tracer in the other files on import
 import argparse
+import asyncio
 import logging as core_logging
 import multiprocessing
-import os
 import sys
 from io import BufferedReader, BufferedWriter
 from pathlib import Path
 from typing import cast
 
 from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.threading import ThreadingInstrumentor
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 import kai.logging.logging as logging
 from kai.jsonrpc.core import JsonRpcServer
@@ -92,11 +90,11 @@ def main() -> None:
     log = logging.get_logger("kai-rpc-logger")
     log.info(f"using log config: {log_config}")
 
-    if TRACING_ENABLED in os.environ:
-        tracer_provider.add_span_processor(
-            span_processor=BatchSpanProcessor(OTLPSpanExporter())
-        )
-        trace.set_tracer_provider(tracer_provider=tracer_provider)
+    # if TRACING_ENABLED in os.environ:
+    #     tracer_provider.add_span_processor(
+    #         span_processor=BatchSpanProcessor(OTLPSpanExporter())
+    #     )
+    #     trace.set_tracer_provider(tracer_provider=tracer_provider)
 
     # mypy incorrectly type checks sys.stdin.buffer and sys.stdout.buffer as
     # simply IO[bytes], rather than as BufferedReader and BufferedWriter for
@@ -110,10 +108,7 @@ def main() -> None:
         log=log,
     )
 
-    with tracer.start_as_current_span("main_server"):
-        rpc_server.start()
-        log.info("Started kai RPC Server")
-        rpc_server.join()
+    asyncio.run(rpc_server.start())
 
 
 if __name__ == "__main__":
