@@ -97,7 +97,7 @@ async def initialize_rpc_server(
 
     print(f"run_demo pid: {os.getpid()}")
     print(f"rpc pid:      {rpc_subprocess.pid}")
-    input()
+
     log.info(rpc_subprocess.args)
 
     app = KaiRpcApplication()
