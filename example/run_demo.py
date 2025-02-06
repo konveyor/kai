@@ -9,7 +9,7 @@ import time
 from io import BufferedReader, BufferedWriter
 from logging import DEBUG
 from pathlib import Path
-from typing import Any, AsyncGenerator, Generator, cast
+from typing import Any, AsyncGenerator, cast
 
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
