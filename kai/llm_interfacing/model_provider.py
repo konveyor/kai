@@ -183,7 +183,7 @@ class ModelProvider:
         else:
             self.template = config.template
 
-    def validate_environment(
+    async def validate_environment(
         self,
     ) -> None:
         """
@@ -193,25 +193,25 @@ class ModelProvider:
 
         cpr = SimplePathResolver("validate_environment.json")
 
-        def challenge(k: str) -> BaseMessage:
-            return self.invoke("", cpr, configurable_fields={k: 1})
+        async def challenge(k: str) -> BaseMessage:
+            return await self.ainvoke("", cpr, configurable_fields={k: 1})
 
         if isinstance(self.llm, ChatOllama):
-            challenge("max_tokens")
+            await challenge("max_tokens")
         elif isinstance(self.llm, ChatOpenAI):
-            challenge("max_tokens")
+            await challenge("max_tokens")
         elif isinstance(self.llm, ChatBedrock):
-            challenge("max_tokens")
+            await challenge("max_tokens")
         elif isinstance(self.llm, FakeListChatModel):
             pass
         elif isinstance(self.llm, ChatGoogleGenerativeAI):
-            challenge("max_output_tokens")
+            await challenge("max_output_tokens")
         elif isinstance(self.llm, AzureChatOpenAI):
-            challenge("max_tokens")
+            await challenge("max_tokens")
         elif isinstance(self.llm, ChatDeepSeek):
-            challenge("max_tokens")
+            await challenge("max_tokens")
 
-    def invoke(
+    async def ainvoke(
         self,
         input: LanguageModelInput,
         cache_path_resolver: Optional[CachePathResolver] = None,
@@ -234,7 +234,7 @@ class ModelProvider:
             invoke_llm = self.llm
 
         if not (self.cache and cache_path_resolver):
-            return invoke_llm.invoke(input, config, stop=stop, **kwargs)
+            return await invoke_llm.ainvoke(input, config, stop=stop, **kwargs)
 
         cache_path = cache_path_resolver.cache_path()
         cache_meta = cache_path_resolver.cache_meta()
@@ -245,7 +245,7 @@ class ModelProvider:
             if cache_entry:
                 return cache_entry
 
-        response = invoke_llm.invoke(input, config, stop=stop, **kwargs)
+        response = await invoke_llm.ainvoke(input, config, stop=stop, **kwargs)
 
         self.cache.put(
             path=cache_path,

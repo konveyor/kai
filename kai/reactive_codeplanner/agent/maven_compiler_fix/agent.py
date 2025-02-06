@@ -52,8 +52,7 @@ class MavenCompilerAgent(Agent):
     def __init__(self, model_provider: ModelProvider):
         self.model_provider = model_provider
 
-    def execute(self, ask: AgentRequest) -> AgentResult:
-
+    async def execute(self, ask: AgentRequest) -> AgentResult:
         if not isinstance(ask, MavenCompilerAgentRequest):
             return AgentResult()
 
@@ -70,7 +69,7 @@ class MavenCompilerAgent(Agent):
             src_file_contents=ask.file_contents, compile_errors=compile_errors
         )
 
-        ai_message = self.model_provider.invoke(
+        ai_message = await self.model_provider.ainvoke(
             [self.system_message, HumanMessage(content=content)],
             ask.cache_path_resolver,
         )

@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 
 from kai.constants import PATH_KAI
-from kai.kai_config import KaiConfigModels
+from kai.kai_config import KaiConfigModels, SupportedModelProviders
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.reactive_codeplanner.agent.analyzer_fix.agent import AnalyzerAgent
 from kai.reactive_codeplanner.agent.analyzer_fix.api import (
@@ -15,12 +15,12 @@ from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
 from kai.reactive_codeplanner.task_manager.api import ValidationError
 
 
-class TestAnalyzerAgent(unittest.TestCase):
+class TestAnalyzerAgent(unittest.IsolatedAsyncioTestCase):
 
-    def test_parse_llm_response_one_thought(self):
+    async def test_parse_llm_response_one_thought(self) -> None:
         model_provider = ModelProvider(
             KaiConfigModels(
-                provider="FakeListChatModel",
+                provider=SupportedModelProviders.FAKE_LIST_CHAT_MODEL,
                 args={
                     "sleep": None,
                     "responses": [
@@ -32,11 +32,11 @@ class TestAnalyzerAgent(unittest.TestCase):
 
         task = ValidationError(message="test", file="test.yaml", line=1, column=4)
         agent = AnalyzerAgent(model_provider=model_provider)
-        result = agent.execute(
+        result = await agent.execute(
             AnalyzerFixRequest(
                 file_path=Path(PATH_KAI),
                 file_content="",
-                incidents="",
+                incidents=[],
                 sources=[],
                 targets=[],
                 task=task,
@@ -53,10 +53,10 @@ class TestAnalyzerAgent(unittest.TestCase):
         print(expected)
         self.assertEqual(expected, result)
 
-    def test_invalid_request_type(self):
+    async def test_invalid_request_type(self) -> None:
         model_provider = ModelProvider(
             KaiConfigModels(
-                provider="FakeListChatModel",
+                provider=SupportedModelProviders.FAKE_LIST_CHAT_MODEL,
                 args={
                     "sleep": None,
                     "responses": [
@@ -67,7 +67,7 @@ class TestAnalyzerAgent(unittest.TestCase):
         )
 
         agent = AnalyzerAgent(model_provider=model_provider)
-        result = agent.execute(
+        result = await agent.execute(
             MavenDependencyRequest(
                 Path(""),
                 task=ValidationError(message="test", file="test", column=1, line=10),

@@ -65,7 +65,7 @@ Searched dependencies:
 """
     )
 
-    def execute(self, ask: AgentRequest) -> FQDNDependencySelectorResult:
+    async def execute(self, ask: AgentRequest) -> FQDNDependencySelectorResult:
         if not isinstance(ask, FQDNDependencySelectorRequest):
             return FQDNDependencySelectorResult(
                 encountered_errors=None, file_to_modify=None, response=None
@@ -77,7 +77,9 @@ Searched dependencies:
             query.append(get_maven_query_from_code(ask.code))
 
         msg = [HumanMessage(content=self.message.render(message=ask.msg, query=query))]
-        fix_gen_response = self._model_provider.invoke(msg, ask.cache_path_resolver)
+        fix_gen_response = await self._model_provider.ainvoke(
+            msg, ask.cache_path_resolver
+        )
         llm_response = self.parse_llm_response(fix_gen_response.content)
         # Really we need to re-call the agent
         if not llm_response:
@@ -94,7 +96,7 @@ Searched dependencies:
         if (not response or isinstance(response, list)) and ask.times < 5:
             ## need to recursively call execute.
             query.append(new_query)
-            return self.execute(
+            return await self.execute(
                 FQDNDependencySelectorRequest(
                     ask.file_path,
                     msg=ask.msg,
