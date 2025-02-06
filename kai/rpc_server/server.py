@@ -1,3 +1,4 @@
+import asyncio
 import os
 import platform
 import re
@@ -7,7 +8,16 @@ from contextlib import ExitStack
 from itertools import groupby
 from operator import attrgetter
 from pathlib import Path
-from typing import Any, Callable, Generator, Optional, ParamSpec, TypeVar, cast
+from typing import (
+    Any,
+    AsyncIterator,
+    Callable,
+    Optional,
+    ParamSpec,
+    TypedDict,
+    TypeVar,
+    cast,
+)
 from unittest.mock import MagicMock
 from urllib.parse import urlparse
 
@@ -117,6 +127,7 @@ class KaiRpcApplication(JsonRpcApplication):
         self.analysis_validator: Optional[AnalyzerLSPStep] = None
         self.task_manager: Optional[TaskManager] = None
         self.rcm: Optional[RepoContextManager] = None
+        self.filesystem_lock: asyncio.Lock = asyncio.Lock()
 
 
 app = KaiRpcApplication()
@@ -222,6 +233,8 @@ async def initialize(
                 or Path(),
                 excluded_paths=app.config.analyzer_lsp_excluded_paths,
             )
+
+            await app.analyzer.start()
         except Exception as e:
             await server.send_response(
                 id=id,
@@ -448,7 +461,12 @@ class GetCodeplanAgentSolutionResult(BaseModel):
     diff: str
 
 
-@app.add_request(method="getCodeplanAgentSolution")
+@app.add_request(
+    method="getCodeplanAgentSolution",
+    # NOTE(JonahSussman): This will make the entire get_codeplan_agent_solution
+    # function run in a lock. We need to figure out a concurrent VFS ASAP.
+    sync="error",
+)
 @tracer.start_as_current_span("get_codeplan_solution")
 async def get_codeplan_agent_solution(
     app: KaiRpcApplication,
@@ -561,7 +579,7 @@ async def get_codeplan_agent_solution(
         initial_ignored_tasks = set(app.task_manager.ignored_tasks).copy()
 
         overall_modified_files: set[str] = set()
-        for task in next_task_fn(params.max_priority, params.max_depth):
+        async for task in next_task_fn(params.max_priority, params.max_depth):
             app.log.debug(f"Executing task {task.__class__.__name__}: {task}")
 
             chatter.get().chat_markdown(
@@ -569,7 +587,7 @@ async def get_codeplan_agent_solution(
                 f"<details><summary>Details</summary>\n{task.markdown()}</details>\n"
             )
 
-            result = app.task_manager.execute_task(task)
+            result = await app.task_manager.execute_task(task)
 
             app.log.debug(f"Task {task.__class__.__name__}, result: {result}")
             chatter.get().chat_markdown(
@@ -637,23 +655,27 @@ R = TypeVar("R")
 
 
 def scoped_task_fn(
-    max_iterations: Optional[int], next_task_fn: Callable[P, Generator[R, Any, None]]
-) -> Callable[P, Generator[R, Any, None]]:
+    max_iterations: Optional[int], next_task_fn: Callable[P, AsyncIterator[R]]
+) -> Callable[P, AsyncIterator[R]]:
     log = get_logger("fn_selection")
     if max_iterations is None:
         log.debug("No max_iterations, returning default get_next_task")
         return next_task_fn
 
     @tracer.start_as_current_span("scoped_task")
-    def inner(*args: P.args, **kwargs: P.kwargs) -> Generator[R, Any, None]:
+    async def inner(*args: P.args, **kwargs: P.kwargs) -> AsyncIterator[R]:
         log.info(f"In inner {args}, {kwargs}")
-        generator = next_task_fn(*args, **kwargs)
-        for i in range(max_iterations):
-            try:
-                log.debug(f"Yielding on iteration {i}")
-                yield next(generator)
-            except StopIteration:
+
+        i = 0
+        async for task in next_task_fn(*args, **kwargs):
+            if i >= max_iterations:
+                log.debug(f"Reached max iterations: {max_iterations}")
                 break
+
+            log.debug(f"Yielding on iteration {i}")
+            yield task
+
+            i += 1
 
     log.debug("Returning the iteration-scoped get_next_task function")
 

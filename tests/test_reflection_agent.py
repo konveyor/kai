@@ -86,7 +86,7 @@ class TestReflectionAgent(unittest.TestCase):
             background="",
         )
 
-        result = self.reflection_agent.execute(task=task)
+        result = await self.reflection_agent.execute(task=task)
         self.assertEqual(result.encountered_errors, None)
         self.assertEqual(result.file_to_modify, Path(self.data_dir_path, "_pom.xml"))
         expected_file_contents = Path(
@@ -114,7 +114,7 @@ class TestReflectionAgent(unittest.TestCase):
             background="",
         )
 
-        result = self.reflection_agent.execute(task=task)
+        result = await self.reflection_agent.execute(task=task)
 
         self.assertEqual(result.encountered_errors, None)
         self.assertEqual(result.file_to_modify, None)

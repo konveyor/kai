@@ -54,7 +54,7 @@ class RepoContextManager:
                 ):
                     _reflection_task = spawning_result.to_reflection_task()
                     # if reflection_task:
-                    #     reflection_result = self.reflection_agent.execute(
+                    #     reflection_result = await self.reflection_agent.execute(
                     #         reflection_task
                     #     )
 

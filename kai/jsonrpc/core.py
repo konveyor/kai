@@ -83,15 +83,6 @@ class JsonRpcApplication:
                 request=request, server=server, app=self
             )
 
-        if request.id is not None and request.id in server.outstanding_requests:
-            await server.send_response(
-                id=request.id,
-                error=JsonRpcError(
-                    code=JsonRpcErrorCode.InternalError,
-                    message="No response sent",
-                ),
-            )
-
     @overload
     def add(
         self,
@@ -99,6 +90,7 @@ class JsonRpcApplication:
         *,
         kind: Literal["request", "notify"] = ...,
         method: str | None = ...,
+        sync: Literal[None, "error", "wait"] = ...,
     ) -> JsonRpcCallback: ...
 
     @overload
@@ -108,6 +100,7 @@ class JsonRpcApplication:
         *,
         kind: Literal["request", "notify"] = ...,
         method: str | None = ...,
+        sync: Literal[None, "error", "wait"] = ...,
     ) -> Callable[[JsonRpcCoroutine], JsonRpcCallback]: ...
 
     def add(
@@ -116,6 +109,7 @@ class JsonRpcApplication:
         *,
         kind: Literal["request", "notify"] = "request",
         method: str | None = None,
+        sync: Literal[None, "error", "wait"] = None,
     ) -> JsonRpcCallback | Callable[[JsonRpcCoroutine], JsonRpcCallback]:
         if method is None:
             raise ValueError("Method name must be provided")
@@ -127,6 +121,7 @@ class JsonRpcApplication:
                 func=func,
                 kind=kind,
                 method=method,
+                sync=sync,
             )
 
             if kind == "request":
@@ -149,6 +144,7 @@ class JsonRpcApplication:
         func: JsonRpcCoroutine,
         *,
         method: str | None = ...,
+        sync: Literal[None, "error", "wait"] = ...,
     ) -> JsonRpcCallback: ...
 
     @overload
@@ -157,6 +153,7 @@ class JsonRpcApplication:
         func: None = ...,
         *,
         method: str | None = ...,
+        sync: Literal[None, "error", "wait"] = ...,
     ) -> Callable[[JsonRpcCoroutine], JsonRpcCallback]: ...
 
     def add_notify(
@@ -164,11 +161,13 @@ class JsonRpcApplication:
         func: JsonRpcCoroutine | None = None,
         *,
         method: str | None = None,
+        sync: Literal[None, "error", "wait"] = None,
     ) -> JsonRpcCallback | Callable[[JsonRpcCoroutine], JsonRpcCallback]:
         return self.add(
             func=func,
             kind="notify",
             method=method,
+            sync=sync,
         )
 
     @overload
@@ -177,6 +176,7 @@ class JsonRpcApplication:
         func: JsonRpcCoroutine,
         *,
         method: str | None = ...,
+        sync: Literal[None, "error", "wait"] = ...,
     ) -> JsonRpcCallback: ...
 
     @overload
@@ -185,6 +185,7 @@ class JsonRpcApplication:
         func: None = ...,
         *,
         method: str | None = ...,
+        sync: Literal[None, "error", "wait"] = ...,
     ) -> Callable[[JsonRpcCoroutine], JsonRpcCallback]: ...
 
     def add_request(
@@ -192,11 +193,13 @@ class JsonRpcApplication:
         func: JsonRpcCoroutine | None = None,
         *,
         method: str | None = None,
+        sync: Literal[None, "error", "wait"] = None,
     ) -> JsonRpcCallback | Callable[[JsonRpcCoroutine], JsonRpcCallback]:
         return self.add(
             func=func,
             kind="request",
             method=method,
+            sync=sync,
         )
 
     def generate_docs(self) -> str:
@@ -207,7 +210,8 @@ class JsonRpcServer:
     """
     Taking a page from Python's ASGI standards, JsonRpcServer serves a
     JsonRpcApplication. It is a thread that listens for incoming requests and
-    notifications on a JsonRpcStream, and handle_requests responses over the same stream.
+    notifications on a JsonRpcStream, and handle_requests responses over the
+    same stream.
 
     We separate the two classes to allow one to define routes in different
     files.
@@ -227,15 +231,13 @@ class JsonRpcServer:
 
         self.jsonrpc_stream: JsonRpcStream = json_rpc_stream
 
-        self.loop = asyncio.get_running_loop()
-
         self.app = app
 
         self.event_dict: dict[JsonRpcId, asyncio.Event] = {}
         self.response_dict: dict[JsonRpcId, JsonRpcResponse] = {}
         self.next_id = 0
         self.request_timeout = request_timeout
-        self.outstanding_requests: set[JsonRpcId] = set()
+        self.outstanding_requests: dict[JsonRpcId, tuple[JsonRpcRequest, asyncio.Task]] = {}  # type: ignore[type-arg]
 
         self.shutdown_flag = False
         self.log = get_logger("jsonrpc-server")
@@ -250,12 +252,14 @@ class JsonRpcServer:
         await self.jsonrpc_stream.close()
 
     async def start(self) -> None:
+        loop = asyncio.get_running_loop()
+
         self.log.debug("JsonRpcServer started")
 
         while not self.shutdown_flag:
             self.log.debug("Waiting for message")
 
-            msg = self.jsonrpc_stream.recv()
+            msg = await self.jsonrpc_stream.recv()
             if msg is None:
                 self.log.info("Server quit")
                 break
@@ -263,14 +267,13 @@ class JsonRpcServer:
             self.log.log(TRACE, f"Received {type(msg)}: {msg}")
 
             if isinstance(msg, JsonRpcError):
-                await self.jsonrpc_stream.send(JsonRpcResponse(error=msg))
-                break
+                self.log.error(f"Error during recv: {msg}")
 
             elif isinstance(msg, JsonRpcRequest):
-                if msg.id is not None:
-                    self.outstanding_requests.add(msg.id)
+                task = loop.create_task(self.app.handle_request(msg, self))
 
-                self.loop.create_task(self.app.handle_request(msg, self))
+                if msg.id is not None:
+                    self.outstanding_requests[msg.id] = (msg, task)
 
             elif isinstance(msg, JsonRpcResponse):
                 if msg.id is not None:
@@ -280,6 +283,17 @@ class JsonRpcServer:
 
             else:
                 self.log.error(f"Unknown message type: {type(msg)}")
+
+        for request_id in self.outstanding_requests:
+            _, task = self.outstanding_requests[request_id]
+            task.cancel()
+            await self.send_response(
+                id=request_id,
+                error=JsonRpcError(
+                    code=JsonRpcErrorCode.InternalError,
+                    message="Server shutting down",
+                ),
+            )
 
         self.log.debug("No longer waiting for messages, closing stream")
         await self.jsonrpc_stream.close()
@@ -343,6 +357,6 @@ class JsonRpcServer:
                     f"Request ID {response.id} not found in outstanding requests\nTried sending: {response}"
                 )
                 return
-            self.outstanding_requests.remove(response.id)
+            del self.outstanding_requests[response.id]
 
         await self.jsonrpc_stream.send(response)

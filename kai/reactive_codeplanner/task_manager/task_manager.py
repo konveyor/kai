@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import asyncio
 from pathlib import Path
-from typing import Any, Generator, Optional
+from typing import AsyncIterator, Optional, cast
 
 from opentelemetry import trace
 
@@ -97,14 +97,14 @@ class TaskManager:
             self.priority_queue.push(task)
             logger.info("Seed task %s added to stack.", task)
 
-    def execute_task(self, task: Task) -> TaskResult:
+    async def execute_task(self, task: Task) -> TaskResult:
         logger.info("Executing task: %s", task)
-        agent = self.get_agent_for_task(task)
+        agent = await self.get_agent_for_task(task)
         logger.info("Agent selected for task: %s", agent)
 
         result: TaskResult
         try:
-            result = agent.execute_task(self.rcm, task)
+            result = await agent.execute_task(self.rcm, task)
         except Exception as e:
             logger.exception("Unhandled exception executing task %s", task)
             chatter.get().chat_simple(f"Unhandled exception executing task {str(task)}")
@@ -116,9 +116,9 @@ class TaskManager:
         task.result = result
         return result
 
-    def get_agent_for_task(self, task: Task) -> TaskRunner:
+    async def get_agent_for_task(self, task: Task) -> TaskRunner:
         for agent in self.task_runners:
-            if agent.can_handle_task(task):
+            if await agent.can_handle_task(task):
                 logger.debug("Agent %s can handle task %s", agent, task)
                 return agent
 
@@ -137,7 +137,7 @@ class TaskManager:
         if len(result.encountered_errors) > 0:
             logger.error("Encountered errors: %s", result.encountered_errors)
 
-    def run_validators(self) -> list[Task]:
+    async def run_validators(self) -> list[Task]:
         logger.info("Running validators.")
         chatter.get().chat_simple("Running validators.")
 
@@ -166,39 +166,36 @@ class TaskManager:
 
                 return validator, None
 
-        # FIXME(JonahSussman): This should be something that uses asyncio
-        # instead of ThreadPoolExecutor
-        with ThreadPoolExecutor() as executor:
-            # Submit all validators to the executor
-            future_to_validator = {
-                executor.submit(run_validator, v): v for v in self.validators
-            }
+        outputs = await asyncio.gather(
+            *(run_validator(v) for v in self.validators), return_exceptions=True
+        )
 
-            # Process results as they complete
-            for future in as_completed(future_to_validator):
-                validator = future_to_validator[future]
-                try:
-                    validator, result = future.result()
-                    if result is None:
-                        continue  # Skip if the validator failed
+        for output, validator in zip(outputs, self.validators):
+            if output is None:
+                continue
 
-                    logger.debug("Validator result: %s", result)
-                    if not result.passed:
-                        validation_tasks.extend(result.errors)
+            if isinstance(output, Exception):
+                logger.exception(
+                    "Validator %s failed to execute with an unhandled error:", validator
+                )
+                continue
 
-                        logger.info(
-                            "Found %d tasks from validator %s",
-                            len(result.errors),
-                            validator,
-                        )
-                        logger.debug(
-                            "Validator %s found errors: %s", validator, result.errors
-                        )
+            output = cast(tuple[ValidationStep, Optional[ValidationResult]], output)
 
-                except Exception:
-                    logger.exception(
-                        "Exception occurred while processing validator %s:", validator
-                    )
+            validator, result = output
+            if result is None:
+                continue  # Skip if the validator failed
+
+            logger.debug("Validator result: %s", result)
+
+            if not result.passed:
+                validation_tasks.extend(result.errors)
+                logger.info(
+                    "Found %d tasks from validator %s",
+                    len(result.errors),
+                    validator,
+                )
+                logger.debug("Validator %s found errors: %s", validator, result.errors)
 
         self._stale_validated_files = []
         self._validators_are_stale = False
@@ -207,17 +204,17 @@ class TaskManager:
         return validation_tasks
 
     @tracer.start_as_current_span("get_next_task")
-    def get_next_task(
+    async def get_next_task(
         self,
         max_priority: Optional[int] = None,
         max_depth: Optional[int] = None,
-    ) -> Generator[Task, Any, None]:
+    ) -> AsyncIterator[Task]:
         # If we're being run at depth 0 and seed tasks have been set, don't bother running validators
         seed_tasks_only = max_depth == 0 and self.priority_queue.has_tasks_within_depth(
             0
         )
         if not seed_tasks_only:
-            self.initialize_priority_queue()
+            await self.initialize_priority_queue()
 
         while self.priority_queue.has_tasks_within_depth(max_depth):
             task = self.priority_queue.pop(max_depth=max_depth)
@@ -241,23 +238,23 @@ class TaskManager:
             # We do lose the ability to verify a solution worked, so
             # TODO(@fabianvf) we may have to adjust that at some point
             if max_depth == 0:
-                self.handle_depth_0_task_after_processing(task)
+                await self.handle_depth_0_task_after_processing(task)
             else:
-                self.handle_new_tasks_after_processing(task, max_depth)
+                await self.handle_new_tasks_after_processing(task, max_depth)
 
-    def initialize_priority_queue(self) -> None:
+    async def initialize_priority_queue(self) -> None:
         logger.info("Initializing task stacks.")
 
         # When we re-initialize the priority queue we need to start fresh
         # Assume that something has changed in the project and we need
         # to re-create the priority queue
         self._stale_validated_files = []
-        new_tasks = self.run_validators()
+        new_tasks = await self.run_validators()
         for task in new_tasks:
             if not self.should_skip_task(task):
                 self.priority_queue.push(task)
 
-    def handle_depth_0_task_after_processing(self, task: Task) -> None:
+    async def handle_depth_0_task_after_processing(self, task: Task) -> None:
         logger.info(
             "Handling depth 0 task, assuming fix has applied for task: %s", task
         )
@@ -267,12 +264,12 @@ class TaskManager:
         self.priority_queue.remove(task)
         self.processed_tasks.add(task)
 
-    def handle_new_tasks_after_processing(
+    async def handle_new_tasks_after_processing(
         self, task: Task, max_depth: Optional[int]
     ) -> None:
         logger.info("Handling new tasks after processing task: %s", task)
         self._validators_are_stale = True
-        unprocessed_new_tasks = set(self.run_validators())
+        unprocessed_new_tasks = set(await self.run_validators())
         logger.debug("Unprocessed new tasks: %s", unprocessed_new_tasks)
 
         # Identify resolved tasks to remove from stacks

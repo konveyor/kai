@@ -37,7 +37,7 @@ class TestAnalyzerAgent(unittest.TestCase):
 
         task = ValidationError(message="test", file="test.yaml", line=1, column=4)
         agent = AnalyzerAgent(model_provider=model_provider)
-        result = agent.execute(
+        result = await agent.execute(
             AnalyzerFixRequest(
                 file_path=Path(PATH_KAI),
                 file_content="",
@@ -73,7 +73,7 @@ class TestAnalyzerAgent(unittest.TestCase):
         )
 
         agent = AnalyzerAgent(model_provider=model_provider)
-        result = agent.execute(
+        result = await agent.execute(
             MavenDependencyRequest(
                 Path(""),
                 task=ValidationError(message="test", file="test", column=1, line=10),

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import functools
 import inspect
 import traceback
@@ -35,10 +36,13 @@ class JsonRpcCallback:
         func: JsonRpcCoroutine,
         kind: Literal["request", "notify"],
         method: str,
+        sync: Literal[None, "error", "wait"],
     ):
         self.func = func
         self.kind = kind
         self.method = method
+        self.sync = sync
+        self.lock = asyncio.Lock()
 
         @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
         @functools.wraps(self.func)
@@ -100,10 +104,39 @@ class JsonRpcCallback:
             self.validate_func_args(app, server, request.id, validated_params)
 
             log.log(TRACE, f"Calling function: {self.func.__name__}")
-            return self.func(app, server, request.id, validated_params)
 
-        except Exception as e:
-            log.error(f"Error calling {self.func.__name__}: {e}")
+            async def call_function() -> None:
+                if self.sync is None:
+                    await self.func(app, server, request.id, validated_params)
+
+                elif self.sync == "wait":
+                    async with self.lock:
+                        await self.func(app, server, request.id, validated_params)
+
+                elif self.sync == "error":
+                    if self.lock.locked():
+                        await server.send_response(
+                            id=request.id,
+                            error=JsonRpcError(
+                                code=JsonRpcErrorCode.InternalError,
+                                message=f"Function {self.func.__name__} already running",
+                            ),
+                        )
+                        return
+                    async with self.lock:
+                        await self.func(app, server, request.id, validated_params)
+
+                if self.kind == "request" and request.id in server.outstanding_requests:
+                    await server.send_response(
+                        id=request.id,
+                        error=JsonRpcError(
+                            code=JsonRpcErrorCode.InternalError,
+                            message="No response sent",
+                        ),
+                    )
+
+            return call_function()
+        except Exception:
 
             async def error_handler() -> None:
                 await server.send_response(

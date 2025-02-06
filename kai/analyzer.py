@@ -123,7 +123,7 @@ class AnalyzerLSP:
             )
 
             loop = asyncio.get_running_loop()
-            loop.create_task(self.rpc.start())
+            _ = loop.create_task(self.rpc.start())
             logger.debug("analyzer rpc server started")
 
         except Exception as e:
@@ -170,10 +170,12 @@ class AnalyzerLSP:
         logger.debug("Request params: %s", request_params)
 
         try:
-            return await self.rpc.send_request(
+            result = await self.rpc.send_request(
                 "analysis_engine.Analyze",
                 params=[request_params],
             )
+            logger.debug("Received response from analyzer-lsp")
+            return result
         except Exception as e:
             logger.error(f"failed to analyze {str(e)}")
             return JsonRpcError(

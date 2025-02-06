@@ -1,4 +1,8 @@
-# Need to initialize this before we start getting the tracer in the other files on import
+#! /home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/venv/bin/python
+#!/usr/bin/env python
+
+# Need to initialize this before we start getting the tracer in the other files
+# on import
 import argparse
 import asyncio
 import logging as core_logging
@@ -113,7 +117,9 @@ def main() -> None:
         log=log,
     )
 
-    asyncio.run(rpc_server.start())
+    log.info("Starting RPC server")
+
+    asyncio.run(rpc_server.start(), debug=True)
 
 
 if __name__ == "__main__":
