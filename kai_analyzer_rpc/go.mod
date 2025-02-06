@@ -4,8 +4,8 @@ go 1.23.1
 
 require (
 	github.com/go-logr/logr v1.4.2
-	github.com/konveyor/analyzer-lsp v0.6.0-alpha.2.0.20250130142538-80e9439d117d
-	github.com/konveyor/analyzer-lsp/external-providers/java-external-provider v0.0.0-20250130142538-80e9439d117d
+	github.com/konveyor/analyzer-lsp v0.6.0-alpha.2.0.20250206202213-175fd3f4a877
+	github.com/konveyor/analyzer-lsp/external-providers/java-external-provider v0.0.0-20250206202213-175fd3f4a877
 	go.opentelemetry.io/otel v1.34.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.34.0
 	go.opentelemetry.io/otel/sdk v1.34.0
@@ -54,10 +54,8 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20250115164207-1a7da9e5054f // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250204164813-702378808489 // indirect
 	google.golang.org/grpc v1.70.0 // indirect
-	google.golang.org/protobuf v1.36.4 // indirect
+	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 
 )
-
-replace github.com/konveyor/analyzer-lsp => /Users/shurley/repos/MTA/analyzer-lsp
