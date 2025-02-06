@@ -233,6 +233,9 @@ class RepoContextSnapshot:
 
 
 class RepoContextManager:
+
+    last_snapshot_before_reset = None
+
     def __init__(
         self,
         project_root: Path,
@@ -292,6 +295,7 @@ class RepoContextManager:
         Resets the repository to the given snapshot. If no snapshot is provided,
         reset the repo to the current snapshot.
         """
+        self.last_snapshot_before_reset = self.snapshot
         if snapshot is not None:
             self.snapshot = snapshot
 

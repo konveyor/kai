@@ -503,72 +503,80 @@ def get_codeplan_agent_solution(
             server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
             return
 
-        # Get a snapshot of the current state of the repo so we can reset it
-        # later
-        app.rcm.commit(
-            f"get_codeplan_agent_solution. id: {id}", run_reflection_agent=False
-        )
-        agent_solution_snapshot = app.rcm.snapshot
+        # If incidents are provided, we are on a new run
+        # If it is empty, this is a request for continuation
+        if params.incidents:
+            # Get a snapshot of the current state of the repo so we can reset it
+            # later
+            app.rcm.commit(
+                f"get_codeplan_agent_solution. id: {id}", run_reflection_agent=False
+            )
+            agent_solution_snapshot = app.rcm.snapshot
 
-        app.config = cast(KaiRpcApplicationConfig, app.config)
+            app.config = cast(KaiRpcApplicationConfig, app.config)
 
-        # Data for AnalyzerRuleViolation should probably take an ExtendedIncident
-        seed_tasks: list[Task] = []
+            # Data for AnalyzerRuleViolation should probably take an ExtendedIncident
+            seed_tasks: list[Task] = []
 
-        params.incidents.sort()
-        grouped_incidents_by_files = [
-            list(g) for _, g in groupby(params.incidents, key=attrgetter("uri"))
-        ]
-        for incidents in grouped_incidents_by_files:
-
-            # group incidents by violation
-            grouped_violations = [
-                list(g) for _, g in groupby(incidents, key=attrgetter("violation_name"))
+            params.incidents.sort()
+            grouped_incidents_by_files = [
+                list(g) for _, g in groupby(params.incidents, key=attrgetter("uri"))
             ]
-            for violation_incidents in grouped_violations:
+            for incidents in grouped_incidents_by_files:
 
-                incident_base = violation_incidents[0]
-                uri_path = urlparse(incident_base.uri).path
-                if platform.system() == "Windows":
-                    uri_path = uri_path.removeprefix("/")
+                # group incidents by violation
+                grouped_violations = [
+                    list(g)
+                    for _, g in groupby(incidents, key=attrgetter("violation_name"))
+                ]
+                for violation_incidents in grouped_violations:
 
-                class_to_use = AnalyzerRuleViolation
-                if "pom.xml" in incident_base.uri:
-                    class_to_use = AnalyzerDependencyRuleViolation
+                    incident_base = violation_incidents[0]
+                    uri_path = urlparse(incident_base.uri).path
+                    if platform.system() == "Windows":
+                        uri_path = uri_path.removeprefix("/")
 
-                validation_error = class_to_use(
-                    file=str(Path(uri_path).absolute()),
-                    violation=Violation(
-                        id=incident_base.violation_name or "",
-                        description=incident_base.violation_description or "",
-                        category=incident_base.violation_category,
-                        labels=incident_base.violation_labels,
-                    ),
-                    ruleset=RuleSet(
-                        name=incident_base.ruleset_name,
-                        description=incident_base.ruleset_description or "",
-                    ),
-                    line=0,
-                    column=-1,
-                    message="",
-                    incidents=[],
-                )
-                validation_error.incidents = []
-                for i in violation_incidents:
-                    if i.line_number < 0:
-                        continue
-                    validation_error.incidents.append(Incident(**i.model_dump()))
+                    class_to_use = AnalyzerRuleViolation
+                    if "pom.xml" in incident_base.uri:
+                        class_to_use = AnalyzerDependencyRuleViolation
 
-                if validation_error.incidents:
-                    app.log.log(
-                        TRACE,
-                        "seed_tasks adding to list: %s -- incident_messages: %s",
-                        validation_error,
-                        validation_error.incident_message,
+                    validation_error = class_to_use(
+                        file=str(Path(uri_path).absolute()),
+                        violation=Violation(
+                            id=incident_base.violation_name or "",
+                            description=incident_base.violation_description or "",
+                            category=incident_base.violation_category,
+                            labels=incident_base.violation_labels,
+                        ),
+                        ruleset=RuleSet(
+                            name=incident_base.ruleset_name,
+                            description=incident_base.ruleset_description or "",
+                        ),
+                        line=0,
+                        column=-1,
+                        message="",
+                        incidents=[],
                     )
-                    seed_tasks.append(validation_error)
+                    validation_error.incidents = []
+                    for i in violation_incidents:
+                        if i.line_number < 0:
+                            continue
+                        validation_error.incidents.append(Incident(**i.model_dump()))
 
-        app.task_manager.set_seed_tasks(*seed_tasks)
+                    if validation_error.incidents:
+                        app.log.log(
+                            TRACE,
+                            "seed_tasks adding to list: %s -- incident_messages: %s",
+                            validation_error,
+                            validation_error.incident_message,
+                        )
+                        seed_tasks.append(validation_error)
+
+            app.task_manager.set_seed_tasks(*seed_tasks)
+        else:
+            # reset to the last git state
+            if app.rcm.last_snapshot_before_reset is not None:
+                app.rcm.reset(app.rcm.last_snapshot_before_reset)
 
         app.log.info(
             f"Starting code plan loop with iterations: {params.max_iterations}, max depth: {params.max_depth}, and max priority: {params.max_priority}"
@@ -585,11 +593,13 @@ def get_codeplan_agent_solution(
             encountered_errors: list[str]
             modified_files: list[str]
             diff: str
+            remaining_issues: list[Task]
 
         overall_result: OverallResult = {
             "encountered_errors": [],
             "modified_files": [],
             "diff": "",
+            "remaining_issues": [],
         }
 
         # get the solved tasks set
@@ -635,7 +645,7 @@ def get_codeplan_agent_solution(
 
             app.log.debug(result)
 
-            if seed_tasks:
+            if app.task_manager.priority_queue.task_stacks.get(0):
                 # If we have seed tasks, we are fixing a set of issues,
                 # Lets only focus on this when showing the queue.
                 all_tasks = app.task_manager.priority_queue.all_tasks()
@@ -679,6 +689,21 @@ def get_codeplan_agent_solution(
 
             simple_chat_message("Running validators...")
 
+        relevant_task_priority = -1
+        stacks = app.task_manager.priority_queue.task_stacks.keys()
+        if params.max_priority is not None:
+            relevant_task_priority = params.max_priority
+        elif stacks:
+            relevant_task_priority = max(stacks)
+
+        overall_result["remaining_issues"] = [
+            task
+            for tasks in [
+                app.task_manager.priority_queue.task_stacks.get(i, [])
+                for i in range(relevant_task_priority + 1)
+            ]
+            for task in tasks
+        ]
         # after we have completed all the tasks, we should show what has been accomplished for this particular solution
         app.log.debug("QUEUE_STATE_END_OF_CODE_PLAN: SUCCESSFUL TASKS: START")
         for task in app.task_manager.processed_tasks - initial_solved_tasks:
