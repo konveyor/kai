@@ -193,7 +193,10 @@ class ModelProvider:
         if isinstance(self.llm, ChatOllama):
             challenge("max_tokens")
         elif isinstance(self.llm, ChatOpenAI):
-            challenge("max_tokens")
+            try:
+                challenge("max_tokens")
+            except Exception:
+                challenge("max_completion_tokens")
         elif isinstance(self.llm, ChatBedrock):
             challenge("max_tokens")
         elif isinstance(self.llm, FakeListChatModel):
