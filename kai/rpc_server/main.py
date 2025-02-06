@@ -1,5 +1,6 @@
 # Need to initialize this before we start getting the tracer in the other files on import
 import argparse
+import asyncio
 import logging as core_logging
 import multiprocessing
 import os
@@ -112,10 +113,7 @@ def main() -> None:
         log=log,
     )
 
-    with tracer.start_as_current_span("main_server"):
-        rpc_server.start()
-        log.info("Started kai RPC Server")
-        rpc_server.join()
+    asyncio.run(rpc_server.start())
 
 
 if __name__ == "__main__":

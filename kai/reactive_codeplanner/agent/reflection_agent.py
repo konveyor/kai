@@ -307,7 +307,7 @@ Here's the input information:
         self._iterations = iterations
         self._retries = retries
 
-    def execute(self, task: AgentRequest) -> AgentResult:
+    async def execute(self, task: AgentRequest) -> AgentResult:
         chatter.get().chat_simple("ReflectionAgent executing...")
 
         if not isinstance(task, ReflectionTask):
@@ -387,7 +387,7 @@ Here's the input information:
             try:
                 chatter.get().chat_simple(f"Reflection iteration {curr_iter}")
 
-                reflection_response = self._model_provider.invoke(
+                reflection_response = await self._model_provider.ainvoke(
                     chat_reflect,
                     task.cache_path_resolver,
                 )
@@ -403,7 +403,7 @@ Here's the input information:
                     return AgentResult()
                 while fix_gen_attempts < self._retries:
                     fix_gen_attempts += 1
-                    fix_gen_response = self._model_provider.invoke(
+                    fix_gen_response = await self._model_provider.ainvoke(
                         chat_fix_gen, task.cache_path_resolver
                     )
                     updated_file_contents = self._parse_llm_response(

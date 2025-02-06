@@ -30,7 +30,7 @@ class AgentResult:
 
 class Agent(ABC):
     @abstractmethod
-    def execute(self, ask: AgentRequest) -> AgentResult:
+    async def execute(self, ask: AgentRequest) -> AgentResult:
         """
         If the agent cannot handle the request, it should return an AgentResult
         with None values.

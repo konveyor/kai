@@ -129,46 +129,48 @@ ERROR_NOT_INITIALIZED = JsonRpcError(
 
 @app.add_request(method="echo")
 @tracer.start_as_current_span("echo")
-def echo(
+async def echo(
     app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
-    server.send_response(id=id, result=params)
+    await server.send_response(id=id, result=params)
 
 
 @app.add_request(method="shutdown")
 @tracer.start_as_current_span("shutdown")
-def shutdown(
+async def shutdown(
     app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
     server.shutdown_flag = True
     if app.analyzer is not None:
-        app.analyzer.stop()
-    server.send_response(id=id, result={})
+        await app.analyzer.stop()
+
+    await server.send_response(id=id, result={})
 
 
 @app.add_request(method="exit")
 @tracer.start_as_current_span("exit")
-def exit(
+async def exit(
     app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
     server.shutdown_flag = True
     if app.analyzer is not None:
-        app.analyzer.stop()
-    server.send_response(id=id, result={})
+        await app.analyzer.stop()
+
+    await server.send_response(id=id, result={})
 
 
 # NOTE(shawn-hurley): would it ever make sense to have the server
 # "re-initialized" or would you just shutdown and restart the process?
 @app.add_request(method="initialize")
 @tracer.start_as_current_span("initialize")
-def initialize(
+async def initialize(
     app: KaiRpcApplication,
     server: JsonRpcServer,
     id: JsonRpcId,
     params: KaiRpcApplicationConfig,
 ) -> None:
     if app.initialized:
-        server.send_response(
+        await server.send_response(
             id=id,
             error=JsonRpcError(
                 code=JsonRpcErrorCode.ServerErrorStart,
@@ -196,9 +198,9 @@ def initialize(
             )
             cache.model_id = re.sub(r"[\.:\\/]", "_", model_provider.model_id)
 
-            model_provider.validate_environment()
+            await model_provider.validate_environment()
         except Exception as e:
-            server.send_response(
+            await server.send_response(
                 id=id,
                 error=JsonRpcError(
                     code=JsonRpcErrorCode.InternalError,
@@ -221,7 +223,7 @@ def initialize(
                 excluded_paths=app.config.analyzer_lsp_excluded_paths,
             )
         except Exception as e:
-            server.send_response(
+            await server.send_response(
                 id=id,
                 error=JsonRpcError(
                     code=JsonRpcErrorCode.InternalError,
@@ -283,7 +285,7 @@ def initialize(
         )
 
     except Exception:
-        server.send_response(
+        await server.send_response(
             id=id,
             error=JsonRpcError(
                 code=JsonRpcErrorCode.InternalError,
@@ -294,46 +296,20 @@ def initialize(
 
     app.initialized = True
 
-    server.send_response(id=id, result=app.config.model_dump())
-
-
-# NOTE(shawn-hurley): I would just as soon make this another initialize call
-# rather than a separate endpoint. but open to others feedback.
-@app.add_request(method="setConfig")
-@tracer.start_as_current_span("set_config")
-def set_config(
-    app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
-) -> None:
-    if not app.initialized:
-        server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
-        return
-    app.config = cast(KaiRpcApplicationConfig, app.config)
-
-    # Basically reset everything
-    app.initialized = False
-    try:
-        initialize.func(app, server, id, KaiRpcApplicationConfig.model_validate(params))
-    except Exception as e:
-        server.send_response(
-            id=id,
-            error=JsonRpcError(
-                code=JsonRpcErrorCode.InternalError,
-                message=str(e),
-            ),
-        )
+    await server.send_response(id=id, result=app.config.model_dump())
 
 
 @app.add_request(method="analysis_engine.Analyze")
 @tracer.start_as_current_span("server_analysis_endpoint")
-def analyze(
+async def analyze(
     app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
     if not app.initialized:
-        server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
+        await server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
         return
 
     try:
-        analyzer_output = app.analyzer.run_analyzer_lsp(
+        analyzer_output = await app.analyzer.run_analyzer_lsp(
             label_selector=params.get("label_selector", ""),
             included_paths=params.get("included_paths", []),
             incident_selector=params.get("incident_selector", ""),
@@ -342,7 +318,7 @@ def analyze(
         )
 
         if isinstance(analyzer_output, JsonRpcError):
-            server.send_response(
+            await server.send_response(
                 id=id,
                 error=JsonRpcError(
                     code=JsonRpcErrorCode.InternalError,
@@ -352,7 +328,7 @@ def analyze(
             return
 
         if analyzer_output is None:
-            server.send_response(
+            await server.send_response(
                 id=id,
                 error=JsonRpcError(
                     code=JsonRpcErrorCode.UnknownErrorCode,
@@ -362,7 +338,7 @@ def analyze(
             return
 
         if analyzer_output.result is None:
-            server.send_response(
+            await server.send_response(
                 id=id,
                 error=JsonRpcError(
                     code=JsonRpcErrorCode.UnknownErrorCode,
@@ -372,12 +348,14 @@ def analyze(
             return
 
         if isinstance(analyzer_output.result, BaseModel):
-            server.send_response(id=id, result=analyzer_output.result.model_dump())
+            await server.send_response(
+                id=id, result=analyzer_output.result.model_dump()
+            )
             return
 
-        server.send_response(id=id, result=analyzer_output.result)
+        await server.send_response(id=id, result=analyzer_output.result)
     except Exception as e:
-        server.send_response(
+        await server.send_response(
             id=id,
             error=JsonRpcError(
                 code=JsonRpcErrorCode.InternalError,
@@ -422,7 +400,7 @@ class TestRCMParams(BaseModel):
 
 
 @app.add_request(method="testRCM")
-def test_rcm(
+async def test_rcm(
     app: KaiRpcApplication,
     server: JsonRpcServer,
     id: JsonRpcId,
@@ -445,7 +423,7 @@ def test_rcm(
 
     rcm.reset(the_snapshot)
 
-    server.send_response(
+    await server.send_response(
         id=id,
         result={
             "diff": diff[1] + diff[2],
@@ -471,8 +449,8 @@ class GetCodeplanAgentSolutionResult(BaseModel):
 
 
 @app.add_request(method="getCodeplanAgentSolution")
-@tracer.start_as_current_span("get_code_plan_solution")
-def get_codeplan_agent_solution(
+@tracer.start_as_current_span("get_codeplan_solution")
+async def get_codeplan_agent_solution(
     app: KaiRpcApplication,
     server: JsonRpcServer,
     id: JsonRpcId,
@@ -484,7 +462,7 @@ def get_codeplan_agent_solution(
 
     app.log.debug(f"get_codeplan_agent_solution: {params}")
     if not app.initialized or not app.task_manager or not app.rcm:
-        server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
+        await server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
         return
     app.config = cast(KaiRpcApplicationConfig, app.config)
 
@@ -648,7 +626,7 @@ def get_codeplan_agent_solution(
 
         chatter.get().chat_simple("Finished!")
 
-    server.send_response(
+    await server.send_response(
         id=id,
         result=overall_result.model_dump(),  # Must dump as a dict for some reason?
     )

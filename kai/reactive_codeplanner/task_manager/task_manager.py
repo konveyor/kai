@@ -143,8 +143,8 @@ class TaskManager:
 
         validation_tasks: list[Task] = []
 
-        @tracer.start_as_current_span("run_validator")
-        def run_validator(
+        # @tracer.start_as_current_span("run_validator")
+        async def run_validator(
             validator: ValidationStep,
         ) -> tuple[ValidationStep, Optional[ValidationResult]]:
             logger.debug(f"Running validator: {str(validator)}")
@@ -154,7 +154,7 @@ class TaskManager:
                 scoped_paths: Optional[list[Path]] = None
                 if len(self._stale_validated_files) > 0:
                     scoped_paths = self._stale_validated_files
-                result = validator.run(scoped_paths=scoped_paths)
+                result = await validator.run(scoped_paths=scoped_paths)
                 return validator, result
             except Exception as e:
                 logger.exception(
@@ -166,6 +166,8 @@ class TaskManager:
 
                 return validator, None
 
+        # FIXME(JonahSussman): This should be something that uses asyncio
+        # instead of ThreadPoolExecutor
         with ThreadPoolExecutor() as executor:
             # Submit all validators to the executor
             future_to_validator = {

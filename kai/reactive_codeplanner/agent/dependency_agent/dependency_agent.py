@@ -184,7 +184,7 @@ Message:
         self.child_agent = FQDNDependencySelectorAgent(model_provider=model_provider)
         self.agent_methods.update({"find_in_pom._run": find_in_pom(project_base)})
 
-    def execute(self, ask: AgentRequest) -> AgentResult:
+    async def execute(self, ask: AgentRequest) -> AgentResult:
         chatter.get().chat_simple("MavenDependencyAgent executing...")
 
         if not isinstance(ask, MavenDependencyRequest):
@@ -216,7 +216,7 @@ Message:
         while fix_gen_attempts < self._max_retries:
             fix_gen_attempts += 1
 
-            fix_gen_response = self._model_provider.invoke(
+            fix_gen_response = await self._model_provider.ainvoke(
                 msg, cache_path_resolver=ask.cache_path_resolver
             )
             llm_response = self.parse_llm_response(fix_gen_response.content)
@@ -268,7 +268,7 @@ Message:
                     result = _search_fqdn(a.code)
                     if not result or isinstance(result, list):
                         logger.info("Need to call sub-agent for selecting FQDN")
-                        r = self.child_agent.execute(
+                        r = await self.child_agent.execute(
                             FQDNDependencySelectorRequest(
                                 file_path=request.file_path,
                                 task=ask.task,

@@ -3,7 +3,7 @@ from __future__ import annotations
 import functools
 import inspect
 import traceback
-from typing import TYPE_CHECKING, Any, Callable, Literal, get_origin
+from typing import TYPE_CHECKING, Any, Callable, Coroutine, Literal, get_origin
 
 from pydantic import BaseModel, ConfigDict, validate_call
 
@@ -17,7 +17,8 @@ if TYPE_CHECKING:
 log = get_logger("jsonrpc")
 
 # JsonRpcCallable = Callable[[JsonRpcApplication, JsonRpcServer, JsonRpcId, JsonRpcRequestParams], None]
-JsonRpcCallable = Callable[..., None]
+# JsonRpcCallable = Callable[..., None]
+JsonRpcCoroutine = Callable[..., Coroutine[Any, Any, None]]
 
 
 class JsonRpcCallback:
@@ -31,7 +32,7 @@ class JsonRpcCallback:
 
     def __init__(
         self,
-        func: JsonRpcCallable,
+        func: JsonRpcCoroutine,
         kind: Literal["request", "notify"],
         method: str,
     ):
@@ -62,7 +63,7 @@ class JsonRpcCallback:
         app: JsonRpcApplication,
         server: JsonRpcServer,
         request: JsonRpcRequest,
-    ) -> None:
+    ) -> Coroutine[Any, Any, None]:
         try:
             log.log(TRACE, f"{self.func.__name__} called with {request}")
             log.log(
@@ -77,6 +78,7 @@ class JsonRpcCallback:
                     raise ValueError("Expected params to be present")
                 else:
                     validated_params = None
+
             elif isinstance(request.params, dict):
                 if self.params_model is None:
                     raise ValueError("Expected params to be None")
@@ -88,6 +90,7 @@ class JsonRpcCallback:
                     raise ValueError(
                         f"params_model should be dict | BaseModel | None, got {self.params_model}"
                     )
+
             else:
                 raise ValueError(
                     f"Expected params to be a dict or None, got {type(request.params)}"
@@ -97,14 +100,18 @@ class JsonRpcCallback:
             self.validate_func_args(app, server, request.id, validated_params)
 
             log.log(TRACE, f"Calling function: {self.func.__name__}")
-            self.func(app, server, request.id, validated_params)
+            return self.func(app, server, request.id, validated_params)
+
         except Exception as e:
             log.error(f"Error calling {self.func.__name__}: {e}")
 
-            server.send_response(
-                id=request.id,
-                error=JsonRpcError(
-                    code=JsonRpcErrorCode.InternalError,
-                    message=traceback.format_exc(),
-                ),
-            )
+            async def error_handler() -> None:
+                await server.send_response(
+                    id=request.id,
+                    error=JsonRpcError(
+                        code=JsonRpcErrorCode.InternalError,
+                        message=traceback.format_exc(),
+                    ),
+                )
+
+            return error_handler()

@@ -100,7 +100,7 @@ If you have any additional details or steps that need to be performed, put it he
         self._model_provider = model_provider
         self._retries = retries
 
-    def execute(self, ask: AgentRequest) -> AnalyzerFixResponse:
+    async def execute(self, ask: AgentRequest) -> AnalyzerFixResponse:
         chatter.get().chat_simple("AnalyzerAgent executing...")
 
         if not isinstance(ask, AnalyzerFixRequest):
@@ -140,7 +140,7 @@ If you have any additional details or steps that need to be performed, put it he
 
         chatter.get().chat_simple("Waiting for response from LLM...")
 
-        ai_message = self._model_provider.invoke(
+        ai_message = await self._model_provider.ainvoke(
             [system_message, HumanMessage(content=content)],
             ask.cache_path_resolver,
         )

@@ -54,7 +54,7 @@ class MavenCompilerAgent(Agent):
     def __init__(self, model_provider: ModelProvider):
         self.model_provider = model_provider
 
-    def execute(self, ask: AgentRequest) -> AgentResult:
+    async def execute(self, ask: AgentRequest) -> AgentResult:
         chatter.get().chat_simple("MavenCompilerAgent executing...")
 
         if not isinstance(ask, MavenCompilerAgentRequest):
@@ -79,7 +79,7 @@ class MavenCompilerAgent(Agent):
 
         chatter.get().chat_simple("Waiting for response from LLM...")
 
-        ai_message = self.model_provider.invoke(
+        ai_message = await self.model_provider.ainvoke(
             [system_message, HumanMessage(content=content)],
             ask.cache_path_resolver,
         )
