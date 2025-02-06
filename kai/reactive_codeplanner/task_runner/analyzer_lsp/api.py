@@ -87,6 +87,22 @@ class AnalyzerRuleViolation(ValidationError):
         target.sort()
         return target
 
+    def background(self) -> str:
+        if self.parent is not None:
+            return self.oldest_ancestor().background()
+        if self.children:
+            message = f"""You attempted to solve the following issues in the source code you are migrating:
+Issues: {"\n".join(list(set(self.incident_message)))}"""
+
+            # TODO(pgaikwad): we need to ensure this doesn't confuse the agents more than it helps before adding it back
+            # if self.result and self.result.summary:
+            #     message += f"\n\nHere is the reasoning you provided for your initial solution:\n\n{self.result.summary}"
+
+            message += "\n\nHowever your solution caused additional problems elsewhere in the repository."
+            return message
+
+        return ""
+
     @cached_property
     def incident_message(self) -> list[str]:
         incident_msg_list = [i.message for i in self.incidents]

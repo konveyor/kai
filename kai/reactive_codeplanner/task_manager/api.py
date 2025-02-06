@@ -28,6 +28,9 @@ class Task:
     children: list["Task"] = field(default_factory=list, compare=False)
     retry_count: int = 0
     max_retries: int = 3
+    result: Optional["TaskResult"] = None
+
+    _creation_counter = 0
 
     def oldest_ancestor(self) -> "Task":
         if self.parent:
@@ -66,6 +69,10 @@ class Task:
             field_strings.append(f'{_field.name}="{truncated_value}"')
 
         return f"{class_name}<" + ", ".join(field_strings) + ">"
+
+    def background(self) -> str:
+        """Used by Agents to provide context when solving child issues"""
+        raise NotImplementedError
 
     __repr__ = __str__
 
@@ -130,6 +137,12 @@ class ValidationError(Task):
 
         return f"{self.__class__.__name__}<loc={self.file}:{self.line}:{self.column}, message={self.message}>(priority={self.priority}({shadowed_priority}), depth={self.depth}, retries={self.retry_count})"
 
+    def background(self) -> str:
+        """Used by Agents to provide context when solving child issues"""
+        if self.parent is None:
+            return ""
+        return self.oldest_ancestor().background()
+
     __repr__ = __str__
 
 
@@ -138,6 +151,7 @@ class ValidationError(Task):
 class TaskResult:
     encountered_errors: list[str]
     modified_files: list[Path]
+    summary: str
 
 
 @dataclass

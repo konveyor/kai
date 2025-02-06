@@ -92,9 +92,12 @@ class TaskManager:
             result = agent.execute_task(self.rcm, task)
         except Exception as e:
             logger.exception("Unhandled exception executing task %s", task)
-            result = TaskResult(encountered_errors=[str(e)], modified_files=[])
+            result = TaskResult(
+                encountered_errors=[str(e)], modified_files=[], summary=""
+            )
 
         logger.debug("Task execution result: %s", result)
+        task.result = result
         return result
 
     def get_agent_for_task(self, task: Task) -> TaskRunner:

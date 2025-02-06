@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Optional, TypedDict, Union
 
+from jinja2 import Template
 from langchain.prompts.chat import HumanMessagePromptTemplate
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
@@ -53,9 +54,10 @@ class _llm_response:
 
 class MavenDependencyAgent(Agent):
 
-    sys_msg = SystemMessage(
+    system_message_template = Template(
         """
 You are an excellent java developer focused on updating dependencies in a maven `pom.xml` file. 
+{{ background }}
 
 ### Guidelines:
 1  Only use the provided and predefined functions as the functions. Do not use any other functions.
@@ -115,7 +117,7 @@ result = search_fqdn.run(artifact_id="commons-collections4", group_id="org.apach
 ```
 Observation: We now have the fqdn for the commons-collections4 dependency
 
-Though: Now I have the latest version information I need to find the where guava is in the file to replace it.
+Thought: Now I have the latest version information I need to find the where guava is in the file to replace it.
 Action: ```python
 start_line, end_line = find_in_pom._run(relative_file_path="module/file.py", keywords={"groupId": "com.google.guava"", "artifactId": "guava")
 ```
@@ -136,7 +138,6 @@ Updated the guava to the commons-collections4 dependency
 
     inst_msg_template = HumanMessagePromptTemplate.from_template(
         """
-[INST]
 Given the message, you should determine the dependency that needs to be changed.
 
 You must use the following format:
@@ -190,7 +191,13 @@ Message:
         if not request.message:
             return AgentResult()
 
-        msg = [self.sys_msg, self.inst_msg_template.format(message=request.message)]
+        system_message = SystemMessage(
+            content=self.system_message_template.render(background=ask.background)
+        )
+
+        content = self.inst_msg_template.format(message=request.message)
+
+        msg = [system_message, content]
         fix_gen_attempts = 0
         llm_response: Optional[_llm_response] = None
         maven_search: Optional[FQDNResponse] = None
@@ -238,8 +245,11 @@ Message:
                             )
                             if to_llm_message is not None and callable(to_llm_message):
                                 tool_outputs.append(method_out.to_llm_message().content)
-
-            msg.append(HumanMessage(content="\n".join(tool_outputs)))
+            if tool_outputs:
+                msg.append(HumanMessage(content="\n".join(tool_outputs)))
+            else:
+                # we cannot continue the chat when we dont have any tool outputs
+                break
 
         if llm_response is None or fix_gen_response is None:
             return AgentResult()
@@ -256,12 +266,13 @@ Message:
                         logger.info("Need to call sub-agent for selecting FQDN")
                         r = self.child_agent.execute(
                             FQDNDependencySelectorRequest(
-                                request.file_path,
-                                ask.task,
-                                request.message,
-                                a.code,
+                                file_path=request.file_path,
+                                task=ask.task,
+                                msg=request.message,
+                                code=a.code,
                                 query=[],
                                 times=0,
+                                background=ask.background,
                             )
                         )
                         if r.response is not None and isinstance(r.response, list):
@@ -354,6 +365,7 @@ Message:
                             code_block = ""
                             thought_str = ""
                             observation_str = ""
+                        final_answer = " ".join(parts[1:]).strip()
                         in_final_answer = True
                         in_code = False
                         in_thought = False

@@ -10,6 +10,7 @@ from kai.reactive_codeplanner.task_manager.api import Task
 class AgentRequest:
     file_path: Path
     task: Task
+    background: str
     cache_path_resolver: CachePathResolver = field(init=False)
 
     def __post_init__(self) -> None:

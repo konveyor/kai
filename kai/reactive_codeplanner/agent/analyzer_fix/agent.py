@@ -1,4 +1,5 @@
 import os
+import re
 from dataclasses import dataclass
 from logging import DEBUG
 from pathlib import Path
@@ -32,6 +33,7 @@ class AnalyzerAgent(Agent):
     system_message_template = Template(
         """
     You are an experienced {{ language }} developer, who specializes in migrating code from {{ source }} to {{ target }}
+    {{ background }}
     """
     )
 
@@ -123,6 +125,7 @@ If you have any additional details or steps that need to be performed, put it he
                 language=language,
                 source=source,
                 target=target,
+                background=ask.background,
             )
         )
 
@@ -141,7 +144,7 @@ If you have any additional details or steps that need to be performed, put it he
             ask.cache_path_resolver,
         )
 
-        resp = self.parse_llm_response(ai_message, language)
+        resp = self.parse_llm_response(ai_message)
         return AnalyzerFixResponse(
             encountered_errors=[],
             file_to_modify=Path(os.path.abspath(ask.file_path)),
@@ -150,7 +153,7 @@ If you have any additional details or steps that need to be performed, put it he
             updated_file_content=resp.source_file,
         )
 
-    def parse_llm_response(self, message: BaseMessage, language: str) -> _llm_response:
+    def parse_llm_response(self, message: BaseMessage) -> _llm_response:
         """Private method that will be used to parse the contents and get the results"""
 
         lines_of_output = cast(str, message.content).splitlines()
@@ -162,23 +165,26 @@ If you have any additional details or steps that need to be performed, put it he
         reasoning = ""
         additional_details = ""
         for line in lines_of_output:
-            if line.strip() == "## Reasoning":
+            # trunk-ignore(cspell/error)
+            if re.match(r"(?:##|\*\*)\s+[Rr]easoning", line.strip()):
                 in_reasoning = True
                 in_source_file = False
                 in_additional_details = False
                 continue
-            if line.strip() == f"## Updated {language} File":
+            # trunk-ignore(cspell/error)
+            if re.match(r"(?:##|\*\*)\s+[Uu]pdated.*[Ff]ile", line.strip()):
                 in_source_file = True
                 in_reasoning = False
                 in_additional_details = False
                 continue
-            if "## Additional Information" in line.strip():
+            # trunk-ignore(cspell/error)
+            if re.match(r"(?:##|\*\*)\s+[Aa]dditional\s+[Ii]nformation", line.strip()):
                 in_reasoning = False
                 in_source_file = False
                 in_additional_details = True
                 continue
             if in_source_file:
-                if f"```{language}" in line or "```" in line:
+                if re.match(r"```(?:\w*)", line):
                     continue
                 source_file = "\n".join([source_file, line])
             if in_reasoning:

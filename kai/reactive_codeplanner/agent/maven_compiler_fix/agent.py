@@ -1,3 +1,5 @@
+import re
+
 from jinja2 import Template
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
@@ -13,8 +15,8 @@ logger = get_logger(__name__)
 
 
 class MavenCompilerAgent(Agent):
-    system_message = SystemMessage(
-        content="""
+    system_message_template = Template(
+        """{{ background }}
     I will give you compiler errors and the offending line of code, and you will need to use the file to determine how to fix them. You should only use compiler errors to determine what to fix.
 
     Make sure that the references to any changed types are kept.
@@ -65,13 +67,17 @@ class MavenCompilerAgent(Agent):
             )
             return MavenCompilerAgentResult()
 
+        system_message = SystemMessage(
+            content=self.system_message_template.render(background=ask.background)
+        )
+
         compile_errors = f"Line of code: {line_of_code};\n{ask.message}"
         content = self.chat_message_template.render(
             src_file_contents=ask.file_contents, compile_errors=compile_errors
         )
 
         ai_message = self.model_provider.invoke(
-            [self.system_message, HumanMessage(content=content)],
+            [system_message, HumanMessage(content=content)],
             ask.cache_path_resolver,
         )
 
@@ -97,23 +103,26 @@ class MavenCompilerAgent(Agent):
         reasoning = ""
         additional_details = ""
         for line in lines_of_output:
-            if line.strip() == "## Updated Java File":
+            # trunk-ignore(cspell/error)
+            if re.match(r"(?:##|\*\*)\s+[Uu]pdated.*[Ff]ile", line.strip()):
                 in_java_file = True
                 in_reasoning = False
                 in_additional_details = False
                 continue
-            if line.strip() == "## Reasoning":
+            # trunk-ignore(cspell/error)
+            if re.match(r"(?:##|\*\*)\s+[Rr]easoning", line.strip()):
                 in_java_file = False
                 in_reasoning = True
                 in_additional_details = False
                 continue
-            if line.strip() == "## Additional Information (optional)":
+            # trunk-ignore(cspell/error)
+            if re.match(r"(?:##|\*\*)\s+[Aa]dditional\s+[Ii]nformation", line.strip()):
                 in_reasoning = False
                 in_java_file = False
                 in_additional_details = True
                 continue
             if in_java_file:
-                if "```java" in line or "```" in line or line == "\n":
+                if re.match(r"```(?:\w*)", line):
                     continue
                 java_file = "\n".join([java_file, line]).strip()
             if in_reasoning:
