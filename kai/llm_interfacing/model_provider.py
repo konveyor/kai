@@ -60,11 +60,11 @@ class ModelProvider:
                 # NOTE(JonahSussman): This is a hack to prevent `max_tokens`
                 # from getting converted to `max_completion_tokens`
 
-                @property
+                @property  # type: ignore[misc]
                 def _default_params(self: ChatOpenAI) -> dict[str, Any]:
                     return super(ChatOpenAI, self)._default_params
 
-                ChatOpenAI._default_params = _default_params
+                ChatOpenAI._default_params = _default_params  # type: ignore[method-assign]
 
                 def _get_request_payload(
                     self: ChatOpenAI,
@@ -72,12 +72,12 @@ class ModelProvider:
                     *,
                     stop: list[str] | None = None,
                     **kwargs: Any,
-                ) -> dict:
+                ) -> dict:  # type: ignore[type-arg]
                     return super(ChatOpenAI, self)._get_request_payload(
                         input_, stop=stop, **kwargs
                     )
 
-                ChatOpenAI._get_request_payload = _get_request_payload
+                ChatOpenAI._get_request_payload = _get_request_payload  # type: ignore[method-assign]
 
                 defaults = {
                     "model": "gpt-3.5-turbo",
