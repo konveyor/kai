@@ -55,8 +55,10 @@ class DependencyTaskRunner(TaskRunner):
             return TaskResult(encountered_errors=[], modified_files=[], summary="")
 
         msg = task.message
-        if isinstance(task, PackageDoesNotExistError):
-            msg = f"Maven Compiler Error:\n{task.message}"
+        if isinstance(task, PackageDoesNotExistError) or isinstance(
+            task, SymbolNotFoundError
+        ):
+            msg = f"Maven Compiler Error:\n{task.compiler_error_message()}"
 
         maven_dep_response = self._agent.execute(
             MavenDependencyRequest(
