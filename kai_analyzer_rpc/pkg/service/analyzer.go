@@ -179,10 +179,10 @@ func (a *Analyzer) Analyze(args Args, response *Response) error {
 
 func (a *Analyzer) setCache(rulesets []konveyor.RuleSet) {
 	a.cacheMutex.Lock()
+	defer a.cacheMutex.Unlock()
 	a.cache = map[string][]cacheValue{}
-	a.cacheMutex.Unlock()
 
-	a.updateCache(rulesets, nil)
+	a.addRulesetsToCache(rulesets)
 }
 
 func (a *Analyzer) updateCache(rulesets []konveyor.RuleSet, includedPaths []string) {
@@ -191,6 +191,10 @@ func (a *Analyzer) updateCache(rulesets []konveyor.RuleSet, includedPaths []stri
 	if includedPaths != nil {
 		a.invalidateCachePerFile(includedPaths)
 	}
+	a.addRulesetsToCache(rulesets)
+}
+
+func (a *Analyzer) addRulesetsToCache(rulesets []konveyor.RuleSet) {
 
 	for _, r := range rulesets {
 		for violationName, v := range r.Violations {
