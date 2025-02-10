@@ -247,11 +247,16 @@ class ModelProvider:
 
         response = invoke_llm.invoke(input, config, stop=stop, **kwargs)
 
-        self.cache.put(
-            path=cache_path,
-            input=input,
-            output=response,
-            cache_meta=cache_meta,
-        )
+        try:
+            self.cache.put(
+                path=cache_path,
+                input=input,
+                output=response,
+                cache_meta=cache_meta,
+            )
+        except Exception as e:
+            # only raise an exception when we are in demo mode
+            if self.demo_mode:
+                raise e
 
         return response
