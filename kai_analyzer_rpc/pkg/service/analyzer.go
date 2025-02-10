@@ -230,12 +230,6 @@ func (a *Analyzer) Analyze(args Args, response *Response) error {
 		a.Logger.V(2).Info("Using inclusion scope", "scope", currScope.Name())
 	}
 
-	if len(args.ExcludedPaths) > 0 {
-		currScope := engine.ExcludedPathsScope(args.ExcludedPaths, a.Logger)
-		scopes = append(scopes, currScope)
-		a.Logger.V(2).Info("Using exclusion scope", "scope", currScope.Name())
-	}
-
 	// If we don't have scopes to test a single thing, and we don't have a reset cache request
 	// Then we should return early, with results from the cache
 	if len(scopes) == 0 && !args.ResetCache {
@@ -243,6 +237,13 @@ func (a *Analyzer) Analyze(args Args, response *Response) error {
 		a.Logger.Info("Current cache len", len(a.cache))
 		response.Rulesets = a.createRulesetsFromCache()
 		return nil
+	}
+
+	// Only exclude paths after we determine if we are going to run rules
+	if len(args.ExcludedPaths) > 0 {
+		currScope := engine.ExcludedPathsScope(args.ExcludedPaths, a.Logger)
+		scopes = append(scopes, currScope)
+		a.Logger.V(2).Info("Using exclusion scope", "scope", currScope.Name())
 	}
 
 	// Adding spans to the discovery rules run and for the violation rules run
