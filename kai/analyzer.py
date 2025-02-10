@@ -6,6 +6,8 @@ from io import BufferedReader, BufferedWriter
 from pathlib import Path
 from typing import IO, Any, Optional, cast
 
+from opentelemetry import trace
+
 from kai.constants import ENV, PATH_KAI
 from kai.jsonrpc.core import JsonRpcServer
 from kai.jsonrpc.models import JsonRpcError, JsonRpcErrorCode, JsonRpcResponse
@@ -15,6 +17,8 @@ from kai.logging.logging import get_logger, log
 logger = get_logger(__name__)
 
 CONST_KAI_ANALYZER_LOG_FILE = "kai-analyzer-server.log"
+
+tracer = trace.get_tracer("analyzer_lsp")
 
 
 def get_logfile_dir() -> Path:
@@ -32,6 +36,8 @@ def log_stderr(stderr: IO[bytes]) -> None:
 
 
 class AnalyzerLSP:
+
+    @tracer.start_as_current_span("initialize")
     def __init__(
         self,
         analyzer_lsp_server_binary: Path,
@@ -98,12 +104,14 @@ class AnalyzerLSP:
             self.stop()
             raise Exception(f"Analyzer failed to start: {str(e)}") from e
 
+    @tracer.start_as_current_span("run_analysis")
     def run_analyzer_lsp(
         self,
         label_selector: str,
         included_paths: list[Path],
         incident_selector: str,
         scoped_paths: Optional[list[Path]] = None,
+        reset_cache: Optional[bool] = None,
     ) -> JsonRpcResponse | JsonRpcError | None:
         request_params: dict[str, Any] = {
             "label_selector": label_selector,
@@ -116,6 +124,9 @@ class AnalyzerLSP:
 
         if scoped_paths is not None:
             request_params["included_paths"] = [str(p) for p in scoped_paths]
+
+        if reset_cache:
+            request_params["reset_cache"] = True
 
         logger.debug("Sending request to analyzer-lsp")
         logger.debug("Request params: %s", request_params)
