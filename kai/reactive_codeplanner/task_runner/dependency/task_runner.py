@@ -73,13 +73,6 @@ class DependencyTaskRunner(TaskRunner):
         if not isinstance(maven_dep_response, MavenDependencyResult):
             return TaskResult(encountered_errors=[], modified_files=[], summary="")
 
-        if not maven_dep_response.final_answer:
-            logger.info(
-                "No final answer was given, we need to return with nothing modified. result: %r",
-                maven_dep_response,
-            )
-            return TaskResult(encountered_errors=[], modified_files=[], summary="")
-
         if not maven_dep_response.fqdn_response:
             logger.info(
                 "we got a final answer, but it must have skipped steps in the LLM, we need to review the LLM call response %r",
@@ -88,7 +81,8 @@ class DependencyTaskRunner(TaskRunner):
             return TaskResult(encountered_errors=[], modified_files=[], summary="")
 
         logger.debug(
-            "we are now updating the pom based %s", maven_dep_response.final_answer
+            "we are now updating the pom based on response %s",
+            maven_dep_response.fqdn_response,
         )
         pom = os.path.join(os.path.join(rcm.project_root, "pom.xml"))
         tree = ET.parse(pom)  # trunk-ignore(bandit/B320)
@@ -104,14 +98,6 @@ class DependencyTaskRunner(TaskRunner):
 
         ## We always need to add the new dep
         deps.append(maven_dep_response.fqdn_response.to_xml_element())
-
-        if maven_dep_response.find_in_pom is not None:
-            if maven_dep_response.find_in_pom.override:
-                ## we know we need to remove this dep
-                for dep in deps:
-                    if maven_dep_response.find_in_pom.match_dep(dep):
-                        logger.debug("found dep %r and removing", dep)
-                        deps.remove(dep)
 
         tree.write(file=pom, encoding="utf-8", pretty_print=True)
         rcm.commit(

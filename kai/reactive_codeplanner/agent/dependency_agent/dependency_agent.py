@@ -4,7 +4,7 @@ from typing import Any, Callable, Optional, TypedDict, Union
 
 from jinja2 import Template
 from langchain.prompts.chat import HumanMessagePromptTemplate
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.logging.logging import get_logger
@@ -41,9 +41,7 @@ class _action:
 
 @dataclass
 class MavenDependencyResult(AgentResult):
-    final_answer: Optional[str] = None
     fqdn_response: Optional[FQDNResponse] = None
-    find_in_pom: Optional[FindInPomResponse] = None
 
 
 @dataclass
@@ -56,40 +54,22 @@ class MavenDependencyAgent(Agent):
 
     system_message_template = Template(
         """
-You are an excellent java developer focused on updating dependencies in a maven `pom.xml` file. 
+You are an excellent java developer focused on updating dependencies in a maven `pom.xml` file.
+You are overseeing a migration effort of a Java application in which we have encountered a maven issue.
+Help fix the given problem by adding a new dependency to the pom file.
+Follow the given guidelines and make use of the functions described to you to make an educated decision of which dependency to add or update.
+{% if background %}
+Here is the original migration issue we were trying to fix that led to this new issue in maven. Make sure that the dependency you add or update aligns with the migration goal.
 {{ background }}
-
+{% endif %}
 ### Guidelines:
-1  Only use the provided and predefined functions as the functions. Do not use any other functions.
-2 always search for the fqdn for the dependency to be added or updated
-3 Only do a single action at a time
-4 Do not try to solve in one action, if the final solution is not do able in a single action, then only output the single action do not add Final Answer in this case,6 If you have to edit the xml, ensure the xml is correct with syntax, dependency, consistent with the file and the codebase.
-7 Pay attention to original indentation! Something like this "patch": "    def something(self, s):\n    # Check if something is something\n        return something if the original code is indented with 4 spaces or  "def something(self, s):\n    # Check if something is something\n        return something if the original block is not indented.
-8 If you are taking an action, then observation can be empty
-9 carefully think through the actions needed before responding 
+1. Only use the provided and predefined functions as the functions. Do not use any other functions.
+2. Always search for the fqdn for the dependency to be added or updated.
+3. Carefully think through the actions needed before responding.
 
 ### Functions:
-1. **Editing A File with replaced code block**:
-   Arguments:
-   - relative_file_path: str - The path to the file to edit.
-   - start_line: int - The line number where the original target code block starts.
-   - end_line: int - The line number where the original target code block ends.
-   - xml: str - xml as a string
-   Action:
-   ```python
-   
-   result = editor._run(relative_file_path="module/file.py", start_line=12, end_line=24, patch="<xmlTag><xmlSubTag>value</xmlSubTag></xmlTag>")
-   print(result)
    ```
-2. **Opening a File and Getting Location**:
-   Arguments:
-   - relative_file_path: str - The path to the file to open.
-   Action:
-   ```python
-   start_line, end_line = find_in_pom._run(relative_file_path="module/file.py", keywords=["some_function"])
-   print(result)
-   ```
-3. **Searching  For Full Dependency Fully Qualified Domain Name**:
+1. **Searching  For Full Dependency Fully Qualified Domain Name**:
    Arguments:
    - artifact_id: str - The alias name of the symbol to find the definition for.
    - group_id: str - The path to the file where the alias is used.
@@ -101,40 +81,37 @@ You are an excellent java developer focused on updating dependencies in a maven 
    ```
 
 ### Important Notes:
-1 We must always use an exact version from the search for Fully Qualified Domain Name of the dependency that we want to update
-3. search_fqdn: use this tool to get the fully qualified domain name of a dependency. This includes the artifactId, groupId and the version.
-
-Use this tool to get all references to a symbol in the codebase. This will help you understand how the symbol is used in the codebase. For example, if you want to know where a function is called, you can use this tool.
-
-
-### Example:
-Thought: replace com.google.guava/guava with org.apache.commons/commons-collections4 to the latest version.
-
-
-Thought:  I have the groupId and the artifactId for the collections4 library, but I don't have the latest version.
-Action: ```python
-result = search_fqdn.run(artifact_id="commons-collections4", group_id="org.apache.commons")
-```
-Observation: We now have the fqdn for the commons-collections4 dependency
-
-Thought: Now I have the latest version information I need to find the where guava is in the file to replace it.
-Action: ```python
-start_line, end_line = find_in_pom._run(relative_file_path="module/file.py", keywords={"groupId": "com.google.guava"", "artifactId": "guava")
-```
-Observation: we now have the start and end line of the in the pom file to be updated
-
-Thought: Now that I have the latest version information and the current start_line and end_line I need to replace the dependency
-Action: ```python
-xml =  f"<dependency><groupId>{result.groupId}</groupId><artifactId>{result.artifactId}</artifactId><version>{result.version}</version></dependency>"
-result = editor._run(relative_file_path="pom.xml", start_line=start_line, end_line=end_line, patch=xml)
-print(result)
-```
-Observation: The pom.xml file is now updated setting the xml at start line with the new dependency to the end line
-
-Final Answer:
-Updated the guava to the commons-collections4 dependency
+1 We must always use an exact version from the search for Fully Qualified Domain Name of the dependency that we want to add or update.
+2 search_fqdn: use this tool to get the fully qualified domain name of a dependency. This includes the artifactId, groupId and the version.
 """
     )
+
+    few_shot_examples = [
+        HumanMessage(
+            content="""Given the message, you should determine the dependency that needs to be changed.
+
+You must use the following format:
+
+Thought: You should always think about what to do based on the guidelines
+Action: The action as block of code to take
+Observation: Output what the goal of the action is achieving
+
+Issue:
+
+package org.apache.commons.io does not exist
+"""
+        ),
+        AIMessage(
+            content="""Thought: The error message indicates that the package `org.apache.commons.io` does not exist. This suggests that the dependency for Apache Commons IO might be missing or incorrectly specified in the `pom.xml` file. I need to find the correct dependency for Apache Commons IO and update the `pom.xml` file accordingly.
+
+Action:
+```python
+result = search_fqdn.run(artifact_id="commons-io", group_id="org.apache.commons")
+```
+
+Observation: This action will provide the fully qualified domain name, including the latest version, for the SmallRye Reactive Messaging dependency."""
+        ),
+    ]
 
     inst_msg_template = HumanMessagePromptTemplate.from_template(
         """
@@ -142,16 +119,11 @@ Given the message, you should determine the dependency that needs to be changed.
 
 You must use the following format:
 
-Thought: you should always think about what to do based on the guidelines
-Action: the action as block of code to take
-Observation: output what the goal of the action is achieving 
+Thought: You should always think about what to do based on the guidelines
+Action: The action as block of code to take
+Observation: Output what the goal of the action is achieving
 
-When completed, add Final Answer that tells the steps taken
-
-
-If you are at the point of editing, add the final answer of what you did
-
-Message:
+Issue:
 
     {message}
 """
@@ -175,7 +147,7 @@ Message:
         self,
         model_provider: ModelProvider,
         project_base: Path,
-        retries: int = 3,
+        retries: int = 2,
     ) -> None:
         self._model_provider = model_provider
         self._max_retries = retries
@@ -195,13 +167,14 @@ Message:
             content=self.system_message_template.render(background=ask.background)
         )
 
-        content = self.inst_msg_template.format(message=request.message)
+        instruction_msg = self.inst_msg_template.format(message=request.message)
 
-        msg = [system_message, content]
+        msg: list[BaseMessage] = [system_message]
+        msg.extend(self.few_shot_examples)
+        msg.append(instruction_msg)
         fix_gen_attempts = 0
         llm_response: Optional[_llm_response] = None
-        maven_search: Optional[FQDNResponse] = None
-        find_pom_lines: Optional[FindInPomResponse] = None
+        initial_maven_search: Union[FQDNResponse, list[FQDNResponse], None] = None
 
         # TODO: shawn-hurley: this is needs to be different to allow for the sub-agent's that are needed.
         # We need a sub-agent in the case when searching for the fqdn does not return a single result or
@@ -217,90 +190,79 @@ Message:
             )
             llm_response = self.parse_llm_response(fix_gen_response.content)
 
-            # if we don't have a final answer, we need to retry, otherwise break
-            if llm_response is not None and llm_response.final_answer:
-                all_actions.extend(llm_response.actions)
-                break
-
             # we have to keep the chat going until we get a final answer
             msg.append(AIMessage(content=fix_gen_response.content))
 
             if llm_response is None or not llm_response.actions:
                 msg.append(
                     HumanMessage(
-                        content="Please provide a complete response until at least one action to perform."
+                        content="Please provide a complete response and use the given functions exactly as described to search for dependency."
                     )
                 )
                 continue
 
             all_actions.extend(llm_response.actions)
-            tool_outputs: list[str] = []
             for action in llm_response.actions:
                 for method_name, method in self.agent_methods.items():
                     if method_name in action.code:
                         if callable(method):
                             method_out = method(action.code)
-                            to_llm_message: Optional[Callable[[], HumanMessage]] = (
-                                getattr(method_out, "to_llm_message", None)
-                            )
-                            if to_llm_message is not None and callable(to_llm_message):
-                                tool_outputs.append(method_out.to_llm_message().content)
-            if tool_outputs:
-                msg.append(HumanMessage(content="\n".join(tool_outputs)))
-            else:
-                # we cannot continue the chat when we dont have any tool outputs
+                            if isinstance(method_out, FQDNResponse) or (
+                                isinstance(method_out, list)
+                                and all(
+                                    isinstance(item, FQDNResponse)
+                                    for item in method_out
+                                )
+                            ):
+                                initial_maven_search = method_out
+                                break
+
+            # initial maven search is all we need to add the dep
+            if initial_maven_search:
                 break
+
+            msg.append(
+                HumanMessage(
+                    content="No FQDNs found with the given group and artifact."
+                )
+            )
 
         if llm_response is None or fix_gen_response is None:
             return AgentResult()
 
-        if not maven_search:
+        maven_search: Optional[FQDNResponse] = None
+
+        # we found the answer in initial search, no need to go to the fqdn selection part
+        if isinstance(initial_maven_search, FQDNResponse):
+            maven_search = initial_maven_search
+
+        if not initial_maven_search or isinstance(initial_maven_search, list):
             for a in all_actions:
                 if "search_fqdn.run" in a.code:
-                    logger.debug("running search for FQDN")
-                    _search_fqdn: Callable[
-                        [str], Optional[FQDNResponse] | list[FQDNResponse]
-                    ] = self.agent_methods["search_fqdn.run"]
-                    result = _search_fqdn(a.code)
-                    if not result or isinstance(result, list):
-                        logger.info("Need to call sub-agent for selecting FQDN")
-                        r = self.child_agent.execute(
-                            FQDNDependencySelectorRequest(
-                                file_path=request.file_path,
-                                task=ask.task,
-                                msg=request.message,
-                                code=a.code,
-                                query=[],
-                                times=0,
-                                background=ask.background,
-                            )
+                    logger.info("Need to call sub-agent for selecting FQDN")
+                    r = self.child_agent.execute(
+                        FQDNDependencySelectorRequest(
+                            file_path=request.file_path,
+                            task=ask.task,
+                            msg=request.message,
+                            code=a.code,
+                            query=[],
+                            times=0,
+                            background=ask.background,
                         )
-                        if r.response is not None and isinstance(r.response, list):
-                            r.response = None
-                        maven_search = r.response
-                        if not r.response:
-                            logger.debug("unable to get response from sub-agent")
-                    else:
-                        maven_search = result
-
-        if not find_pom_lines:
-            for a in all_actions:
-                if "find_in_pom._run" in a.code:
-                    logger.debug("running find in pom")
-                    _find_in_pom: Optional[Callable[[str], FindInPomResponse]] = (
-                        self.agent_methods["find_in_pom._run"]
                     )
-                    if _find_in_pom:
-                        find_pom_lines = _find_in_pom(a.code)
+                    if r.response is not None and isinstance(r.response, list):
+                        r.response = None
+                    maven_search = r.response
+                    if not r.response:
+                        logger.debug("unable to get response from sub-agent")
 
         # We are going to give back the response, The caller should be responsible for running the code generated by the AI.
         # If we have not take the actions step wise, in the LLM, we need to run all but editor here
         # and give that information to the caller.
         return MavenDependencyResult(
             encountered_errors=None,
-            final_answer=llm_response.final_answer,
             fqdn_response=maven_search,
-            find_in_pom=find_pom_lines,
         )
 
     def parse_llm_response(
