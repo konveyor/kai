@@ -194,7 +194,7 @@ class ModelProvider:
         cpr = SimplePathResolver("validate_environment.json")
 
         def challenge(k: str) -> BaseMessage:
-            return self.invoke("", cpr, configurable_fields={k: 1})
+            return self.invoke("a", cpr, configurable_fields={k: 1})
 
         if isinstance(self.llm, ChatOllama):
             challenge("max_tokens")
