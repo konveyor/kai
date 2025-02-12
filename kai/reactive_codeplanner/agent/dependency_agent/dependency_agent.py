@@ -21,8 +21,10 @@ from kai.reactive_codeplanner.agent.dependency_agent.util import (
     find_in_pom,
     search_fqdn,
 )
+from kai.rpc_server.chat import get_chatter_contextvar
 
 logger = get_logger(__name__)
+chatter = get_chatter_contextvar()
 
 
 @dataclass
@@ -183,6 +185,8 @@ Message:
         self.agent_methods.update({"find_in_pom._run": find_in_pom(project_base)})
 
     def execute(self, ask: AgentRequest) -> AgentResult:
+        chatter.get().chat_simple("MavenDependencyAgent executing...")
+
         if not isinstance(ask, MavenDependencyRequest):
             return AgentResult()
 

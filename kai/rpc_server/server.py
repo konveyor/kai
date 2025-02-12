@@ -3,19 +3,11 @@ import platform
 import re
 import tomllib
 import traceback
+from contextlib import ExitStack
 from itertools import groupby
 from operator import attrgetter
 from pathlib import Path
-from typing import (
-    Any,
-    Callable,
-    Generator,
-    Optional,
-    ParamSpec,
-    TypedDict,
-    TypeVar,
-    cast,
-)
+from typing import Any, Callable, Generator, Optional, ParamSpec, TypeVar, cast
 from unittest.mock import MagicMock
 from urllib.parse import urlparse
 
@@ -59,6 +51,7 @@ from kai.reactive_codeplanner.task_runner.dependency.task_runner import (
     DependencyTaskRunner,
 )
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager, RepoContextSnapshot
+from kai.rpc_server.chat import Chatter, get_chatter_contextvar
 
 tracer = trace.get_tracer("kai_application")
 
@@ -473,6 +466,12 @@ class GetCodeplanAgentSolutionParams(BaseModel):
     chat_token: str
 
 
+class GetCodeplanAgentSolutionResult(BaseModel):
+    encountered_errors: list[str]
+    modified_files: list[str]
+    diff: str
+
+
 @app.add_request(method="getCodeplanAgentSolution")
 @tracer.start_as_current_span("get_code_plan_solution")
 def get_codeplan_agent_solution(
@@ -481,40 +480,34 @@ def get_codeplan_agent_solution(
     id: JsonRpcId,
     params: GetCodeplanAgentSolutionParams,
 ) -> None:
-    def simple_chat_message(msg: str) -> None:
-        app.log.info("simple_chat_message!")
-        server.send_notification(
-            method="my_progress",
-            params={
-                "chatToken": params.chat_token,
-                "kind": "SimpleChatMessage",
-                "value": {
-                    "message": msg,
-                },
-            },
-        )
+    # - Create a set of AnalyzerRuleViolations
+    # - Seed the task manager with these violations
+    # - Get the top task with priority 0 and do the whole loop
 
-    simple_chat_message("Starting!")
-    try:
-        # create a set of AnalyzerRuleViolations
-        # seed the task manager with these violations
-        # get the task with priority 0 and do the whole thingy
+    app.log.debug(f"get_codeplan_agent_solution: {params}")
+    if not app.initialized or not app.task_manager or not app.rcm:
+        server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
+        return
+    app.config = cast(KaiRpcApplicationConfig, app.config)
 
-        app.log.debug(f"get_codeplan_agent_solution: {params}")
-        if not app.initialized or not app.task_manager or not app.rcm:
-            server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
-            return
+    chatter = Chatter(server, "my_progress", params.chat_token)
+    get_chatter_contextvar().set(chatter)
 
+    chatter.chat_simple("Getting solution!")
+
+    # ExitStack calls its callbacks in reverse order upon exiting the with
+    # block, **even if an exception is raised**.
+    with ExitStack() as defer:
         # Get a snapshot of the current state of the repo so we can reset it
         # later
         app.rcm.commit(
             f"get_codeplan_agent_solution. id: {id}", run_reflection_agent=False
         )
         agent_solution_snapshot = app.rcm.snapshot
+        defer.callback(app.rcm.reset, agent_solution_snapshot)
 
-        app.config = cast(KaiRpcApplicationConfig, app.config)
-
-        # Data for AnalyzerRuleViolation should probably take an ExtendedIncident
+        # TODO: Data for AnalyzerRuleViolation should probably take an
+        # ExtendedIncident
         seed_tasks: list[Task] = []
 
         params.incidents.sort()
@@ -555,13 +548,14 @@ def get_codeplan_agent_solution(
                     message="",
                     incidents=[],
                 )
+
                 validation_error.incidents = []
                 for i in violation_incidents:
                     if i.line_number < 0:
                         continue
                     validation_error.incidents.append(Incident(**i.model_dump()))
 
-                if validation_error.incidents:
+                if len(validation_error.incidents) > 0:
                     app.log.log(
                         TRACE,
                         "seed_tasks adding to list: %s -- incident_messages: %s",
@@ -575,63 +569,42 @@ def get_codeplan_agent_solution(
         app.log.info(
             f"Starting code plan loop with iterations: {params.max_iterations}, max depth: {params.max_depth}, and max priority: {params.max_priority}"
         )
-        simple_chat_message(
-            f"Starting processing with iterations: {params.max_iterations}, max depth: {params.max_depth}, and max priority: {params.max_priority}"
-        )
 
         next_task_fn = scoped_task_fn(
             params.max_iterations, app.task_manager.get_next_task
         )
 
-        class OverallResult(TypedDict):
-            encountered_errors: list[str]
-            modified_files: list[str]
-            diff: str
+        overall_result = GetCodeplanAgentSolutionResult(
+            encountered_errors=[],
+            modified_files=[],
+            diff="",
+        )
 
-        overall_result: OverallResult = {
-            "encountered_errors": [],
-            "modified_files": [],
-            "diff": "",
-        }
-
-        # get the solved tasks set
         initial_solved_tasks = app.task_manager.processed_tasks
-        # get the ignored tasks set
-        initial_ignored_tasks = app.task_manager.ignored_tasks
-
-        simple_chat_message("Running validators...")
+        initial_ignored_tasks = set(app.task_manager.ignored_tasks)
 
         for task in next_task_fn(params.max_priority, params.max_depth):
             app.log.debug(f"Executing task {task.__class__.__name__}: {task}")
-            if hasattr(task, "message"):
-                simple_chat_message(
-                    f"Executing task {task.__class__.__name__} ({task.message}), from: {task.oldest_ancestor().__class__.__name__}."
-                )
-            else:
-                simple_chat_message(
-                    f"Executing task {task.__class__.__name__}, from: {task.oldest_ancestor().__class__.__name__}."
-                )
 
-            # get the solved tasks set
+            chatter.chat_simple(f"Executing task {task.__class__.__name__}.")
+
             pre_task_solved_tasks = app.task_manager.processed_tasks
-            # get the ignored tasks set
             pre_task_ignored_tasks = set(app.task_manager.ignored_tasks)
 
             result = app.task_manager.execute_task(task)
 
             app.log.debug(f"Task {task.__class__.__name__}, result: {result}")
-            # simple_chat_message(f"Got result! Encountered errors: {result.encountered_errors}. Modified files: {result.modified_files}.")
-            simple_chat_message("Finished task!")
+            chatter.chat_simple(f"Finished task {task.__class__.__name__}!")
 
             app.task_manager.supply_result(result)
 
             app.log.debug(f"Executed task {task.__class__.__name__}")
             app.rcm.commit(f"Executed task {task.__class__.__name__}")
 
-            overall_result["encountered_errors"].extend(
+            overall_result.encountered_errors.extend(
                 [str(e) for e in result.encountered_errors]
             )
-            overall_result["modified_files"].extend(
+            overall_result.modified_files.extend(
                 [str(f) for f in result.modified_files]
             )
 
@@ -679,35 +652,41 @@ def get_codeplan_agent_solution(
                     app.log.debug(f"QUEUE_STATE: IGNORED_TASKS: {task}")
                 app.log.debug("QUEUE_STATE: IGNORED_TASKS: END")
 
-            simple_chat_message("Running validators...")
-
-        # after we have completed all the tasks, we should show what has been accomplished for this particular solution
+        # after we have completed all the tasks, we should show what has been
+        # accomplished for this particular solution
         app.log.debug("QUEUE_STATE_END_OF_CODE_PLAN: SUCCESSFUL TASKS: START")
         for task in app.task_manager.processed_tasks - initial_solved_tasks:
             app.log.debug(f"QUEUE_STATE_END_OF_CODE_PLAN: SUCCESSFUL_TASKS: {task}")
         app.log.debug("QUEUE_STATE_END_OF_CODE_PLAN: SUCCESSFUL TASKS: END")
         app.log.debug("QUEUE_STATE_END_OF_CODE_PLAN: IGNORED_TASKS: START")
-        for task in set(app.task_manager.ignored_tasks) - set(initial_ignored_tasks):
+        for task in set(app.task_manager.ignored_tasks) - initial_ignored_tasks:
             app.log.debug(f"QUEUE_STATE_SEED_TASKS: SUCCESSFUL_TASKS: {task}")
         app.log.debug("QUEUE_STATE_END_OF_CODE_PLAN: IGNORED_TASKS: END")
 
+        msg = f"Finished with {len(overall_result.encountered_errors)} errors and {len(overall_result.modified_files)} modified files.\n"
+        msg += "<details><summary>Successful tasks:</summary>\n"
+        msg += "<ul>\n"
+        for task in app.task_manager.processed_tasks - initial_solved_tasks:
+            msg += f"<li>{task}</li>\n"
+        msg += "</ul>\n"
+        msg += "</details>\n"
+        msg += "<details><summary>Ignored tasks:</summary>\n"
+        msg += "<ul>\n"
+        for task in set(app.task_manager.ignored_tasks) - initial_ignored_tasks:
+            msg += f"<li>{task}</li>\n"
+        msg += "</ul>\n"
+        msg += "</details>\n"
+        chatter.chat_markdown(msg)
+
         diff = app.rcm.snapshot.diff(agent_solution_snapshot)
-        overall_result["diff"] = diff[1] + diff[2]
+        overall_result.diff = diff[1] + diff[2]
 
-        app.rcm.reset(agent_solution_snapshot)
-
-        simple_chat_message("Finished!")
+        chatter.chat_simple("Finished!")
 
         server.send_response(
             id=id,
-            result=dict(overall_result),
+            result=overall_result.model_dump(),  # Must dump as a dict for some reason?
         )
-    except Exception as e:
-        if app.rcm is not None:
-            app.rcm.reset(agent_solution_snapshot)
-
-        app.log.error(e)
-        raise
 
 
 P = ParamSpec("P")

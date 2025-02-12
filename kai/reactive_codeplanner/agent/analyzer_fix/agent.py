@@ -18,8 +18,10 @@ from kai.reactive_codeplanner.agent.analyzer_fix.api import (
     AnalyzerFixResponse,
 )
 from kai.reactive_codeplanner.agent.api import Agent, AgentRequest
+from kai.rpc_server.chat import get_chatter_contextvar
 
 logger = get_logger(__name__)
+chatter = get_chatter_contextvar()
 
 
 @dataclass
@@ -103,6 +105,7 @@ If you have any additional details or steps that need to be performed, put it he
         self._retries = retries
 
     def execute(self, ask: AgentRequest) -> AnalyzerFixResponse:
+        chatter.get().chat_simple("AnalyzerAgent executing...")
 
         if not isinstance(ask, AnalyzerFixRequest):
             return AnalyzerFixResponse(
@@ -139,12 +142,21 @@ If you have any additional details or steps that need to be performed, put it he
             incidents=ask.incidents,
         )
 
+        chatter.get().chat_simple("Waiting for response from LLM...")
+
         ai_message = self._model_provider.invoke(
             [system_message, HumanMessage(content=content)],
             ask.cache_path_resolver,
         )
 
         resp = self.parse_llm_response(ai_message)
+
+        msg = "Received response from LLM\n"
+        msg += f"File to modify: {ask.file_path}\n"
+        msg += f"<details><summary>Reasoning</summary>\n{resp.reasoning}\n</details>\n"
+        msg += f"<details><summary>Additional Information</summary>\n{resp.additional_information}\n</details>\n"
+        chatter.get().chat_markdown(msg)
+
         return AnalyzerFixResponse(
             encountered_errors=[],
             file_to_modify=Path(os.path.abspath(ask.file_path)),

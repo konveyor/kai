@@ -197,7 +197,7 @@ class ModelProvider:
             return self.invoke("", cpr, configurable_fields={k: 1})
 
         if isinstance(self.llm, ChatOllama):
-            challenge("max_tokens")
+            challenge("num_predict")
         elif isinstance(self.llm, ChatOpenAI):
             challenge("max_tokens")
         elif isinstance(self.llm, ChatBedrock):

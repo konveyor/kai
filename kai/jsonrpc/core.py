@@ -25,6 +25,11 @@ class JsonRpcApplication:
     Taking a page out of the ASGI standards, JsonRpcApplication is a collection
     of JsonRpcCallbacks that can be used to handle incoming requests and
     notifications.
+
+    Exceptions raised within a call back are handled in JsonRpcCallback.
+
+    NOTE(JonahSussman): We should investigate potentially moving the handling
+    here to make it more clear.
     """
 
     def __init__(

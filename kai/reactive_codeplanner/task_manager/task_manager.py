@@ -17,9 +17,11 @@ from kai.reactive_codeplanner.task_manager.api import (
 from kai.reactive_codeplanner.task_manager.priority_queue import PriorityTaskQueue
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
+from kai.rpc_server.chat import get_chatter_contextvar
 
 logger = logging.get_logger(__name__)
 tracer = trace.get_tracer("task_manager")
+chatter = get_chatter_contextvar()
 
 
 class TaskManager:
@@ -80,6 +82,11 @@ class TaskManager:
             # Now add them back to the queue so they aren't mistakenly detected as children
             self.priority_queue.push(task)
 
+        msg = "<details><summary>Got some pending tasks</summary>"
+        msg += f"<ul>{''.join(f'<li>{str(t)}</li>' for t in tasks)}</ul>"
+        msg += "</details>"
+        chatter.get().chat_markdown(msg)
+
         for task in tasks:
             task.priority = 0
             self.priority_queue.push(task)
@@ -90,11 +97,16 @@ class TaskManager:
         agent = self.get_agent_for_task(task)
         logger.info("Agent selected for task: %s", agent)
 
+        chatter.get().chat_simple(
+            f"Using agent {str(agent.__class__.__name__)} to execute task {str(task)}"
+        )
+
         result: TaskResult
         try:
             result = agent.execute_task(self.rcm, task)
         except Exception as e:
             logger.exception("Unhandled exception executing task %s", task)
+            chatter.get().chat_simple(f"Unhandled exception executing task {str(task)}")
             result = TaskResult(
                 encountered_errors=[str(e)], modified_files=[], summary=""
             )
@@ -126,23 +138,31 @@ class TaskManager:
 
     def run_validators(self) -> list[Task]:
         logger.info("Running validators.")
+        chatter.get().chat_simple("Running validators.")
+
         validation_tasks: list[Task] = []
 
         @tracer.start_as_current_span("run_validator")
         def run_validator(
             validator: ValidationStep,
         ) -> tuple[ValidationStep, Optional[ValidationResult]]:
-            logger.debug("Running validator: %s", validator)
+            logger.debug(f"Running validator: {str(validator)}")
+            chatter.get().chat_simple(f"Running validator {str(validator)}")
+
             try:
                 scoped_paths: Optional[list[Path]] = None
                 if len(self._stale_validated_files) > 0:
                     scoped_paths = self._stale_validated_files
                 result = validator.run(scoped_paths=scoped_paths)
                 return validator, result
-            except Exception:
+            except Exception as e:
                 logger.exception(
-                    "Validator %s failed to execute with an unhandled error:", validator
+                    f"Validator {str(validator)} failed to execute with an unhandled error:"
                 )
+                chatter.get().chat_simple(
+                    f"Validator {str(validator)} failed to execute with an unhandled error: {str(e)}"
+                )
+
                 return validator, None
 
         with ThreadPoolExecutor() as executor:
@@ -162,6 +182,7 @@ class TaskManager:
                     logger.debug("Validator result: %s", result)
                     if not result.passed:
                         validation_tasks.extend(result.errors)
+
                         logger.info(
                             "Found %d tasks from validator %s",
                             len(result.errors),
@@ -170,6 +191,15 @@ class TaskManager:
                         logger.debug(
                             "Validator %s found errors: %s", validator, result.errors
                         )
+
+                        msg = "<details>"
+                        msg += f"<summary>Found {len(result.errors)} tasks from validator {str(validator)}</summary>"
+                        msg += "<ul>"
+                        for e in result.errors:
+                            msg += f"<li>{e}</li>"
+                        msg += "</ul></details>"
+                        chatter.get().chat_markdown(msg)
+
                 except Exception:
                     logger.exception(
                         "Exception occurred while processing validator %s:", validator

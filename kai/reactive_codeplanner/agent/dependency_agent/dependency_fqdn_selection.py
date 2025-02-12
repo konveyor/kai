@@ -13,8 +13,10 @@ from kai.reactive_codeplanner.agent.dependency_agent.util import (
     get_maven_query_from_code,
     search_fqdn_query,
 )
+from kai.rpc_server.chat import get_chatter_contextvar
 
 logger = get_logger(__name__)
+chatter = get_chatter_contextvar()
 
 
 @dataclass
@@ -66,6 +68,8 @@ Searched dependencies:
     )
 
     def execute(self, ask: AgentRequest) -> FQDNDependencySelectorResult:
+        chatter.get().chat_simple("FQDNDependencySelectorAgent executing...")
+
         if not isinstance(ask, FQDNDependencySelectorRequest):
             return FQDNDependencySelectorResult(
                 encountered_errors=None, file_to_modify=None, response=None
