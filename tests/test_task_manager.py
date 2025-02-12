@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from typing import Optional
 
 # Import classes from your codebase
@@ -11,6 +12,7 @@ from kai.reactive_codeplanner.task_manager.api import (
     ValidationStep,
 )
 from kai.reactive_codeplanner.task_manager.task_manager import TaskManager
+from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
 
 
 class MockValidationStep(ValidationStep):
@@ -21,7 +23,7 @@ class MockValidationStep(ValidationStep):
         self.error_sequences = error_sequences
         self.run_count = 0
 
-    def run(self, scoped_paths: Optional[list[str]] = None) -> ValidationResult:
+    def run(self, scoped_paths: Optional[list[Path]] = None) -> ValidationResult:
         if self.run_count < len(self.error_sequences):
             errors = self.error_sequences[self.run_count]
         else:
@@ -35,13 +37,13 @@ class MockTaskRunner:
     def can_handle_task(self, task: Task) -> bool:
         return True  # For testing, assume it can handle any task
 
-    def execute_task(self, rcm, task: Task) -> TaskResult:
+    def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
         # Simulate task execution by returning a TaskResult
-        return TaskResult(encountered_errors=[], modified_files=[])
+        return TaskResult(encountered_errors=[], modified_files=[], summary="")
 
 
 class TestTaskManager(unittest.TestCase):
-    def test_simple_task_execution_order(self):
+    def test_simple_task_execution_order(self) -> None:
         # Setup
         validator = MockValidationStep(
             config=None,
@@ -70,7 +72,7 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(len(executed_tasks), 1)
         self.assertEqual(executed_tasks[0].message, "Error1")
 
-    def test_task_with_children_dfs_order(self):
+    def test_task_with_children_dfs_order(self) -> None:
         # Setup
         parent = ValidationError(
             file="test.py", line=1, column=1, message="ParentError"
@@ -111,7 +113,7 @@ class TestTaskManager(unittest.TestCase):
         self.assertTrue(executed_tasks[1].depth > executed_tasks[0].depth)
         self.assertTrue(executed_tasks[2].depth > executed_tasks[0].depth)
 
-    def test_task_retry_logic(self):
+    def test_task_retry_logic(self) -> None:
         # Setup
         validator = MockValidationStep(
             config=None,
@@ -159,7 +161,7 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(executed_tasks[2].retry_count, 3)
         self.assertEqual(retries, 2)  # Retries occurred twice
 
-    def test_handling_ignored_tasks(self):
+    def test_handling_ignored_tasks(self) -> None:
         # Setup
         validator = MockValidationStep(
             config=None,
@@ -206,7 +208,7 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(ignored_task.message, "UnresolvableError")
         self.assertEqual(ignored_task.retry_count, ignored_task.max_retries)
 
-    def test_complex_task_tree(self):
+    def test_complex_task_tree(self) -> None:
 
         parent = ValidationError(
             file="test.py", line=1, column=1, message="ParentError", priority=3
@@ -275,7 +277,7 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(toplevel.depth, 0)
         self.assertEqual(len(toplevel.children), 0)
 
-    def test_stop_iteration_with_seed(self):
+    def test_stop_iteration_with_seed(self) -> None:
         # Setup
         parent = ValidationError(
             file="test.py", line=1, column=1, message="ParentError", priority=3
@@ -338,7 +340,7 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(toplevel, executed_tasks[-1])
         self.assertEqual(task_manager.priority_queue.task_stacks, {})
 
-    def test_max_depth_handling(self):
+    def test_max_depth_handling(self) -> None:
         # Setup
         # Validator returns a parent error, which reveals child errors, and so on
         errorlevel0 = ValidationError(

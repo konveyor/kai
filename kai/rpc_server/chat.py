@@ -60,8 +60,8 @@ class ChatMessage(CamelCaseBaseModel):
 class Chatter:
     def __init__(
         self,
-        server: JsonRpcServer,
-        method: str,
+        server: JsonRpcServer | None = None,
+        method: str | None = None,
         chat_token: str | None = None,
     ) -> None:
         self.server = server
@@ -99,10 +99,11 @@ class Chatter:
         if log is not None:
             log.log(log_level, f"chat: {message}")
 
-        self.server.send_notification(
-            method=self.method,
-            params=message.model_dump(),
-        )
+        if self.server is not None and self.method is not None:
+            self.server.send_notification(
+                method=self.method,
+                params=message.model_dump(),
+            )
 
         return message
 
@@ -206,5 +207,4 @@ def get_chatter_contextvar() -> ContextVar[Chatter]:
     asyncio.run(main())
     ```
     """
-    chatter: ContextVar[Chatter] = ContextVar("chatter")
-    return chatter
+    return ContextVar("chatter", default=Chatter())

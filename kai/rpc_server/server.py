@@ -54,6 +54,7 @@ from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager, RepoContext
 from kai.rpc_server.chat import Chatter, get_chatter_contextvar
 
 tracer = trace.get_tracer("kai_application")
+chatter = get_chatter_contextvar()
 
 
 class KaiRpcApplicationConfig(CamelCaseBaseModel):
@@ -490,10 +491,9 @@ def get_codeplan_agent_solution(
         return
     app.config = cast(KaiRpcApplicationConfig, app.config)
 
-    chatter = Chatter(server, "my_progress", params.chat_token)
-    get_chatter_contextvar().set(chatter)
+    chatter.set(Chatter(server, "my_progress", params.chat_token))
 
-    chatter.chat_simple("Getting solution!")
+    chatter.get().chat_simple("Getting solution!")
 
     # ExitStack calls its callbacks in reverse order upon exiting the with
     # block, **even if an exception is raised**.
@@ -586,7 +586,7 @@ def get_codeplan_agent_solution(
         for task in next_task_fn(params.max_priority, params.max_depth):
             app.log.debug(f"Executing task {task.__class__.__name__}: {task}")
 
-            chatter.chat_simple(f"Executing task {task.__class__.__name__}.")
+            chatter.get().chat_simple(f"Executing task {task.__class__.__name__}.")
 
             pre_task_solved_tasks = app.task_manager.processed_tasks
             pre_task_ignored_tasks = set(app.task_manager.ignored_tasks)
@@ -594,7 +594,7 @@ def get_codeplan_agent_solution(
             result = app.task_manager.execute_task(task)
 
             app.log.debug(f"Task {task.__class__.__name__}, result: {result}")
-            chatter.chat_simple(f"Finished task {task.__class__.__name__}!")
+            chatter.get().chat_simple(f"Finished task {task.__class__.__name__}!")
 
             app.task_manager.supply_result(result)
 
@@ -676,12 +676,12 @@ def get_codeplan_agent_solution(
             msg += f"<li>{task}</li>\n"
         msg += "</ul>\n"
         msg += "</details>\n"
-        chatter.chat_markdown(msg)
+        chatter.get().chat_markdown(msg)
 
         diff = app.rcm.snapshot.diff(agent_solution_snapshot)
         overall_result.diff = diff[1] + diff[2]
 
-        chatter.chat_simple("Finished!")
+        chatter.get().chat_simple("Finished!")
 
         server.send_response(
             id=id,
