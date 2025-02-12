@@ -2,6 +2,7 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from langchain_core.messages import AIMessage, HumanMessage
 
@@ -11,6 +12,7 @@ from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import AnalyzerRuleVi
 from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
     DependencyResolutionError,
     PackageDoesNotExistError,
+    SymbolNotFoundError,
 )
 
 
@@ -44,6 +46,7 @@ class TestCache(unittest.TestCase):
         self.t2 = PackageDoesNotExistError(
             file="file://test/pom.xml",
             line=10,
+            depth=1,
             column=2,
             message="package not found",
             parent=self.t1,
@@ -51,9 +54,18 @@ class TestCache(unittest.TestCase):
         self.t3 = DependencyResolutionError(
             file="file://test/pom.xml",
             line=10,
+            depth=2,
             column=2,
             message="package not found",
             parent=self.t2,
+        )
+        self.t4 = SymbolNotFoundError(
+            file="test/src/main/java/io/konveyor/main.java",
+            line=10,
+            depth=3,
+            column=2,
+            message="cannot find symbol",
+            parent=self.t3,
         )
 
         self.t1_cache_expected_path = Path(
@@ -77,7 +89,13 @@ class TestCache(unittest.TestCase):
             "PackageDoesNotExistError",
             "test_pom_xml",
             "DependencyResolutionError",
-            "test_pom_xml",
+            "0_analyzerfix.json",
+        )
+        self.t4_cache_expected_path = Path(
+            "AnalyzerRuleViolation",
+            "konveyor_main_java",
+            "depth_3",
+            "SymbolNotFoundError",
             "0_analyzerfix.json",
         )
 
@@ -119,10 +137,14 @@ class TestCache(unittest.TestCase):
             t2_cache_path.parent
             / Path(
                 "DependencyResolutionError",
-                "test_pom_xml",
                 "0_analyzerfix.json",
             ),
         )
+
+        path_resolver = TaskBasedPathResolver(task=self.t4, request_type="analyzerfix")
+        with patch.object(path_resolver, "_limit", 50):
+            t4_cache_path = path_resolver.cache_path()
+            self.assertEqual(t4_cache_path, self.t4_cache_expected_path)
 
     def test_json_cache(self) -> None:
         cache = JSONCacheWithTrace(
