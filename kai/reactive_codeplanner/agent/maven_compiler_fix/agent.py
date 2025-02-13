@@ -21,8 +21,6 @@ class MavenCompilerAgent(Agent):
         """{{ background }}
     I will give you compiler errors and the offending line of code, and you will need to use the file to determine how to fix them. You should only use compiler errors to determine what to fix.
 
-    Make sure that the references to any changed types are kept.
-
     You must reason through the required changes and rewrite the Java file to make it compile. 
 
     You will then provide an step-by-step explanation of the changes required so that someone could recreate it in a similar situation.

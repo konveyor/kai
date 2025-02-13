@@ -15,10 +15,6 @@ from kai.reactive_codeplanner.task_manager.api import Task, TaskResult
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
 from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
     PackageDoesNotExistError,
-    SymbolNotFoundError,
-)
-from kai.reactive_codeplanner.task_runner.dependency.api import (
-    DependencyValidationError,
 )
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
 
@@ -36,11 +32,7 @@ class DependencyTaskResponse:
 class DependencyTaskRunner(TaskRunner):
     """TODO: Add Class Documentation"""
 
-    handled_type = (
-        DependencyValidationError,
-        SymbolNotFoundError,
-        PackageDoesNotExistError,
-    )
+    handled_type = (PackageDoesNotExistError,)
 
     def __init__(self, agent: MavenDependencyAgent) -> None:
         self._agent = agent
@@ -50,15 +42,11 @@ class DependencyTaskRunner(TaskRunner):
 
     @tracer.start_as_current_span("dependency_task_execute")
     def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
-        if not isinstance(task, self.handled_type):
+        if not isinstance(task, PackageDoesNotExistError):
             logger.error("Unexpected task type %r", task)
             return TaskResult(encountered_errors=[], modified_files=[], summary="")
 
-        msg = task.message
-        if isinstance(task, PackageDoesNotExistError) or isinstance(
-            task, SymbolNotFoundError
-        ):
-            msg = f"Maven Compiler Error:\n{task.compiler_error_message()}"
+        msg = f"Maven Compiler Error:\n{task.compiler_error_message()}"
 
         maven_dep_response = self._agent.execute(
             MavenDependencyRequest(
@@ -78,7 +66,13 @@ class DependencyTaskRunner(TaskRunner):
                 "No final answer was given, we need to return with nothing modified. result: %r",
                 maven_dep_response,
             )
-            return TaskResult(encountered_errors=[], modified_files=[], summary="")
+            return TaskResult(
+                encountered_errors=[
+                    f"unable to fix compiler message: {msg} no dependency found"
+                ],
+                modified_files=[],
+                summary="",
+            )
 
         if not maven_dep_response.fqdn_response:
             logger.info(
