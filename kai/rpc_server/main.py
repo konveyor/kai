@@ -1,5 +1,3 @@
-#!/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/venv/bin/python
-
 # Need to initialize this before we start getting the tracer in the other files on import
 import argparse
 import logging as core_logging
