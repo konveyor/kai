@@ -82,15 +82,20 @@ func main() {
 	}
 	l.Info("Maven is installed")
 
-	// Set up OpenTelemetry.
-	otelShutdown, err := tracing.SetupOTelSDK(context.Background())
-	if err != nil {
-		return
+	// Check if ENABLE_TRACING is set in the environment.
+	if _, enable_tracing := os.LookupEnv("ENABLE_TRACING"); enable_tracing {
+		// Set up OpenTelemetry.
+		otelShutdown, err := tracing.SetupOTelSDK(context.Background())
+		if err != nil {
+			return
+		}
+
+		// Handle shutdown properly so nothing leaks.
+		defer func() {
+			err = errors.Join(err, otelShutdown(context.Background()))
+		}()
 	}
-	// Handle shutdown properly so nothing leaks.
-	defer func() {
-		err = errors.Join(err, otelShutdown(context.Background()))
-	}()
+
 	l.Info("Starting Analyzer", "source-dir", *sourceDirectory, "rules-dir", *rules, "lspServerPath", *lspServerPath, "bundles", *bundles, "depOpenSourceLabelsFile", *depOpenSourceLabelsFile)
 	// We need to start up the JSON RPC server and start listening for messages
 	analyzerService, err := service.NewAnalyzer(
