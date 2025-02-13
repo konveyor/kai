@@ -98,7 +98,9 @@ class JsonRpcCallback:
 
             log.log(TRACE, f"Calling function: {self.func.__name__}")
             self.func(app, server, request.id, validated_params)
-        except Exception:
+        except Exception as e:
+            log.error(f"Error calling {self.func.__name__}: {e}")
+
             server.send_response(
                 id=request.id,
                 error=JsonRpcError(

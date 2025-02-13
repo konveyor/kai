@@ -229,7 +229,11 @@ class RepoContextSnapshot:
         """
         Returns the diff between the current snapshot and another snapshot.
         """
-        return self.git(["diff", other.git_sha, self.git_sha])
+        result = self.git(["diff", other.git_sha, self.git_sha])
+        if not result[1].endswith("\n"):  # HACK: This may not be needed
+            result = result[0], result[1] + "\n", result[2]
+
+        return result
 
 
 class RepoContextManager:

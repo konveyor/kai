@@ -1,7 +1,6 @@
 import os
 import re
 from dataclasses import dataclass
-from logging import DEBUG
 from pathlib import Path
 from typing import Optional, cast
 
@@ -18,8 +17,10 @@ from kai.reactive_codeplanner.agent.analyzer_fix.api import (
     AnalyzerFixResponse,
 )
 from kai.reactive_codeplanner.agent.api import Agent, AgentRequest
+from kai.rpc_server.chat import get_chatter_contextvar
 
 logger = get_logger(__name__)
+chatter = get_chatter_contextvar()
 
 
 @dataclass
@@ -103,6 +104,7 @@ If you have any additional details or steps that need to be performed, put it he
         self._retries = retries
 
     def execute(self, ask: AgentRequest) -> AnalyzerFixResponse:
+        chatter.get().chat_simple("AnalyzerAgent executing...")
 
         if not isinstance(ask, AnalyzerFixRequest):
             return AnalyzerFixResponse(
@@ -139,12 +141,21 @@ If you have any additional details or steps that need to be performed, put it he
             incidents=ask.incidents,
         )
 
+        chatter.get().chat_simple("Waiting for response from LLM...")
+
         ai_message = self._model_provider.invoke(
             [system_message, HumanMessage(content=content)],
             ask.cache_path_resolver,
         )
 
         resp = self.parse_llm_response(ai_message)
+
+        msg = "Received response from LLM\n"
+        msg += f"File to modify: {ask.file_path}\n"
+        msg += f"<details><summary>Reasoning</summary>\n{resp.reasoning}\n</details>\n"
+        msg += f"<details><summary>Additional Information</summary>\n{resp.additional_information}\n</details>\n"
+        chatter.get().chat_markdown(msg)
+
         return AnalyzerFixResponse(
             encountered_errors=[],
             file_to_modify=Path(os.path.abspath(ask.file_path)),
@@ -203,11 +214,13 @@ def guess_language(code: str, filename: Optional[str] = None) -> str:
         all_lexers = lexers.get_all_lexers()
         largest_rv_lexer = None
         largest_rv = 0.0
+        not_found_lexers: list[str] = []
         for name, _, _, _ in all_lexers:
             try:
                 lexer_found = cast(LexerMeta, lexers.get_lexer_by_name(name))
             except ClassNotFound:
-                logger.log(DEBUG, "unable to find lexer class for name: %s", name)
+                # FIXME: This is adding significant time to our request
+                not_found_lexers.append(name)
                 continue
             if filename:
                 file_path = Path(filename)
@@ -218,6 +231,11 @@ def guess_language(code: str, filename: Optional[str] = None) -> str:
             if largest_rv <= rv:
                 largest_rv = rv
                 largest_rv_lexer = lexer_found
+
+        if len(not_found_lexers) > 0:
+            logger.debug(
+                "Could not find lexers for the following names: %s", not_found_lexers
+            )
 
         if largest_rv_lexer:
             # Remove all the extra information after the + sign

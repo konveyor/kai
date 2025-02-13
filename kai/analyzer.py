@@ -81,6 +81,8 @@ class AnalyzerLSP:
                 self.stop()
                 raise Exception("Analyzer failed to start: process exited immediately")
 
+            logger.debug(f"analyzer rpc server started. pid: {self.rpc_server.pid}")
+
             # trunk-ignore-end(bandit/B603)
             self.excluded_paths = excluded_paths
 

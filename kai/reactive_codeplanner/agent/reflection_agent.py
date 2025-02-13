@@ -16,8 +16,10 @@ from kai.llm_interfacing.model_provider import ModelProvider
 from kai.logging.logging import TRACE, get_logger
 from kai.reactive_codeplanner.agent.api import Agent, AgentRequest, AgentResult
 from kai.reactive_codeplanner.agent.ast_diff.parser import Language, extract_ast_info
+from kai.rpc_server.chat import get_chatter_contextvar
 
 logger = get_logger(__name__)
+chatter = get_chatter_contextvar()
 
 
 @dataclass
@@ -306,6 +308,8 @@ Here's the input information:
         self._retries = retries
 
     def execute(self, task: AgentRequest) -> AgentResult:
+        chatter.get().chat_simple("ReflectionAgent executing...")
+
         if not isinstance(task, ReflectionTask):
             return AgentResult()
 
@@ -381,6 +385,8 @@ Here's the input information:
         while curr_iter < self._iterations:
             curr_iter += 1
             try:
+                chatter.get().chat_simple(f"Reflection iteration {curr_iter}")
+
                 reflection_response = self._model_provider.invoke(
                     chat_reflect,
                     task.cache_path_resolver,

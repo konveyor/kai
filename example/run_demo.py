@@ -26,6 +26,7 @@ from kai.jsonrpc.streams import LspStyleStream
 from kai.logging.logging import get_logger, init_logging_from_log_config
 from kai.rpc_server.server import (
     GetCodeplanAgentSolutionParams,
+    GetCodeplanAgentSolutionResult,
     KaiRpcApplication,
     KaiRpcApplicationConfig,
 )
@@ -91,6 +92,8 @@ def initialize_rpc_server(
         env=os.environ,
     )
 
+    log.info(f"RPC Server started with pid: {rpc_subprocess.pid}")
+
     log.info(rpc_subprocess.args)
 
     app = KaiRpcApplication()
@@ -149,20 +152,16 @@ def initialize_rpc_server(
         rpc_server.stop()
 
 
-class CodePlanSolutionResponse(BaseModel):
-    diff: str
-    modified_files: list[str]
-    encountered_errors: list[str]
-
-
-def apply_diff(filepath: Path, solution: CodePlanSolutionResponse) -> None:
+def apply_diff(filepath: Path, solution: GetCodeplanAgentSolutionResult) -> None:
     KAI_LOG.info(f"Writing updated source code to {filepath}")
     try:
+        time.sleep(0.1)  # TODO: Investigate git race condition
         subprocess.run(  # trunk-ignore(bandit/B603,bandit/B607)
             ["git", "apply"],
             input=solution.diff.encode("utf-8"),
             cwd=SAMPLE_APP_DIR,
             check=True,
+            capture_output=True,
         )
     except Exception as e:
         KAI_LOG.error(f"Failed to write updated_file @ {filepath} with error: {e}")
@@ -205,7 +204,7 @@ def process_file(
     elif not isinstance(response, JsonRpcResponse):
         return f"Failed to generate fix for file {params.file_path} - invalid response type {type(response)}"
     try:
-        solution = CodePlanSolutionResponse.model_validate(response.result)
+        solution = GetCodeplanAgentSolutionResult.model_validate(response.result)
     except Exception as e:
         return f"Failed to parse response {params.file_path} - {e}"
 
