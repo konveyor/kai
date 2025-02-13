@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from functools import cached_property
+from pathlib import Path
 from typing import Any
 
 from kai.analyzer_types import Incident, RuleSet, Violation
@@ -91,8 +92,11 @@ class AnalyzerRuleViolation(ValidationError):
         if self.parent is not None:
             return self.oldest_ancestor().background()
         if self.children:
+            # fmt: off
+            children_messages = "\n".join(list(set(self.incident_message)))
             message = f"""You attempted to solve the following issues in the source code you are migrating:
-Issues: {"\n".join(list(set(self.incident_message)))}"""
+Issues: {children_messages}"""
+            # fmt: on
 
             # TODO(pgaikwad): we need to ensure this doesn't confuse the agents more than it helps before adding it back
             # if self.result and self.result.summary:
@@ -203,6 +207,11 @@ Issues: {"\n".join(list(set(self.incident_message)))}"""
         viol_id = self.violation.id if self.violation else 0
         inc_msg = self.incident_message
         return base_key + (ruleset_name, viol_id, inc_msg)
+
+    def get_cache_path(self, root: Path) -> Path:
+        root_path = super().get_cache_path(root)
+        root_path /= self._clean_filename(self.violation.id)
+        return root_path
 
 
 class AnalyzerDependencyRuleViolation(AnalyzerRuleViolation):

@@ -1,5 +1,4 @@
 import platform
-import re
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Optional
@@ -12,7 +11,6 @@ from langchain_core.prompt_values import PromptValue
 from kai.jsonrpc.util import AutoAbsPath
 from kai.logging.logging import TRACE, get_logger
 from kai.reactive_codeplanner.task_manager.api import Task, ValidationError
-from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import AnalyzerRuleViolation
 
 LOG = get_logger(__name__)
 
@@ -234,31 +232,17 @@ class TaskBasedPathResolver(CachePathResolver):
 
     def _path_with_limit(self, root: Optional[Task], path: Path) -> Path:
         if len(str(path)) > self._limit and root is not None:
-            root_path = Path(root.__class__.__name__)
-            stem = Path(f"depth_{self.task.depth}") / self.task.__class__.__name__
-            if isinstance(root, ValidationError):
-                root_path /= self._clean_filename(root.file)
-            if isinstance(self.task, ValidationError):
-                if not isinstance(root, ValidationError) or (
-                    isinstance(root, ValidationError) and root.file != self.task.file
-                ):
-                    stem /= self._clean_filename(self.task.file)
-            if isinstance(self.task, AnalyzerRuleViolation):
-                stem /= self.task.violation.id
-            return root_path / stem / path.name
+            root_path = root.get_cache_path(Path("."))
+            task_path = self.task.get_cache_path(Path("."))
+            print(task_path)
+
+            return root_path.parent / task_path / path.name
         return path
 
     def _parent_file_path(self, task: Task) -> Optional[str]:
         if isinstance(task.parent, ValidationError):
             return task.parent.file
         return None
-
-    def _clean_filename(self, name: str) -> str:
-        filename = re.sub(r"[\\/:\.]", "_", name)
-        filename = re.sub(r"\_+", "_", filename)
-        segments = filename.split("_")
-        filename = "_".join(segments[-min(3, len(segments)) :])
-        return filename[-min(50, len(filename)) :]
 
     def _dfs(self, task: Optional[Task]) -> tuple[Optional[Task], Path]:
         """Recursively traverses the task all the way upto parent to generate unique cache file path
@@ -269,20 +253,9 @@ class TaskBasedPathResolver(CachePathResolver):
         root_node, root_path = self._dfs(task.parent)
         if root_node is None:
             root_node = task
-        if isinstance(task, ValidationError):
-            stem = Path(task.__class__.__name__)
-            # to minimize path, only add filepath to the root OR
-            # when its different than the immediate parent task
-            parent_file = self._parent_file_path(task)
-            if root_node == task or (
-                parent_file is not None and parent_file != task.file
-            ):
-                stem /= self._clean_filename(task.file)
-            if isinstance(task, AnalyzerRuleViolation):
-                stem /= task.violation.id
-        else:
-            stem = Path(task.__class__.__name__) / f"depth_{task.depth}"
-        return root_node, root_path / stem
+
+        root_path = task.get_cache_path(root_path)
+        return root_node, root_path
 
     def cache_meta(self) -> dict[str, str]:
         meta = {

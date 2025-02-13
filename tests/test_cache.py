@@ -49,6 +49,7 @@ class TestCache(unittest.TestCase):
             depth=1,
             column=2,
             message="package not found",
+            missing_package="jakarta.sql",
             parent=self.t1,
         )
         self.t3 = DependencyResolutionError(
@@ -65,6 +66,7 @@ class TestCache(unittest.TestCase):
             depth=3,
             column=2,
             message="cannot find symbol",
+            missing_symbol="javax.inject.Inject",
             parent=self.t3,
         )
 
@@ -78,17 +80,21 @@ class TestCache(unittest.TestCase):
             "AnalyzerRuleViolation",
             "konveyor_main_java",
             "rule-id-000",
+            "depth_1",
             "PackageDoesNotExistError",
-            "test_pom_xml",
+            "jakarta_sql",
             "0_analyzerfix.json",
         )
         self.t3_cache_expected_path = Path(
             "AnalyzerRuleViolation",
             "konveyor_main_java",
             "rule-id-000",
+            "depth_1",
             "PackageDoesNotExistError",
-            "test_pom_xml",
+            "jakarta_sql",
+            "depth_2",
             "DependencyResolutionError",
+            "test_pom_xml",
             "0_analyzerfix.json",
         )
         self.t4_cache_expected_path = Path(
@@ -96,6 +102,8 @@ class TestCache(unittest.TestCase):
             "konveyor_main_java",
             "depth_3",
             "SymbolNotFoundError",
+            "konveyor_main_java",
+            "javax_inject_Inject",
             "0_analyzerfix.json",
         )
 
@@ -122,8 +130,9 @@ class TestCache(unittest.TestCase):
             t2_cache_path,
             t1_cache_path.parent
             / Path(
+                "depth_1",
                 "PackageDoesNotExistError",
-                "test_pom_xml",
+                "jakarta_sql",
                 "0_analyzerfix.json",
             ),
         )
@@ -136,7 +145,9 @@ class TestCache(unittest.TestCase):
             t3_cache_path,
             t2_cache_path.parent
             / Path(
+                "depth_2",
                 "DependencyResolutionError",
+                "test_pom_xml",
                 "0_analyzerfix.json",
             ),
         )
