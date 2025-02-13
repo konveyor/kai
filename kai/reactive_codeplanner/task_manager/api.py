@@ -78,8 +78,12 @@ class Task:
     def get_cache_path(self, root: Path) -> Path:
         """Used by individual tasks to set the path"""
         if self.depth == 0:
-            return root / self.__class__.__name__
-        stem = Path(f"depth_{self.depth}") / self.__class__.__name__
+            stem = root / self.__class__.__name__
+        else:
+            stem = Path(f"depth_{self.depth}") / self.__class__.__name__
+
+        if self.retry_count > 0:
+            stem /= Path(self._clean_filename(f"retry_{self.retry_count}"))
         return root / stem
 
     def _clean_filename(self, name: str) -> str:

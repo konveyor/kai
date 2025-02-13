@@ -213,6 +213,8 @@ class PackageDoesNotExistError(CollapsedMavenCompilerError):
             stem = Path(f"depth_{self.depth}") / self.__class__.__name__
         if self.missing_package:
             stem /= self._clean_filename(self.missing_package)
+        if self.retry_count > 0:
+            stem /= self._clean_filename(f"retry_{self.retry_count}")
         return root / stem
 
 
