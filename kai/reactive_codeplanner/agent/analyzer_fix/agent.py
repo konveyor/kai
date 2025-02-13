@@ -1,7 +1,6 @@
 import os
 import re
 from dataclasses import dataclass
-from logging import DEBUG
 from pathlib import Path
 from typing import Optional, cast
 
@@ -215,11 +214,13 @@ def guess_language(code: str, filename: Optional[str] = None) -> str:
         all_lexers = lexers.get_all_lexers()
         largest_rv_lexer = None
         largest_rv = 0.0
+        not_found_lexers: list[str] = []
         for name, _, _, _ in all_lexers:
             try:
                 lexer_found = cast(LexerMeta, lexers.get_lexer_by_name(name))
             except ClassNotFound:
-                logger.log(DEBUG, "unable to find lexer class for name: %s", name)
+                # FIXME: This is adding significant time to our request
+                not_found_lexers.append(name)
                 continue
             if filename:
                 file_path = Path(filename)
@@ -230,6 +231,11 @@ def guess_language(code: str, filename: Optional[str] = None) -> str:
             if largest_rv <= rv:
                 largest_rv = rv
                 largest_rv_lexer = lexer_found
+
+        if len(not_found_lexers) > 0:
+            logger.debug(
+                "Could not find lexers for the following names: %s", not_found_lexers
+            )
 
         if largest_rv_lexer:
             # Remove all the extra information after the + sign
