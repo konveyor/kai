@@ -23,7 +23,7 @@ To add your custom rulesets, you will need to have a directory, containing `rule
 > [!IMPORTANT]
 > For the next example of how to add, we will assume a ruleset at `/Users/user/rulesets/custom-ruleset` you will need to change this to point to your ruleset directory.
 
-First you will need to open up the settings for the workspace. you can do this with (CMD+SHFT+P) on mac and (CNTRL+SHFT+P) on windows and linux.
+First you will need to open up the settings for the workspace. you can do this with `CMD + SHIFT + P` on mac and `CTRL + SHIFT + P` on Windows and Linux.
 
 ![image](images/open_settings.png)
 
