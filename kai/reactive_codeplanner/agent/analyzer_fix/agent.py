@@ -2,13 +2,10 @@ import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, cast
+from typing import cast
 
 from jinja2 import Template
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
-from pygments import lexers
-from pygments.lexer import LexerMeta
-from pygments.util import ClassNotFound
 
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.logging.logging import get_logger
@@ -16,6 +13,7 @@ from kai.reactive_codeplanner.agent.analyzer_fix.api import (
     AnalyzerFixRequest,
     AnalyzerFixResponse,
 )
+from kai.reactive_codeplanner.agent.analyzer_fix.guess_language import guess_language
 from kai.reactive_codeplanner.agent.api import Agent, AgentRequest
 from kai.rpc_server.chat import get_chatter_contextvar
 
@@ -207,48 +205,3 @@ If you have any additional details or steps that need to be performed, put it he
             source_file=source_file,
             additional_information=additional_details,
         )
-
-
-def guess_language(code: str, filename: Optional[str] = None) -> str:
-    try:
-        all_lexers = lexers.get_all_lexers()
-        largest_rv_lexer = None
-        largest_rv = 0.0
-        not_found_lexers: list[str] = []
-        for name, _, _, _ in all_lexers:
-            try:
-                lexer_found = cast(LexerMeta, lexers.get_lexer_by_name(name))
-            except ClassNotFound:
-                # FIXME: This is adding significant time to our request
-                not_found_lexers.append(name)
-                continue
-            if filename:
-                file_path = Path(filename)
-                if "*" + file_path.suffix not in lexer_found.filenames:
-                    continue
-
-            rv = lexer_found.analyse_text(code)
-            if largest_rv <= rv:
-                largest_rv = rv
-                largest_rv_lexer = lexer_found
-
-        if len(not_found_lexers) > 0:
-            logger.debug(
-                "Could not find lexers for the following names: %s", not_found_lexers
-            )
-
-        if largest_rv_lexer:
-            # Remove all the extra information after the + sign
-            logger.debug(
-                "finding lexer %s, lexer aliases: %s",
-                lexer_found,
-                lexer_found.aliases,
-            )
-            return largest_rv_lexer.aliases[0]
-        else:
-            raise ClassNotFound(filename)
-    except ClassNotFound:
-        logger.debug(
-            f"Code content for filename {filename} could not be classified\n{code}"
-        )
-        return "unknown"
