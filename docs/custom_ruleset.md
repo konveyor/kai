@@ -1,6 +1,6 @@
 # Custom Rules Integration
 
-When you have written custom rules and would like to add them to your issues to be solved by kai's reactive code plan you will need to take a few steps to make this work
+When you have written custom rules and would like to add them to your issues to be solved by Kai's reactive code plan you will need to take a few steps to make this work.
 
 ## Steps to Add Custom Rulesets
 
