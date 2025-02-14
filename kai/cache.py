@@ -234,7 +234,6 @@ class TaskBasedPathResolver(CachePathResolver):
         if len(str(path)) > self._limit and root is not None:
             root_path = root.get_cache_path(Path("."))
             task_path = self.task.get_cache_path(Path("."))
-            print(task_path)
 
             return root_path.parent / task_path / path.name
         return path
