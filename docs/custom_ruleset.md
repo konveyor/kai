@@ -43,7 +43,7 @@ Now you will have to go back to the `Konveyor` view and start the server.
 
 ![image](images/custom_rules/running_server.png)
 
-You can now click Run Analysis and your custom ruleset will be used.
+You can now click `Run Analysis` and your custom ruleset will be used.
 
 > [!WARNING]
 > You will need to make sure that the rules or rulesets have a target or source label that is selected. If the ruleset does not match a selected target or source, it will be filtered out and skipped.
