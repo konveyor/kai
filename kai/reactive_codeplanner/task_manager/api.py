@@ -1,3 +1,4 @@
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, fields
 from pathlib import Path
@@ -74,6 +75,24 @@ class Task:
         """Used by Agents to provide context when solving child issues"""
         raise NotImplementedError
 
+    def get_cache_path(self, root: Path) -> Path:
+        """Used by individual tasks to set the path"""
+        if self.depth == 0:
+            stem = root / self.__class__.__name__
+        else:
+            stem = Path(f"depth_{self.depth}") / self.__class__.__name__
+
+        if self.retry_count > 0:
+            stem /= Path(self._clean_filename(f"retry_{self.retry_count}"))
+        return root / stem
+
+    def _clean_filename(self, name: str) -> str:
+        filename = re.sub(r"[\\/:\.]", "_", name)
+        filename = re.sub(r"\_+", "_", filename)
+        segments = filename.split("_")
+        filename = "_".join(segments[-min(3, len(segments)) :])
+        return filename[-min(50, len(filename)) :]
+
     __repr__ = __str__
 
 
@@ -142,6 +161,11 @@ class ValidationError(Task):
         if self.parent is None:
             return ""
         return self.oldest_ancestor().background()
+
+    def get_cache_path(self, root: Path) -> Path:
+        root_path = super().get_cache_path(root)
+        root_path /= self._clean_filename(self.file)
+        return root_path
 
     __repr__ = __str__
 

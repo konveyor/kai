@@ -182,6 +182,12 @@ class SymbolNotFoundError(CollapsedMavenCompilerError):
     def get_collapsable_key(self) -> str:
         return f"{self.file}-{self.__class__}-{self.missing_symbol}"
 
+    def get_cache_path(self, root: Path) -> Path:
+        root_path = super().get_cache_path(root)
+        if self.missing_symbol:
+            root_path /= self._clean_filename(self.missing_symbol)
+        return root_path
+
 
 @dataclass(eq=False)
 class PackageDoesNotExistError(CollapsedMavenCompilerError):
@@ -197,6 +203,19 @@ class PackageDoesNotExistError(CollapsedMavenCompilerError):
     # This does not have to be for file, because the package not existing is at the project level
     def get_collapsable_key(self) -> str:
         return f"{self.__class__}-{self.missing_package}"
+
+    def get_cache_path(self, root: Path) -> Path:
+        # Because we collapse these at package level, we can't use file from super
+        if self.depth == 0:
+            # We can't solve maven compiler errors yet so this shouldn't come up
+            stem = Path(self.__class__.__name__)
+        else:
+            stem = Path(f"depth_{self.depth}") / self.__class__.__name__
+        if self.missing_package:
+            stem /= self._clean_filename(self.missing_package)
+        if self.retry_count > 0:
+            stem /= self._clean_filename(f"retry_{self.retry_count}")
+        return root / stem
 
 
 @dataclass(eq=False)
