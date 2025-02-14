@@ -35,7 +35,7 @@ Then you can click `Add Item` and enter in your path, we will use the example pa
 
 ![image](images/custom_rules/add_custom_ruleset.png)
 
-Once you click ok the ruleset is added!
+Once you click `OK` the ruleset is added!
 
 ### Running Analysis
 
