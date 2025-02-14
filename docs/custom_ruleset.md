@@ -18,7 +18,7 @@ Once the server is stopped, you can move on to the next step.
 
 ### Adding Custom Rulesets
 
-To add your custom rulesets, you will need to have a directory, containing `ruleset.yaml` and the subsequent rule files. You can find good examples of that [here](https://github.com/konveyor/rulesets/tree/main/default/generated) as well as docs around [rules and rulesets](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md)
+To add your custom rulesets, you will need to have a directory, containing `ruleset.yaml` and the subsequent rule files. You can find good examples of that [here](https://github.com/konveyor/rulesets/tree/main/default/generated) as well as docs around [rules and rulesets](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md).
 
 > [!IMPORTANT]
 > For the next example of how to add, we will assume a ruleset at `/Users/user/rulesets/custom-ruleset` you will need to change this to point to your your ruleset directory.
