@@ -323,7 +323,7 @@ class TaskManager:
                     self.priority_queue.push(child_task)
                 if max_depth is not None and child_task.depth <= max_depth:
                     chatter.get().chat_simple(
-                        f"found new task: {child_task} to solve while fixing task: {task}"
+                        f"Found new task {child_task} to solve while fixing task {task}."
                     )
             except ValueError:
                 logger.exception("Error adding child task")
