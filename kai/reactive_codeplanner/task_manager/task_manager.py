@@ -82,11 +82,6 @@ class TaskManager:
             # Now add them back to the queue so they aren't mistakenly detected as children
             self.priority_queue.push(task)
 
-        msg = "<details><summary>Got some pending tasks</summary>"
-        msg += f"<ul>{''.join(f'<li>{str(t)}</li>' for t in tasks)}</ul>"
-        msg += "</details>"
-        chatter.get().chat_markdown(msg)
-
         for task in tasks:
             task.priority = 0
             self.priority_queue.push(task)
@@ -97,9 +92,10 @@ class TaskManager:
         agent = self.get_agent_for_task(task)
         logger.info("Agent selected for task: %s", agent)
 
-        chatter.get().chat_simple(
-            f"Using agent {str(agent.__class__.__name__)} to execute task {str(task)}"
-        )
+        # Delegate to the agent for this message IMO
+        # chatter.get().chat_simple(
+        #     f"Using agent {str(agent.__class__.__name__)} to execute task {str(task)}"
+        # )
 
         result: TaskResult
         try:
@@ -192,14 +188,6 @@ class TaskManager:
                             "Validator %s found errors: %s", validator, result.errors
                         )
 
-                        msg = "<details>"
-                        msg += f"<summary>Found {len(result.errors)} tasks from validator {str(validator)}</summary>"
-                        msg += "<ul>"
-                        for e in result.errors:
-                            msg += f"<li>{e}</li>"
-                        msg += "</ul></details>"
-                        chatter.get().chat_markdown(msg)
-
                 except Exception:
                     logger.exception(
                         "Exception occurred while processing validator %s:", validator
@@ -264,6 +252,7 @@ class TaskManager:
         logger.info(
             "Handling depth 0 task, assuming fix has applied for task: %s", task
         )
+        chatter.get().chat_simple(f"completed task: {task}")
         self.priority_queue.remove(task)
 
     def handle_new_tasks_after_processing(self, task: Task) -> None:
@@ -296,6 +285,7 @@ class TaskManager:
             logger.info(
                 "Task %s resolved indirectly and removed from queue.", resolved_task
             )
+            chatter.get().chat_simple(f"resolved task: ")
 
         # Check if the current task is still unprocessed (or similar)
         similar_tasks = [
@@ -305,11 +295,11 @@ class TaskManager:
         if similar_tasks:
             for t in similar_tasks:
                 unprocessed_new_tasks.remove(t)
-            logger.debug("Task %s still unsolved after execution.", task)
             self.handle_ignored_task(task)
         else:
             self.processed_tasks.add(task)
             logger.debug("Task %s processed successfully.", task)
+            chatter.get().chat_simple(f"resolved task: {task}")
 
         new_child_tasks = unprocessed_new_tasks - tasks_in_queue
         # We want the higher priority things at the end of the list, so when we append and pop we get the highest priority
@@ -319,11 +309,15 @@ class TaskManager:
                     raise ValueError(
                         f"A task cannot be added as a child of itself: {task}"
                     )
+                chatter.get().chat_simple(f"current child tasks: {len(task.children)}")
                 child_task.parent = task
                 child_task.depth = task.depth + 1
                 task.children.append(child_task)
                 if not self.should_skip_task(child_task):
                     self.priority_queue.push(child_task)
+                chatter.get().chat_simple(
+                    f"found new task: {child_task} to solve while fixing task: {task}"
+                )
             except ValueError:
                 logger.exception("Error adding child task")
 
@@ -370,10 +364,16 @@ class TaskManager:
                 task.retry_count,
             )
             self.priority_queue.push(task)
+            chatter.get().chat_simple(
+                f"re-trying task: {task}, was not resolved ({task.retry_count}/{task.max_retries})"
+            )
         else:
             self.ignored_tasks.append(task)
             logger.warning(
                 "Task %s exceeded max retries and added to ignored tasks.", task
+            )
+            chatter.get().chat_simple(
+                f"ignoring task: {task}, this was not resolved ({task.retry_count}/{task.max_retries})"
             )
 
     def stop(self) -> None:
