@@ -18,6 +18,7 @@ from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
     DependencyResolutionError,
     MavenCompilerError,
     OtherError,
+    SymbolNotFoundError,
     SyntaxError,
     TypeMismatchError,
 )
@@ -52,6 +53,7 @@ class MavenCompilerTaskRunner(TaskRunner):
         AccessControlError,
         OtherError,
         DependencyResolutionError,
+        SymbolNotFoundError,
     )
 
     def __init__(self, agent: MavenCompilerAgent) -> None:

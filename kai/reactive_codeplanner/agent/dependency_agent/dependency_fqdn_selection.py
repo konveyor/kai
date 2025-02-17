@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 from jinja2 import Template
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.logging.logging import get_logger
@@ -26,6 +26,22 @@ class FQDNDependencySelectorRequest(AgentRequest):
     query: list[str]
     times: int
 
+    def from_selector_request(
+        ask: "FQDNDependencySelectorRequest", new_query: list[str]
+    ) -> "FQDNDependencySelectorRequest":
+        """Will create a new selector request bumping the times by one"""
+        req = FQDNDependencySelectorRequest(
+            ask.file_path,
+            msg=ask.msg,
+            code="",
+            query=new_query,
+            times=ask.times + 1,
+            task=ask.task,
+            background=ask.background,
+        )
+        req.cache_path_resolver = ask.cache_path_resolver
+        return req
+
 
 @dataclass
 class FQDNDependencySelectorResult(AgentResult):
@@ -42,22 +58,22 @@ class FQDNDependencySelectorAgent(Agent):
     def __init__(self, model_provider: ModelProvider) -> None:
         self._model_provider = model_provider
 
-    message = Template(
+    system_tmpl = Template(
         """
-You are an excellent Java developer with expertise in dependency management.
-
 Given an initial Maven compiler and a list of attempted searches, provide an updated dependency to use.
 Do not use a dependency that has already been tried.
+Only after all the dependencies have been tried, say only the word "TERMINATE", wait for the list of tried dependencies to have all the tries.
                        
-Think through the problem fully. Do not update the dependency if it has moved to newer versions; we want to find the version that matches, regardless of whether it is old or not. 
-
-Output in the format of:
+Think through the problem. But only give one dependency to try at a time. You should only output "TERMINATE" or in the following format:
 
 Reasoning
 
 ArtifactId:
 GroupId:
-
+"""
+    )
+    message = Template(
+        """
 {{message}}
 
 Searched dependencies:
@@ -80,7 +96,10 @@ Searched dependencies:
             query = []
             query.append(get_maven_query_from_code(ask.code))
 
-        msg = [HumanMessage(content=self.message.render(message=ask.msg, query=query))]
+        msg = [
+            SystemMessage(content=self.system_tmpl.render()),
+            HumanMessage(content=self.message.render(message=ask.msg, query=query)),
+        ]
         fix_gen_response = self._model_provider.invoke(msg, ask.cache_path_resolver)
         llm_response = self.parse_llm_response(fix_gen_response.content)
         # Really we need to re-call the agent
@@ -99,15 +118,7 @@ Searched dependencies:
             ## need to recursively call execute.
             query.append(new_query)
             return self.execute(
-                FQDNDependencySelectorRequest(
-                    ask.file_path,
-                    msg=ask.msg,
-                    code="",
-                    query=query,
-                    times=ask.times + 1,
-                    task=ask.task,
-                    background=ask.background,
-                )
+                FQDNDependencySelectorRequest.from_selector_request(ask, query)
             )
         if isinstance(response, list):
             response = None
@@ -125,6 +136,8 @@ Searched dependencies:
         reasoning_str = ""
         artifact_id = ""
         group_id = ""
+        if "TERMINATE" in content:
+            return None
         for line in content.splitlines():
             if not line:
                 continue

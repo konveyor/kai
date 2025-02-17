@@ -13,6 +13,7 @@ from langchain_deepseek import ChatDeepSeek
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from opentelemetry import trace
 from pydantic.v1.utils import deep_update
 
 from kai.cache import Cache, CachePathResolver, SimplePathResolver
@@ -20,6 +21,7 @@ from kai.kai_config import KaiConfigModels
 from kai.logging.logging import get_logger
 
 LOG = get_logger(__name__)
+tracer = trace.get_tracer("model_provider")
 
 
 class ModelProvider:
@@ -211,6 +213,7 @@ class ModelProvider:
         elif isinstance(self.llm, ChatDeepSeek):
             challenge("max_tokens")
 
+    @tracer.start_as_current_span("invoke_llm")
     def invoke(
         self,
         input: LanguageModelInput,
@@ -221,6 +224,8 @@ class ModelProvider:
         stop: Optional[list[str]] = None,
         **kwargs: Any,
     ) -> BaseMessage:
+        span = trace.get_current_span()
+        span.set_attribute("model", self.model_id)
         # Some fields can only be configured when the model is instantiated.
         # This side-steps that by creating a new instance of the model with the
         # configurable fields set, then invoking that new instance.
@@ -258,5 +263,4 @@ class ModelProvider:
             # only raise an exception when we are in demo mode
             if self.demo_mode:
                 raise e
-
         return response
