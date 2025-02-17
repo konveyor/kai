@@ -97,6 +97,8 @@ def main() -> None:
             span_processor=BatchSpanProcessor(OTLPSpanExporter())
         )
         trace.set_tracer_provider(tracer_provider=tracer_provider)
+    else:
+        trace.set_tracer_provider(tracer_provider=trace.NoOpTracerProvider())
 
     # mypy incorrectly type checks sys.stdin.buffer and sys.stdout.buffer as
     # simply IO[bytes], rather than as BufferedReader and BufferedWriter for
