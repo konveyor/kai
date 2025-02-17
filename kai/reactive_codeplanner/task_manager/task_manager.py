@@ -372,7 +372,7 @@ class TaskManager:
             )
             self.priority_queue.push(task)
             chatter.get().chat_simple(
-                f"re-trying task: {task}, was not resolved ({task.retry_count}/{task.max_retries})"
+                f"Task {task} was not resolved. Retrying... ({task.retry_count}/{task.max_retries})"
             )
         else:
             self.ignored_tasks.append(task)
