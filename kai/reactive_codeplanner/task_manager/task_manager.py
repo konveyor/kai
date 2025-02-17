@@ -298,7 +298,7 @@ class TaskManager:
         else:
             self.processed_tasks.add(task)
             logger.debug("Task %s processed successfully.", task)
-            chatter.get().chat_simple(f"resolved task: {task}")
+            chatter.get().chat_simple(f"Resolved task {task}.")
 
         new_child_tasks = unprocessed_new_tasks - tasks_in_queue
         # We want the higher priority things at the end of the list, so when we append and pop we get the highest priority
