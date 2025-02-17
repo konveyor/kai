@@ -3,15 +3,20 @@ package tracing
 import (
 	"context"
 	"errors"
+	"os"
 	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
-	"go.opentelemetry.io/otel/sdk/trace"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 )
+
+const TRACING_ENABLED = "ENABLE_TRACING"
 
 func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, err error) {
 	var shutdownFuncs []func(context.Context) error
@@ -38,12 +43,11 @@ func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 	otel.SetTextMapPropagator(prop)
 
 	// Set up trace provider.
-	tracerProvider, err := newTraceProvider()
+	tracerProvider, shutdownFuncs, err := newTraceProvider()
 	if err != nil {
 		handleErr(err)
 		return
 	}
-	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)
 	otel.SetTracerProvider(tracerProvider)
 
 	return
@@ -56,20 +60,26 @@ func newPropagator() propagation.TextMapPropagator {
 	)
 }
 
-func newTraceProvider() (*trace.TracerProvider, error) {
+func newTraceProvider() (trace.TracerProvider, []func(context.Context) error, error) {
+	if env := os.Getenv(TRACING_ENABLED); env == "" {
+		tp := noop.NewTracerProvider()
+		return &tp, nil, nil
+	}
 	traceExporter, err := otlptracehttp.New(context.Background(), otlptracehttp.WithInsecure())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	traceProvider := trace.NewTracerProvider(
-		trace.WithBatcher(traceExporter,
+	shutdownFuncs := []func(context.Context) error{}
+	traceProvider := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(traceExporter,
 			// Default is 5s. Set to 1s for demonstrative purposes.
-			trace.WithBatchTimeout(time.Second)),
-		trace.WithResource(resource.NewWithAttributes(
+			sdktrace.WithBatchTimeout(time.Second)),
+		sdktrace.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
 			semconv.ServiceNameKey.String("analyzer-lsp"),
 		)),
 	)
-	return traceProvider, nil
+	shutdownFuncs = append(shutdownFuncs, traceProvider.Shutdown)
+	return traceProvider, shutdownFuncs, nil
 }
