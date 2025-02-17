@@ -283,7 +283,7 @@ class TaskManager:
                 "Task %s resolved indirectly and removed from queue.", resolved_task
             )
             chatter.get().chat_simple(
-                f"resolved task: {resolved_task} indirectly while fixing {task}"
+                f"Resolved task {resolved_task} indirectly while fixing {task}."
             )
 
         # Check if the current task is still unprocessed (or similar)
