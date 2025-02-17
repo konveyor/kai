@@ -551,8 +551,6 @@ def get_codeplan_agent_solution(
 
                 validation_error.incidents = []
                 for i in violation_incidents:
-                    if i.line_number < 0:
-                        continue
                     validation_error.incidents.append(Incident(**i.model_dump()))
 
                 if len(validation_error.incidents) > 0:
@@ -588,9 +586,6 @@ def get_codeplan_agent_solution(
 
             chatter.get().chat_simple(f"Executing task {task.__class__.__name__}.")
 
-            pre_task_solved_tasks = app.task_manager.processed_tasks
-            pre_task_ignored_tasks = set(app.task_manager.ignored_tasks)
-
             result = app.task_manager.execute_task(task)
 
             app.log.debug(f"Task {task.__class__.__name__}, result: {result}")
@@ -609,48 +604,6 @@ def get_codeplan_agent_solution(
             )
 
             app.log.debug(result)
-
-            if seed_tasks:
-                # If we have seed tasks, we are fixing a set of issues,
-                # Lets only focus on this when showing the queue.
-                all_tasks = app.task_manager.priority_queue.all_tasks()
-                tasks = app.task_manager.priority_queue.task_stacks.get(0)
-                if tasks is not None:
-                    app.log.debug("QUEUE_STATE_SEED_TASK: START")
-                    for task in tasks:
-                        lines = app.task_manager.priority_queue._stringify_tasks(
-                            task, 0, set(), all_tasks
-                        )
-                        for line in lines:
-                            app.log.debug(f"QUEUE_STATE_SEED_TASK: {line}")
-                    app.log.debug("QUEUE_STATE_SEED_TASK: END")
-                app.log.debug("QUEUE_STATE_SEED_TASKS: SUCCESSFUL_TASKS: START")
-                for task in app.task_manager.processed_tasks - pre_task_solved_tasks:
-                    app.log.debug(f"QUEUE_STATE_SEED_TASKS: SUCCESSFUL_TASKS: {task}")
-                app.log.debug("QUEUE_STATE_SEED_TASKS: SUCCESSFUL_TASKS: END")
-                app.log.debug("QUEUE_STATE_SEED_TASKS: IGNORED_TASKS: START")
-                for task in (
-                    set(app.task_manager.ignored_tasks) - pre_task_ignored_tasks
-                ):
-                    app.log.debug(f"QUEUE_STATE_SEED_TASKS: SUCCESSFUL_TASKS: {task}")
-                app.log.debug("QUEUE_STATE_SEED_TASKS: IGNORED_TASKS: END")
-            else:
-                app.log.debug("QUEUE_STATE: START")
-                try:
-                    queue_state = str(app.task_manager.priority_queue)
-                    for line in queue_state.splitlines():
-                        app.log.debug(f"QUEUE_STATE: {line}")
-                except Exception as e:
-                    app.log.error(f"QUEUE_STATE: {e}")
-                app.log.debug("QUEUE_STATE: END")
-                app.log.debug("QUEUE_STATE: SUCCESSFUL_TASKS: START")
-                for task in app.task_manager.processed_tasks:
-                    app.log.debug(f"QUEUE_STATE: SUCCESSFUL_TASKS: {task}")
-                app.log.debug("QUEUE_STATE: SUCCESSFUL_TASKS: END")
-                app.log.debug("QUEUE_STATE: IGNORED_TASKS: START")
-                for task in app.task_manager.ignored_tasks:
-                    app.log.debug(f"QUEUE_STATE: IGNORED_TASKS: {task}")
-                app.log.debug("QUEUE_STATE: IGNORED_TASKS: END")
 
         # after we have completed all the tasks, we should show what has been
         # accomplished for this particular solution
