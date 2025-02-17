@@ -380,7 +380,7 @@ class TaskManager:
                 "Task %s exceeded max retries and added to ignored tasks.", task
             )
             chatter.get().chat_simple(
-                f"ignoring task: {task}, this was not resolved ({task.retry_count}/{task.max_retries})"
+                f"Task {task} was not resolved. Ignoring... ({task.retry_count}/{task.max_retries})"
             )
 
     def stop(self) -> None:
