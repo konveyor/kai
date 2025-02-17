@@ -141,10 +141,8 @@ class Chatter:
     ) -> ChatMessage:
         msg = self.chat(
             # FIXME: Change once markdown is supported
-            # kind=ChatMessageKind.MARKDOWN_CHAT_MESSAGE,
-            # value=MarkdownChatMessage(message=message),
-            kind=ChatMessageKind.SIMPLE_CHAT_MESSAGE,
-            value=SimpleChatMessage(message=message),
+            kind=ChatMessageKind.MARKDOWN_CHAT_MESSAGE,
+            value=MarkdownChatMessage(message=message),
             chat_token=chat_token,
             message_token=message_token,
         )
