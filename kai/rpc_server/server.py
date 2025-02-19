@@ -635,6 +635,7 @@ def get_codeplan_agent_solution(
         overall_result.diff = diff[1] + diff[2]
 
         chatter.get().chat_simple("Finished!")
+        app.rcm.reset(agent_solution_snapshot)
 
         server.send_response(
             id=id,
