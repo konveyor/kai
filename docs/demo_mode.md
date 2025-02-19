@@ -1,6 +1,6 @@
 # Demo Mode
 
-There may be times when you have to give a demo of KaiKai in a restricted network setting. This could be because you don't have access to LLMs, the network will be too slow to contact them, or you don't want to wait for the LLM while showcasing what Kai can do for you!
+There may be times when you have to give a demo of Kai in a restricted network setting. This could be because you don't have access to LLMs, the network will be too slow to contact them, or you don't want to wait for the LLM while showcasing what Kai can do for you!
 
 If this situation sounds familiar, we will walk through how to set up demo mode, which will allow you to cache the LLM responses and replay them as you go through the workflow to solve issues in a code base.
 
