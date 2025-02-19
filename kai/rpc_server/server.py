@@ -495,6 +495,12 @@ def get_codeplan_agent_solution(
 
     chatter.get().chat_simple("Getting solution!")
 
+    overall_result = GetCodeplanAgentSolutionResult(
+        encountered_errors=[],
+        modified_files=[],
+        diff="",
+    )
+
     # ExitStack calls its callbacks in reverse order upon exiting the with
     # block, **even if an exception is raised**.
     with ExitStack() as defer:
@@ -572,12 +578,6 @@ def get_codeplan_agent_solution(
             params.max_iterations, app.task_manager.get_next_task
         )
 
-        overall_result = GetCodeplanAgentSolutionResult(
-            encountered_errors=[],
-            modified_files=[],
-            diff="",
-        )
-
         initial_solved_tasks = app.task_manager.processed_tasks
         initial_ignored_tasks = set(app.task_manager.ignored_tasks)
 
@@ -635,12 +635,11 @@ def get_codeplan_agent_solution(
         overall_result.diff = diff[1] + diff[2]
 
         chatter.get().chat_simple("Finished!")
-        app.rcm.reset(agent_solution_snapshot)
 
-        server.send_response(
-            id=id,
-            result=overall_result.model_dump(),  # Must dump as a dict for some reason?
-        )
+    server.send_response(
+        id=id,
+        result=overall_result.model_dump(),  # Must dump as a dict for some reason?
+    )
 
 
 P = ParamSpec("P")
