@@ -157,7 +157,6 @@ class SupportedModelProviders(StrEnum):
     CHAT_GOOGLE_GENERATIVE_AI = "ChatGoogleGenerativeAI"
     AZURE_CHAT_OPENAI = "AzureChatOpenAI"
     CHAT_DEEP_SEEK = "ChatDeepSeek"
-    VLLM_OPENAI = "VLLMOpenAI"
 
 
 class KaiConfigModels(BaseModel):

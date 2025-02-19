@@ -5,7 +5,6 @@ from typing import Any, Optional, assert_never
 
 from langchain_aws import ChatBedrock
 from langchain_community.chat_models.fake import FakeListChatModel
-from langchain_community.llms.vllm import VLLMOpenAI
 from langchain_core.language_models.base import BaseLanguageModel, LanguageModelInput
 from langchain_core.messages import BaseMessage
 from langchain_core.runnables import ConfigurableField, RunnableConfig
@@ -172,14 +171,6 @@ class ModelProvider:
 
                 model_args = deep_update(defaults, config.args)
                 model_id = model_args["model"]
-
-            case SupportedModelProviders.VLLM_OPENAI:
-                model_class = VLLMOpenAI
-
-                defaults = {}
-
-                model_args = deep_update(defaults, config.args)
-                model_id = model_args["model_name"]
 
             case _:
                 assert_never(config.provider)
