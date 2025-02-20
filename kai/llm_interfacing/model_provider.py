@@ -351,10 +351,10 @@ class ModelProviderChatBedrock(ModelProvider):
             if continuation:
                 # TODO: Figure out if message.content is ever anything but a string
                 messages[-1] = AIMessage(
-                    str(messages[-1].content) + str(message.content)
+                    (str(messages[-1].content) + str(message.content)).strip()
                 )
             else:
-                messages.append(AIMessage(message.content))
+                messages.append(AIMessage(str(message.content).strip()))
                 continuation = True
 
             if message.response_metadata.get("stop_reason") != "max_tokens":
