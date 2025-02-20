@@ -16,7 +16,9 @@ class TestReflectionAgent(unittest.TestCase):
         super().setUp()
 
         self.reflection_agent: ReflectionAgent = ReflectionAgent(
-            model_provider=ModelProvider(KaiConfigModels(provider="FakeListChatModel"))
+            model_provider=ModelProvider.from_config(
+                KaiConfigModels(provider="FakeListChatModel")
+            )
         )
         # no need to create another directory for this test as we are mainly
         # testing LLM flow
@@ -46,7 +48,7 @@ class TestReflectionAgent(unittest.TestCase):
         }
 
         self.reflection_agent = ReflectionAgent(
-            model_provider=ModelProvider(
+            model_provider=ModelProvider.from_config(
                 config=KaiConfigModels(
                     args={
                         "responses": responses.get(tc, []),
