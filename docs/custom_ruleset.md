@@ -52,11 +52,11 @@ You can now click `Run Analysis` and your custom ruleset will be used.
 
 ### Creating Rules
 
-To create your own rules, first you need to know of a change that must happen to complete a migration. This could be because of a framework or library that you are using (either an internal one or external/open source one). For this section, I am going to create a rule and ruleset for an open source framework but the process should be similar for any custom rule.
+To create your own rules, first, you need to know of a change that must happen to complete a migration. This could be because of a framework or library that you are using (either an internal one or external/open source one). For this section, I am going to create a rule and ruleset for an open source framework but the process should be similar for any custom rule.
 
 #### Finding A Rule
 
-To find a place for a rule, we are going to look at the release notes of the quarkus framework. If we see the [section](https://github.com/quarkusio/quarkus/wiki/Migration-Guide-3.18#kubernetes-client-fabric8) here. If we follow this to the migration guide for this dependency, we can see this [section](https://github.com/fabric8io/kubernetes-client/blob/main/doc/MIGRATION-v7.md#kubernetes-model-artifact-removed-).
+To find a place for a rule, we are going to look at the release notes of the Quarkus framework. If we see the [section](https://github.com/quarkusio/quarkus/wiki/Migration-Guide-3.18#kubernetes-client-fabric8) here. If we follow this to the migration guide for this dependency, we can see this [section](https://github.com/fabric8io/kubernetes-client/blob/main/doc/MIGRATION-v7.md#kubernetes-model-artifact-removed-).
 
 > The Maven artifact io.fabric8:kubernetes-model has been removed from the project and is no longer published.
 > This artifact was just an aggregator of some of the Kubernetes model artifacts and had no specific purpose. It is no longer published, the io.fabric8:kubernetes-client-api or io.fabric8:kubernetes-openshift-uberjar artifacts should be used instead.
@@ -84,10 +84,10 @@ description: |
   This artifact was just an aggregator of some of the Kubernetes model artifacts and had no specific purpose. It is no longer published, the io.fabric8:kubernetes-client-api or io.fabric8:kubernetes-openshift-uberjar artifacts should be used instead."
 ```
 
-Next we need to decide what `Action` to take. The [actions](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md#rule-actions) are very useful but it worth noting that for KAI, the only action that will be used, is message.
+Next, we need to decide what `Action` to take. The [actions](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md#rule-actions) are very useful but it is worth noting that for Kai, the only action that will be used, is `message`.
 
 > [!WARNING]
-> If you use only the tag action, or if you don't set effort, then the rule's violations will not be used by kai.
+> If you use only the tag action, or if you don't set effort, then the rule's violations will not be used by Kai.
 
 We need to note, that the message is used by the LLM to generate a fix for the issue. In this case, I still think the migration guide docs do a good job.
 
@@ -103,7 +103,7 @@ We need to note, that the message is used by the LLM to generate a fix for the i
 
 Now that we have all the information captured in our rule for using it in Kai, we need to add when this should be triggered. This is the `when` clause for a rule. We usually call these [conditions](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md#rule-conditions), you can do a lot of different things here based on providers. Today in Kai, we only have two providers, the `java` and `builtin` providers.
 
-For this issue, we are looking at dependencies, and so we will choose to the use the `java.dependency` [capability](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md#provider-condition).
+For this issue, we are looking at dependencies, and so we will choose to use the `java.dependency` [capability](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md#provider-condition).
 
 ```yaml
   when:
@@ -113,7 +113,7 @@ For this issue, we are looking at dependencies, and so we will choose to the use
 
 Now, we should save this file in a directory for this ruleset, and we will need to create a ruleset.yaml in the same directory.
 
-Creating the [ruleset.yaml](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md#ruleset) is a special file that will help group these rules together to help manage them easier. For this rule we will use this ruleset.
+Creating the [ruleset.yaml](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md#ruleset) is a special file that groups these rules together to help make their management easier. We will use this ruleset for this rule.
 
 ```yaml
 name: quarkus-3-18
