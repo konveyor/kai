@@ -101,7 +101,7 @@ We need to note, that the message is used by the LLM to generate a fix for the i
   	This artifact was just an aggregator of some of the Kubernetes model artifacts and had no specific purpose. It is no longer published, the io.fabric8:kubernetes-client-api or io.fabric8:kubernetes-openshift-uberjar artifacts should be used instead."
 ```
 
-Now that we have all the information captured in our rule for using it in kai, we need to add when this should be triggered. This is the `when` clause for a rule. We usually call these [conditions](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md#rule-conditions), you can do a lot of different things here based on providers. Today in kai, we only have two providers, the java and builtin providers.
+Now that we have all the information captured in our rule for using it in Kai, we need to add when this should be triggered. This is the `when` clause for a rule. We usually call these [conditions](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md#rule-conditions), you can do a lot of different things here based on providers. Today in Kai, we only have two providers, the `java` and `builtin` providers.
 
 For this issue, we are looking at dependencies, and so we will choose to the use the `java.dependency` [capability](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md#provider-condition).
 
