@@ -173,7 +173,7 @@ class ModelProvider:
         span.set_attribute("model", self.model_id)
 
         if not (self.cache and cache_path_resolver):
-            return self.invoke_llm(input, config, stop=stop, **kwargs)
+            return self.invoke_llm(input, config, configurable_fields, stop, **kwargs)
 
         cache_path = cache_path_resolver.cache_path()
         cache_meta = cache_path_resolver.cache_meta()
@@ -184,7 +184,7 @@ class ModelProvider:
             if cache_entry:
                 return cache_entry
 
-        response = self.invoke_llm(input, config, stop=stop, **kwargs)
+        response = self.invoke_llm(input, config, configurable_fields, stop, **kwargs)
 
         try:
             self.cache.put(
