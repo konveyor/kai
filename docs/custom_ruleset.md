@@ -92,7 +92,7 @@ Next we need to decide what `Action` to take. The [actions](https://github.com/k
 We need to note, that the message is used by the LLM to generate a fix for the issue. In this case, I still think the migration guide docs do a good job.
 
 > [!NOTE]
-> This process may require some iteration for determining the optimal message for generating the fix that you want for your issue and model.
+> This process may require some iteration to determine the optimal message for generating the fix that you want for your issue and model.
 
 ```yaml
   message: |
