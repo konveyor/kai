@@ -27,37 +27,63 @@ Konveyor" page. This page is where you as a user can configure Kai to suit your
 needs. This page can also be accessed by clicking "Help"->"Welcome" and finding
 "Set up Konveyor" in the "Walkthroughs" section.
 
+![image](images/walkthroughs_welcome.png)
+
 ### Options
 
 All of the following settings can be configured via the setup page or via
 modifying `settings.json`. For more details; see [configuration](./contrib/configuration.md) for a full list of
 available settings.
 
-**Override Analyzer Binary**
+#### Override Analyzer Binary
+
 This allows you as a user to configure custom analyzer and Kai binaries as
 opposed to the default packaged ones. This shouldn't be necessary for most
-users.
+users. This can be useful for testing changes, please see the [contributing guide](contrib/dev_environment.md) for more information.
 
-**Configure Custom Rules**
+#### Configure Custom Rules
+
 This allows you as a user to configure custom rules for the Konveyor analyzer
 to use when running static code analysis. This can be done by selecting a
 directory where these rules exist.
 
-**Configure Analysis Arguments**
+For information on creating custom rules you can see the [documentation](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md#rules)
+
+#### Configure Analysis Arguments
+
 This allows you as a user to define the sources and targets for static code
-analysis. Additionally, you as a user can define a specific label selector to
+analysis.
+
+These are mutually exclusive options, you should select one or the other.
+
+Sources and Targets are special [labels](https://github.com/konveyor/analyzer-lsp/blob/main/docs/labels.md#labels). Selecting the sources and targets will generate the label selector for you.
+
+> [!NOTE]
+> These source and target labels are only coming from the [default rulesets](https://github.com/konveyor/analyzer-lsp/blob/main/docs/labels.md#labels). If you want to use custom labels you must create the label selector manually.
+
+To use this option click
+
+![image](images/walkthroughs_configure_analysis_source_and_targets.png)
+
+If you need/want to specify the label selector manually, you as a user can define a specific label selector to
 use when querying the rulesets.
 
-**Configure Get Solution Parameters**
-This allows you as a user to configure the codeplan solution parameters. These
-are advanced options and should only be set by an experienced user. For more
-information about what these values do; see
-[here](./presentations/2024-11-13-konveyor-community.md)
+To understand the label selector syntax see the [documentation](https://github.com/konveyor/analyzer-lsp/blob/main/docs/labels.md#rule-label-selector)
+
+To use this option click
+
+![image](images/walkthroughs_configure_analysis_label_selector.png)
+
+#### Configure Generative AI
+
+This is where you set up the model configuration for kai to use. To see more information about this see the [llm selection](./llm_selection.md) documentation.
 
 ## Starting the server
 
 Click "Start Analyzer" to launch the RPC server. You can then click "Mark Done"
 to close the setup page.
+
+![image](images/walkthroughs_start_server.png)
 
 ## Usage
 
@@ -77,20 +103,19 @@ those incidents are present.
 ### Generating fixes
 
 Now that you have violations from analysis, you will want to begin generating
-code fixes based on these incidents. This is done in the main analysis view by
-expanding the incident you want to fix and clicking the lightbulb icon. This
-will begin the process of asking Kai to generate a code fix for the given
-incident.
+code fixes based on these incidents. This can be done by selecting the `Resolve Incident` button. You can choose to resolve any number of incidents at a time by clicking the button associated with the number.
+
+![image](images/resolve_1_incident_button.png)
+
+You can see more details if there are more than one incident by expanding the row. Here you will have more options for resolving incidents.
 
 Once the fix is generated, you will be presented with a list of files that
 would be changed, and you are given the option to view, accept, or reject those
 changes. You can view this from an in-view diff editor via the analysis view,
-or from the _Konveyor Resolutions_ pane on the left side of the extension. When
-these changes are accepted, the changes will be reflected in the source code
+or from the _Konveyor Resolutions_ tab. When these changes are accepted, the changes will be reflected in the source code
 directly. Anytime a change is accepted, Kai will automatically rerun a partial
 analysis of the codebase that has changed to update whether an incident was
-resolved. Whenever you want to evaluate the current state of the migration, it
-is best to rerun a full analysis.
+resolved.
 
 ## Guided Scenario
 
