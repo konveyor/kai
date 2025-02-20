@@ -8,7 +8,9 @@ We provide pre-built versions of the IDE plugin as a `vsix` file at [editor-exte
 
 1. Install **Java 17 or later** and the latest version of **Maven**.
 
-2. Required LLM model and key to use the Kai. Refer to the [LLM Selection Guide](/docs/llm_selection.md) for details.
+2. [Git](https://git-scm.com) must be installed and on the `PATH`.
+
+3. Required LLM model and key to use the Kai. Refer to the [LLM Selection Guide](/docs/llm_selection.md) for details.
 
 ## IDE Plugin Installation Methods
 
