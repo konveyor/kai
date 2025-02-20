@@ -247,7 +247,7 @@ class TaskManager:
         logger.info(
             "Handling depth 0 task, assuming fix has applied for task: %s", task
         )
-        chatter.get().chat_simple(f"completed task: {task}")
+        chatter.get().chat_simple(f"Completed task {task}.")
         self.priority_queue.remove(task)
 
     def handle_new_tasks_after_processing(

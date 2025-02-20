@@ -115,7 +115,7 @@ class FakeLLMIncidentStore(Fixture):
         backend = incident_store_backend_factory(args)
         solution_detector = solution_detection_naive
         solution_producer = SolutionProducerLLMLazy(
-            ModelProvider(
+            ModelProvider.from_config(
                 KaiConfigModels(
                     provider="FakeListChatModel",
                     args={

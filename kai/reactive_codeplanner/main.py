@@ -142,7 +142,7 @@ def main() -> None:
 
     logging.init_logging_from_log_config(kai_config.log_config)
 
-    model_provider = ModelProvider(kai_config.model_provider)
+    model_provider = ModelProvider.from_config(kai_config.model_provider)
 
     analyzer = AnalyzerLSP(
         analyzer_lsp_server_binary=Path(args.analyzer_lsp_server_binary),
