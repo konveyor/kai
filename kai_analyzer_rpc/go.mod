@@ -4,8 +4,8 @@ go 1.23.1
 
 require (
 	github.com/go-logr/logr v1.4.2
-	github.com/konveyor/analyzer-lsp v0.6.0-alpha.2.0.20250219191549-e8fcefbcee40
-	github.com/konveyor/analyzer-lsp/external-providers/java-external-provider v0.0.0-20250219191549-e8fcefbcee40
+	github.com/konveyor/analyzer-lsp v0.6.0-alpha.2.0.20250220180236-a1daaf6ba933
+	github.com/konveyor/analyzer-lsp/external-providers/java-external-provider v0.0.0-20250220180236-a1daaf6ba933
 	go.opentelemetry.io/otel v1.34.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.34.0
 	go.opentelemetry.io/otel/sdk v1.34.0
