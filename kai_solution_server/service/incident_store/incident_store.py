@@ -523,7 +523,7 @@ class IncidentStore:
 
     @staticmethod
     def incident_store_from_config(config: KaiSolutionServerConfig) -> "IncidentStore":
-        model_provider = ModelProvider(config.models)
+        model_provider = ModelProvider.from_config(config.models)
 
         KAI_LOG.info(f"Selected provider: {config.models.provider}")
         KAI_LOG.info(f"Selected model: {model_provider.model_id}")

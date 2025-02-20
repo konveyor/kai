@@ -23,7 +23,7 @@ from kai.reactive_codeplanner.task_manager.api import ValidationError
 class TestAnalyzerAgent(unittest.TestCase):
 
     def test_parse_llm_response_one_thought(self) -> None:
-        model_provider = ModelProvider(
+        model_provider = ModelProvider.from_config(
             KaiConfigModels(
                 provider="FakeListChatModel",
                 args={
@@ -60,7 +60,7 @@ class TestAnalyzerAgent(unittest.TestCase):
         self.assertEqual(expected, result)
 
     def test_invalid_request_type(self) -> None:
-        model_provider = ModelProvider(
+        model_provider = ModelProvider.from_config(
             KaiConfigModels(
                 provider="FakeListChatModel",
                 args={
@@ -116,7 +116,7 @@ public class ShoppingCartService  {
   </dependency>
   ```
 """
-        model_provider = ModelProvider(
+        model_provider = ModelProvider.from_config(
             KaiConfigModels(
                 provider="FakeListChatModel",
                 args={
