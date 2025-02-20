@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import os
+import time
 from abc import abstractmethod
-from typing import Any, Iterator, Optional, Sequence, assert_never, cast
+from typing import Any, Iterator, Optional, Sequence, assert_never, cast, override
 
 from langchain_aws import ChatBedrock
 from langchain_community.chat_models.fake import FakeListChatModel
@@ -97,7 +98,10 @@ class ModelProvider:
 
     def default_challenge(self, k: str) -> BaseMessage:
         return self.invoke(
-            "a", self.validate_environment_resolver, configurable_fields={k: 1}
+            "a",
+            self.validate_environment_resolver,
+            configurable_fields={k: 1},
+            do_continuation=False,
         )
 
     @abstractmethod
@@ -133,6 +137,7 @@ class ModelProvider:
         config: RunnableConfig | None = None,
         configurable_fields: dict[str, Any] | None = None,
         stop: list[str] | None = None,
+        do_continuation: bool = True,  # model must support it
         **kwargs: Any,
     ) -> BaseMessage:
         """
@@ -164,6 +169,7 @@ class ModelProvider:
         *,
         configurable_fields: Optional[dict[str, Any]] = None,
         stop: Optional[list[str]] = None,
+        do_continuation: bool = True,
         **kwargs: Any,
     ) -> BaseMessage:
         """
@@ -173,7 +179,9 @@ class ModelProvider:
         span.set_attribute("model", self.model_id)
 
         if not (self.cache and cache_path_resolver):
-            return self.invoke_llm(input, config, configurable_fields, stop, **kwargs)
+            return self.invoke_llm(
+                input, config, configurable_fields, stop, do_continuation, **kwargs
+            )
 
         cache_path = cache_path_resolver.cache_path()
         cache_meta = cache_path_resolver.cache_meta()
@@ -184,7 +192,9 @@ class ModelProvider:
             if cache_entry:
                 return cache_entry
 
-        response = self.invoke_llm(input, config, configurable_fields, stop, **kwargs)
+        response = self.invoke_llm(
+            input, config, configurable_fields, stop, do_continuation, **kwargs
+        )
 
         try:
             self.cache.put(
@@ -323,14 +333,22 @@ class ModelProviderChatBedrock(ModelProvider):
     ) -> tuple[dict[str, Any], str]:
         return deep_update(defaults, config_args), config_args["model_id"]
 
+    # NOTE: Should we override `invoke` instead of `invoke_llm`?
+    @override
     def invoke_llm(
         self,
         input: LanguageModelInput,
         config: RunnableConfig | None = None,
         configurable_fields: dict[str, Any] | None = None,
         stop: list[str] | None = None,
+        do_continuation: bool = True,
         **kwargs: Any,
     ) -> BaseMessage:
+        if not do_continuation:
+            return self.configurable_llm(configurable_fields).invoke(
+                input, config, stop=stop, **kwargs
+            )
+
         invoke_llm = self.configurable_llm(configurable_fields)
 
         messages: list[BaseMessage] = []
@@ -346,7 +364,10 @@ class ModelProviderChatBedrock(ModelProvider):
             assert_never(input)
 
         while True:
+            LOG.info(f"Invoking LLM with messages: {messages}")
             message = invoke_llm.invoke(messages, config, stop=stop, **kwargs)
+            LOG.info(f"Got message: {message}")
+            time.sleep(1)
 
             if continuation:
                 # TODO: Figure out if message.content is ever anything but a string
@@ -357,10 +378,14 @@ class ModelProviderChatBedrock(ModelProvider):
                 messages.append(AIMessage(str(message.content).strip()))
                 continuation = True
 
-            if message.response_metadata.get("stop_reason") != "max_tokens":
-                break
+            if (
+                message.response_metadata.get("stop_reason") == "max_tokens"
+                or message.additional_kwargs.get("stop_reason") == "max_tokens"
+            ):
+                LOG.info("Message did not fit in max tokens. Continuing...")
+                continue
 
-            LOG.info("Message did not fit in max tokens. Continuing...")
+            break
 
         return messages[-1]
 

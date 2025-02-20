@@ -30,10 +30,9 @@ class _llm_response:
 
 class AnalyzerAgent(Agent):
     system_message_template = Template(
-        """
-    You are an experienced {{ language }} developer, who specializes in migrating code from {{ source }} to {{ target }}
-    {{ background }}
-    """
+        """You are an experienced {{ language }} developer, who specializes in migrating code from {{ source }} to {{ target }}
+{{ background }}
+"""
     )
 
     chat_message_template = Template(
@@ -90,7 +89,7 @@ Write the step by step reasoning in this markdown section. If you are unsure of 
 
 If you have any additional details or steps that need to be performed, put it here.
 
-    """
+"""
     )
 
     def __init__(
