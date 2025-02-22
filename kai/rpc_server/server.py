@@ -464,7 +464,7 @@ class GetCodeplanAgentSolutionParams(BaseModel):
     max_depth: Optional[int] = None
     max_priority: Optional[int] = None
 
-    chat_token: str
+    chat_token: Optional[str] = None
 
 
 class GetCodeplanAgentSolutionResult(BaseModel):

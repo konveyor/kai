@@ -150,11 +150,13 @@ class KaiConfigIncidentStore(BaseModel):
 
 
 class SupportedModelProviders(StrEnum):
+    CHAT_ANTHROPIC = "ChatAnthropic"
     CHAT_OLLAMA = "ChatOllama"
     CHAT_OPENAI = "ChatOpenAI"
     CHAT_BEDROCK = "ChatBedrock"
     FAKE_LIST_CHAT_MODEL = "FakeListChatModel"
     CHAT_GOOGLE_GENERATIVE_AI = "ChatGoogleGenerativeAI"
+    CHAT_GROQ = "ChatGroq"
     AZURE_CHAT_OPENAI = "AzureChatOpenAI"
     CHAT_DEEP_SEEK = "ChatDeepSeek"
 
