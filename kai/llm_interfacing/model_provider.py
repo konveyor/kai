@@ -10,7 +10,7 @@ from langchain_core.language_models.base import LanguageModelInput
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, BaseMessageChunk, HumanMessage
 from langchain_core.prompt_values import PromptValue
-from langchain_core.runnables import ConfigurableField, RunnableConfig
+from langchain_core.runnables import ConfigurableField, Runnable, RunnableConfig
 from langchain_deepseek import ChatDeepSeek
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
@@ -20,6 +20,7 @@ from pydantic.v1.utils import deep_update
 
 from kai.cache import Cache, CachePathResolver, SimplePathResolver
 from kai.kai_config import KaiConfigModels, SupportedModelProviders
+from kai.llm_interfacing.callback.token_output_callback import TokenOutputCallback
 from kai.logging.logging import get_logger
 
 LOG = get_logger(__name__)
@@ -109,7 +110,7 @@ class ModelProvider:
     def configurable_llm(
         self,
         configurable_fields: dict[str, Any] | None = None,
-    ) -> BaseChatModel:
+    ) -> Runnable[LanguageModelInput, BaseMessage]:
         """
         Some fields can only be configured when the model is instantiated. This
         side-steps that by creating a new instance of the model with the configurable
@@ -119,11 +120,12 @@ class ModelProvider:
             result = self.llm.configurable_fields(
                 **{k: ConfigurableField(id=k) for k in configurable_fields}
             ).with_config(
-                configurable_fields  # type: ignore[arg-type]
+                configurable_fields,  # type: ignore[arg-type]
+                callbacks=[TokenOutputCallback(self.llm)],
             )
-            return cast(BaseChatModel, result)  # TODO: Check if this cast is ok
+            return result  # TODO: Check if this cast is ok
         else:
-            return self.llm
+            return self.llm.with_config(callbacks=[TokenOutputCallback(self.llm)])
 
     def invoke_llm(
         self,
@@ -138,6 +140,7 @@ class ModelProvider:
         Method to invoke the actual LLM. This can be overridden by subclasses to
         provide additional functionality.
         """
+
         return self.configurable_llm(configurable_fields).invoke(
             input, config, stop=stop, **kwargs
         )
@@ -150,8 +153,12 @@ class ModelProvider:
         stop: list[str] | None = None,
         **kwargs: Any,
     ) -> Iterator[BaseMessageChunk]:
-        return self.configurable_llm(configurable_fields).stream(
-            input, config, stop=stop, **kwargs
+        # This is the same cast that the base LLM does to enable streaming.
+        return cast(
+            Iterator[BaseMessageChunk],
+            self.configurable_llm(configurable_fields).stream(
+                input, config, stop=stop, **kwargs
+            ),
         )
 
     @tracer.start_as_current_span("invoke_llm")
