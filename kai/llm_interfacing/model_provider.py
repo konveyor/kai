@@ -8,12 +8,7 @@ from langchain_aws import ChatBedrock
 from langchain_community.chat_models.fake import FakeListChatModel
 from langchain_core.language_models.base import LanguageModelInput
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import (
-    AIMessage,
-    BaseMessage,
-    BaseMessageChunk,
-    HumanMessage,
-)
+from langchain_core.messages import BaseMessage, BaseMessageChunk, HumanMessage
 from langchain_core.prompt_values import PromptValue
 from langchain_core.runnables import ConfigurableField, RunnableConfig
 from langchain_deepseek import ChatDeepSeek
@@ -363,7 +358,7 @@ class ModelProviderChatBedrock(ModelProvider):
 
         response = invoke_llm.invoke(messages, config, stop=stop, **kwargs)
         # TODO: Figure out if message.content is ever anything but a string
-        messages.append(AIMessage(str(response.content).strip()))
+        response.content = str(response.content).strip()
 
         while (
             response.response_metadata.get("stop_reason") == "max_tokens"
@@ -371,12 +366,16 @@ class ModelProviderChatBedrock(ModelProvider):
         ):
             LOG.info("Message did not fit in max tokens. Continuing...")
 
-            response = invoke_llm.invoke(messages, config, stop=stop, **kwargs)
-            messages[-1] = AIMessage(
-                (str(messages[-1].content) + str(response.content)).strip()
+            new_response = invoke_llm.invoke(
+                messages + [response], config, stop=stop, **kwargs
             )
+            new_response.content = (
+                response.content + str(new_response.content)
+            ).strip()
 
-        return messages[-1]
+            response = new_response
+
+        return response
 
 
 class ModelProviderFakeListChatModel(ModelProvider):
