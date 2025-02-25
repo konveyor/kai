@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import time
 from abc import abstractmethod
 from typing import Any, Iterator, Optional, Sequence, assert_never, cast, override
 
@@ -364,10 +363,7 @@ class ModelProviderChatBedrock(ModelProvider):
             assert_never(input)
 
         while True:
-            LOG.info(f"Invoking LLM with messages: {messages}")
             message = invoke_llm.invoke(messages, config, stop=stop, **kwargs)
-            LOG.info(f"Got message: {message}")
-            time.sleep(1)
 
             if continuation:
                 # TODO: Figure out if message.content is ever anything but a string
