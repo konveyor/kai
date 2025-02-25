@@ -358,8 +358,10 @@ class ModelProviderChatBedrock(ModelProvider):
 
         response = invoke_llm.invoke(messages, config, stop=stop, **kwargs)
         # TODO: Figure out if message.content is ever anything but a string
-        response.content = str(response.content).strip()
+        response.content = response.text().strip()
 
+        # Bedrock stop sequences:
+        # https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_MessageStopEvent.html
         while (
             response.response_metadata.get("stop_reason") == "max_tokens"
             or response.additional_kwargs.get("stop_reason") == "max_tokens"
@@ -369,9 +371,7 @@ class ModelProviderChatBedrock(ModelProvider):
             new_response = invoke_llm.invoke(
                 messages + [response], config, stop=stop, **kwargs
             )
-            new_response.content = (
-                response.content + str(new_response.content)
-            ).strip()
+            new_response.content = (response.text() + new_response.text()).strip()
 
             response = new_response
 
