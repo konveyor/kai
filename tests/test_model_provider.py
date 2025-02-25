@@ -27,7 +27,7 @@ class TestModelProvider(unittest.TestCase):
             },
         )
 
-        model_provider = ModelProvider(config)
+        model_provider = ModelProvider.from_config(config)
 
         for x in responses:
             result = model_provider.llm.invoke("test").content
@@ -41,7 +41,7 @@ class TestModelProvider(unittest.TestCase):
                 args={},
             )
 
-            model = ModelProvider(config)
+            model = ModelProvider.from_config(config)
             model.validate_environment()
 
             return model

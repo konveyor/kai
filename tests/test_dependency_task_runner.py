@@ -67,7 +67,7 @@ Final Answer: Added the MicroProfile Reactive Messaging dependency with groupId 
         ]
         return DependencyTaskRunner(
             MavenDependencyAgent(
-                model_provider=ModelProvider(
+                model_provider=ModelProvider.from_config(
                     config=KaiConfigModels(
                         args={
                             "responses": responses[response_variant],
