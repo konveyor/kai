@@ -53,4 +53,3 @@ class TokenOutputCallback(BaseCallbackHandler):
             enc = tiktoken.get_encoding("cl100k_base")
             tokens = len(enc.encode(get_buffer_string(flat_messages)))
             LOG.info("input tokens: %s", tokens)
-        return
