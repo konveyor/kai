@@ -351,7 +351,6 @@ class ModelProviderChatBedrock(ModelProvider):
         invoke_llm = self.configurable_llm(configurable_fields)
 
         messages: list[BaseMessage] = []
-        continuation = False
 
         if isinstance(input, str):
             messages = [HumanMessage(input)]
@@ -362,26 +361,20 @@ class ModelProviderChatBedrock(ModelProvider):
         else:
             assert_never(input)
 
-        while True:
-            message = invoke_llm.invoke(messages, config, stop=stop, **kwargs)
+        response = invoke_llm.invoke(messages, config, stop=stop, **kwargs)
+        # TODO: Figure out if message.content is ever anything but a string
+        messages.append(AIMessage(str(response.content).strip()))
 
-            if continuation:
-                # TODO: Figure out if message.content is ever anything but a string
-                messages[-1] = AIMessage(
-                    (str(messages[-1].content) + str(message.content)).strip()
-                )
-            else:
-                messages.append(AIMessage(str(message.content).strip()))
-                continuation = True
+        while (
+            response.response_metadata.get("stop_reason") == "max_tokens"
+            or response.additional_kwargs.get("stop_reason") == "max_tokens"
+        ):
+            LOG.info("Message did not fit in max tokens. Continuing...")
 
-            if (
-                message.response_metadata.get("stop_reason") == "max_tokens"
-                or message.additional_kwargs.get("stop_reason") == "max_tokens"
-            ):
-                LOG.info("Message did not fit in max tokens. Continuing...")
-                continue
-
-            break
+            response = invoke_llm.invoke(messages, config, stop=stop, **kwargs)
+            messages[-1] = AIMessage(
+                (str(messages[-1].content) + str(response.content)).strip()
+            )
 
         return messages[-1]
 
