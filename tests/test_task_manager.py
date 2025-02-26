@@ -13,6 +13,7 @@ from kai.reactive_codeplanner.task_manager.api import (
 )
 from kai.reactive_codeplanner.task_manager.task_manager import TaskManager
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
+from kai.reactive_codeplanner.vfs.repo_context_snapshot import RepoContextSnapshot
 
 
 class MockValidationStep(ValidationStep):
@@ -42,6 +43,17 @@ class MockTaskRunner:
         return TaskResult(encountered_errors=[], modified_files=[], summary="")
 
 
+class MockRCM:
+    snapshot: RepoContextSnapshot
+    reset_snapshot: RepoContextSnapshot
+
+    def __init__(self, snapshot: RepoContextSnapshot):
+        self.snapshot = snapshot
+
+    def reset(self, snapshot: RepoContextSnapshot):
+        self.reset_snapshot = snapshot
+
+
 class TestTaskManager(unittest.TestCase):
     def test_simple_task_execution_order(self) -> None:
         # Setup
@@ -54,9 +66,14 @@ class TestTaskManager(unittest.TestCase):
                 [],  # Second run, no errors
             ],
         )
+        rcm = MockRCM(
+            RepoContextSnapshot(
+                Path("test"), Path("test-2"), Path("test-3"), "shaofstring"
+            )
+        )
         task_manager = TaskManager(
             config=None,
-            rcm=None,
+            rcm=rcm,
             validators=[validator],
             task_runners=[MockTaskRunner()],
         )
@@ -92,9 +109,14 @@ class TestTaskManager(unittest.TestCase):
                 [child2],  # Third run, no new errors
             ],
         )
+        rcm = MockRCM(
+            RepoContextSnapshot(
+                Path("test"), Path("test-2"), Path("test-3"), "shaofstring"
+            )
+        )
         task_manager = TaskManager(
             config=None,
-            rcm=None,
+            rcm=rcm,
             validators=[validator],
             task_runners=[MockTaskRunner()],
         )
@@ -141,9 +163,14 @@ class TestTaskManager(unittest.TestCase):
                 [],  # Fifth run, error resolved
             ],
         )
+        rcm = MockRCM(
+            RepoContextSnapshot(
+                Path("test"), Path("test-2"), Path("test-3"), "shaofstring"
+            )
+        )
         task_manager = TaskManager(
             config=None,
-            rcm=None,
+            rcm=rcm,
             validators=[validator],
             task_runners=[MockTaskRunner()],
         )
@@ -193,9 +220,14 @@ class TestTaskManager(unittest.TestCase):
                 ],  # Fifth run
             ],
         )
+        rcm = MockRCM(
+            RepoContextSnapshot(
+                Path("test"), Path("test-2"), Path("test-3"), "shaofstring"
+            )
+        )
         task_manager = TaskManager(
             config=None,
-            rcm=None,
+            rcm=rcm,
             validators=[validator],
             task_runners=[MockTaskRunner()],
         )
@@ -207,6 +239,7 @@ class TestTaskManager(unittest.TestCase):
         ignored_task = task_manager.ignored_tasks[0]
         self.assertEqual(ignored_task.message, "UnresolvableError")
         self.assertEqual(ignored_task.retry_count, ignored_task.max_retries)
+        self.assertEqual(rcm.snapshot, rcm.reset_snapshot)
 
     def test_complex_task_tree(self) -> None:
 
@@ -238,9 +271,14 @@ class TestTaskManager(unittest.TestCase):
                 [],  # Sixth run, no errors
             ],
         )
+        rcm = MockRCM(
+            RepoContextSnapshot(
+                Path("test"), Path("test-2"), Path("test-3"), "shaofstring"
+            )
+        )
         task_manager = TaskManager(
             config=None,
-            rcm=None,
+            rcm=rcm,
             validators=[validator],
             task_runners=[MockTaskRunner()],
         )
@@ -313,9 +351,14 @@ class TestTaskManager(unittest.TestCase):
                 message="ParentError",
             )
         ]
+        rcm = MockRCM(
+            RepoContextSnapshot(
+                Path("test"), Path("test-2"), Path("test-3"), "shaofstring"
+            )
+        )
         task_manager = TaskManager(
             config=None,
-            rcm=None,
+            rcm=rcm,
             seed_tasks=seed_tasks,
             validators=[validator],
             task_runners=[MockTaskRunner()],
@@ -366,9 +409,14 @@ class TestTaskManager(unittest.TestCase):
                 [],  # Fifth run, no errors
             ],
         )
+        rcm = MockRCM(
+            RepoContextSnapshot(
+                Path("test"), Path("test-2"), Path("test-3"), "shaofstring"
+            )
+        )
         task_manager = TaskManager(
             config=None,
-            rcm=None,
+            rcm=rcm,
             validators=[validator],
             task_runners=[MockTaskRunner()],
         )
