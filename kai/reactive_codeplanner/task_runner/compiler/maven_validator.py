@@ -228,6 +228,10 @@ class PackageDoesNotExistError(CollapsedMavenCompilerError):
     def remove_unused_fields(self) -> None:
         self.line = 0
         self.column = 0
+        # The only place to fix packages not found is the pom.xml
+        # Once the package is in the pom we will no longer have this
+        # error.
+        self.file = "pom.xml"
 
 
 @dataclass(eq=False)
