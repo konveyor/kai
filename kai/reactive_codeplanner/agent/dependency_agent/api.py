@@ -34,6 +34,18 @@ class FQDNResponse:
         parent.append(version)
         return parent
 
+    def match_dep(self, dep: ET._Element, match_version: bool = False) -> bool:
+        found = []
+        to_match = [self.group_id, self.artifact_id]
+        if match_version:
+            to_match.append(self.version)
+        for child in dep:
+            if child.text in to_match:
+                found.append(True)
+        if len(found) == len(to_match):
+            return True
+        return False
+
 
 @dataclass
 class FindInPomResponse:
