@@ -4,7 +4,7 @@ from typing import Optional
 from kai.reactive_codeplanner.agent.api import AgentRequest, AgentResult
 from kai.reactive_codeplanner.agent.reflection_agent import ReflectionTask
 from kai.reactive_codeplanner.task_manager.api import Task
-from kai.reactive_codeplanner.vfs.git_vfs import SpawningResult
+from kai.reactive_codeplanner.vfs.spawning_result import SpawningResult
 
 
 @dataclass
