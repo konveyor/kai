@@ -14,7 +14,8 @@ from kai.reactive_codeplanner.agent.reflection_agent import ReflectionTask
 from kai.reactive_codeplanner.task_manager.api import Task, TaskResult
 from kai.reactive_codeplanner.task_runner.analyzer_lsp.api import AnalyzerRuleViolation
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
-from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager, SpawningResult
+from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
+from kai.reactive_codeplanner.vfs.spawning_result import SpawningResult
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer("analyzer_task_runner")
