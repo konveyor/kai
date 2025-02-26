@@ -1,11 +1,14 @@
 import os
 import unittest
 from pathlib import Path
+from unittest.mock import MagicMock
 
 from kai.kai_config import KaiConfigModels
 from kai.llm_interfacing.model_provider import ModelProvider
+from kai.reactive_codeplanner.agent.dependency_agent.api import FQDNResponse
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
+    MavenDependencyResult,
 )
 from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
     PackageDoesNotExistError,
@@ -139,3 +142,40 @@ Final Answer: Added the MicroProfile Reactive Messaging dependency with groupId 
             self.assertEqual(actual_pom_contents, expected_pom_contents)
 
         rcm.reset(snapshot)
+
+    def test_deduplicate_deps(self) -> None:
+        mock_agent = MagicMock()
+        mock_agent.execute.return_value = MavenDependencyResult(
+            encountered_errors=[],
+            file_to_modify=Path("pom.xml"),
+            final_answer="Found the answer",
+            find_in_pom=None,
+            fqdn_response=FQDNResponse(
+                artifact_id="smallrye-reactive-messaging",
+                group_id="io.smallrye.reactive",
+                version="4.29.0",
+            ),
+        )
+        rcm = RepoContextManager(project_root=self.project_base / "deduplication")
+        task_runner = DependencyTaskRunner(
+            agent=mock_agent,
+        )
+        pom_file = self.project_base / "deduplication" / "pom.xml"
+        result = task_runner.execute_task(
+            rcm=rcm,
+            task=PackageDoesNotExistError(
+                priority=1,
+                parse_lines="'[ERROR] ./test_data/test_dependency_agent/Order.java:[8,27] package jakarta.persistence does not exist'",
+                missing_package="jakarta.persistence",
+                message="Maven compiler error: package org.eclipse.microprofile.reactive.messaging does not exist",
+                file=str(self.project_base / "Order.java"),
+                line=8,
+                max_retries=3,
+                column=27,
+            ),
+        )
+        self.assertEqual(result.encountered_errors, [])
+        self.assertEqual(result.modified_files, [pom_file])
+        expected_file = self.project_base / "deduplication" / "expected.xml"
+        self.assertEqual(pom_file.read_text(), expected_file.read_text())
+        rcm.reset(rcm.first_snapshot)

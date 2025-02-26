@@ -96,6 +96,12 @@ class DependencyTaskRunner(TaskRunner):
         if deps is None or not isinstance(deps, ET._Element):
             return TaskResult(modified_files=[], encountered_errors=[], summary="")
 
+        # deduplicate deps
+        for dep in deps:
+            if maven_dep_response.fqdn_response.match_dep(dep=dep):
+                logger.debug("removing existing duplicate dep %s", dep)
+                deps.remove(dep)
+
         ## We always need to add the new dep
         deps.append(maven_dep_response.fqdn_response.to_xml_element())
 
