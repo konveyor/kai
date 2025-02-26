@@ -2,6 +2,7 @@
 
 import re
 import subprocess  # trunk-ignore(bandit/B404)
+import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from functools import cached_property
@@ -90,6 +91,12 @@ class MavenCompilerError(ValidationError):
 
     def compiler_error_message(self) -> str:
         return self.message
+
+    def __post_init__(self) -> None:
+        if sys.platform == "win32":
+            regex = re.compile(r"^/[a-zA-Z]:")
+            if re.match(regex, self.file):
+                self.file = self.file.removeprefix("/")
 
 
 class CollapsedMavenCompilerError(ABC, MavenCompilerError):
@@ -586,7 +593,7 @@ def catchall(output: str) -> OtherError:
     file_path_pattern = re.compile(r"(/[^:\s]+)")
     file_path_matches = file_path_pattern.findall(output)
     file_path = file_path_matches[0] if file_path_matches else "unknown file"
-    return OtherError(
+    error = OtherError(
         file=file_path,
         line=-1,
         column=-1,
@@ -594,6 +601,7 @@ def catchall(output: str) -> OtherError:
         details=[output],
         parse_lines=output,
     )
+    return error
 
 
 def deduplicate_errors(errors: list[MavenCompilerError]) -> list[MavenCompilerError]:
