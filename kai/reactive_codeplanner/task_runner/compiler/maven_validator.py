@@ -156,6 +156,10 @@ class CollapsedMavenCompilerError(ABC, MavenCompilerError):
     def get_collapsable_key(self) -> str:
         pass
 
+    @abstractmethod
+    def remove_unused_fields(self) -> None:
+        pass
+
 
 # Subclasses for specific error categories
 @dataclass(eq=False)
@@ -195,6 +199,10 @@ class SymbolNotFoundError(CollapsedMavenCompilerError):
             root_path /= self._clean_filename(self.missing_symbol)
         return root_path
 
+    def remove_unused_fields(self) -> None:
+        self.line = 0
+        self.column = 0
+
 
 @dataclass(eq=False)
 class PackageDoesNotExistError(CollapsedMavenCompilerError):
@@ -223,6 +231,14 @@ class PackageDoesNotExistError(CollapsedMavenCompilerError):
         if self.retry_count > 0:
             stem /= self._clean_filename(f"retry_{self.retry_count}")
         return root / stem
+
+    def remove_unused_fields(self) -> None:
+        self.line = 0
+        self.column = 0
+        # The only place to fix packages not found is the pom.xml
+        # Once the package is in the pom we will no longer have this
+        # error.
+        self.file = "pom.xml"
 
 
 @dataclass(eq=False)
@@ -625,7 +641,7 @@ def deduplicate_errors(errors: list[MavenCompilerError]) -> list[MavenCompilerEr
                         new_error.lines = [new_error.line]
                         ## Setting this, because we don't want these collapsed errors
                         ## to ever skip fuzzy matching, which not matching line numbers will do
-                        new_error.line = 0
+                        new_error.remove_unused_fields()
                     new_error.lines.append(error.line)
                 else:
                     file_type_to_collapsable_error[dict_key] = error
