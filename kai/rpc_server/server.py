@@ -581,6 +581,7 @@ def get_codeplan_agent_solution(
         initial_solved_tasks = app.task_manager.processed_tasks
         initial_ignored_tasks = set(app.task_manager.ignored_tasks)
 
+        overall_modified_files: set[str] = set()
         for task in next_task_fn(params.max_priority, params.max_depth):
             app.log.debug(f"Executing task {task.__class__.__name__}: {task}")
 
@@ -599,11 +600,13 @@ def get_codeplan_agent_solution(
             overall_result.encountered_errors.extend(
                 [str(e) for e in result.encountered_errors]
             )
-            overall_result.modified_files.extend(
-                [str(f) for f in result.modified_files]
+            overall_modified_files = overall_modified_files.union(
+                set([str(f) for f in result.modified_files])
             )
 
             app.log.debug(result)
+
+        overall_result.modified_files = list(overall_modified_files)
 
         # after we have completed all the tasks, we should show what has been
         # accomplished for this particular solution
