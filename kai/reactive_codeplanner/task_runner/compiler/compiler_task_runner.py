@@ -22,7 +22,8 @@ from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
     SyntaxError,
     TypeMismatchError,
 )
-from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager, SpawningResult
+from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
+from kai.reactive_codeplanner.vfs.spawning_result import SpawningResult
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer("maven_compile_task_runner")

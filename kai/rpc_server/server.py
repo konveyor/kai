@@ -50,7 +50,8 @@ from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
 from kai.reactive_codeplanner.task_runner.dependency.task_runner import (
     DependencyTaskRunner,
 )
-from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager, RepoContextSnapshot
+from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
+from kai.reactive_codeplanner.vfs.repo_context_snapshot import RepoContextSnapshot
 from kai.rpc_server.chat import Chatter, get_chatter_contextvar
 
 tracer = trace.get_tracer("kai_application")
@@ -402,11 +403,6 @@ class GitVFSUpdateParams(BaseModel):
         else:
             diff = ""
 
-        try:
-            spawning_result = repr(snapshot.spawning_result)
-        except Exception:
-            spawning_result = ""
-
         return cls(
             work_tree=str(snapshot.work_tree),
             git_dir=str(snapshot.git_dir),
@@ -414,7 +410,7 @@ class GitVFSUpdateParams(BaseModel):
             diff=diff,
             msg=snapshot.msg,
             children=[cls.from_snapshot(c) for c in snapshot.children],
-            spawning_result=spawning_result,
+            spawning_result=None,
         )
 
 
