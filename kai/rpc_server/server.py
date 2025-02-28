@@ -584,12 +584,18 @@ def get_codeplan_agent_solution(
         for task in next_task_fn(params.max_priority, params.max_depth):
             app.log.debug(f"Executing task {task.__class__.__name__}: {task}")
 
-            chatter.get().chat_simple(f"Executing task {task.__class__.__name__}.")
+            chatter.get().chat_markdown(
+                f"Executing task {task.__class__.__name__}."
+                f"<details><summary>Details</summary>\n{task.markdown()}</details>\n"
+            )
 
             result = app.task_manager.execute_task(task)
 
             app.log.debug(f"Task {task.__class__.__name__}, result: {result}")
-            chatter.get().chat_simple(f"Finished task {task.__class__.__name__}!")
+            chatter.get().chat_markdown(
+                f"Finished task {task.__class__.__name__}!"
+                f"<details><summary>Details</summary>\n{task.markdown()}</details>\n"
+            )
 
             app.task_manager.supply_result(result)
 

@@ -93,6 +93,10 @@ class Task:
         filename = "_".join(segments[-min(3, len(segments)) :])
         return filename[-min(50, len(filename)) :]
 
+    def markdown(self) -> str:
+        """Used to communicate task contents to user"""
+        raise NotImplementedError
+
     __repr__ = __str__
 
 
@@ -166,6 +170,15 @@ class ValidationError(Task):
         root_path = super().get_cache_path(root)
         root_path /= self._clean_filename(self.file)
         return root_path
+
+    def markdown(self) -> str:
+        return (
+            f"## ValidationError\n\n"
+            f"**File**: `{self.file}`\n\n"
+            f"**Line**: `{self.line}`\n\n"
+            f"**Column**: `{self.column}`\n\n"
+            f"**Message**: {self.message}\n"
+        )
 
     __repr__ = __str__
 
