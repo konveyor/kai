@@ -4,11 +4,12 @@ go 1.23.1
 
 require (
 	github.com/go-logr/logr v1.4.2
-	github.com/konveyor/analyzer-lsp v0.6.0-alpha.2.0.20250220180236-a1daaf6ba933
-	github.com/konveyor/analyzer-lsp/external-providers/java-external-provider v0.0.0-20250220180236-a1daaf6ba933
+	github.com/konveyor/analyzer-lsp v0.6.0-alpha.2.0.20250228162759-837d328174c3
+	github.com/konveyor/analyzer-lsp/external-providers/java-external-provider v0.0.0-20250228162759-837d328174c3
 	go.opentelemetry.io/otel v1.34.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.34.0
 	go.opentelemetry.io/otel/sdk v1.34.0
+	go.opentelemetry.io/otel/trace v1.34.0
 
 )
 
@@ -45,7 +46,6 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.34.0 // indirect
 	go.opentelemetry.io/otel/metric v1.34.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.34.0 // indirect
-	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
 	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/oauth2 v0.24.0 // indirect
