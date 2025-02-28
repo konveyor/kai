@@ -15,6 +15,7 @@ from langchain_deepseek import ChatDeepSeek
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from openai import BadRequestError
 from opentelemetry import trace
 from pydantic.v1.utils import deep_update
 
@@ -255,6 +256,9 @@ class ModelProviderChatOllama(ModelProvider):
 
 
 class ModelProviderChatOpenAI(ModelProvider):
+
+    is_monkey_patched: bool = False
+
     def __init__(self, config: KaiConfigModels, demo_mode: bool, cache: Cache | None):
         super().__init__(
             config=config,
@@ -280,6 +284,55 @@ class ModelProviderChatOpenAI(ModelProvider):
         model_id = model_args["model"]
 
         return model_args, model_id
+
+    @override
+    def invoke_llm(
+        self,
+        input: LanguageModelInput,
+        config: RunnableConfig | None = None,
+        configurable_fields: dict[str, Any] | None = None,
+        stop: list[str] | None = None,
+        do_continuation: bool = True,
+        **kwargs: Any,
+    ) -> BaseMessage:
+        try:
+            return super().invoke_llm(
+                input, config, configurable_fields, stop, do_continuation, **kwargs
+            )
+        except BadRequestError as e:
+            # if we already tried to monkey patch then some other config is broken.
+            if self.is_monkey_patched:
+                raise e
+
+            @property  # type: ignore[misc]
+            def _default_params(self: ChatOpenAI) -> dict[str, Any]:
+                return super(ChatOpenAI, self)._default_params
+
+            def _get_request_payload(
+                self: ChatOpenAI,
+                input_: LanguageModelInput,
+                *,
+                stop: list[str] | None = None,
+                **kwargs: Any,
+            ) -> dict:  # type: ignore[type-arg]
+                return super(ChatOpenAI, self)._get_request_payload(
+                    input_, stop=stop, **kwargs
+                )
+
+            if "max_completion_tokens" in e.message:
+                LOG.debug(
+                    f"got error: {e} - attempting to monkey patch to prevent conversion of max_tokens"
+                )
+                ChatOpenAI._default_params = _default_params  # type: ignore[method-assign]
+                ChatOpenAI._get_request_payload = _get_request_payload  # type: ignore[method-assign]
+                self.is_monkey_patched = True
+                return super().invoke_llm(
+                    input, config, configurable_fields, stop, do_continuation, **kwargs
+                )
+            else:
+                raise e
+        except Exception as e:
+            raise e
 
 
 class ModelProviderChatBedrock(ModelProvider):
