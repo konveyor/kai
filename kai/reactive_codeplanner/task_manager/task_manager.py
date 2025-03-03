@@ -248,7 +248,7 @@ class TaskManager:
             "Handling depth 0 task, assuming fix has applied for task: %s", task
         )
         chatter.get().chat_markdown(
-            f"Completed task.\n<details><summary>Details</summary>\n{task.markdown()}</details>\n"
+            f"Resolved task.\n<details><summary>Details</summary>\n{task.markdown()}</details>\n"
         )
         self.priority_queue.remove(task)
 
