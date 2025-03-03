@@ -10,7 +10,7 @@ Ensure you have the following set up:
 
 - [VSCode](https://code.visualstudio.com/download)
 - [Git](https://git-scm.com/downloads)
-- [GenAI credentials](https://github.com/konveyor/kai/blob/main/docs/llm_selection.md#ibm-bam-service)
+- [GenAI credentials](https://github.com/konveyor/kai/blob/main/docs/llm_selection.md#openai-service)
 - Java 8 & Java 17 installed
 - Maven 3.9+
 - [Java sample app](https://github.com/konveyor-ecosystem/migrationex.git)
