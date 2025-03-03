@@ -74,7 +74,7 @@ _Note: At the time of writing this guide, we used version 0.0.13._
 1.3.3 If the welcome page does not appear, open the command palette by pressing Command + Shift + P. This will bring up a list of commands.
 From the command palette, locate and select the "Set up Konveyor" option. This will guide you through the configuration process.
 
-#### Configure Kai for your project.
+#### Configure Kai for your project
 
 User has an option to override binaries and custom rules, however it comes with the default packaged binaries and custom rules.
 
@@ -129,7 +129,7 @@ We will analyze the application using the following migration targets to identif
 
 Before we run the analysis, lets understand the custom rule we are going to use.
 
-#### 1. Custom Rule for MD5 Hashing
+### 1. Custom Rule for MD5 Hashing
 
 The `Library.java` class is responsible for managing books in the system. However, it uses MD5 hashing to generate unique identifiers:
 
@@ -151,11 +151,11 @@ Library.java (Before Migration)
     }
 ```
 
-##### Problem:
+#### Problem
 
 MD5 is outdated and vulnerable to collisions.
 
-##### Solution:
+#### Solution
 
 We need to detect MD5 usage and replace it with SHA-256.
 
@@ -266,7 +266,7 @@ return Base64.getEncoder().encodeToString(hash); // Updated to use Base64 from j
 
 From the logs we notice,
 
-```
+```text
  **Identify the Issue**: The code currently uses the MD5 hashing algorithm, which is considered outdated and insecure for cryptographic purposes. The recommendation is to switch to a more secure hashing algorithm, such as SHA-256.\n+\n+2. **Update the Hashing Algorithm**: We will replace the `MessageDigest.getInstance(\"MD5\")` call with `MessageDigest.getInstance(\"SHA-256\")`. This change will enhance the security of the hashing mechanism used in the application.\n+\n+3. **Remove Deprecated Classes**: The code uses `sun.misc.BASE64Encoder`, which is not part of the standard Java API and is not recommended for use. Instead, we can use `java.util.Base64` which is available in Java 8 and later. This will also ensure compatibility with OpenJDK 17.
 ```
 
@@ -399,17 +399,18 @@ After successfully building the .war file, the next step is to deploy it to an A
 
 1. Start Tomcat by navigating to the Tomcat bin/ directory and run:
 
-```
-
+```sh
 ./startup.sh
 ```
 
 ![tart_tomcat.png](../images/jdk_8_to_17_migration/start_tomcat.png)
 
 2. Access the Tomcat Manager
+
    Open a browser and navigate to `http://localhost:8080/manager/html` ![tomcat_manager.png](../images/jdk_8_to_17_migration/tomcat_manager.png)
 
 3. Upload the .war File
+
    Click "Choose File" under the "WAR file to deploy" section. Select `migrationex.war` from the target/ directory. Click "Deploy".
    ![deploy_app.png](../images/jdk_8_to_17_migration/deploy_app.png)
 
