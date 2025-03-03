@@ -4,6 +4,8 @@ from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
+from kai.reactive_codeplanner.vfs.repo_context_snapshot import RepoContextSnapshot
+
 
 # NOTE(@JonahSussman): Why is this necessary when we have
 # `KaiRpcApplicationConfig`?
@@ -30,6 +32,9 @@ class Task:
     retry_count: int = 0
     max_retries: int = 3
     result: Optional["TaskResult"] = None
+    # Will be used by the task manager, to revert
+    # if/when we ignore this task
+    _snapshot_before_work: Optional[RepoContextSnapshot] = None
 
     _creation_counter = 0
 

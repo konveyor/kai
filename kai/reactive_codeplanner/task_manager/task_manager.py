@@ -222,6 +222,8 @@ class TaskManager:
                 continue
 
             logger.info("Yielding task: %s", task)
+            if not task._snapshot_before_work:
+                task._snapshot_before_work = self.rcm.snapshot
             yield task
             # If our depth is 0, we won't follow up on issues anyway
             # We do lose the ability to verify a solution worked, so
@@ -298,6 +300,10 @@ class TaskManager:
             for t in similar_tasks:
                 unprocessed_new_tasks.remove(t)
             self.handle_ignored_task(task)
+            # Once we have a retry or an ignored task, we should wait to add
+            # children until the task is completed.
+            # On ignored task, we now revert to the before snapshot work
+            return
         else:
             self.processed_tasks.add(task)
             logger.debug("Task %s processed successfully.", task)
@@ -389,6 +395,12 @@ class TaskManager:
             )
             chatter.get().chat_markdown(
                 f"{task.__class__.__name__} was not resolved. Ignoring... ({task.retry_count}/{task.max_retries})"
+                f"<details><summary>Details</summary>\n{task.markdown()}</details>\n"
+            )
+            logger.info("ignoring task, reverting to pre-task snapshot")
+            self.rcm.reset(task._snapshot_before_work)
+            chatter.get().chat_markdown(
+                f"Task {task.__class__.__name__} was not resolved. resetting repo state to before task was tried)"
                 f"<details><summary>Details</summary>\n{task.markdown()}</details>\n"
             )
 
