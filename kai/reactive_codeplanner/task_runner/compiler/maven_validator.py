@@ -98,6 +98,18 @@ class MavenCompilerError(ValidationError):
             if re.match(regex, self.file):
                 self.file = self.file.removeprefix("/")
 
+    def markdown(self) -> str:
+        # Only user-facing info
+        details_str = (
+            "\n".join(f"- {d}" for d in self.details) if self.details else "*None*"
+        )
+        return (
+            f"## {self.__class__.__name__}\n\n"
+            f"**Location**: `{self.file}:{self.line}:{self.column}`\n\n"
+            f"**Message**: {self.message}\n\n"
+            f"**Details**:\n{details_str}\n"
+        )
+
 
 class CollapsedMavenCompilerError(ABC, MavenCompilerError):
     lines: list[int] | None = None
@@ -176,6 +188,18 @@ class DependencyResolutionError(MavenCompilerError):
     def compiler_error_message(self) -> str:
         return self.message
 
+    def markdown(self) -> str:
+        base_info = (
+            super()
+            .markdown()
+            .replace("## MavenCompilerError", "## DependencyResolutionError")
+        )
+        return (
+            base_info
+            + f"\n**Project**: {self.project}\n\n"
+            + f"**Goal**: {self.goal}\n"
+        )
+
 
 @dataclass(eq=False)
 class SymbolNotFoundError(CollapsedMavenCompilerError):
@@ -202,6 +226,16 @@ class SymbolNotFoundError(CollapsedMavenCompilerError):
     def remove_unused_fields(self) -> None:
         self.line = 0
         self.column = 0
+
+    def markdown(self) -> str:
+        base = super().markdown()
+        # Insert the missing_symbol or symbol_location if relevant
+        extra = ""
+        if self.missing_symbol:
+            extra += f"\n**Missing Symbol**: {self.missing_symbol}"
+        if self.symbol_location:
+            extra += f"\n**Symbol Location**: {self.symbol_location}"
+        return base + extra + "\n"
 
 
 @dataclass(eq=False)
@@ -240,6 +274,12 @@ class PackageDoesNotExistError(CollapsedMavenCompilerError):
         # error.
         self.file = "pom.xml"
 
+    def markdown(self) -> str:
+        base = super().markdown()
+        if self.missing_package:
+            base += f"\n**Missing Package**: {self.missing_package}\n"
+        return base
+
 
 @dataclass(eq=False)
 class SyntaxError(MavenCompilerError):
@@ -257,6 +297,16 @@ class TypeMismatchError(MavenCompilerError):
         else:
             return self.message
 
+    def markdown(self) -> str:
+        base = super().markdown()
+        new_header = base.replace("## MavenCompilerError", "## TypeMismatchError")
+        extra = ""
+        if self.expected_type:
+            extra += f"\n**Expected Type**: {self.expected_type}"
+        if self.found_type:
+            extra += f"\n**Found Type**: {self.found_type}"
+        return new_header + extra + "\n"
+
 
 @dataclass(eq=False)
 class AnnotationError(MavenCompilerError):
@@ -266,6 +316,14 @@ class AnnotationError(MavenCompilerError):
 @dataclass(eq=False)
 class AccessControlError(MavenCompilerError):
     inaccessible_class: Optional[str] = None
+
+    def markdown(self) -> str:
+        base = (
+            super().markdown().replace("## MavenCompilerError", "## AccessControlError")
+        )
+        if self.inaccessible_class:
+            base += f"\n**Inaccessible Class**: {self.inaccessible_class}\n"
+        return base
 
 
 @dataclass(eq=False)

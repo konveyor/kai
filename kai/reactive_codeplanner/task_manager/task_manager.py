@@ -247,7 +247,9 @@ class TaskManager:
         logger.info(
             "Handling depth 0 task, assuming fix has applied for task: %s", task
         )
-        chatter.get().chat_simple(f"Completed task {task}.")
+        chatter.get().chat_markdown(
+            f"Resolved task.\n<details><summary>Details</summary>\n{task.markdown()}</details>\n"
+        )
         self.priority_queue.remove(task)
 
     def handle_new_tasks_after_processing(
@@ -282,8 +284,9 @@ class TaskManager:
             logger.info(
                 "Task %s resolved indirectly and removed from queue.", resolved_task
             )
-            chatter.get().chat_simple(
-                f"Resolved task {resolved_task} indirectly while fixing {task}."
+            chatter.get().chat_markdown(
+                f"Resolved {resolved_task.__class__.__name__} indirectly while fixing {task.__class__.__name__}."
+                f"<details><summary>Details</summary>\n{resolved_task.markdown()}</details>\n"
             )
 
         # Check if the current task is still unprocessed (or similar)
@@ -298,7 +301,10 @@ class TaskManager:
         else:
             self.processed_tasks.add(task)
             logger.debug("Task %s processed successfully.", task)
-            chatter.get().chat_simple(f"Resolved task {task}.")
+            chatter.get().chat_markdown(
+                f"Resolved {task.__class__.__name__}."
+                f"<details><summary>Details</summary>\n{task.markdown()}</details>\n"
+            )
 
         new_child_tasks = unprocessed_new_tasks - tasks_in_queue
         # We want the higher priority things at the end of the list, so when we append and pop we get the highest priority
@@ -322,8 +328,9 @@ class TaskManager:
                 if not self.should_skip_task(child_task):
                     self.priority_queue.push(child_task)
                 if max_depth is not None and child_task.depth <= max_depth:
-                    chatter.get().chat_simple(
-                        f"Found new task {child_task} to solve while fixing task {task}."
+                    chatter.get().chat_markdown(
+                        f"Found new task {child_task.__class__.__name__} to solve while fixing task {task.__class__.__name__}."
+                        f"<details><summary>Details</summary>\n{child_task.markdown()}</details>\n"
                     )
             except ValueError:
                 logger.exception("Error adding child task")
@@ -371,16 +378,18 @@ class TaskManager:
                 task.retry_count,
             )
             self.priority_queue.push(task)
-            chatter.get().chat_simple(
-                f"Task {task} was not resolved. Retrying... ({task.retry_count}/{task.max_retries})"
+            chatter.get().chat_markdown(
+                f"{task.__class__.__name__} was not resolved. Retrying... ({task.retry_count}/{task.max_retries})"
+                f"<details><summary>Details</summary>\n{task.markdown()}</details>\n"
             )
         else:
             self.ignored_tasks.append(task)
             logger.warning(
                 "Task %s exceeded max retries and added to ignored tasks.", task
             )
-            chatter.get().chat_simple(
-                f"Task {task} was not resolved. Ignoring... ({task.retry_count}/{task.max_retries})"
+            chatter.get().chat_markdown(
+                f"{task.__class__.__name__} was not resolved. Ignoring... ({task.retry_count}/{task.max_retries})"
+                f"<details><summary>Details</summary>\n{task.markdown()}</details>\n"
             )
 
     def stop(self) -> None:

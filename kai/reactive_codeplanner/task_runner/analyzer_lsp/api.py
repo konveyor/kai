@@ -213,6 +213,18 @@ Issues: {children_messages}"""
         root_path /= self._clean_filename(self.violation.id)
         return root_path
 
+    def markdown(self) -> str:
+        # This is too long I think
+        # incidents_str = "\n".join(f"- {m}" for m in self.incident_message)
+
+        return (
+            f"## AnalyzerRuleViolation\n\n"
+            f"**Location**: `{self.file}:{self.line}:{self.column}`\n\n"
+            f"**RuleSet**: `{self.ruleset.name}`\n\n"
+            f"**Violation ID**: `{self.violation.id}`\n\n"
+            # f"**Incidents**:\n{incidents_str if incidents_str else '*None*'}\n\n"
+        )
+
 
 class AnalyzerDependencyRuleViolation(AnalyzerRuleViolation):
     """The same as a AnalyzerRuleValidation but higher priority and used by the dependency task_runner"""
