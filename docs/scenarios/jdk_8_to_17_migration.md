@@ -16,6 +16,19 @@ Ensure you have the following set up:
 - [Java sample app](https://github.com/konveyor-ecosystem/migrationex.git)
 - [Kai VSCode IDE extension 0.0.13+](https://github.com/konveyor/editor-extensions/releases)
 
+## Tutorial Dev Environment
+
+This tutorial was built and tested using the following setup:
+
+- Java Version: OpenJDK 17
+- Maven: 3.9.9
+- Konveyor AI VSCode Extension Version: 0.0.13
+- LLM Model Used: `gpt-o1-mini`
+
+_Results may vary if a different LLM model is used._ The AI model’s ability to detect and refactor code depends on the specific model's training data and capabilities. If using a different model (e.g., `gpt-4`, `llama-3`), the migration suggestions may differ in accuracy, or level of detail.
+
+For best results, we recommend using the **gpt-o1-mini** model as tested in this guide.
+
 ## Application Overview
 
 The [`migration example`](<(https://github.com/konveyor-ecosystem/migrationex.git)>) repository consists of two main components:
@@ -59,10 +72,7 @@ _Note: At the time of writing this guide, we used version 0.0.13._
 ![walkthrough-2](../images/walkthrough-2.png)
 
 1.3.3 If the welcome page does not appear, open the command palette by pressing Command + Shift + P. This will bring up a list of commands.
-![walkthrough-3](../images/walkthrough-3.png)
-
 From the command palette, locate and select the "Set up Konveyor" option. This will guide you through the configuration process.
-![walkthrough-4](../images/walkthrough-4.png)
 
 #### Configure Kai for your project.
 
@@ -76,17 +86,40 @@ User has an option to override binaries and custom rules, however it comes with 
    You will see a notification that custom rules updated
    ![custom rule-4](../images/jdk_8_to_17_migration/customrule-4.png)
 
+##### Handling RPC Server Not Running During Initial Setup
+
+When setting up Kai for the first time in a new project, you may encounter a **"RPC Connection is not established"** message in the Konveyor Analysis View. This happens when the Kai RPC server has not been started yet.
+
+###### Expected Behavior
+
+- If the RPC server is not running, the Konveyor extension will display that the RPC connection is not established.
+  ![RPC Error](../images/jdk_8_to_17_migration/rpc_error.png)
+- This does not indicate an error in configuration but simply means the server is not yet active.
+- Once the RPC server is started, the connection status should update automatically.
+
+###### Recommended Steps
+
+- Complete the Initial Configuration
+
+  - Select the custom rules as outlined in the previous steps.
+  - Ensure the default rulesets are enabled.
+  - Save the configuration settings.
+
+- Start the RPC Server
+  After configuring Konveyor, manually start the RPC server
+
 2. Configuring analysis arguments is necessary to determine which rules apply to the project during analysis. Set up analysis arguments specific to your project by selecting the appropriate options and pressing "OK" to save the changes.
 
 We will analyze the application using the following migration targets to identify potential areas for improvement:
 
 - Openjdk11
-- Openjdk 17
+- Openjdk17
 - Jakarta-ee
 
 ![select_target.png](../images/jdk_8_to_17_migration/select_target.png)
 
 3. Next, set up the Generative AI key for your project. This step will open the `provider-settings.yaml` file. By default, it is configured to use OpenAI. To change the model, update the anchor `&active` to the desired block. Modify this file with the required arguments, such as the model and API key, to complete the setup. Sample of the provider-settings.yaml can be found [here](https://github.com/konveyor/editor-extensions/blob/main/vscode/resources/sample-provider-settings.yaml).
+   ![Provider settings](../images/jdk_8_to_17_migration/provider_settings.png)
 
 4. Click on `Start Analyzer` to initialize the RPC server
 
