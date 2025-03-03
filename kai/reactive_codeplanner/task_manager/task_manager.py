@@ -399,8 +399,9 @@ class TaskManager:
             )
             logger.info("ignoring task, reverting to pre-task snapshot")
             self.rcm.reset(task._snapshot_before_work)
-            chatter.get().chat_simple(
-                f"Task {task} was not resolved. resetting repo state to before task was tried)"
+            chatter.get().chat_markdown(
+                f"Task {task.__class__.__name__} was not resolved. resetting repo state to before task was tried)"
+                f"<details><summary>Details</summary>\n{resolved_task.markdown()}</details>\n"
             )
 
     def stop(self) -> None:
