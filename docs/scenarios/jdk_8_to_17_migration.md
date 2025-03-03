@@ -14,7 +14,7 @@ Ensure you have the following set up:
 - Java 8 & Java 17 installed
 - Maven 3.9+
 - [Java sample app](https://github.com/konveyor-ecosystem/migrationex.git)
-- [Kai VSCode IDE extension 0.0.13+](https://github.com/konveyor/editor-extensions/releases)
+- [Kai VSCode IDE extension "0.1.0" or later](https://github.com/konveyor/editor-extensions/releases)
 
 ## Tutorial Dev Environment
 
