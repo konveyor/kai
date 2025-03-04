@@ -22,7 +22,7 @@ This tutorial was built and tested using the following setup:
 
 - Java Version: OpenJDK 17
 - Maven: 3.9.9
-- Konveyor AI VSCode Extension Version: 0.0.13
+- Konveyor AI VSCode Extension Version: 0.1.0
 - LLM Model Used: `gpt-o1-mini`
 
 _Results may vary if a different LLM model is used._ The AI model’s ability to detect and refactor code depends on the specific model's training data and capabilities. If using a different model (e.g., `gpt-4`, `llama-3`), the migration suggestions may differ in accuracy, or level of detail.
@@ -85,28 +85,6 @@ User has an option to override binaries and custom rules, however it comes with 
    ![custom rule-3](../images/jdk_8_to_17_migration/customrule-3.png)
    You will see a notification that custom rules updated
    ![custom rule-4](../images/jdk_8_to_17_migration/customrule-4.png)
-
-##### Handling RPC Server Not Running During Initial Setup
-
-When setting up Kai for the first time in a new project, you may encounter a **"RPC Connection is not established"** message in the Konveyor Analysis View. This happens when the Kai RPC server has not been started yet.
-
-###### Expected Behavior
-
-- If the RPC server is not running, the Konveyor extension will display that the RPC connection is not established.
-  ![RPC Error](../images/jdk_8_to_17_migration/rpc_error.png)
-- This does not indicate an error in configuration but simply means the server is not yet active.
-- Once the RPC server is started, the connection status should update automatically.
-
-###### Recommended Steps
-
-- Complete the Initial Configuration
-
-  - Select the custom rules as outlined in the previous steps.
-  - Ensure the default rulesets are enabled.
-  - Save the configuration settings.
-
-- Start the RPC Server
-  After configuring Konveyor, manually start the RPC server
 
 2. Configuring analysis arguments is necessary to determine which rules apply to the project during analysis. Set up analysis arguments specific to your project by selecting the appropriate options and pressing "OK" to save the changes.
 
@@ -403,7 +381,7 @@ After successfully building the .war file, the next step is to deploy it to an A
 ./startup.sh
 ```
 
-![tart_tomcat.png](../images/jdk_8_to_17_migration/start_tomcat.png)
+![start_tomcat.png](../images/jdk_8_to_17_migration/start_tomcat.png)
 
 2. Access the Tomcat Manager
 
