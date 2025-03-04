@@ -1,4 +1,4 @@
-# Kai Demo (August 2024)
+# Kai Demo
 
 Konveyor AI (kai) is Konveyor's approach to easing modernization of application
 source code to a new target by leveraging LLMs with guidance from static code
@@ -16,8 +16,8 @@ solved a similar problem in the past.
     - [2.1 Change import namespaces](#21-change-import-namespaces)
     - [2.2 Modify Scope from CDI bean requirements](#22-modify-scope-from-cdi-bean-requirements)
     - [2.3 EJB Remote and Message Driven Bean(MDB) changes](#23-ejb-remote-and-message-driven-beanmdb-changes)
-      - [EJB Remote](#ejb-remote)
-      - [Message Driven Bean (MDB)](#message-driven-bean-mdb)
+    - [2.4 JMS to SmallRye](#24-jms-to-smallrye)
+  - [Background](#background)
   - [Step 3: Deploy app to Kubernetes](#step-3-deploy-app-to-kubernetes)
   - [Step 4: Debug and File Incidents](#debug-and-file-incidents)
   - [Conclusion](#conclusion)
@@ -29,7 +29,7 @@ facilitating the modernization of application source code to a new target. We
 will illustrate how Kai can handle various levels of migration complexity,
 ranging from simple import swaps to more involved changes such as modifying
 scope from CDI bean requirements. Additionally, we will look into migration
-scenarios that involves EJB Remote and Message Driven Bean(MBD) changes
+scenarios that involves EJB Remote and JMS-based Message Driven Bean(MDB) changes.
 
 We will focus on migrating a partially migrated [JavaEE Coolstore
 application](https://github.com/konveyor-ecosystem/coolstore.git) to Quarkus, a
@@ -45,7 +45,7 @@ Konveyor AI (Kai) can assist and expedite the modernization process.
 - [GenAI credentials](../llm_selection.md#ibm-bam-service)
 - [Maven](https://maven.apache.org/install.html)
 - Quarkus 3.10
-- Java 17
+- Java 21
 
 Additionally, you will need to have the Kai IDE plugin installed in VSCode.
 Download the latest from
@@ -76,21 +76,11 @@ Follow the steps in the [installation guide](../installation.md) to install Kai.
 
 ### Configure Konveyor
 
-1.  When you launch the extension, you will land on the Welcome Page, as shown below. If the Welcome Page does not appear, proceed to the step 2.
-    ![walkthrough](../images/walkthrough-1.png)
-    If "Set up Konveyor" is not available in the list, click the More button for additional options.
-    ![walkthrough](../images/walkthrough-2.png)
-2.  If the welcome page does not appear, open the command palette by pressing Command + Shift + P. This will bring up a list of commands.
-    ![walkthrough](../images/walkthrough-3.png)
-    From the command palette, locate and select the "Set up Konveyor" option. This will guide you through the configuration process.
-    ![walkthrough](../images/walkthrough-4.png)
-3.  Configure Konveyor for your project.
+Follow the steps in the [Configuration Guide](../configuration.md) to set up Kai and start the server. The guide provides in-depth details on customizing the configuration to suit your project’s specific needs.
 
-    - User has an option to override binaries and custom rules, however it comes with the default packaged binaries and custom rules.
-      ![setup-konveyor](../images/setup-konveyor.png)
-    - The Konveyor extension allows you to add custom rules to the analyzer. This is useful when you want to apply your own rules during analysis.
-    - Configuring analysis arguments is necessary to determine which rules apply to the project during analysis. Set up analysis arguments specific to your project by selecting the appropriate options and pressing "OK" to save the changes.
-      ![setup-konveyor](../images/setup-konveyor-2.png)
+> [!NOTE]
+> If you are following the guided demo for the Coolstore application, ensure you select the following targets during project configuration. 
+
 
     We will analyze the Coolstore application using the following migration targets to identify potential areas for improvement:
 
@@ -102,18 +92,13 @@ Follow the steps in the [installation guide](../installation.md) to install Kai.
     - jakarta-ee9
     - quarkus
 
-    - To verify your arguments, go to your project directory and open `/.vscode/settings.json`. This serves as a reference for how `settings.json` should look.
+    - To verify your target configuration, go to your project directory and open `/.vscode/settings.json`. This serves as a reference for how `settings.json` should look.
 
       ```json
       {
         "konveyor.analysis.labelSelector": "(konveyor.io/target=cloud-readiness || konveyor.io/target=jakarta-ee || konveyor.io/target=jakarta-ee8 || konveyor.io/target=jakarta-ee9 || konveyor.io/target=quarkus) || (discovery)"
       }
       ```
-
-    - Next, set up the Generative AI key for your project. This step will open the `provider-settings.yaml` file. By default, it is configured to use OpenAI. To change the model, update the anchor `&active` to the desired block. Modify this file with the required arguments, such as the model and API key, to complete the setup. Sample of the `provider-settings.yaml` can be found [here.](https://github.com/konveyor/editor-extensions/blob/main/vscode/resources/sample-provider-settings.yaml)
-
-4.  Once the configuration is done, click on start server button. Logs are collected at output channel named konveyor-analyzer.
-    ![start-server](../images/start-server.png)
 
 ## Step 2: Run Analysis
 
@@ -134,7 +119,8 @@ Once the analysis is complete, you will see many incidents. However, let's focus
 - `src/main/java/com/redhat/coolstore/model/InventoryEntity.java`
 - `src/main/java/com/redhat/coolstore/service/CatalogService.java`
 - `src/main/java/com/redhat/coolstore/service/ShippingService.java`
-- `src/main/java/com/redhat/coolstore/service/ShoppingCartOrderProcessor.java`
+- `src/main/java/com/redhat/coolstore/service/InventoryNotificationMDB.java`
+- `src/main/java/com/redhat/coolstore/service/OrderServiceMDB.java`
 
 > [!NOTE]
 >
@@ -147,11 +133,16 @@ areas that require attention during the migration process.
 
 ### 2.1 Change import namespaces
 
-Open “Konveyor Analysis View” and search for `InventoryEntity.java` file. Click on `Resolve 6 incidents` to resolve all incidents or individual incidents as shown below.
+Open the "Konveyor Analysis View" and search for the `InventoryEntity.java file`. Click on the circled button to resolve all incidents or individual incidents as shown below. In the dropdown menu, different effort levels are available to resolve the incidents, with the default set to 'Low.' As we progress, we will try out different effort levels in the next example.
 ![request_fix](request_fix.png)
+ 
+The "Resolution Details" window will display the requested fix information as shown below. You can view the reasoning behind the suggested changes and additional information provided by Kai. 
 
-The “Resolution Details” window will display the requested fix information as shown below.
-![resolution_details](resolution_details.png)
+![resolution_details](resolution_details1.png)
+
+Moreover, you can see the additional number of errors that requires your atttention and number of modified files. 
+
+![resolution_details](resolution_details2.png)
 
 Click on the eye symbol to view the differences.
 ![change_import_namespaces.png](change_import_namespaces.png)
@@ -165,68 +156,102 @@ Just like we fixed `InventoryEntity.java`, repeat the same steps for `ShoppingCa
 
 ### 2.2 Modify Scope from CDI bean requirements
 
-In this step, we will use Kai to update the scope definitions in `CatalogService.java`, `ShippingService.java`, and `ShoppingCartOrderProcessor.java` to align with Quarkus CDI bean requirements. Kai will automate this process, ensuring a smooth migration.
+In this step, we will use Kai to update the scope definitions in `CatalogService.java`, and  `ShippingService.java` to align with Quarkus CDI bean requirements. Kai will automate this process, ensuring a smooth migration.
 
-As you can see, the files are grouped by common incidents. Request a fix for all three files shown below.
-![cdi_bean_requirement](cdi_bean_requirement.png)
+Let's review each file and fix all associated issues one by one. The effort level will remain low. Just like in Step 2.1, we will search for the file and request a resolution.
 
-Verify each solution one by one and ensure the requested changes are applied. In this case, Kai understands the problem and proactively fixes future issues as well.
-![multi_file_fix](multi_file_fix.png)
+![cdi_bean_requirement](cdi_bean_requirement1.png)
+
+Verify each solution, review the reasoning and additional steps, and ensure the requested changes are applied. In this case, Kai will rerun the analysis and reduce the number of incidents if the changes are compatible. 
+![cdi_bean_requirement](cdi_bean_requirement2.png)
 
 In `CatalogService.java` Stateless EJB is converted to a CDI bean by replacing the @Stateless annotation with a scope @ApplicationScoped.
 
-![catalogService - diff](catalogService.png)
 
-### 2.3 EJB Remote and Message Driven Bean(MDB) changes
 
-From the previous request, Kai not only modified the scope definitions but also addressed EJB Remote and MDB functionalities in `ShippingService.java` and `ShoppingCartOrderProcessor.java`, respectively. Kai replaced EJBs with REST functionality and updated related imports and annotations.
+### 2.3 EJB Remote 
 
-#### EJB Remote
+Now lets request resolution for the `ShippingService.java` as we did in previous steps. Kai replaced EJBs with REST functionality and updated related imports and annotations.
+
 
 ![shippingService - diff](shippingService.png)
 
 Due to the absence of support for Remote EJBs in Quarkus, you will notice that these functionalities are removed and replaced with REST functionality.
 
-#### Message Driven Bean (MDB)
+### 2.4 JMS to SmallRye
 
-![shoppingCartOrderProcessor - before/after](shoppingCartOrderProcessor.png)
+As you can see, there is an option to search for issues where files are grouped by common incidents. Look for "JMS not supported in Quarkus." The files `OrderServiceMDB.java` and `InventoryNotificationMDB.java` are grouped under this issue. However, these files contain additional issues beyond JMS incompatibility.
 
-- Note the changes made to `ordersEmitter` channel:
+The incident details indicate that JavaEE/JakartaEE JMS elements should be removed and replaced with their Quarkus SmallRye/MicroProfile equivalents. Additionally, the project's pom.xml file needs to be updated with the required dependencies. If we introduce a new dependency, it should be properly configured to ensure compatibility with the existing setup.
 
-  ```java
-  @Inject
-  @Channel("orders")
-  Emitter<String> ordersEmitter;
-  ```
+In such cases, let's leverage Kai's agentic workflow, which helps solve problems in depth. Here, we will request a resolution with medium effort to ensure a more comprehensive fix. Workflow explained [here](#background).
 
-  Although this change is valid, it's important to note that the LLM is unaware
-  of the number of consumers for `orders` channel. It assumed that there is a
-  single consumer for `orders`, but, this app has multiple consumers of
-  `orders`. Assuming there's only a single consumer can lead to
-  `io.smallrye.reactive.messaging.providers.wiring.TooManyDownstreamCandidatesException`.
-  To avoid this, add the `@Broadcast` annotation:
+![jsm-to-smallRye](jmstosmallrye.png)
 
-  ```java
-  import io.smallrye.reactive.messaging.annotations.Broadcast;
+This may take longer as Kai is working to resolve a complex problem.
 
-  @Inject
-  @Channel("orders")
-  @Broadcast
-  Emitter<String> ordersEmitter;
-  ```
+![jsm-to-smallRye](jmstosmllrye1.png)
 
-- Since the LLM doesn't have access to the project's `pom.xml` file, it lacks
-  information about available dependencies. Update the import statements to the
-  following:
+Let's review all the changes one by one.
+![jsm-to-smallRye](jmstosmallrye2.png)
 
-  ```java
-  import org.eclipse.microprofile.reactive.messaging.Channel;
-  import org.eclipse.microprofile.reactive.messaging.Emitter;
-  ```
+The migration replaces the JMS-based Message Driven Bean (MDB) with Quarkus SmallRye Reactive Messaging. It removes JMS dependencies, manual connection management, and session handling, replacing them with `@Incoming("orders")` for message processing. 
 
-![MDB - Manual updates](mdbchanges.png)
+![jsm-to-smallRye](jmstosmallrye3.png)
 
-### Step 3: Deploy app to Kubernetes
+Let's review `pom.xml` file. 
+> [!NOTE]
+> If Kai updates its dependencies and includes SmallRye Reactive Messaging 4.27.0 as an independent dependency, it may not be found in Maven. Since Quarkus already includes SmallRye internally, it is recommended to use `io.quarkus:quarkus-smallrye-reactive-messaging` instead of `io.smallrye.reactive` to ensure compatibility and avoid missing artifacts.
+
+![jsm-to-smallRye](jmstosmallrye4.png)
+
+At the end of this step, the application should be able to compile successfully. Any additional incidents can be ignored. To update dependencies from the repository and compile the project, run the following command
+ ```bash
+  mvn clean install -U && mvn compile
+```
+
+## Background 
+
+### Core Workflow
+The Validator serves as the entry point, identifying issues in the repository and re-running the analysis after changes are accepted. It determines task types and generates tasks accordingly.
+
+The TaskManager prioritizes and queues tasks, delegating them to TaskRunners based on their type.
+
+TaskRunners interpret the nature of errors and orchestrate the Agentic Workflow, where multiple specialized agents collaborate to resolve tasks efficiently. Once tasks are executed, the Feedback Loop validates the changes by reanalyzing the codebase, generating new tasks if necessary.
+
+More information available [here](../presentations/2024-11-14-konveyor-community.md).
+
+### Agentic Workflow
+The Agentic Workflow enables multiple agents to work together to resolve migration issues. The key agents include:
+
+**AnalyzerAgent**
+The initial step in identifying migration issues and generating LLM-based solutions.
+Once the LLM response is received, it applies the suggested changes, triggering various symbol resolution tasks.
+Upon completion, Validators reanalyze the codebase.
+
+**MavenCompilerAgent**
+Handles all non-dependency-related compilation errors.
+Example: Resolves SymbolNotFoundError tasks.
+
+**MavenDependencyAgent**
+Manages all dependency-related issues detected by both the Analyzer Validator and Compilation Validator.
+Example: Resolves PackageDoesNotExistError tasks.
+
+**ReflectionAgent**
+Invoked after each task or group of tasks to review and validate the changes (Reflection Iteration 1).
+If new tasks arise, such as AnalyzerDependencyRuleViolation, the AnalyzerAgent is called again for further resolution.
+
+### Effort-Based Resolution
+The Agentic Workflow operates within a configurable effort level, allowing Kai to adapt its resolution strategy based on user preferences:
+- **Low Effort**: Attempts to fix only the detected issues.
+- **Medium Effort**: Fixes the detected issues and resolves any new issues caused by the initial fix.
+- **High Effort**: Continues resolving issues iteratively until no further problems remain.
+
+Retries occur as part of the implementation process, though they are not currently user-configurable.
+![workflow](agentic-flow.png)
+
+
+## Step 3: Deploy app to Kubernetes
 
 Although the app is deployable to any [Kubernetes](https://kubernetes.io/)
 distribution. For the sake of simplicity we choose
@@ -280,7 +305,7 @@ this URL, run the following command:
 ```bash
 minikube service list
 ```
-
+Message Driven Bean (MDB)
 ![deploy app](deploy.gif)
 
 ## Debug and File Incidents
@@ -295,3 +320,4 @@ capabilities, organizations can expedite the modernization process. If you are
 interested to learn more about our ongoing efforts and future plans, please
 reach out to us in the [slack
 channel](https://kubernetes.slack.com/archives/CR85S82A2)
+
