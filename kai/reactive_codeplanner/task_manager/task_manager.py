@@ -253,6 +253,7 @@ class TaskManager:
             f"Resolved task.\n<details><summary>Details</summary>\n{task.markdown()}</details>\n"
         )
         self.priority_queue.remove(task)
+        self.processed_tasks.add(task)
 
     def handle_new_tasks_after_processing(
         self, task: Task, max_depth: Optional[int]
