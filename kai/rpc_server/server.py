@@ -574,8 +574,8 @@ def get_codeplan_agent_solution(
             params.max_iterations, app.task_manager.get_next_task
         )
 
-        initial_solved_tasks = app.task_manager.processed_tasks
-        initial_ignored_tasks = set(app.task_manager.ignored_tasks)
+        initial_solved_tasks = app.task_manager.processed_tasks.copy()
+        initial_ignored_tasks = set(app.task_manager.ignored_tasks).copy()
 
         overall_modified_files: set[str] = set()
         for task in next_task_fn(params.max_priority, params.max_depth):
@@ -622,18 +622,20 @@ def get_codeplan_agent_solution(
         app.log.debug("QUEUE_STATE_END_OF_CODE_PLAN: IGNORED_TASKS: END")
 
         msg = f"Finished with {len(overall_result.encountered_errors)} errors and {len(overall_result.modified_files)} modified files.\n"
-        msg += "<details><summary>Successful tasks:</summary>\n"
-        msg += "<ul>\n"
-        for task in app.task_manager.processed_tasks - initial_solved_tasks:
-            msg += f"<li>{task}</li>\n"
-        msg += "</ul>\n"
-        msg += "</details>\n"
-        msg += "<details><summary>Ignored tasks:</summary>\n"
-        msg += "<ul>\n"
-        for task in set(app.task_manager.ignored_tasks) - initial_ignored_tasks:
-            msg += f"<li>{task}</li>\n"
-        msg += "</ul>\n"
-        msg += "</details>\n"
+        if app.task_manager.processed_tasks - initial_solved_tasks:
+            msg += "<details><summary>Successful tasks:</summary>\n"
+            msg += "<ul>\n"
+            for task in app.task_manager.processed_tasks - initial_solved_tasks:
+                msg += f"<li>{str(task)}</li>\n"
+            msg += "</ul>\n"
+            msg += "</details>\n"
+        if set(app.task_manager.ignored_tasks) - initial_ignored_tasks:
+            msg += "<details><summary>Ignored tasks:</summary>\n"
+            msg += "<ul>\n"
+            for task in set(app.task_manager.ignored_tasks) - initial_ignored_tasks:
+                msg += f"<li>{str(task)}</li>\n"
+            msg += "</ul>\n"
+            msg += "</details>\n"
         chatter.get().chat_markdown(msg)
 
         diff = app.rcm.snapshot.diff(agent_solution_snapshot)
