@@ -2,7 +2,36 @@
 
 ## Goal
 
-This scenario demonstrates how **Konveyor AI** can assist in modernizing a **Java 8** application to **Java 17** by identifying outdated APIs, suggesting migration changes, and ensuring best security practices (e.g., replacing MD5 hashing). We will use a custom rule and default rules with **Konveyor AI** to analyze a legacy Java application and generate refactoring recommendations.
+This scenario demonstrates how **Konveyor AI (Kai)** can assist in modernizing a **Java 8** application to **Java 17** by identifying outdated APIs, suggesting migration changes, and ensuring best security practices (e.g., replacing MD5 hashing). We will use a custom rule and default rules with Kai to analyze a Java8 application and generate refactoring recommendations.
+
+## Background
+
+Migrating applications from Java 8 to Java 17 helps in leveraging modern Java features, improved performance, and long-term support. However, the upgrade process is not just a simple JDK version switch. Developers and end-users often encounter compilation failures, deprecated classes, and security vulnerabilities that require manual intervention.
+
+A common challenge in this process is dealing with removed or deprecated classes and APIs. In the following guide, we will explore few issues(like below) that arise when compiling a Java 8 application with Java 17,
+
+```java
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR :
+[INFO] -------------------------------------------------------------
+[ERROR] /Users/sraghuna/local_dev/migrationex/migrationex/src/main/java/com/konveyor/Library.java:[7,16] cannot find symbol
+  symbol:   class BASE64Encoder
+  location: package sun.misc
+```
+
+This issue occurs because the `sun.misc.BASE64Encoder` class, deprecated in Java8, was completely removed in Java9. Additionally, the application uses `MD5` hashing, which is considered insecure by modern cryptographic standards. We will use a custom rule in Kai to identify and refactor these issues efficiently.
+
+The following problems highlight the effort and expertise reqyuired to perform Java 8 to Java 17 migration:
+
+- Compatibility Issues – Classes from javax packages need to be updated to jakarta, removed APIs (such as `sun.misc.BASE64Encoder`) need alternatives, and project dependencies require updates.
+- Security Concerns – Legacy code may include insecure cryptographic implementations, such as `MD5` hashing, which should be replaced with more secure alternatives like `SHA-256`.
+
+We will demonstrate how Kai can address the above problems and simplifies the whole migration process by,
+
+- Running an automated analysis to detect issues like removed APIs and outdated dependencies.
+- Applying a custom rule to detect a security risk and obtaining refactored code adhering to security best practices.
+
+By using Kai, developers and end-users can streamline Java 8 to Java 17 migrations with minimal manual effort.
 
 ## Prerequisites
 
@@ -31,7 +60,7 @@ For best results, we recommend using the **gpt-o1-mini** model as tested in this
 
 ## Application Overview
 
-The [`migration example`](<(https://github.com/konveyor-ecosystem/migrationex.git)>) repository consists of two main components:
+The [`migration example`](https://github.com/konveyor-ecosystem/migrationex.git) repository consists of two main components:
 
 1.  Java 8 Application – The sample Java 8 application (`migration example`) is a simple **Book management system** that manages a collection of books.
 2.  Rules Folder – Contains custom migration rules used by Kai for this app.
