@@ -212,7 +212,7 @@ Since MD5 hashing is insecure, we add a custom rule to detect and recommend secu
           pattern: java.security.MessageDigest.getInstance
           location: METHOD_CALL
       - builtin.filecontent:
-          pattern: 'MessageDigest.getInstance\("MD5"\)'
+          pattern: 'MessageDigest.getInstance\(\"MD5\"\)'
   description: Do not use MD5 for hashing due to security vulnerabilities.
   message: |
     The MD5 algorithm is **outdated** and should not be used for secure hashing.
