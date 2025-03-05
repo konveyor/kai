@@ -8,15 +8,41 @@ This scenario demonstrates how **Konveyor AI (Kai)** can assist in modernizing a
 
 Migrating applications from Java 8 to Java 17 helps in leveraging modern Java features, improved performance, and long-term support. However, the upgrade process is not just a simple JDK version switch. Developers and end-users often encounter compilation failures, deprecated classes, and security vulnerabilities that require manual intervention.
 
-A common challenge in this process is dealing with removed or deprecated classes and APIs. In the following guide, we will explore few issues(like below) that arise when compiling a Java 8 application with Java 17,
+A common challenge in this process is dealing with removed or deprecated classes and APIs. In the following guide, we will explore few issues(like below) that arise when compiling the sample Java 8 application with Java 17,
 
-```java
+```sh
+% mvn --version
+Apache Maven 3.9.9 (8e8579a9e76f7d015ee5ec7bfcdc97d260186937)
+Maven home: /Users/sraghuna/Downloads/apache-maven-3.9.9
+Java version: 17.0.14, vendor: Homebrew, runtime: /opt/homebrew/Cellar/openjdk@17/17.0.14/libexec/openjdk.jdk/Contents/Home
+Default locale: en_US, platform encoding: UTF-8
+OS name: "mac os x", version: "14.7.4", arch: "aarch64", family: "mac"
+
+% mvn clean compile
+[INFO] Scanning for projects...
+[INFO]
+[INFO] ----------------------< com.konveyor:migrationex >----------------------
+[INFO] Building migration example 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+...
+...
+
 [INFO] -------------------------------------------------------------
 [ERROR] COMPILATION ERROR :
 [INFO] -------------------------------------------------------------
 [ERROR] /Users/sraghuna/local_dev/migrationex/migrationex/src/main/java/com/konveyor/Library.java:[7,16] cannot find symbol
   symbol:   class BASE64Encoder
   location: package sun.misc
+...
+...
+[INFO] 3 errors
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.503 s
+[INFO] Finished at: 2025-03-05T13:06:58-05:00
+...
 ```
 
 This issue occurs because the `sun.misc.BASE64Encoder` class, deprecated in Java8, was completely removed in Java9. Additionally, the application uses `MD5` hashing, which is considered insecure by modern cryptographic standards. We will use a custom rule in Kai to identify and refactor these issues efficiently.
