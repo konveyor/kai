@@ -47,17 +47,21 @@ OS name: "mac os x", version: "14.7.4", arch: "aarch64", family: "mac"
 
 This issue occurs because the `sun.misc.BASE64Encoder` class, deprecated in Java8, was completely removed in Java9. Additionally, the application uses `MD5` hashing, which is considered insecure by modern cryptographic standards. We will use a custom rule in Kai to identify and refactor these issues efficiently.
 
-The following problems highlight the effort and expertise reqyuired to perform Java 8 to Java 17 migration:
+The following problems highlight the effort and expertise required to perform Java 8 to Java 17 migration:
 
 - Compatibility Issues – Classes from javax packages need to be updated to jakarta, removed APIs (such as `sun.misc.BASE64Encoder`) need alternatives, and project dependencies require updates.
 - Security Concerns – Legacy code may include insecure cryptographic implementations, such as `MD5` hashing, which should be replaced with more secure alternatives like `SHA-256`.
+
+By using Kai, developers and end-users can streamline Java 8 to Java 17 migrations with minimal manual effort. Kai comes with over 2,400 community-contributed rules, covering JDK upgrades like Java 8 -> Java 17+
+
+- Built-in rules - Konveyor ships with rules that automatically detect removed or deprecated Java APIs and suggest replacements. In this guide, we use one such [rule](https://github.com/konveyor/rulesets/blob/e1ca097b35d990cab32067b55ad1144d37d10d5c/default/generated/openjdk11/191-java-removals.windup.yaml#L293) that identifies the removal of `sun.misc.BASE64Encoder` and recommends using `java.util.Base64` instead. You can explore the rulesets repo [here](https://github.com/konveyor/rulesets)
+
+- Custom Rules for advanced use cases - Beyond community rules, Kai also supports custom rules, allowing users to tailor migration rules to their specific needs. In this guide, we create a [custom security rule](https://github.com/konveyor-ecosystem/migrationex/blob/main/rules/rule.yaml) that detects insecure `MD5` hashing and replaces it with `SHA-256`, ensuring compliance with modern cryptographic standards.
 
 We will demonstrate how Kai can address the above problems and simplifies the whole migration process by,
 
 - Running an automated analysis to detect issues like removed APIs and outdated dependencies.
 - Applying a custom rule to detect a security risk and obtaining refactored code adhering to security best practices.
-
-By using Kai, developers and end-users can streamline Java 8 to Java 17 migrations with minimal manual effort.
 
 ## Prerequisites
 
