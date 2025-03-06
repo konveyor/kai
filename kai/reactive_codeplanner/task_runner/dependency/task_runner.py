@@ -113,6 +113,8 @@ class DependencyTaskRunner(TaskRunner):
                         logger.debug("found dep %r and removing", dep)
                         deps.remove(dep)
 
+        # This fixes whitespace/indentations on the new dependencies
+        ET.indent(tree)
         tree.write(file=pom, encoding="utf-8", pretty_print=True)
         rcm.commit(
             f"DependencyTaskRunner changed file {str(pom)}",
