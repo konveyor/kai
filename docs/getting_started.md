@@ -120,5 +120,5 @@ resolved.
 ## Guided Scenario
 
 Now that you understand how to get started with Kai, we suggest running through
-a [guided scenario](./scenarios/demo.md) to get a better idea of how Kai can assist
+a [guided scenario](./scenarios/README.md) to get a better idea of how Kai can assist
 with the migration of an application.
