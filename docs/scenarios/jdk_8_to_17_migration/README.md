@@ -126,10 +126,10 @@ Follow this [installation guide](https://github.com/konveyor/kai/blob/main/docs/
 
 1.3.1. When you launch the extension, you will land on the Welcome Page, as shown below. If the Welcome Page does not appear, proceed to the step 1.3.2.
 
-![walkthrough-1](../images/walkthrough-1.png)
+![walkthrough-1](../../images/walkthrough-1.png)
 
 1.3.2. If "Set up Konveyor" is not available in the list, click the More button for additional options.
-![walkthrough-2](../images/walkthrough-2.png)
+![walkthrough-2](../../images/walkthrough-2.png)
 
 1.3.3 If the welcome page does not appear, open the command palette by pressing Command + Shift + P. This will bring up a list of commands.
 From the command palette, locate and select the "Set up Konveyor" option. This will guide you through the configuration process.
@@ -139,12 +139,12 @@ From the command palette, locate and select the "Set up Konveyor" option. This w
 User has an option to override binaries and custom rules, however it comes with the default packaged binaries and custom rules.
 
 1. Let's select the custom rule we have
-   ![custom rule-1](../images/jdk_8_to_17_migration/customrule-1.png)
-   ![custom rule-2](../images/jdk_8_to_17_migration/customrule-2.png)
+   ![custom rule-1](images/customrule-1.png)
+   ![custom rule-2](images/customrule-2.png)
    Make sure to select `Yes` to use the default rulesets
-   ![custom rule-3](../images/jdk_8_to_17_migration/customrule-3.png)
+   ![custom rule-3](images/customrule-3.png)
    You will see a notification that custom rules updated
-   ![custom rule-4](../images/jdk_8_to_17_migration/customrule-4.png)
+   ![custom rule-4](images/customrule-4.png)
 
 2. Configuring analysis arguments is necessary to determine which rules apply to the project during analysis. Set up analysis arguments specific to your project by selecting the appropriate options and pressing "OK" to save the changes.
 
@@ -156,16 +156,16 @@ We will analyze the application using the following migration targets to identif
 
 _We need OpenJDK 11 as a target when migrating from Java 8 to 17 because some deprecations and migration rules from Java 9 and 11 are not present in OpenJDK 17. OpenJDK 11 captures changes deprecated in earlier versions, while OpenJDK 17 focuses on 11+ deprecations. Using both ensures we catch all necessary migration warnings and avoid missing intermediate changes._
 
-![select_target.png](../images/jdk_8_to_17_migration/select_target.png)
+![select_target.png](images/select_target.png)
 
 Skip selecting source platform. Make sure to select 'OK' once you are done.
 
 3. Next, set up the Generative AI key for your project. This step will open the `provider-settings.yaml` file. By default, it is configured to use OpenAI. To change the model, update the anchor `&active` to the desired block. Modify this file with the required arguments, such as the model and API key, to complete the setup. Sample of the provider-settings.yaml can be found [here](https://github.com/konveyor/editor-extensions/blob/main/vscode/resources/sample-provider-settings.yaml).
-   ![Provider settings](../images/jdk_8_to_17_migration/provider_settings.png)
+   ![Provider settings](images/provider_settings.png)
 
 4. Click on `Start Analyzer` to initialize the RPC server
 
-![start_analyzer.png](../images/jdk_8_to_17_migration/start_analyzer.png)
+![start_analyzer.png](images/start_analyzer.png)
 
 ## Step 2: Understanding the Custom Rule
 
@@ -245,11 +245,11 @@ You can learn more about writing your own custom rules [here](https://github.com
 Let's run our initial analysis:
 
 1. Once you have RPC server initialized, navigate to "Konveyor Analysis View" and click Run Analysis. Open the command palette by pressing `Command + Shift + P` to find it.
-   ![run_analysis.png](../images/jdk_8_to_17_migration/run_analysis.png)
+   ![run_analysis.png](images/run_analysis.png)
 
 2. The Konveyor Analysis View lists issues, allowing you to filter them by file issues. On the left side, the Konveyor Issue Panel groups files based on similar issues for easier navigation.
 
-![list_issues.png](../images/jdk_8_to_17_migration/list_issues.png)
+![list_issues.png](images/list_issues.png)
 
 ### 3.1 Incidents in Library.java
 
@@ -263,7 +263,7 @@ Expand the incidents for `Library.java` and you will see three incidents
 | **`javax.servlet` → `jakarta.servlet`** | Line 8       | Update import              |
 | **Deprecated `BASE64Encoder`**          | Line 7       | Use `Base64.getEncoder()`  |
 
-![incidents_library.png](../images/jdk_8_to_17_migration/incidents_library.png)
+![incidents_library.png](images/incidents_library.png)
 
 #### MD5 is outdated
 
@@ -271,17 +271,17 @@ Expand the incidents for `Library.java` and you will see three incidents
 
 - Click on the **tool icon** next to the first issue (MD5 hashing).
 
-![get_solution.png](../images/jdk_8_to_17_migration/get_solution.png)
+![get_solution.png](images/get_solution.png)
 
 - This opens the resolution details panel
-  ![solution_details.png](../images/jdk_8_to_17_migration/solution_details.png)
+  ![solution_details.png](images/solution_details.png)
 
 #### Requesting a Fix
 
 - The **resolution process starts**, where Kai interacts with the **LLM**.
 - Once Kai completes processing, it suggests modifications for **Library.java**.
-  ![requesting_fix_1.png](../images/jdk_8_to_17_migration/requesting_fix_1.png)
-  ![requesting_fix_2.png](../images/jdk_8_to_17_migration/requesting_fix_2.png)
+  ![requesting_fix_1.png](images/requesting_fix_1.png)
+  ![requesting_fix_2.png](images/requesting_fix_2.png)
 
 #### Reviewing Suggested Changes
 
@@ -289,12 +289,12 @@ Expand the incidents for `Library.java` and you will see three incidents
 - The **right panel** displays:
   - **MD5 is replaced with SHA-256** for secure hashing.
   - **`BASE64Encoder` is replaced with `Base64.getEncoder()`** from `java.util.Base64`, which is the standard modern API.
-    ![file_diff_view.png](../images/jdk_8_to_17_migration/file_diff_view.png)
+    ![file_diff_view.png](images/file_diff_view.png)
 
 #### Applying Fixes
 
 Click the `check icon` on the file in the left pane to apply the updates.
-![accept_solution.png](../images/jdk_8_to_17_migration/accept_solution.png)
+![accept_solution.png](images/accept_solution.png)
 
 Kai correctly identified and resolved the issue:
 
@@ -326,8 +326,8 @@ Konveyor analysis detected two dependency-related issues in `pom.xml`:
 #### Requesting a Fix
 
 We will solve both the issues together this time. Clicking on the **tool icon** next to the file name initiates the resolution process for both the issues.
-![pom_issues.png](../images/jdk_8_to_17_migration/pom_issues.png)
-![pom_fixes.png](../images/jdk_8_to_17_migration/pom_fixes.png)
+![pom_issues.png](images/pom_issues.png)
+![pom_fixes.png](images/pom_fixes.png)
 
 - Once complete, click on the `pom.xml` on the left pane to view the changes.
 
@@ -339,7 +339,7 @@ We will solve both the issues together this time. Clicking on the **tool icon** 
   - **Updated `artifactId` from `javax.servlet-api` → `jakarta.servlet-api`**.
   - **Updated compiler target from `1.8` → `17`** to align with the Java 17 migration.
 
-![pom_solution.png](../images/jdk_8_to_17_migration/pom_solution.png)
+![pom_solution.png](images/pom_solution.png)
 
 #### Applying Fixes
 
@@ -366,7 +366,7 @@ Click the `check icon` on the file in the left pane to apply the changes.
 
 Once the changes to pom.xml are applied, Kai automatically retriggers analysis and updates the analysis view
 
-![javax_jakarta_issues.png](../images/jdk_8_to_17_migration/javax_jakarta_issues.png)
+![javax_jakarta_issues.png](images/javax_jakarta_issues.png)
 
 #### Identifying Issues
 
@@ -383,26 +383,26 @@ Konveyor analysis detected multiple import statements that require updates from 
 #### Requesting a Fix
 
 Clicking on the **tool icon** next to the issue name initiates the resolution process.
-![jakarta_fix.png](../images/jdk_8_to_17_migration/jakarta_fix.png)
+![jakarta_fix.png](images/jakarta_fix.png)
 
-Kai processes the request in **Library.java** and **LibraryServlet.java**.![jakarta_requesting_solution.png](../images/jdk_8_to_17_migration/jakarta_requesting_solution.png)
+Kai processes the request in **Library.java** and **LibraryServlet.java**.![jakarta_requesting_solution.png](images/jakarta_requesting_solution.png)
 
-![jakarta_get_solution_complete.png](../images/jdk_8_to_17_migration/jakarta_get_solution_complete.png)
+![jakarta_get_solution_complete.png](images/jakarta_get_solution_complete.png)
 
 #### Reviewing Suggested Changes
 
-![jakarta_accept_fixes.png](../images/jdk_8_to_17_migration/jakarta_accept_fixes.png)
+![jakarta_accept_fixes.png](images/jakarta_accept_fixes.png)
 
 - **Library.java**
 
   The **left panel** contains the `javax.servlet.http.HttpServletResponse` import.
   The **right panel** updates it to `jakarta.servlet.http.HttpServletResponse`.
-  ![library_jakarta_changes.png](../images/jdk_8_to_17_migration/library_jakarta_changes.png)
+  ![library_jakarta_changes.png](images/library_jakarta_changes.png)
 
 - **LibraryServlet.java**
   The **left panel** shows the current code with `javax.servlet` imports.
   The **right panel** displays the suggested **jakarta.servlet** imports.
-  ![servlet_jakarta_changes.png](../images/jdk_8_to_17_migration/servlet_jakarta_changes.png)
+  ![servlet_jakarta_changes.png](images/servlet_jakarta_changes.png)
 
 #### Applying Fixes
 
@@ -410,7 +410,7 @@ Click the `check icon` next to the filenames in tje left pane to finalize the up
 
 After applying all the changes, Kai retriggers analysis, and no further incidents were found, confirming a successful migration.
 
-![no-new-incidents.png](../images/jdk_8_to_17_migration/no-new-incidents.png)
+![no-new-incidents.png](images/no-new-incidents.png)
 
 ## Step 4: Build the app
 
@@ -419,7 +419,7 @@ With all migration changes applied, we can now build, package, and deploy the up
 ### 4.1 Building the Application
 
 To compile the migrated code and generate the deployment artifact, run the following command:
-![git_status.png](../images/jdk_8_to_17_migration/git_status.png)
+![git_status.png](images/git_status.png)
 
 1. cd into project directory
 
@@ -428,7 +428,7 @@ mvn clean compile
 mvn package
 ```
 
-![mvn_compile.png](../images/jdk_8_to_17_migration/mvn_compile.png)
+![mvn_compile.png](images/mvn_compile.png)
 
 - The `mvn clean compile` command ensures a clean slate by removing old compiled files and recompiling the updated source code.
 - The `mvn package` step creates a .war file, that is used for deployment.
@@ -447,16 +447,16 @@ After successfully building the .war file, the next step is to deploy it to an A
 ./startup.sh
 ```
 
-![start_tomcat.png](../images/jdk_8_to_17_migration/start_tomcat.png)
+![start_tomcat.png](images/start_tomcat.png)
 
 2. Access the Tomcat Manager
 
-   Open a browser and navigate to `http://localhost:8080/manager/html` ![tomcat_manager.png](../images/jdk_8_to_17_migration/tomcat_manager.png)
+   Open a browser and navigate to `http://localhost:8080/manager/html` ![tomcat_manager.png](images/tomcat_manager.png)
 
 3. Upload the .war File
 
    Click "Choose File" under the "WAR file to deploy" section. Select `migrationex.war` from the target/ directory. Click "Deploy".
-   ![deploy_app.png](../images/jdk_8_to_17_migration/deploy_app.png)
+   ![deploy_app.png](images/deploy_app.png)
 
 If the deployment is successful, `migrationex` should appear in the list of running applications.
 
@@ -466,7 +466,7 @@ Now that the application is deployed, access it in a browser via the url - http:
 
 It displays a simple book management UI.
 
-![app_running.png](../images/jdk_8_to_17_migration/app_running.png)
+![app_running.png](images/app_running.png)
 
 ## Conclusion
 
