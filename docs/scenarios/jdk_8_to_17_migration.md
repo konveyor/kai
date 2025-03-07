@@ -120,7 +120,7 @@ Navigate to File > Open in VSCode and locate the folder we just cloned and selec
 
 Follow this [installation guide](https://github.com/konveyor/kai/blob/main/docs/scenarios/demo.md#configure-konveyor) to install the latest Konveyor AI IDE plugin.
 
-_Note: At the time of writing this guide, we used version 0.1.0_
+**_Note: At the time of writing this guide, we used version 0.1.0_**
 
 ### 1.3 Configure Kai in VS Code
 
