@@ -19,6 +19,8 @@ class RpcClientConfig:
     included_paths: Optional[list[Path]] = None
     excluded_paths: Optional[list[Path]] = None
     dep_open_source_labels_path: Optional[Path] = None
+    label_selector: Optional[str] = None
+    incident_selector: Optional[str] = None
 
 
 @dataclass(eq=False, kw_only=True)
