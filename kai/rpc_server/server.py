@@ -76,6 +76,7 @@ class KaiRpcApplicationConfig(CamelCaseBaseModel):
     analyzer_lsp_rpc_path: AutoAbsPathExists
     analyzer_lsp_rules_paths: list[AutoAbsPathExists]
     analyzer_lsp_java_bundle_paths: list[AutoAbsPathExists]
+    analyzer_lsp_label_selector: Optional[str] = ""
     analyzer_lsp_dep_labels_path: Optional[AutoAbsPathExists] = None
     analyzer_lsp_excluded_paths: Optional[list[AutoAbsPathExists]] = None
 
@@ -235,7 +236,7 @@ def initialize(
             analyzer_rules=app.config.analyzer_lsp_rules_paths,
             analyzer_lsp_path=app.config.analyzer_lsp_lsp_path,
             analyzer_bundle_paths=app.config.analyzer_lsp_java_bundle_paths,
-            label_selector="konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee",
+            label_selector=app.config.analyzer_lsp_label_selector,
             incident_selector=None,
             included_paths=None,
             excluded_paths=app.config.analyzer_lsp_excluded_paths,
