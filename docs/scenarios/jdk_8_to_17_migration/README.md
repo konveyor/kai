@@ -138,15 +138,15 @@ From the command palette, locate and select the "Set up Konveyor" option. This w
 
 User has an option to override binaries and custom rules, however it comes with the default packaged binaries and custom rules.
 
-1. Let's select the custom rule we have
-   ![custom rule-1](images/customrule-1.png)
-   ![custom rule-2](images/customrule-2.png)
-   Make sure to select `Yes` to use the default rulesets
-   ![custom rule-3](images/customrule-3.png)
-   You will see a notification that custom rules updated
-   ![custom rule-4](images/customrule-4.png)
+- Let's select the custom rule we have
+  ![custom rule-1](images/customrule-1.png)
+  ![custom rule-2](images/customrule-2.png)
+  Make sure to select `Yes` to use the default rulesets
+  ![custom rule-3](images/customrule-3.png)
+  You will see a notification that custom rules updated
+  ![custom rule-4](images/customrule-4.png)
 
-2. Configuring analysis arguments is necessary to determine which rules apply to the project during analysis. Set up analysis arguments specific to your project by selecting the appropriate options and pressing "OK" to save the changes.
+- Configuring analysis arguments is necessary to determine which rules apply to the project during analysis. Set up analysis arguments specific to your project by selecting the appropriate options and pressing "OK" to save the changes.
 
 We will analyze the application using the following migration targets to identify potential areas for improvement:
 
@@ -160,10 +160,10 @@ _We need OpenJDK 11 as a target when migrating from Java 8 to 17 because some de
 
 Skip selecting source platform. Make sure to select 'OK' once you are done.
 
-3. Next, set up the Generative AI key for your project. This step will open the `provider-settings.yaml` file. By default, it is configured to use OpenAI. To change the model, update the anchor `&active` to the desired block. Modify this file with the required arguments, such as the model and API key, to complete the setup. Sample of the provider-settings.yaml can be found [here](https://github.com/konveyor/editor-extensions/blob/main/vscode/resources/sample-provider-settings.yaml).
-   ![Provider settings](images/provider_settings.png)
+- Next, set up the Generative AI key for your project. This step will open the `provider-settings.yaml` file. By default, it is configured to use OpenAI. To change the model, update the anchor `&active` to the desired block. Modify this file with the required arguments, such as the model and API key, to complete the setup. Sample of the provider-settings.yaml can be found [here](https://github.com/konveyor/editor-extensions/blob/main/vscode/resources/sample-provider-settings.yaml).
+  ![Provider settings](images/provider_settings.png)
 
-4. Click on `Start Analyzer` to initialize the RPC server
+- Click on `Start Analyzer` to initialize the RPC server
 
 ![start_analyzer.png](images/start_analyzer.png)
 
@@ -441,7 +441,7 @@ To install and configure Tomcat, please follow these [instructions](./install_ap
 
 After successfully building the .war file, the next step is to deploy it to an Apache Tomcat server.
 
-1. Start Tomcat by navigating to the Tomcat bin/ directory and run:
+- Start Tomcat by navigating to the Tomcat bin/ directory and run:
 
 ```sh
 ./startup.sh
@@ -449,14 +449,14 @@ After successfully building the .war file, the next step is to deploy it to an A
 
 ![start_tomcat.png](images/start_tomcat.png)
 
-2. Access the Tomcat Manager
+- Access the Tomcat Manager
 
-   Open a browser and navigate to `http://localhost:8080/manager/html` ![tomcat_manager.png](images/tomcat_manager.png)
+  Open a browser and navigate to `http://localhost:8080/manager/html` ![tomcat_manager.png](images/tomcat_manager.png)
 
-3. Upload the .war File
+- Upload the .war File
 
-   Click "Choose File" under the "WAR file to deploy" section. Select `migrationex.war` from the target/ directory. Click "Deploy".
-   ![deploy_app.png](images/deploy_app.png)
+  Click "Choose File" under the "WAR file to deploy" section. Select `migrationex.war` from the target/ directory. Click "Deploy".
+  ![deploy_app.png](images/deploy_app.png)
 
 If the deployment is successful, `migrationex` should appear in the list of running applications.
 
