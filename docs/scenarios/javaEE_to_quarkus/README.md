@@ -1,11 +1,11 @@
-# Kai Demo
+# Modernizing a JavaEE Application to Quarkus Using Konveyor AI
 
 Konveyor AI (kai) is Konveyor's approach to easing modernization of application
 source code to a new target by leveraging LLMs with guidance from static code
 analysis augmented with data in Konveyor that helps to learn how an Organization
 solved a similar problem in the past.
 
-- [Kai Demo](#kai-demo)
+- [JavaEE to Quarkus](#modernizing-a-javaee-application-to-quarkus-using-konveyor-ai)
   - [Overview](#overview)
   - [Prerequisites](#prerequisites)
   - [Step 1: Setup](#step-1-setup)
@@ -101,13 +101,13 @@ To verify your target configuration, go to your project directory and open `/.vs
 Let's perform our initial analysis:
 
 1. Once you have RPC server initialized, navigate to "Konveyor Analysis View" and click `Run Analysis`. Open the command palette by pressing Command + Shift + P to find it.
-   ![run_analysis](../../images/run_analysis.png)
+   ![run_analysis](/docs/scenarios/javaEE_to_quarkus/images/run_analysis.png)
 
 2. The Konveyor Analysis View lists issues, allowing you to filter them by file issues. On the left side, the Konveyor Issue Panel groups files based on similar issues for easier navigation.
-   ![konveyor_analysis_view](../../images/konveyor_analysis_view.png)
+   ![konveyor_analysis_view](/docs/scenarios/javaEE_to_quarkus/images/konveyor_analysis_view.png)
 
 If you lose the "Konveyor Analysis View" window, press Command + Shift + P to open the Command Palette, then search for and select the Analysis View window. Alternatively, click the editor icon under the Konveyor Issue panel to reopen it.
-![konveyor_analysis_view_1](../../images/konveyor_analysis_view_1.png)
+![konveyor_analysis_view_1](/docs/scenarios/javaEE_to_quarkus/images/konveyor_analysis_view_1.png)
 
 Once the analysis is complete, you will see many incidents. However, let's focus on fixing only the 6 files necessary to migrate the Coolstore application.
 
@@ -223,7 +223,7 @@ The TaskManager prioritizes and queues tasks, delegating them to TaskRunners bas
 
 TaskRunners interpret the nature of errors and orchestrate the Agentic Workflow, where multiple specialized agents collaborate to resolve tasks efficiently. Once tasks are executed, the Feedback Loop validates the changes by reanalyzing the codebase, generating new tasks if necessary.
 
-More information available [here](../presentations/2024-11-14-konveyor-community.md).
+More information available [here](/docs/presentations/2024-11-14-konveyor-community.md).
 
 ### Agentic Workflow
 
@@ -255,7 +255,7 @@ The Agentic Workflow operates within a configurable effort level, allowing Kai t
 - **High Effort**: Continues resolving issues iteratively until no further problems remain.
 
 Retries occur as part of the implementation process, though they are not currently user-configurable.
-![workflow](../images/demo/agentic-flow.png)
+![workflow](/docs/scenarios//javaEE_to_quarkus/images/agentic-flow.png)
 
 ## Step 3: Deploy app to Kubernetes
 
@@ -312,12 +312,11 @@ this URL, run the following command:
 minikube service list
 ```
 
-Message Driven Bean (MDB)
-![deploy app](deploy.gif)
+![deploy app](/docs/scenarios/javaEE_to_quarkus/images/deploy.gif)
 
 ## Debug and File Incidents
 
-Please review this [page](../debug.md) for information on Logs, Troubleshooting, and Filing Issues.
+Please review this [page](/docs/debug.md) for information on Logs, Troubleshooting, and Filing Issues.
 
 ## Conclusion
 
