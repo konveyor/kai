@@ -120,8 +120,11 @@ class AnalyzerLSP:
         reset_cache: Optional[bool] = None,
     ) -> JsonRpcResponse | JsonRpcError | None:
 
-        if label_selector is not None:
+        if label_selector is not None and self.labels is None:
             self.labels = label_selector
+
+        if label_selector is None and self.labels is not None:
+            label_selector = self.labels
 
         if incident_selector is not None:
             self.incident_selector = incident_selector
