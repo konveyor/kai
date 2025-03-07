@@ -60,7 +60,7 @@ By using Kai, developers and end-users can streamline Java 8 to Java 17 migratio
 
 We will demonstrate how Kai can address the above problems and simplifies the whole migration process by,
 
-- Running an automated analysis to detect issues like removed APIs and outdated dependencies.
+- Running an automated analysis to detect issues like removed APIs and outdated dependencies using default rulesets.
 - Applying a custom rule to detect a security risk and obtaining refactored code adhering to security best practices.
 
 ## Prerequisites
@@ -70,10 +70,11 @@ Ensure you have the following set up:
 - [VSCode](https://code.visualstudio.com/download)
 - [Git](https://git-scm.com/downloads)
 - [GenAI credentials](https://github.com/konveyor/kai/blob/main/docs/llm_selection.md#openai-service)
-- Java 8 & Java 17 installed
+- Java 17 installed
 - Maven 3.9+
 - [Java sample app](https://github.com/konveyor-ecosystem/migrationex.git)
 - [Kai VSCode IDE extension "0.1.0" or later](https://github.com/konveyor/editor-extensions/releases)
+- [Apache Tomcat 11](https://tomcat.apache.org/download-11.cgi)
 
 ## Tutorial Dev Environment
 
@@ -86,7 +87,7 @@ This tutorial was built and tested using the following setup:
 
 _Results may vary if a different LLM model is used._ The AI model’s ability to detect and refactor code depends on the specific model's training data and capabilities. If using a different model (e.g., `gpt-4`, `llama-3`), the migration suggestions may differ in accuracy, or level of detail.
 
-For best results, we recommend using the **gpt-o1-mini** model as tested in this guide.
+For best results, we recommend using the **gpt-o1-mini** model as tested in this guide. OpenShift AI and `Llama 3 70B` have been tested and produce good results, making them a good alternative.
 
 ## Application Overview
 
@@ -119,7 +120,7 @@ Navigate to File > Open in VSCode and locate the folder we just cloned and selec
 
 Follow this [installation guide](https://github.com/konveyor/kai/blob/main/docs/scenarios/demo.md#configure-konveyor) to install the latest Konveyor AI IDE plugin.
 
-_Note: At the time of writing this guide, we used version 0.0.13._
+_Note: At the time of writing this guide, we used version 0.1.0_
 
 ### 1.3 Configure Kai in VS Code
 
@@ -153,7 +154,11 @@ We will analyze the application using the following migration targets to identif
 - Openjdk17
 - Jakarta-ee
 
+_We need OpenJDK 11 as a target when migrating from Java 8 to 17 because some deprecations and migration rules from Java 9 and 11 are not present in OpenJDK 17. OpenJDK 11 captures changes deprecated in earlier versions, while OpenJDK 17 focuses on 11+ deprecations. Using both ensures we catch all necessary migration warnings and avoid missing intermediate changes._
+
 ![select_target.png](../images/jdk_8_to_17_migration/select_target.png)
+
+Skip selecting source platform. Make sure to select 'OK' once you are done.
 
 3. Next, set up the Generative AI key for your project. This step will open the `provider-settings.yaml` file. By default, it is configured to use OpenAI. To change the model, update the anchor `&active` to the desired block. Modify this file with the required arguments, such as the model and API key, to complete the setup. Sample of the provider-settings.yaml can be found [here](https://github.com/konveyor/editor-extensions/blob/main/vscode/resources/sample-provider-settings.yaml).
    ![Provider settings](../images/jdk_8_to_17_migration/provider_settings.png)
