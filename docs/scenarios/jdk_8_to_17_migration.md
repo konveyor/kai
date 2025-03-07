@@ -437,6 +437,8 @@ The generated ``.war` file can be found in the `target/` directory
 
 ### 4.2 Deploying the app to Apache Tomcat
 
+To install and configure Tomcat, please follow these [instructions](./install_apache_tomcat.md).
+
 After successfully building the .war file, the next step is to deploy it to an Apache Tomcat server.
 
 1. Start Tomcat by navigating to the Tomcat bin/ directory and run:
