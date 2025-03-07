@@ -47,7 +47,11 @@ class AnalyzerLSP:
         analyzer_lsp_path: Path,
         dep_open_source_labels_path: Optional[Path],
         excluded_paths: Optional[list[Path]] = None,
+        labels: Optional[str] = None,
+        incident_selector: Optional[str] = None,
     ) -> None:
+        self.labels = labels
+        self.incident_selector = incident_selector
         """This will start an analyzer-lsp jsonrpc server"""
         # trunk-ignore-begin(bandit/B603)
         args: list[str] = [
@@ -109,18 +113,24 @@ class AnalyzerLSP:
     @tracer.start_as_current_span("run_analysis")
     def run_analyzer_lsp(
         self,
-        label_selector: str,
-        included_paths: list[Path],
-        incident_selector: str,
+        label_selector: Optional[str] = None,
+        included_paths: Optional[list[Path]] = None,
+        incident_selector: Optional[str] = None,
         scoped_paths: Optional[list[Path]] = None,
         reset_cache: Optional[bool] = None,
     ) -> JsonRpcResponse | JsonRpcError | None:
+
+        if label_selector is not None:
+            self.labels = label_selector
+
+        if incident_selector is not None:
+            self.incident_selector = incident_selector
+
         request_params: dict[str, Any] = {
-            "label_selector": label_selector,
-            "incident_selector": incident_selector,
+            "label_selector": self.labels,
+            "incident_selector": self.incident_selector,
             "excluded_paths": self.excluded_paths,
         }
-
         if included_paths is not None:
             request_params["included_paths"] = [str(p) for p in included_paths]
 

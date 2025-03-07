@@ -235,8 +235,6 @@ def initialize(
             analyzer_rules=app.config.analyzer_lsp_rules_paths,
             analyzer_lsp_path=app.config.analyzer_lsp_lsp_path,
             analyzer_bundle_paths=app.config.analyzer_lsp_java_bundle_paths,
-            label_selector="konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee",
-            incident_selector=None,
             included_paths=None,
             excluded_paths=app.config.analyzer_lsp_excluded_paths,
             dep_open_source_labels_path=app.config.analyzer_lsp_dep_labels_path,
@@ -496,6 +494,10 @@ def get_codeplan_agent_solution(
         modified_files=[],
         diff="",
     )
+
+    chatter.get().chat_simple("Setting Analysis Cache")
+    app.analyzer.run_analyzer_lsp(scoped_paths=app.task_manager.unprocessed_files)
+    chatter.get().chat_simple("Analysis Cache Reset")
 
     # ExitStack calls its callbacks in reverse order upon exiting the with
     # block, **even if an exception is raised**.

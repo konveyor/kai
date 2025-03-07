@@ -16,8 +16,6 @@ class RpcClientConfig:
     analyzer_rules: list[Path]
     analyzer_lsp_path: Path
     analyzer_bundle_paths: list[Path]
-    label_selector: Optional[str]
-    incident_selector: Optional[str]
     included_paths: Optional[list[Path]] = None
     excluded_paths: Optional[list[Path]] = None
     dep_open_source_labels_path: Optional[Path] = None
