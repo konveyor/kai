@@ -68,12 +68,20 @@ class TaskManager:
         # to resolve any issues found even if they've been seen before
         self.processed_tasks = set()
         self.ignored_tasks = list()
+        self.processed_files = list()
 
         # Clear existing seed tasks
         existing_tasks = self.priority_queue.task_stacks.get(0, [])
         for task in existing_tasks:
             self.priority_queue.remove(task)
-            # Reset priority to default
+            """Keeping this as a comment because if you are interactively running task manager we may
+            need to re-add this.
+            Today this is not needed because there are two options:
+            1. The files are accepted, any children will get added to the correct place on the next validator run 
+              (that happens at the start of code plan).
+            2. The files are not accepted, and these tasks should be removed.
+
+            Reset priority to default
             if task.parent:
                 ancestor = task.oldest_ancestor()
                 ancestor.priority = ancestor.__class__.priority
@@ -81,6 +89,7 @@ class TaskManager:
                 task.priority = task.__class__.priority
             # Now add them back to the queue so they aren't mistakenly detected as children
             self.priority_queue.push(task)
+            """
 
         for task in tasks:
             task.priority = 0
