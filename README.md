@@ -18,7 +18,7 @@ insights into how the organization solved similar problems in the past, helping
 **streamline** and **automate** the code modernization process.
 
 - [📖 Explore the docs!](/docs)
-- [💻 Run through a demo!](/docs/scenarios/demo.md)
+- [💻 Run through a demo!](/docs/scenarios/README.md)
 - [📈 View the Roadmap!](ROADMAP.md)
 
 ## 🔍 About The Project
@@ -65,11 +65,9 @@ models.
 > adding new features. If you are interested in contributing to the project,
 > please see our [Contributor Guide](CONTRIBUTING.md).
 
-### 🗺️ Roadmap and Early Builds
+### 🗺️ Roadmap
 
 - See [ROADMAP.md](ROADMAP.md) to learn about the project's goals and milestones
-- See [docs/evaluation_builds.md](docs/evaluation_builds.md) for information on
-  early builds.
 
 ### 🛠️ Design and Architecture
 
@@ -92,81 +90,21 @@ models.
 [Check out our 15 minute guided demo video to see Kai in
 action!](https://www.youtube.com/watch?v=aE8qNY2m4v4)
 
+#### Additional YouTube Videos from Community Members
+
+- [Upgrade your code with AI: Build Your Own Amazon Q](https://www.youtube.com/watch?v=IF2xQlii4ws) from [Dean Peterson](https://www.linkedin.com/in/deantrepreneur/)
+
 ## 🚀 Getting Started
 
-There are two elements to Kai that is necessary for it to function: the
-**backend** and the **IDE extension**. The backend is responsible for connecting
-to your LLM service, ingesting static analysis reports, and generating
-solutions. The IDE extension is where you can interact with Kai, see
-suggestions, and apply them to your codebase.
+We recommend new users download a [release of Kai](https://github.com/konveyor/editor-extensions/releases) and then walk through a guided scenario to get a feel of Kai's potential.
+We've streamlined the install experience so you just need to download a `.vsix` file and install it in your VSCode IDE.
 
-### Prerequisites
+1. Please follow the steps here to proceed with getting started: [docs/getting_started.md](docs/getting_started.md)
+2. After you have Kai installed we encourage you to run through one of our guided scenarios at: [docs/scenarios](docs/scenarios/README.md)
 
-1. [Git](https://git-scm.com/downloads)
-1. A container engine such as [podman](https://podman.io/docs/installation) or
-   [docker](https://docs.docker.com/get-docker/). We will provide instructions
-   for podman.
-1. Docker-compose or Podman-compose, either one will work. For podman-compose,
-   you can install it [here](https://github.com/containers/podman-compose).
+## Documentation
 
-### Launch the Kai backend with sample data
-
-> [!IMPORTANT]
->
-> Kai is in early development and is not yet ready for production use. We
-> currently recommend checking out the git tag `stable` for the most stable user
-> experience.
-
-The quickest way to get running is to leverage sample data committed into the
-Kai repo along with the `podman compose up` workflow
-
-1. `git clone https://github.com/konveyor/kai.git`
-1. `cd kai`
-1. `git checkout stable`
-1. Make sure the podman runtime is running with `systemctl --user start podman`
-1. Make sure the `logs` directory accessible to the podman container with
-   `podman unshare chown -R 1001:0 logs`
-   - This is necessary to allow podman to write to the `logs` directory outside
-     the container.
-   - Use `sudo chown -R <your_user>:<your_user> logs` to change the ownership
-     of the `logs` directory back to your user when done.
-1. Run `podman compose up`.
-   - The first time this is run it will take several minutes to download images
-     and to populate sample data.
-   - After the first run the DB will be populated and subsequent starts will be
-     much faster, as long as the kai_kai_db_data volume is not deleted.
-   - To clean up all resources run `podman compose down && podman volume rm
-kai_kai_db_data`.
-   - This will run Kai in demo mode, which will use cached LLM responses, via
-     setting the environment variable `KAI__DEMO_MODE=true`. To run without demo
-     mode execute `KAI__DEMO_MODE=false podman compose up`. See
-     [docs/contrib/configuration.md](docs/contrib/configuration.md) for more
-     information on demo mode.
-
-The Kai backend is now running and ready to serve requests!
-
-### Guided Walk-through
-
-After you have the kai backend running via `podman compose up` you can run
-through a guided scenario we have to show Kai in action at
-[docs/scenarios/demo.md](docs/scenarios/demo.md). This document walks through a
-guided scenario of using Kai to complete a migration of a Java EE app to
-Quarkus.
-
-### Other ways to run Kai
-
-The above information is a quick path to enable running Kai quickly to see how
-it works. If you'd like to take a deeper dive into running Kai against data in
-Konveyor or your own custom data, please see
-[docs/getting_started.md](docs/getting_started.md)
-
-### Debugging / Troubleshooting
-
-- Kai backend will write logging information to the `logs` directory. You can
-  adjust the level via the environment variables. For example:
-  `KAI__FILE_LOG_LEVEL="debug"`.
-- Tracing information is written to disk to aid deeper explorations of Prompts
-  and LLM Results. See [docs/contrib/tracing.md](docs/contrib/tracing.md)
+Please see [docs/README.md](docs/README.md) for an overview of our documentation
 
 ## 🌐 Contributing
 
