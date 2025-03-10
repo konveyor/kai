@@ -69,6 +69,7 @@ class TaskManager:
         self.processed_tasks = set()
         self.ignored_tasks = list()
         self.processed_files = list()
+        self.unprocessed_files = list()
 
         # Clear existing seed tasks
         existing_tasks = self.priority_queue.task_stacks.get(0, [])

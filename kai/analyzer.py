@@ -130,7 +130,7 @@ class AnalyzerLSP:
             self.incident_selector = incident_selector
 
         request_params: dict[str, Any] = {
-            "label_selector": self.labels,
+            "label_selector": label_selector,
             "incident_selector": self.incident_selector,
             "excluded_paths": self.excluded_paths,
         }
