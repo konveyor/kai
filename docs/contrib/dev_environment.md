@@ -146,7 +146,7 @@ which python
 
 The `python` binary should be inside your virtual environment folder.
 
-```
+```sh
 /home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/venv/bin/python
 ```
 
@@ -170,4 +170,7 @@ Next, start the server inside the IDE extension. Open up the `Output` tab, click
 on `Konveyor-Analyzer`, and scroll until you see the log `kai RPC server has been
 spawned!`. Copy the PID inside the square brackets.
 
-![](images/kai-rpc-server-has-been-spawned.png)
+![Kai RPC Server has been spawned!](images/kai-rpc-server-has-been-spawned.png)
+
+Now, you can use the "Run and Debug" menu inside VSCode as you normally would.
+Supply the debugger with this process id that you copied.
