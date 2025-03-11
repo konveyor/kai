@@ -158,9 +158,14 @@ See [docs/contrib/dev_environment.md](docs/contrib/dev_environment.md)
 
 ## Linting
 
+We use [Trunk](https://docs.trunk.io) to lint our project.
+
 1. Install trunk via: https://docs.trunk.io/check#install-the-cli
 1. Run the linters: `trunk check`
 1. Format code: `trunk fmt`
+
+You can also configure Trunk to automatically check your code before pushing via
+[git hooks](https://docs.trunk.io/cli/getting-started/actions/git-hooks).
 
 ## Testing
 
@@ -192,7 +197,8 @@ For end users, please refer to the IDE plugin documentation for the primary inte
 
 ### Using Open Telemetry
 
-If you would like to use open telemetry to see the span's and performance of specific code paths you should look at using jaeger.
+If you would like to use open telemetry to see the span's and performance of
+specific code paths you should look at using jaeger.
 
 To run the all in one jaeger instance use:
 

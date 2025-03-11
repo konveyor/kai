@@ -1,14 +1,13 @@
-# Local Backend Development Environment
+# Kai Binary Development Environment
 
 This document describes how to setup a local development environment for Kai's
 backend.
 
-- [Local Backend Development Environment](#local-backend-development-environment)
+- [Kai Binary Development Environment](#kai-binary-development-environment)
   - [Overview](#overview)
   - [Prerequisites](#prerequisites)
-  - [Setup](#setup)
-  - [Run an analysis of a sample app (example for MacOS)](#run-an-analysis-of-a-sample-app-example-for-macos)
-  - [Build and test a local image](#build-and-test-a-local-image)
+  - [Building and using the Binaries](#building-and-using-the-binaries)
+  - [Debugging from VSCode](#debugging-from-vscode)
 
 ## Overview
 
@@ -20,9 +19,8 @@ Running Kai's backend involves running a few processes:
 
 ## Prerequisites
 
-1. [Python 3.11 or 3.12](https://www.python.org/downloads/)
-1. Access to a Large Language Model (Note that results vary widely between
-   models.)
+1. [Python 3.12](https://www.python.org/downloads/)
+2. Access to a Large Language Model.
 
 > [!NOTE]
 >
@@ -31,24 +29,41 @@ Running Kai's backend involves running a few processes:
 >
 > We do provide a means of running Kai against previously cached data from a few
 > models to aid demo flows. This allows you to run through the steps of using
-> Kai without requiring access to a LLM. We call this `KAI__DEMO_MODE`, i.e.
-> `KAI__DEMO_MODE=true make run-server`
+> Kai without requiring access to a LLM. We call this **demo mode**.
 >
-> If you do not provide LLM API access then `KAI__DEMO_MODE` will **only** be
-> able to replay previous cached responses.
+> If you do not provide LLM API access then demo mode will **only** be able to
+> replay previous cached responses.
 
-## Setup
+## Building and using the Binaries
 
 First, clone the repo and ensure you have the virtual environment setup
 
 ```sh
 git clone https://github.com/konveyor-ecosystem/kai.git
 cd kai
-python3 -m venv env
-source env/bin/activate
-pip install pip-tools
+python -m venv .venv
+source .venv/bin/activate
 pip install -e .
 ```
+
+Next, build the binary with:
+
+```sh
+make build-binaries
+```
+
+You should have 2 new files: `dist/kai-rpc-server` and `dist/kai-analyzer-rpc`.
+
+For ease of development, set `"konveyor.kaiRpcServerPath"` and
+`"konveyor.analyzerPath"` to their respective paths, pointing to the newly built
+binaries.
+
+Now whenever you make a change, you can rebuild the project and
+restart from within the ide extension.
+
+<!--
+
+NOTE(@JonahSussman): We should add this back once the solution server exists.
 
 Next, open a new terminal run the postgres container via podman:
 
@@ -84,43 +99,75 @@ make load-data
 
 This should complete in ~1-2 minutes.
 
-## Run an analysis of a sample app (example for MacOS)
+-->
 
-> [!NOTE]
->
-> We have checked in analysis runs for all sample applications so you do NOT
-> need to run analysis yourself. The instructions below are ONLY if you want to
-> recreate, this is NOT required
+## Debugging from VSCode
 
-Ensure you have the source code for the sample applications checked out locally:
+You may want to use VSCode's built in debugger at some point (i.e. to set
+breakpoints, watch expressions, etc...). This requires some set up to get
+working.
 
-```sh
-cd ./samples
-./fetch_apps.py
+Add the following to your `launch.json`'s `"configurations"` list. (For more
+information, click [here](https://go.microsoft.com/fwlink/?linkid=830387).)
+
+```json
+{
+  "name": "Python Debugger: Attach using Process Id",
+  "type": "debugpy",
+  "request": "attach",
+  "processId": "${command:pickProcess}",
+  "justMyCode": false,
+},
 ```
 
-This will check out the sample app source code to: `./kai_solution_server/samples/sample_repos`.
+Now, if you got the process id of the Kai binary and used the debugger as-is,
+you would get some very strange behavior. This is because we compile our Python
+code to a binary using [Pyinstaller](https://pyinstaller.org/en/stable/), which
+the debugger doesn't know how to handle. Additionally, the IDE simply calls the
+binary outright, with no arguments. In other words, we can't tell the IDE to
+execute `python main.py`, we can only tell it to execute `./main.py`.
 
-Next, run the analysis:
+Thus, we need to have the IDE spawn a Python process (not a compiled binary) by
+calling the `main.py` file itself (so the IDE spawn it) to allow the debugger to
+work properly.
+
+First, make sure `kai/rpc_server/main.py` is executable with:
 
 ```sh
-cd macos
-# Sets up the podman VM on MacOS so it will mount the host filesystem into the VM
-./restart_podman_machine.sh
-# Fetches kantra (our analyzer tool) and stores it in ../bin
-./get_latest_kantra_cli.sh
-cd ..
-# Analyzes all sample apps we know about, in both the 'initial' and 'solved'
-# states, expect this to run for ~2-3 hours.
-./analyze_apps.py
+chmod +x kai/rpc_server/main.py
 ```
 
-The analysis data will be stored in:
-`kai_solution_server/samples/analysis_reports/{APP_NAME}/<initial|solved>/output.yaml`
+Next, make sure you are inside your virtual environment and find the location of
+your Python interpreter:
 
-## Build and test a local image
+```sh
+which python
+```
 
-1. cd to the top level kai checkout
-1. Build the local image: `podman build -f build/Containerfile . -t quay.io/konveyor/kai:local`
-1. Run: `TAG="local" podman compose up`
-1. Then proceed with testing as you want
+The `python` binary should be inside your virtual environment folder.
+
+```
+/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/venv/bin/python
+```
+
+Next, add the following to the top of `kai/rpc_server/main.py`:
+
+```python
+#!<result of `which python`>
+```
+
+Now executing `./kai/rpc_server/main.py` will call the script directly using the
+python interpreter found in your virtual environment.
+
+Next, modify `"konveyor.kaiRpcServerPath"` inside the IDE's `settings.json` to
+be the location of `main.py`. For example:
+
+```json
+"konveyor.kaiRpcServerPath": "/home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/kai/rpc_server/main.py",
+```
+
+Next, start the server inside the IDE extension. Open up the `Output` tab, click
+on `Konveyor-Analyzer` and scroll until you see the log `kai rpc server has been
+spawned!`. Copy the pid inside the square brackets.
+
+![](images/kai-rpc-server-has-been-spawned.png)
