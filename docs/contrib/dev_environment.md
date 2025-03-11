@@ -1,6 +1,6 @@
 # Kai Binary Development Environment
 
-This document describes how to setup a local development environment for Kai's
+This document describes how to set up a local development environment for Kai's
 backend.
 
 - [Kai Binary Development Environment](#kai-binary-development-environment)
@@ -27,16 +27,16 @@ Running Kai's backend involves running a few processes:
 > If you want to run Kai against an LLM you will likely need to configure a LLM
 > API key to access your service (unless running against a local model).
 >
-> We do provide a means of running Kai against previously cached data from a few
+> We provide a means of running Kai against previously cached data from a few
 > models to aid demo flows. This allows you to run through the steps of using
-> Kai without requiring access to a LLM. We call this **demo mode**.
+> Kai without requiring access to an LLM. We call this **demo mode**.
 >
 > If you do not provide LLM API access then demo mode will **only** be able to
 > replay previous cached responses.
 
 ## Building and using the Binaries
 
-First, clone the repo and ensure you have the virtual environment setup
+First, clone the repo and ensure you have the virtual environment set up.
 
 ```sh
 git clone https://github.com/konveyor-ecosystem/kai.git
@@ -59,19 +59,19 @@ For ease of development, set `"konveyor.kaiRpcServerPath"` and
 binaries.
 
 Now whenever you make a change, you can rebuild the project and
-restart from within the ide extension.
+restart from within the IDE extension.
 
 <!--
 
 NOTE(@JonahSussman): We should add this back once the solution server exists.
 
-Next, open a new terminal run the postgres container via podman:
+Next, open a new terminal and run the Postgres container via podman:
 
 ```sh
 make run-postgres
 ```
 
-Finally, return to your previous terminal run the Kai server:
+Finally, return to your previous terminal and run the Kai server:
 
 ```sh
 make run-server
@@ -97,14 +97,14 @@ popd
 make load-data
 ```
 
-This should complete in ~1-2 minutes.
+This operation should complete in ~1-2 minutes.
 
 -->
 
 ## Debugging from VSCode
 
-You may want to use VSCode's built in debugger at some point (i.e. to set
-breakpoints, watch expressions, etc...). This requires some set up to get
+You may want to use VSCode's built-in debugger at some point (i.e. to set
+breakpoints, watch expressions, etc...). This requires some setup to get
 working.
 
 Add the following to your `launch.json`'s `"configurations"` list. (For more
@@ -120,15 +120,15 @@ information, click [here](https://go.microsoft.com/fwlink/?linkid=830387).)
 },
 ```
 
-Now, if you got the process id of the Kai binary and used the debugger as-is,
-you would get some very strange behavior. This is because we compile our Python
+Now, if you got the process ID of the Kai binary and used the debugger as-is,
+you would get some bizarre behavior. This is because we compile our Python
 code to a binary using [Pyinstaller](https://pyinstaller.org/en/stable/), which
 the debugger doesn't know how to handle. Additionally, the IDE simply calls the
 binary outright, with no arguments. In other words, we can't tell the IDE to
 execute `python main.py`, we can only tell it to execute `./main.py`.
 
 Thus, we need to have the IDE spawn a Python process (not a compiled binary) by
-calling the `main.py` file itself (so the IDE spawn it) to allow the debugger to
+calling the `main.py` file itself (so the IDE spawns it) to allow the debugger to
 work properly.
 
 First, make sure `kai/rpc_server/main.py` is executable with:
@@ -167,7 +167,7 @@ be the location of `main.py`. For example:
 ```
 
 Next, start the server inside the IDE extension. Open up the `Output` tab, click
-on `Konveyor-Analyzer` and scroll until you see the log `kai rpc server has been
-spawned!`. Copy the pid inside the square brackets.
+on `Konveyor-Analyzer`, and scroll until you see the log `kai RPC server has been
+spawned!`. Copy the PID inside the square brackets.
 
 ![](images/kai-rpc-server-has-been-spawned.png)
