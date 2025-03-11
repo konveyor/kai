@@ -4,12 +4,10 @@
 
 We provide pre-built versions of the IDE plugin as a `vsix` file at [editor-extensions/releases](https://github.com/konveyor/editor-extensions/releases). We recommend downloading the latest available version.
 
-## Pre-requisite
+## Pre-requisites
 
-1. Install **Java 17 or later** and the latest version of **Maven**.
-
+1. Install [**Java 17 or later**](https://www.oracle.com/java/technologies/downloads/) and the latest version of [**Maven**](https://maven.apache.org/).
 2. [Git](https://git-scm.com) must be installed and on the `PATH`.
-
 3. Required LLM model and key to use the Kai. Refer to the [LLM Selection Guide](/docs/llm_selection.md) for details.
 
 ## IDE Plugin Installation Methods

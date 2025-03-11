@@ -71,7 +71,7 @@ own ideas, and experiences.
 
 ### Slack
 
-You can reach us in kubernetes.slack.com in :
+You can reach us in kubernetes.slack.com in:
 
 - [#konveyor](https://kubernetes.slack.com/archives/CR85S82A2)
 - [#konveyor-dev](https://kubernetes.slack.com/archives/C04QZJFQ0UA)
@@ -132,14 +132,22 @@ The best way to reach us with a question when contributing is to ask on:
 ## Pull Request Title
 
 Please ensure the title of your PR begins with a
-[gitemoji](https://github.com/carloscuesta/gitmoji) such as:
+[gitmoji](https://github.com/carloscuesta/gitmoji). A few examples (with our
+custom changes) are:
 
-- `:bug:` - For bug fixes
-- `:book:` - For documentation
-- `:sparkles:` - For new features
-- `:seedling:` - For infrastructure related changes
-- `:warning:` - For breaking changes
-- `:ghost:` - For misc updates/fixes that don't need to show up in release notes
+|     |              |                                |
+| --- | ------------ | ------------------------------ |
+| 🐛  | `:bug:`      | Bug fixes                      |
+| 📖  | `:book:`     | Documentation                  |
+| ✨  | `:sparkles:` | New features                   |
+| 🌱  | `:seedling:` | Infrastructure related changes |
+| ⚠️  | `:warning:`  | Breaking changes               |
+| 👻  | `:ghost:`    | Misc updates/fixes             |
+
+For a full list, please check out [gitmoji.dev](https://gitmoji.dev)
+
+Additionally, please make sure your PR title is in the _past tense_. This is
+because we generate our release notes from PR titles.
 
 For more info you can consult the pr check we run at
 [konveyor/release-tools](https://github.com/konveyor/release-tools/blob/main/pkg/pr/prefix.go)
@@ -162,27 +170,17 @@ See [docs/contrib/dev_environment.md](docs/contrib/dev_environment.md)
 
 ## Modifying a Python Dependency
 
-If you need to add or update a Python dependency in the project, follow these
-steps:
-
-1. **Add the dependency**: Open `pyproject.toml` and add the new dependency to
-   the `dependencies` list or modify an existing one.
-
-2. **Compile the requirements**: Run the following commands to compile the
-   dependencies and update the `requirements.txt` file:
-
-   ```bash
-      python -m venv <venv-name>
-      source <venv-name>/bin/activate
-      pip install pip-tools
-      pip-compile --allow-unsafe
-      pip install -r requirements.txt
-   ```
+If you need to add or update a Python dependency in the project, open
+`pyproject.toml` and add the new dependency to the `dependencies` list or modify
+an existing one.
 
 ## Running the Project
 
-1. Setup your development environment as per [docs/contrib/dev_environment.md](/docs/contrib/dev_environment.md)
-2. **Demo Interaction**: Read and follow [example/README.md](/example/README.md) to learn how to leverage a python script `example/run_demo.py` which will script interaction with Kai.
+1. Setup your development environment as per
+   [docs/contrib/dev_environment.md](/docs/contrib/dev_environment.md)
+2. **Demo Interaction**: Read and follow [example/README.md](/example/README.md)
+   to learn how to leverage a python script `example/run_demo.py` which will
+   script interaction with Kai.
 
    Running `run_demo.py` from the `example` directory is a recommended way for
    developers to interact with the project, allowing you to explore and test the

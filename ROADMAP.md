@@ -1,13 +1,35 @@
 # Konveyor AI (Kai) Roadmap
 
+<!-- NOTE(@JonahSussman): This doc needs to be updated to more closely align with https://github.com/orgs/konveyor/projects/72 -->
+
 This document is a roadmap for Konveyor AI (Kai). The roadmap is organized by themes of functionality, each focusing on a specific aspect of the project's development.
 
-Roadmap Outline:
-
-- [Guiding Principles](#guiding-principles)
-- [Themes](#themes)
-- [Milestones](#milestones)
-- [Future Areas to Consider](#future-areas-to-consider)
+- [Konveyor AI (Kai) Roadmap](#konveyor-ai-kai-roadmap)
+  - [Guiding Principles](#guiding-principles)
+  - [Themes](#themes)
+    - [Use Konveyor Data to improve generated results](#use-konveyor-data-to-improve-generated-results)
+    - [Konveyor Integration](#konveyor-integration)
+    - [Repository Level Code Generation](#repository-level-code-generation)
+    - [IDE Integrations](#ide-integrations)
+    - [User Experience Improvements](#user-experience-improvements)
+    - [External Tool integrations](#external-tool-integrations)
+    - [Evaluation Tools to Benchmark Results](#evaluation-tools-to-benchmark-results)
+    - [Scenario Creation to Showcase Capabilities](#scenario-creation-to-showcase-capabilities)
+    - [InstructLab Integrations to aid Fine Tuning](#instructlab-integrations-to-aid-fine-tuning)
+  - [Milestones](#milestones)
+    - [2024 - August: Prototype](#2024---august-prototype)
+      - [Summary](#summary)
+      - [Key Deliverables](#key-deliverables)
+    - [October 2024: Kai v0.1.0 Release](#october-2024-kai-v010-release)
+      - [Summary](#summary-1)
+      - [Key Deliverables](#key-deliverables-1)
+    - [December 2024: Kai v0.2.0 Release](#december-2024-kai-v020-release)
+      - [Summary](#summary-2)
+      - [Key Deliverables](#key-deliverables-2)
+    - [February 2025: Kai v0.3.0 Release](#february-2025-kai-v030-release)
+      - [Summary](#summary-3)
+      - [Key Deliverables](#key-deliverables-3)
+  - [Future Areas to Consider](#future-areas-to-consider)
 
 **What is the purpose of Konveyor AI?**
 Kai intends to improve the economics of re-platforming and refactoring applications to Kubernetes and cloud-native technologies via use of Generative AI leveraging data in Konveyor.
@@ -41,16 +63,6 @@ Our approach includes:
 
 The below themes are areas of improvement the team has identified for future work.
 
-- [Use Konveyor Data to Improve Generated Results](#use-konveyor-data-to-improve-generated-results)
-- [Konveyor Integration](#konveyor-integration)
-- [Repository Level Understanding and Code Generation](#repository-level-code-generation)
-- [IDE Integrations](#ide-integrations)
-- [User Experience Improvements](#user-experience-improvements)
-- [External Tool Integrations](#external-tool-integrations)
-- [Evaluation Tools to Benchmark Results](#external-tool-integrations)
-- [Scenario Creation to Showcase Capabilities](#scenario-creation-to-showcase-capabilities)
-- [InstructLab Integrations to Aid Fine Tuning](#instructlab-integrations-to-aid-fine-tuning)
-
 ### Use Konveyor Data to improve generated results
 
 - Improve the Retrieval Augmented Generation (RAG) approach which uses application modernization data inside of Konveyor to aid shaping code generations for better alignment of how an organization has solved that given problem in the past.
@@ -71,7 +83,7 @@ The below themes are areas of improvement the team has identified for future wor
 
 - IDE Integrations
   - VSCode (1st IDE to Integrate)
-  - Intelli-J (2nd IDE to Integrate)
+  - IntelliJ (2nd IDE to Integrate)
   - Eclipse (3rd IDE to Integrate)
 - Real-time updates of static code analysis
   - Integrate [analyzer-lsp](https://github.com/konveyor/analyzer-lsp) into the IDE with the ability to perform updates of static code analysis information as each file is modified.
@@ -107,15 +119,15 @@ The below themes are areas of improvement the team has identified for future wor
 _Kai releases will be considered independent of Konveyor releases for the initial period of functionality development. We expect to see Kai releases tied to Konveyor releases in 2025._
 
 - [**August 2024**: Prototype](#2024---august-prototype)
-- [**October 2024**: Kai v0.1.0 Release](#october-2024-kai-v010-release)
-- [**December 2024**: Kai v0.2.0 Release](#december-2024-kai-v020-release)
-- [**February 2025**: Kai v0.3.0 Release](#february-2025-kai-v030-release)
+- [**March 2025**: Kai v0.1.0 Release](#october-2024-kai-v010-release)
+- [**Early 2025**: Kai v0.2.0 Release](#december-2024-kai-v020-release)
+- [**Mid 2025**: Kai v0.3.0 Release](#february-2025-kai-v030-release)
 
 ### 2024 - August: Prototype
 
 #### Summary
 
-_The prototype is able to sync data from Konveyor or use existing sample data to aid a scenario of Java EE to Quarkus migration. A minimal workflow is provided to aid early evalations by interested contributors._
+_The prototype is able to sync data from Konveyor or use existing sample data to aid a scenario of Java EE to Quarkus migration. A minimal workflow is provided to aid early evaluations by interested contributors._
 
 - Workflow is focused at level of a single file, i.e. lacks awareness of full context of repository
 - Minimal IDE integration in VSCode, workflow is functional to show a happy path
@@ -135,7 +147,7 @@ _The prototype is able to sync data from Konveyor or use existing sample data to
   - Prior patterns of solved examples similar to a given incident
     - Introduce 'Solved Incident Store' component which will allow Kai to see how an organization has solved a similar analysis problem in the past. The component will work with a LLM to summarize the key pieces of how a similar solution was solved by the organization in the past and include that summarization to help the LLM steer the generated solution closer to a desired result
 - _IDE Integration_
-  - VSCode IDE Integration: Identification of existing modernization issues via static code analyis from [Kantra](https://github.com/konveyor/kantra) in VSCode IDE
+  - VSCode IDE Integration: Identification of existing modernization issues via static code analysis from [Kantra](https://github.com/konveyor/kantra) in VSCode IDE
     - **Limitation**: Analysis will NOT automatically update. Kantra analysis needs to be manually re-run to refresh analysis information.
     - Workflow is the minimal needed to show happy-path, more work is needed before this is ready for the end user
 
@@ -171,7 +183,7 @@ _The v0.2.0 release is focused on improving the quality of generated results by 
 
 #### Summary
 
-_The v0.3.0 release is focused on teaching Kai how to understand repurcussions of changes that cascade throughout a repository._
+_The v0.3.0 release is focused on teaching Kai how to understand repercussions of changes that cascade throughout a repository._
 
 #### Key Deliverables
 

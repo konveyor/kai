@@ -6,7 +6,7 @@
     <img src="docs/images/kai_logo.png" alt="KAI Logo" width="200" height="200">
   </a>
 </div>
-<!-- trunk-ignore-emd -->
+<!-- trunk-ignore-end -->
 
 <br>
 
@@ -76,8 +76,10 @@ models.
   Kai](https://docs.google.com/presentation/d/1awMdp5hHC6L4Xc_uY6Kj4XiskAArDGPhyQRBI6GJUAo/)
 - See other technical design related information at [docs/design](docs/design)
 
-### 🗣️ Blog Posts
+### 🗣️ Conference Talks and Blog Posts
 
+- 2025 April 01: [Project Lightning Talk: Revolutionizing Legacy Migrations with Konveyor AI - Jonah Sussman](https://kccnceu2025.sched.com/event/1tcwv)
+- 2025 February 25: [Upgrade your code with AI: Build Your Own Amazon Q](https://www.youtube.com/watch?v=IF2xQlii4ws)
 - 2024 August 29: [Incident Storage in Kai - A Deep Dive](https://www.konveyor.io/blog/kai-incident-storage-2024/)
 - 2024 July 23: [Embracing the Future of Application Modernization with KAI](https://shaaf.dev/post/2024-07-23-embracing-the-future-of-app-mod-with-konveyor-ai/)
 - 2024 May 07: [Apply generative AI to app modernization with Konveyor AI](https://developers.redhat.com/articles/2024/05/07/modernize-apps-konveyor-ai)
@@ -96,11 +98,16 @@ action!](https://www.youtube.com/watch?v=aE8qNY2m4v4)
 
 ## 🚀 Getting Started
 
-We recommend new users download a [release of Kai](https://github.com/konveyor/editor-extensions/releases) and then walk through a guided scenario to get a feel of Kai's potential.
-We've streamlined the install experience so you just need to download a `.vsix` file and install it in your VSCode IDE.
+We recommend new users download a [release of
+Kai](https://github.com/konveyor/editor-extensions/releases) and then walk
+through a guided scenario to get a feel of Kai's potential. We've streamlined
+the install experience so you just need to download a `.vsix` file and install
+it in your VSCode IDE.
 
-1. Please follow the steps here to proceed with getting started: [docs/getting_started.md](docs/getting_started.md)
-2. After you have Kai installed we encourage you to run through one of our guided scenarios at: [docs/scenarios](docs/scenarios/README.md)
+1. Please follow the steps here to proceed with getting started:
+   [docs/getting_started.md](docs/getting_started.md)
+2. After you have Kai installed we encourage you to run through one of our
+   guided scenarios at: [docs/scenarios](docs/scenarios/README.md)
 
 ## Documentation
 

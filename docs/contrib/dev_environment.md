@@ -21,8 +21,7 @@ Running Kai's backend involves running a few processes:
 ## Prerequisites
 
 1. [Python 3.11 or 3.12](https://www.python.org/downloads/)
-2. [Podman](https://podman.io/getting-started/installation)
-3. Access to a Large Language Model (Note that results vary widely between
+1. Access to a Large Language Model (Note that results vary widely between
    models.)
 
 > [!NOTE]
