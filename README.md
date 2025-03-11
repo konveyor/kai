@@ -78,12 +78,18 @@ models.
 
 ### 🗣️ Conference Talks and Blog Posts
 
-- 2025 April 01: [Project Lightning Talk: Revolutionizing Legacy Migrations with Konveyor AI - Jonah Sussman](https://kccnceu2025.sched.com/event/1tcwv)
-- 2025 February 25: [Upgrade your code with AI: Build Your Own Amazon Q](https://www.youtube.com/watch?v=IF2xQlii4ws)
-- 2024 August 29: [Incident Storage in Kai - A Deep Dive](https://www.konveyor.io/blog/kai-incident-storage-2024/)
-- 2024 July 23: [Embracing the Future of Application Modernization with KAI](https://shaaf.dev/post/2024-07-23-embracing-the-future-of-app-mod-with-konveyor-ai/)
-- 2024 May 07: [Apply generative AI to app modernization with Konveyor AI](https://developers.redhat.com/articles/2024/05/07/modernize-apps-konveyor-ai)
-- 2024 May 07: [Kai - Generative AI Applied to Application Modernization](https://www.konveyor.io/blog/kai-deep-dive-2024/)
+- 2025 April 01: [Project Lightning Talk: Revolutionizing Legacy Migrations with
+  Konveyor AI - Jonah Sussman](https://kccnceu2025.sched.com/event/1tcwv)
+- 2025 February 25: [Upgrade your code with AI: Build Your Own Amazon
+  Q](https://www.youtube.com/watch?v=IF2xQlii4ws)
+- 2024 August 29: [Incident Storage in Kai - A Deep
+  Dive](https://www.konveyor.io/blog/kai-incident-storage-2024/)
+- 2024 July 23: [Embracing the Future of Application Modernization with
+  KAI](https://shaaf.dev/post/2024-07-23-embracing-the-future-of-app-mod-with-konveyor-ai/)
+- 2024 May 07: [Apply generative AI to app modernization with Konveyor
+  AI](https://developers.redhat.com/articles/2024/05/07/modernize-apps-konveyor-ai)
+- 2024 May 07: [Kai - Generative AI Applied to Application
+  Modernization](https://www.konveyor.io/blog/kai-deep-dive-2024/)
 
 ### 📽️ Demo Video
 
@@ -94,7 +100,9 @@ action!](https://www.youtube.com/watch?v=aE8qNY2m4v4)
 
 #### Additional YouTube Videos from Community Members
 
-- [Upgrade your code with AI: Build Your Own Amazon Q](https://www.youtube.com/watch?v=IF2xQlii4ws) from [Dean Peterson](https://www.linkedin.com/in/deantrepreneur/)
+- [Upgrade your code with AI: Build Your Own Amazon
+  Q](https://www.youtube.com/watch?v=IF2xQlii4ws) from [Dean
+  Peterson](https://www.linkedin.com/in/deantrepreneur/)
 
 ## 🚀 Getting Started
 
