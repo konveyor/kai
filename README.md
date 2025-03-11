@@ -82,8 +82,13 @@ models.
   Konveyor AI - Jonah Sussman](https://kccnceu2025.sched.com/event/1tcwv)
 - 2025 February 25: [Upgrade your code with AI: Build Your Own Amazon
   Q](https://www.youtube.com/watch?v=IF2xQlii4ws)
+- 2024 November 22: [Konveyor AI: supporting application
+  modernization](https://www.cncf.io/blog/2024/11/22/konveyor-ai-supporting-application-modernization/)
 - 2024 August 29: [Incident Storage in Kai - A Deep
   Dive](https://www.konveyor.io/blog/kai-incident-storage-2024/)
+- 2024 August 26: [Modernization 101: A Beginner's Guide to Application
+  Modernization and Methodology - DevConf.US
+  2024](https://www.youtube.com/watch?v=ic5WnbYVTto)
 - 2024 July 23: [Embracing the Future of Application Modernization with
   KAI](https://shaaf.dev/post/2024-07-23-embracing-the-future-of-app-mod-with-konveyor-ai/)
 - 2024 May 07: [Apply generative AI to app modernization with Konveyor
