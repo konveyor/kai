@@ -29,6 +29,7 @@ load-data:
 # This will build the kai-analyzer-rpc binary for serving the analysis over RPC.
 build-kai-analyzer:
 	cd kai_analyzer_rpc && go build -o kai-analyzer main.go
+	cp kai_analyzer_rpc/kai-analyzer dist/kai-analyzer-rpc
 
 # This will build the kai rpc server, which serves the code plan loop over RPC.
 build-kai-rpc-server:
