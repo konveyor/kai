@@ -80,8 +80,6 @@ models.
 
 - 2025 April 01: [Project Lightning Talk: Revolutionizing Legacy Migrations with
   Konveyor AI - Jonah Sussman](https://kccnceu2025.sched.com/event/1tcwv)
-- 2025 February 25: [Upgrade your code with AI: Build Your Own Amazon
-  Q](https://www.youtube.com/watch?v=IF2xQlii4ws)
 - 2024 November 22: [Konveyor AI: supporting application
   modernization](https://www.cncf.io/blog/2024/11/22/konveyor-ai-supporting-application-modernization/)
 - 2024 August 29: [Incident Storage in Kai - A Deep

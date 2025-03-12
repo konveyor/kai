@@ -54,9 +54,12 @@ make build-binaries
 
 You should have 2 new files: `dist/kai-rpc-server` and `dist/kai-analyzer-rpc`.
 
-For ease of development, set `"konveyor.kaiRpcServerPath"` and
-`"konveyor.analyzerPath"` to their respective paths, pointing to the newly built
-binaries.
+For ease of development, you can set the IDE's binaries to reference the
+location of the newly built binaries. In the VSCode extension, open your
+[`settings.json
+file`](https://code.visualstudio.com/docs/editor/settings#_settings-json-file)
+and set `"konveyor.kaiRpcServerPath"` and `"konveyor.analyzerPath"` to their
+respective paths, pointing to the newly built binaries.
 
 Now whenever you make a change, you can rebuild the project and
 restart from within the IDE extension.
