@@ -66,10 +66,10 @@ SQLCategory: Enum = SQLEnum(report_types.Category)
 class SQLBase(DeclarativeBase):
     type_annotation_map = {
         dict[str, Any]: JSON()
-        .with_variant(postgresql.JSONB(), "postgresql")  # type: ignore[no-untyped-call]
+        .with_variant(postgresql.JSONB(), "postgresql")  # type: ignore[no-untyped-call, unused-ignore]
         .with_variant(sqlite.JSON(), "sqlite"),
         list[str]: JSON()
-        .with_variant(postgresql.JSONB(), "postgresql")  # type: ignore[no-untyped-call]
+        .with_variant(postgresql.JSONB(), "postgresql")  # type: ignore[no-untyped-call, unused-ignore]
         .with_variant(sqlite.JSON(), "sqlite"),
         Solution: SQLSolutionType,
     }
