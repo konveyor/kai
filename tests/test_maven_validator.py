@@ -482,5 +482,52 @@ class TestParseMavenOutput(unittest.TestCase):
         self.assertEqual(len(catchall_errors), 0)
 
 
+    def test_parse_error_ignores_directory(self):
+        mvn_output = """
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -------------------< com.redhat.coolstore:coolstore >-------------------
+[INFO] Building coolstore-quarkus 1.0.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ coolstore ---
+[INFO] Deleting /Users/pgaikwad/Projects/coolstore/target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ coolstore ---
+[INFO] Copying 2516 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- quarkus:3.12.3:generate-code (default) @ coolstore ---
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ coolstore ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 25 source files with javac [debug release 21] to target/classes
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.117 s
+[INFO] Finished at: 2025-03-06T21:25:37+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile (default-compile) on project coolstore: Fatal error compiling: error: release version 21 not supported -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+
+"""
+        build_errors, dependency_errors, compilation_errors, catchall_errors = (
+        parse_maven_output(mvn_output, rc=1)
+    )
+    
+        errors = build_errors + dependency_errors + compilation_errors + catchall_errors  # type: ignore
+    
+    # Ensure no errors are incorrectly classified from a directory path
+        print(errors)
+        self.assertEqual(len(errors), 1, "Expected no errors, but some were detected")  # type: ignore
+      
+
+
 if __name__ == "__main__":
     unittest.main()
