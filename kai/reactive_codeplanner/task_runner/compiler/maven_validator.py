@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import re
 import subprocess  # trunk-ignore(bandit/B404)
 import sys
@@ -29,6 +30,8 @@ tracer = trace.get_tracer("maven_validator")
 BUILD_ERROR_PATTERN = re.compile(
     r"\s*\[(ERROR|FATAL)\]\s*(.+?) @ line (\d+), column (\d+)"
 )
+
+ERROR_PATTERN = re.compile(r"\[ERROR\] (.*?):(\d+):(\d+): (.*?)$")
 
 
 class MavenCompileStep(ValidationStep):
@@ -422,7 +425,21 @@ def parse_maven_output(
             else:
                 i += 1
         else:
-            i += 1
+            match = ERROR_PATTERN.match(line)
+            if match:
+                error, next_index = parse_error_line(lines, i, match)
+                if error is not None:  # Filter out None values
+                    if isinstance(error, BuildError):   
+                        build_errors.append(error)
+                    elif isinstance(error, DependencyError):
+                        dependency_errors.append(error)
+                    elif isinstance(error, CompilationError):
+                        compilation_errors.append(error)
+                    else:
+                        catchall_errors.append(error)
+                i = next_index
+            else:
+                i += 1
     if rc != 0 and not any([build_errors, dependency_errors, compilation_errors]):
         catchall_error = catchall(output)
         if catchall_error:
@@ -602,6 +619,10 @@ def parse_error_line(
     line_number = int(match.group(2)) if match.group(2) else -1
     column_number = int(match.group(3)) if match.group(3) else -1
     message = match.group(4).strip()
+
+    if os.path.isdir(file_path):
+        logger.warning(f"Skipping directory mistaken as file: {file_path}")
+        return None, index + 1
 
     error_class = classify_error(message)
     error = error_class(
