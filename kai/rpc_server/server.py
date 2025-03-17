@@ -8,16 +8,7 @@ from contextlib import ExitStack
 from itertools import groupby
 from operator import attrgetter
 from pathlib import Path
-from typing import (
-    Any,
-    AsyncIterator,
-    Callable,
-    Optional,
-    ParamSpec,
-    TypedDict,
-    TypeVar,
-    cast,
-)
+from typing import Any, AsyncIterator, Callable, Optional, ParamSpec, TypeVar, cast
 from unittest.mock import MagicMock
 from urllib.parse import urlparse
 

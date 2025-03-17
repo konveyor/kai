@@ -105,9 +105,6 @@ class AnalyzerLSP:
 
             logger.debug(f"analyzer rpc server started. pid: {self.rpc_server.pid}")
 
-            # trunk-ignore-end(bandit/B603)
-            self.excluded_paths = excluded_paths
-
             self.stderr_logging_thread = threading.Thread(
                 target=log_stderr, args=(self.rpc_server.stderr,)
             )
@@ -156,7 +153,7 @@ class AnalyzerLSP:
             "incident_selector": self.incident_selector,
             "excluded_paths": self.excluded_paths,
         }
-        
+
         if included_paths is not None:
             request_params["included_paths"] = [str(p) for p in included_paths]
 

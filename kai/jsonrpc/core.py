@@ -2,8 +2,6 @@ import asyncio
 import time
 from typing import Any, Callable, Literal, Optional, overload
 
-from opentelemetry import trace
-from opentelemetry.propagate import get_global_textmap
 from pydantic import BaseModel
 
 from kai.jsonrpc.callbacks import JsonRpcCallback, JsonRpcCoroutine

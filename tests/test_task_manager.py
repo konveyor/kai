@@ -12,10 +12,9 @@ from kai.reactive_codeplanner.task_manager.api import (
     ValidationStep,
 )
 from kai.reactive_codeplanner.task_manager.task_manager import TaskManager
-from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
-from kai.reactive_codeplanner.vfs.repo_context_snapshot import RepoContextSnapshot
 from kai.reactive_codeplanner.task_runner.api import TaskRunner
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
+from kai.reactive_codeplanner.vfs.repo_context_snapshot import RepoContextSnapshot
 
 
 class MockValidationStep(ValidationStep):
