@@ -6,6 +6,7 @@ from lxml import etree as ET  # trunk-ignore(bandit/B410)
 from opentelemetry import trace
 
 from kai.logging.logging import get_logger
+from kai.reactive_codeplanner.agent.api import markdown_diff
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
     MavenDependencyAgent,
     MavenDependencyRequest,
@@ -17,6 +18,9 @@ from kai.reactive_codeplanner.task_runner.compiler.maven_validator import (
     PackageDoesNotExistError,
 )
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
+from kai.rpc_server.chat import get_chatter_contextvar
+
+chatter = get_chatter_contextvar()
 
 logger = get_logger(__name__)
 tracer = trace.get_tracer("dependency_task_runner")
@@ -88,6 +92,9 @@ class DependencyTaskRunner(TaskRunner):
         tree = ET.parse(pom)  # trunk-ignore(bandit/B320)
         if tree is None:
             return TaskResult(modified_files=[], encountered_errors=[], summary="")
+        initial_pom = ET.tostring(tree, encoding="utf-8", pretty_print=True).decode(
+            "utf-8"
+        )
         root = tree.getroot()
         if root is None:
             return TaskResult(modified_files=[], encountered_errors=[], summary="")
@@ -115,6 +122,13 @@ class DependencyTaskRunner(TaskRunner):
 
         # This fixes whitespace/indentations on the new dependencies
         ET.indent(tree)
+        final_pom = ET.tostring(tree, encoding="utf-8", pretty_print=True).decode(
+            "utf-8"
+        )
+        chatter.get().chat_markdown(
+            "Resolved dependency task\n"
+            f"<details><summary>Diff</summary>\n{markdown_diff(initial_pom, final_pom)}\n</details>\n"
+        )
         tree.write(file=pom, encoding="utf-8", pretty_print=True)
         rcm.commit(
             f"DependencyTaskRunner changed file {str(pom)}",

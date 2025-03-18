@@ -14,7 +14,7 @@ from kai.reactive_codeplanner.agent.analyzer_fix.api import (
     AnalyzerFixResponse,
 )
 from kai.reactive_codeplanner.agent.analyzer_fix.guess_language import guess_language
-from kai.reactive_codeplanner.agent.api import Agent, AgentRequest
+from kai.reactive_codeplanner.agent.api import Agent, AgentRequest, markdown_diff
 from kai.rpc_server.chat import get_chatter_contextvar
 
 logger = get_logger(__name__)
@@ -150,7 +150,10 @@ If you have any additional details or steps that need to be performed, put it he
         msg = "Received response from LLM\n"
         msg += f"File to modify: {ask.file_path}\n"
         msg += f"<details><summary>Reasoning</summary>\n{resp.reasoning}\n</details>\n"
-        msg += f"<details><summary>Additional Information</summary>\n{resp.additional_information}\n</details>\n"
+        if resp.additional_information:
+            msg += f"<details><summary>Additional Information</summary>\n{resp.additional_information}\n</details>\n"
+        if resp.source_file is not None:
+            msg += f"<details><summary>Diff</summary>\n{markdown_diff(ask.file_content, resp.source_file)}\n</details>\n"
         chatter.get().chat_markdown(msg)
 
         return AnalyzerFixResponse(

@@ -1,3 +1,4 @@
+import difflib
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -35,3 +36,15 @@ class Agent(ABC):
         If the agent cannot handle the request, it should return an AgentResult
         with None values.
         """
+
+
+def markdown_diff(original: str, updated: str) -> str:
+    original_lines = original.splitlines(keepends=True)
+    updated_lines = updated.splitlines(keepends=True)
+    diff_lines = difflib.unified_diff(
+        original_lines, updated_lines, fromfile="Original", tofile="Updated"
+    )
+    full_diff = "".join(
+        (diff + "\n") if not diff.endswith("\n") else diff for diff in diff_lines
+    )
+    return f"\n```diff\n\n{full_diff}\n\n```\n"

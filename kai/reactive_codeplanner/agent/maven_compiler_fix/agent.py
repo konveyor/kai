@@ -5,7 +5,12 @@ from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.logging.logging import get_logger
-from kai.reactive_codeplanner.agent.api import Agent, AgentRequest, AgentResult
+from kai.reactive_codeplanner.agent.api import (
+    Agent,
+    AgentRequest,
+    AgentResult,
+    markdown_diff,
+)
 from kai.reactive_codeplanner.agent.maven_compiler_fix.api import (
     MavenCompilerAgentRequest,
     MavenCompilerAgentResult,
@@ -93,7 +98,10 @@ class MavenCompilerAgent(Agent):
         msg = "Received response from LLM\n"
         msg += f"File to modify: {ask.file_path}\n"
         msg += f"<details><summary>Reasoning</summary>\n{resp.reasoning}\n</details>\n"
-        msg += f"<details><summary>Additional Information</summary>\n{resp.additional_information}\n</details>\n"
+        if resp.additional_information:
+            msg += f"<details><summary>Additional Information</summary>\n{resp.additional_information}\n</details>\n"
+        if resp.updated_file_contents is not None:
+            msg += f"<details><summary>Diff</summary>\n{markdown_diff(ask.file_contents, resp.updated_file_contents)}\n</details>\n"
         chatter.get().chat_markdown(msg)
 
         return resp
