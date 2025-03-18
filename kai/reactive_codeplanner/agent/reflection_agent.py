@@ -308,7 +308,7 @@ Here's the input information:
         self._retries = retries
 
     async def execute(self, task: AgentRequest) -> AgentResult:
-        chatter.get().chat_simple("ReflectionAgent executing...")
+        await chatter.get().chat_simple("ReflectionAgent executing...")
 
         if not isinstance(task, ReflectionTask):
             return AgentResult()
@@ -385,7 +385,7 @@ Here's the input information:
         while curr_iter < self._iterations:
             curr_iter += 1
             try:
-                chatter.get().chat_simple(f"Reflection iteration {curr_iter}")
+                await chatter.get().chat_simple(f"Reflection iteration {curr_iter}")
 
                 reflection_response = await self._model_provider.ainvoke(
                     chat_reflect,

@@ -107,7 +107,9 @@ class TaskManager:
             result = await agent.execute_task(self.rcm, task)
         except Exception as e:
             logger.exception("Unhandled exception executing task %s", task)
-            chatter.get().chat_simple(f"Unhandled exception executing task {str(task)}")
+            await chatter.get().chat_simple(
+                f"Unhandled exception executing task {str(task)}"
+            )
             result = TaskResult(
                 encountered_errors=[str(e)], modified_files=[], summary=""
             )
@@ -139,7 +141,7 @@ class TaskManager:
 
     async def run_validators(self) -> list[Task]:
         logger.info("Running validators.")
-        chatter.get().chat_simple("Running validators.")
+        await chatter.get().chat_simple("Running validators.")
 
         validation_tasks: list[Task] = []
 
@@ -148,7 +150,7 @@ class TaskManager:
             validator: ValidationStep,
         ) -> tuple[ValidationStep, Optional[ValidationResult]]:
             logger.debug(f"Running validator: {str(validator)}")
-            chatter.get().chat_simple(f"Running validator {str(validator)}")
+            await chatter.get().chat_simple(f"Running validator {str(validator)}")
 
             try:
                 scoped_paths: Optional[list[Path]] = None
@@ -160,7 +162,7 @@ class TaskManager:
                 logger.exception(
                     f"Validator {str(validator)} failed to execute with an unhandled error:"
                 )
-                chatter.get().chat_simple(
+                await chatter.get().chat_simple(
                     f"Validator {str(validator)} failed to execute with an unhandled error: {str(e)}"
                 )
 
@@ -258,7 +260,7 @@ class TaskManager:
         logger.info(
             "Handling depth 0 task, assuming fix has applied for task: %s", task
         )
-        chatter.get().chat_markdown(
+        await chatter.get().chat_markdown(
             f"Resolved task.\n<details><summary>Details</summary>\n{task.markdown()}</details>\n"
         )
         self.priority_queue.remove(task)
@@ -296,7 +298,7 @@ class TaskManager:
             logger.info(
                 "Task %s resolved indirectly and removed from queue.", resolved_task
             )
-            chatter.get().chat_markdown(
+            await chatter.get().chat_markdown(
                 f"Resolved {resolved_task.__class__.__name__} indirectly while fixing {task.__class__.__name__}."
                 f"<details><summary>Details</summary>\n{resolved_task.markdown()}</details>\n"
             )
@@ -309,7 +311,7 @@ class TaskManager:
         if similar_tasks:
             for t in similar_tasks:
                 unprocessed_new_tasks.remove(t)
-            self.handle_ignored_task(task)
+            await self.handle_ignored_task(task)
             # Once we have a retry or an ignored task, we should wait to add
             # children until the task is completed.
             # On ignored task, we now revert to the before snapshot work
@@ -317,7 +319,7 @@ class TaskManager:
         else:
             self.processed_tasks.add(task)
             logger.debug("Task %s processed successfully.", task)
-            chatter.get().chat_markdown(
+            await chatter.get().chat_markdown(
                 f"Resolved {task.__class__.__name__}."
                 f"<details><summary>Details</summary>\n{task.markdown()}</details>\n"
             )
@@ -344,7 +346,7 @@ class TaskManager:
                 if not self.should_skip_task(child_task):
                     self.priority_queue.push(child_task)
                 if max_depth is not None and child_task.depth <= max_depth:
-                    chatter.get().chat_markdown(
+                    await chatter.get().chat_markdown(
                         f"Found new task {child_task.__class__.__name__} to solve while fixing task {task.__class__.__name__}."
                         f"<details><summary>Details</summary>\n{child_task.markdown()}</details>\n"
                     )
@@ -384,7 +386,7 @@ class TaskManager:
                 return similar
         return False
 
-    def handle_ignored_task(self, task: Task) -> None:
+    async def handle_ignored_task(self, task: Task) -> None:
         logger.info("Handling ignored task: %s", task)
         task.retry_count += 1
         if task.retry_count < task.max_retries:
@@ -394,7 +396,7 @@ class TaskManager:
                 task.retry_count,
             )
             self.priority_queue.push(task)
-            chatter.get().chat_markdown(
+            await chatter.get().chat_markdown(
                 f"{task.__class__.__name__} was not resolved. Retrying... ({task.retry_count}/{task.max_retries})"
                 f"<details><summary>Details</summary>\n{task.markdown()}</details>\n"
             )
@@ -403,13 +405,13 @@ class TaskManager:
             logger.warning(
                 "Task %s exceeded max retries and added to ignored tasks.", task
             )
-            chatter.get().chat_markdown(
+            await chatter.get().chat_markdown(
                 f"{task.__class__.__name__} was not resolved. Ignoring... ({task.retry_count}/{task.max_retries})"
                 f"<details><summary>Details</summary>\n{task.markdown()}</details>\n"
             )
             logger.info("ignoring task, reverting to pre-task snapshot")
             self.rcm.reset(task._snapshot_before_work)
-            chatter.get().chat_markdown(
+            await chatter.get().chat_markdown(
                 f"Task {task.__class__.__name__} was not resolved. resetting repo state to before task was tried)"
                 f"<details><summary>Details</summary>\n{task.markdown()}</details>\n"
             )

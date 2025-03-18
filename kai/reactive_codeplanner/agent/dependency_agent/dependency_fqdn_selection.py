@@ -84,7 +84,7 @@ Searched dependencies:
     )
 
     async def execute(self, ask: AgentRequest) -> FQDNDependencySelectorResult:
-        chatter.get().chat_simple("FQDNDependencySelectorAgent executing...")
+        await chatter.get().chat_simple("FQDNDependencySelectorAgent executing...")
 
         if not isinstance(ask, FQDNDependencySelectorRequest):
             return FQDNDependencySelectorResult(

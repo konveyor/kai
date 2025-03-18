@@ -49,9 +49,6 @@ class AnalyzerLSPStep(ValidationStep):
 
         # TODO(djzager): should these be arguments?
         analyzer_output = await self.analyzerLSP.run_analyzer_lsp(
-            label_selector=self.label_selector,
-            included_paths=self.included_paths,
-            incident_selector=self.incident_selector,
             scoped_paths=scoped_paths,
         )
 

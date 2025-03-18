@@ -185,7 +185,7 @@ Message:
         self.agent_methods.update({"find_in_pom._run": find_in_pom(project_base)})
 
     async def execute(self, ask: AgentRequest) -> AgentResult:
-        chatter.get().chat_simple("MavenDependencyAgent executing...")
+        await chatter.get().chat_simple("MavenDependencyAgent executing...")
 
         if not isinstance(ask, MavenDependencyRequest):
             return AgentResult()

@@ -73,7 +73,7 @@ class Chatter:
     def last_chat_token(self) -> str:
         return self._last_chat_token
 
-    def chat(
+    async def chat(
         self,
         kind: ChatMessageKind,
         value: ChatMessageValue,
@@ -100,14 +100,14 @@ class Chatter:
             log.log(log_level, f"chat: {message}")
 
         if self.server is not None and self.method is not None:
-            self.server.send_notification(
+            await self.server.send_notification(
                 method=self.method,
                 params=message.model_dump(),
             )
 
         return message
 
-    def chat_simple(
+    async def chat_simple(
         self,
         message: str,
         chat_token: str | None = None,
@@ -115,7 +115,7 @@ class Chatter:
         log: KaiLogger | None = None,
         log_level: str | int = "INFO",
     ) -> ChatMessage:
-        msg = self.chat(
+        msg = await self.chat(
             kind=ChatMessageKind.SIMPLE_CHAT_MESSAGE,
             value=SimpleChatMessage(message=message),
             chat_token=chat_token,
@@ -131,7 +131,7 @@ class Chatter:
 
         return msg
 
-    def chat_markdown(
+    async def chat_markdown(
         self,
         message: str,
         chat_token: str | None = None,
@@ -139,7 +139,7 @@ class Chatter:
         log: KaiLogger | None = None,
         log_level: str | int = "INFO",
     ) -> ChatMessage:
-        msg = self.chat(
+        msg = await self.chat(
             # FIXME: Change once markdown is supported
             kind=ChatMessageKind.MARKDOWN_CHAT_MESSAGE,
             value=MarkdownChatMessage(message=message),
@@ -156,7 +156,7 @@ class Chatter:
 
         return msg
 
-    def chat_json(
+    async def chat_json(
         self,
         message: dict[str, Any],
         chat_token: str | None = None,
@@ -164,7 +164,7 @@ class Chatter:
         log: KaiLogger | None = None,
         log_level: str | int = "INFO",
     ) -> ChatMessage:
-        msg = self.chat(
+        msg = await self.chat(
             kind=ChatMessageKind.JSON_CHAT_MESSAGE,
             value=message,
             chat_token=chat_token,

@@ -101,7 +101,7 @@ If you have any additional details or steps that need to be performed, put it he
         self._retries = retries
 
     async def execute(self, ask: AgentRequest) -> AnalyzerFixResponse:
-        chatter.get().chat_simple("AnalyzerAgent executing...")
+        await chatter.get().chat_simple("AnalyzerAgent executing...")
 
         if not isinstance(ask, AnalyzerFixRequest):
             return AnalyzerFixResponse(
@@ -138,7 +138,7 @@ If you have any additional details or steps that need to be performed, put it he
             incidents=ask.incidents,
         )
 
-        chatter.get().chat_simple("Waiting for response from LLM...")
+        await chatter.get().chat_simple("Waiting for response from LLM...")
 
         ai_message = await self._model_provider.ainvoke(
             [system_message, HumanMessage(content=content)],
@@ -151,7 +151,7 @@ If you have any additional details or steps that need to be performed, put it he
         msg += f"File to modify: {ask.file_path}\n"
         msg += f"<details><summary>Reasoning</summary>\n{resp.reasoning}\n</details>\n"
         msg += f"<details><summary>Additional Information</summary>\n{resp.additional_information}\n</details>\n"
-        chatter.get().chat_markdown(msg)
+        await chatter.get().chat_markdown(msg)
 
         return AnalyzerFixResponse(
             encountered_errors=[],

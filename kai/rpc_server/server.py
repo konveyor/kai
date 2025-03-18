@@ -477,7 +477,7 @@ async def get_codeplan_agent_solution(
 
     chatter.set(Chatter(server, "my_progress", params.chat_token))
 
-    chatter.get().chat_simple("Getting solution!")
+    await chatter.get().chat_simple("Getting solution!")
 
     overall_result = GetCodeplanAgentSolutionResult(
         encountered_errors=[],
@@ -485,9 +485,9 @@ async def get_codeplan_agent_solution(
         diff="",
     )
 
-    chatter.get().chat_simple("Setting Analysis Cache")
-    app.analyzer.run_analyzer_lsp(scoped_paths=app.task_manager.unprocessed_files)
-    chatter.get().chat_simple("Analysis Cache Reset")
+    await chatter.get().chat_simple("Setting Analysis Cache")
+    await app.analyzer.run_analyzer_lsp(scoped_paths=app.task_manager.unprocessed_files)
+    await chatter.get().chat_simple("Analysis Cache Reset")
 
     # ExitStack calls its callbacks in reverse order upon exiting the with
     # block, **even if an exception is raised**.
@@ -573,7 +573,7 @@ async def get_codeplan_agent_solution(
         async for task in next_task_fn(params.max_priority, params.max_depth):
             app.log.debug(f"Executing task {task.__class__.__name__}: {task}")
 
-            chatter.get().chat_markdown(
+            await chatter.get().chat_markdown(
                 f"Executing task {task.__class__.__name__}."
                 f"<details><summary>Details</summary>\n{task.markdown()}</details>\n"
             )
@@ -581,7 +581,7 @@ async def get_codeplan_agent_solution(
             result = await app.task_manager.execute_task(task)
 
             app.log.debug(f"Task {task.__class__.__name__}, result: {result}")
-            chatter.get().chat_markdown(
+            await chatter.get().chat_markdown(
                 f"Finished task {task.__class__.__name__}!"
                 f"<details><summary>Details</summary>\n{task.markdown()}</details>\n"
             )
@@ -628,12 +628,12 @@ async def get_codeplan_agent_solution(
                 msg += f"<li>{str(task)}</li>\n"
             msg += "</ul>\n"
             msg += "</details>\n"
-        chatter.get().chat_markdown(msg)
+        await chatter.get().chat_markdown(msg)
 
         diff = app.rcm.snapshot.diff(agent_solution_snapshot)
         overall_result.diff = diff[1] + diff[2]
 
-        chatter.get().chat_simple("Finished!")
+        await chatter.get().chat_simple("Finished!")
 
     await server.send_response(
         id=id,
