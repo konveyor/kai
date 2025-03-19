@@ -92,8 +92,8 @@ class ModelProvider:
 
         # raise Exception(f"Could not get model id for {self.model_class}. {dir(self.model_class)=}")
 
-    def default_challenge(self, k: str) -> BaseMessage:
-        return self.invoke(
+    async def default_challenge(self, k: str) -> BaseMessage:
+        return await self.ainvoke(
             "a",
             self.validate_environment_resolver,
             configurable_fields={k: 1},
@@ -101,7 +101,7 @@ class ModelProvider:
         )
 
     @abstractmethod
-    def validate_environment(self) -> None:
+    async def validate_environment(self) -> None:
         """
         Raises an exception if the environment is not set up correctly for the
         current model provider.
@@ -128,7 +128,7 @@ class ModelProvider:
         else:
             return self.llm.with_config(callbacks=[TokenOutputCallback(self.llm)])
 
-    def invoke_llm(
+    async def ainvoke_llm(
         self,
         input: LanguageModelInput,
         config: RunnableConfig | None = None,
@@ -142,7 +142,7 @@ class ModelProvider:
         provide additional functionality.
         """
 
-        return self.configurable_llm(configurable_fields).invoke(
+        return await self.configurable_llm(configurable_fields).ainvoke(
             input, config, stop=stop, **kwargs
         )
 
@@ -163,7 +163,7 @@ class ModelProvider:
         )
 
     @tracer.start_as_current_span("invoke_llm")
-    def invoke(
+    async def ainvoke(
         self,
         input: LanguageModelInput,
         cache_path_resolver: Optional[CachePathResolver] = None,
@@ -181,7 +181,7 @@ class ModelProvider:
         span.set_attribute("model", self.model_id)
 
         if not (self.cache and cache_path_resolver):
-            return self.invoke_llm(
+            return await self.ainvoke_llm(
                 input, config, configurable_fields, stop, do_continuation, **kwargs
             )
 
@@ -194,7 +194,7 @@ class ModelProvider:
             if cache_entry:
                 return cache_entry
 
-        response = self.invoke_llm(
+        response = await self.ainvoke_llm(
             input, config, configurable_fields, stop, do_continuation, **kwargs
         )
 
@@ -244,8 +244,8 @@ class ModelProviderChatOllama(ModelProvider):
             },
         )
 
-    def validate_environment(self) -> None:
-        self.default_challenge("num_predict")
+    async def validate_environment(self) -> None:
+        await self.default_challenge("num_predict")
 
     def prepare_model_args(
         self,
@@ -272,8 +272,8 @@ class ModelProviderChatOpenAI(ModelProvider):
             },
         )
 
-    def validate_environment(self) -> None:
-        self.default_challenge("max_tokens")
+    async def validate_environment(self) -> None:
+        await self.default_challenge("max_tokens")
 
     def prepare_model_args(
         self,
@@ -286,7 +286,7 @@ class ModelProviderChatOpenAI(ModelProvider):
         return model_args, model_id
 
     @override
-    def invoke_llm(
+    async def ainvoke_llm(
         self,
         input: LanguageModelInput,
         config: RunnableConfig | None = None,
@@ -296,7 +296,7 @@ class ModelProviderChatOpenAI(ModelProvider):
         **kwargs: Any,
     ) -> BaseMessage:
         try:
-            return super().invoke_llm(
+            return await super().ainvoke_llm(
                 input, config, configurable_fields, stop, do_continuation, **kwargs
             )
         except BadRequestError as e:
@@ -326,7 +326,7 @@ class ModelProviderChatOpenAI(ModelProvider):
                 ChatOpenAI._default_params = _default_params  # type: ignore[method-assign]
                 ChatOpenAI._get_request_payload = _get_request_payload  # type: ignore[method-assign]
                 self.is_monkey_patched = True
-                return super().invoke_llm(
+                return await super().ainvoke_llm(
                     input, config, configurable_fields, stop, do_continuation, **kwargs
                 )
             else:
@@ -347,8 +347,8 @@ class ModelProviderChatBedrock(ModelProvider):
             },
         )
 
-    def validate_environment(self) -> None:
-        self.default_challenge("max_tokens")
+    async def validate_environment(self) -> None:
+        await self.default_challenge("max_tokens")
 
     def prepare_model_args(
         self,
@@ -359,7 +359,7 @@ class ModelProviderChatBedrock(ModelProvider):
 
     # NOTE: Should we override `invoke` instead of `invoke_llm`?
     @override
-    def invoke_llm(
+    async def ainvoke_llm(
         self,
         input: LanguageModelInput,
         config: RunnableConfig | None = None,
@@ -369,7 +369,7 @@ class ModelProviderChatBedrock(ModelProvider):
         **kwargs: Any,
     ) -> BaseMessage:
         if not do_continuation:
-            return self.configurable_llm(configurable_fields).invoke(
+            return await self.configurable_llm(configurable_fields).ainvoke(
                 input, config, stop=stop, **kwargs
             )
 
@@ -386,7 +386,7 @@ class ModelProviderChatBedrock(ModelProvider):
         else:
             assert_never(input)
 
-        response = invoke_llm.invoke(messages, config, stop=stop, **kwargs)
+        response = await invoke_llm.ainvoke(messages, config, stop=stop, **kwargs)
         # TODO: Figure out if message.content is ever anything but a string
         response.content = response.text().strip()
 
@@ -436,7 +436,7 @@ class ModelProviderFakeListChatModel(ModelProvider):
             },
         )
 
-    def validate_environment(self) -> None:
+    async def validate_environment(self) -> None:
         return
 
     def prepare_model_args(
@@ -462,8 +462,8 @@ class ModelProviderChatGoogleGenerativeAI(ModelProvider):
             },
         )
 
-    def validate_environment(self) -> None:
-        self.default_challenge("max_output_tokens")
+    async def validate_environment(self) -> None:
+        await self.default_challenge("max_output_tokens")
 
     def prepare_model_args(
         self,
@@ -490,8 +490,8 @@ class ModelProviderAzureChatOpenAI(ModelProvider):
             },
         )
 
-    def validate_environment(self) -> None:
-        self.default_challenge("max_tokens")
+    async def validate_environment(self) -> None:
+        await self.default_challenge("max_tokens")
 
     def prepare_model_args(
         self,
@@ -517,8 +517,8 @@ class ModelProviderChatDeepSeek(ModelProvider):
             },
         )
 
-    def validate_environment(self) -> None:
-        self.default_challenge("max_tokens")
+    async def validate_environment(self) -> None:
+        await self.default_challenge("max_tokens")
 
     def prepare_model_args(
         self,

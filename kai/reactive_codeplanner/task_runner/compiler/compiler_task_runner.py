@@ -60,20 +60,20 @@ class MavenCompilerTaskRunner(TaskRunner):
     def __init__(self, agent: MavenCompilerAgent) -> None:
         self.agent = agent
 
-    def refine_task(self, errors: list[str]) -> None:
+    async def refine_task(self, errors: list[str]) -> None:
         """We currently do not refine the tasks"""
         return None
 
-    def can_handle_error(self, errors: list[str]) -> bool:
+    async def can_handle_error(self, errors: list[str]) -> bool:
         """We currently do not know if we can handle errors"""
         return False
 
-    def can_handle_task(self, task: Task) -> bool:
+    async def can_handle_task(self, task: Task) -> bool:
         """Will determine if the task if a MavenCompilerError, and if we can handle these issues."""
         return isinstance(task, self.handled_type)
 
     @tracer.start_as_current_span("maven_execute_task")
-    def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
+    async def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
         """This will be responsible for getting the full file from LLM and updating the file on disk"""
 
         # convert the task to the MavenCompilerError
@@ -83,7 +83,7 @@ class MavenCompilerTaskRunner(TaskRunner):
         with open(task.file) as f:
             src_file_contents = f.read()
 
-        result = self.agent.execute(
+        result = await self.agent.execute(
             MavenCompilerAgentRequest(
                 file_path=Path(task.file),
                 task=task,

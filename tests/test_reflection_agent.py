@@ -2,7 +2,7 @@ import os
 import unittest
 from pathlib import Path
 
-from kai.kai_config import KaiConfigModels
+from kai.kai_config import KaiConfigModels, SupportedModelProviders
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.reactive_codeplanner.agent.reflection_agent import (
     ReflectionAgent,
@@ -11,13 +11,13 @@ from kai.reactive_codeplanner.agent.reflection_agent import (
 from kai.reactive_codeplanner.task_manager.api import ValidationError
 
 
-class TestReflectionAgent(unittest.TestCase):
+class TestReflectionAgent(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         super().setUp()
 
         self.reflection_agent: ReflectionAgent = ReflectionAgent(
             model_provider=ModelProvider.from_config(
-                KaiConfigModels(provider="FakeListChatModel")
+                KaiConfigModels(provider=SupportedModelProviders.FAKE_LIST_CHAT_MODEL)
             )
         )
         # no need to create another directory for this test as we are mainly
@@ -54,12 +54,12 @@ class TestReflectionAgent(unittest.TestCase):
                         "responses": responses.get(tc, []),
                         "sleep": None,
                     },
-                    provider="FakeListChatModel",
+                    provider=SupportedModelProviders.FAKE_LIST_CHAT_MODEL,
                 )
             )
         )
 
-    def test_reflection_bad_pom_update(self) -> None:
+    async def test_reflection_bad_pom_update(self) -> None:
         self._set_up_model_provider("tc1")
 
         # this is the update that previous agent made to pom.xml
@@ -86,7 +86,7 @@ class TestReflectionAgent(unittest.TestCase):
             background="",
         )
 
-        result = self.reflection_agent.execute(task=task)
+        result = await self.reflection_agent.execute(task=task)
         self.assertEqual(result.encountered_errors, None)
         self.assertEqual(result.file_to_modify, Path(self.data_dir_path, "_pom.xml"))
         expected_file_contents = Path(
@@ -95,7 +95,7 @@ class TestReflectionAgent(unittest.TestCase):
         actual_file_contents = Path(self.data_dir_path, "_pom.xml").read_text()
         self.assertEqual(expected_file_contents, actual_file_contents)
 
-    def test_reflection_good_pom_update(self) -> None:
+    async def test_reflection_good_pom_update(self) -> None:
         self._set_up_model_provider("tc2")
 
         # testing that we terminate as expected when LLM says so
@@ -114,7 +114,7 @@ class TestReflectionAgent(unittest.TestCase):
             background="",
         )
 
-        result = self.reflection_agent.execute(task=task)
+        result = await self.reflection_agent.execute(task=task)
 
         self.assertEqual(result.encountered_errors, None)
         self.assertEqual(result.file_to_modify, None)

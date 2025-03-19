@@ -5,8 +5,8 @@ from kai.kai_config import KaiConfigModels, SupportedModelProviders
 from kai.llm_interfacing.model_provider import ModelProvider
 
 
-class TestModelProvider(unittest.TestCase):
-    def test_fake_model_provider(self) -> None:
+class TestModelProvider(unittest.IsolatedAsyncioTestCase):
+    async def test_fake_model_provider(self) -> None:
         responses: list[str] = [
             "alfa",
             "beta",
@@ -34,15 +34,15 @@ class TestModelProvider(unittest.TestCase):
             print(f"{result} == {x}")
             assert result == x
 
-    def test_fail_if_improper_config(self) -> None:
-        def blank_provider(provider: str) -> ModelProvider:
+    async def test_fail_if_improper_config(self) -> None:
+        async def blank_provider(provider: str) -> ModelProvider:
             config = KaiConfigModels(
                 provider=provider,  # type: ignore[arg-type]
                 args={},
             )
 
             model = ModelProvider.from_config(config)
-            model.validate_environment()
+            await model.validate_environment()
 
             return model
 
@@ -58,11 +58,11 @@ class TestModelProvider(unittest.TestCase):
                     ]:
                         raise Exception()
 
-                    blank_provider(provider)
+                    await blank_provider(provider)
 
         os.environ["OPENAI_API_KEY"] = "obviously_fake"
         with self.assertRaises(Exception):  # trunk-ignore(ruff/B017)
-            blank_provider("ChatOpenAI")
+            await blank_provider("ChatOpenAI")
         os.environ.clear()
 
         os.environ["AWS_SECRET_ACCESS_KEY"] = (  # trunk-ignore(bandit/B105)
@@ -70,10 +70,10 @@ class TestModelProvider(unittest.TestCase):
         )
         os.environ["AWS_ACCESS_KEY_ID"] = "obviously_fake"
         with self.assertRaises(Exception):  # trunk-ignore(ruff/B017)
-            blank_provider("ChatBedrock")
+            await blank_provider("ChatBedrock")
         os.environ.clear()
 
         os.environ["GOOGLE_API_KEY"] = "obviously_fake"
         with self.assertRaises(Exception):  # trunk-ignore(ruff/B017)
-            blank_provider("ChatGoogleGenerativeAI")
+            await blank_provider("ChatGoogleGenerativeAI")
         os.environ.clear()

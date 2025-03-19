@@ -1,9 +1,10 @@
 import os
 import unittest
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock
 
-from kai.kai_config import KaiConfigModels
+from kai.kai_config import KaiConfigModels, SupportedModelProviders
 from kai.llm_interfacing.model_provider import ModelProvider
 from kai.reactive_codeplanner.agent.dependency_agent.api import FQDNResponse
 from kai.reactive_codeplanner.agent.dependency_agent.dependency_agent import (
@@ -19,9 +20,9 @@ from kai.reactive_codeplanner.task_runner.dependency.task_runner import (
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
 
 
-class TestDependencyTaskRunner(unittest.TestCase):
+class TestDependencyTaskRunner(unittest.IsolatedAsyncioTestCase):
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.project_base = Path(
             os.path.abspath(
                 Path(".", "tests", "test_data", "test_dependency_task_runner")
@@ -76,14 +77,14 @@ Final Answer: Added the MicroProfile Reactive Messaging dependency with groupId 
                             "responses": responses[response_variant],
                             "sleep": None,
                         },
-                        provider="FakeListChatModel",
+                        provider=SupportedModelProviders.FAKE_LIST_CHAT_MODEL,
                     )
                 ),
                 project_base=project_base,
             )
         )
 
-    def test_package_does_not_exist_task(self) -> None:
+    async def test_package_does_not_exist_task(self) -> None:
         task = PackageDoesNotExistError(
             priority=1,
             parse_lines="'[ERROR] ./test_data/test_dependency_agent/Order.java:[8,27] package jakarta.persistence does not exist'",
@@ -99,7 +100,7 @@ Final Answer: Added the MicroProfile Reactive Messaging dependency with groupId 
 
         rcm = RepoContextManager(project_root=self.project_base)
         snapshot = rcm.snapshot
-        result = runner.execute_task(rcm=rcm, task=task)
+        result = await runner.execute_task(rcm=rcm, task=task)
 
         self.assertEqual(len(result.modified_files), 1)
 
@@ -113,7 +114,7 @@ Final Answer: Added the MicroProfile Reactive Messaging dependency with groupId 
 
         rcm.reset(snapshot)
 
-    def test_package_does_not_exist_error_bug_616(self) -> None:
+    async def test_package_does_not_exist_error_bug_616(self) -> None:
         task = PackageDoesNotExistError(
             priority=1,
             parse_lines="'[ERROR] ./test_data/test_dependency_agent/Order.java:[8,27] package jakarta.persistence does not exist'",
@@ -129,7 +130,7 @@ Final Answer: Added the MicroProfile Reactive Messaging dependency with groupId 
 
         rcm = RepoContextManager(project_root=self.project_base)
         snapshot = rcm.snapshot
-        result = runner.execute_task(rcm=rcm, task=task)
+        result = await runner.execute_task(rcm=rcm, task=task)
 
         self.assertEqual(len(result.modified_files), 1)
 
@@ -143,25 +144,29 @@ Final Answer: Added the MicroProfile Reactive Messaging dependency with groupId 
 
         rcm.reset(snapshot)
 
-    def test_deduplicate_deps(self) -> None:
+    async def test_deduplicate_deps(self) -> None:
         mock_agent = MagicMock()
-        mock_agent.execute.return_value = MavenDependencyResult(
-            encountered_errors=[],
-            file_to_modify=Path("pom.xml"),
-            final_answer="Found the answer",
-            find_in_pom=None,
-            fqdn_response=FQDNResponse(
-                artifact_id="smallrye-reactive-messaging",
-                group_id="io.smallrye.reactive",
-                version="4.29.0",
-            ),
-        )
+
+        async def _mock_execute(*args: Any, **kwargs: Any) -> MavenDependencyResult:
+            return MavenDependencyResult(
+                encountered_errors=[],
+                file_to_modify=Path("pom.xml"),
+                final_answer="Found the answer",
+                find_in_pom=None,
+                fqdn_response=FQDNResponse(
+                    artifact_id="smallrye-reactive-messaging",
+                    group_id="io.smallrye.reactive",
+                    version="4.29.0",
+                ),
+            )
+
+        mock_agent.execute.side_effect = _mock_execute
         rcm = RepoContextManager(project_root=self.project_base / "deduplication")
         task_runner = DependencyTaskRunner(
             agent=mock_agent,
         )
         pom_file = self.project_base / "deduplication" / "pom.xml"
-        result = task_runner.execute_task(
+        result = await task_runner.execute_task(
             rcm=rcm,
             task=PackageDoesNotExistError(
                 priority=1,

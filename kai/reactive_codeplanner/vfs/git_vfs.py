@@ -52,11 +52,11 @@ class RepoContextManager:
                 if spawning_result is not None and isinstance(
                     spawning_result, SpawningResult
                 ):
-                    reflection_task = spawning_result.to_reflection_task()
-                    if reflection_task:
-                        reflection_result = self.reflection_agent.execute(
-                            reflection_task
-                        )
+                    _reflection_task = spawning_result.to_reflection_task()
+                    # if reflection_task:
+                    #     reflection_result = await self.reflection_agent.execute(
+                    #         reflection_task
+                    #     )
 
             union_the_result_and_the_errors(
                 reflection_result.encountered_errors, spawning_result

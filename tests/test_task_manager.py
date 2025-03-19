@@ -12,6 +12,7 @@ from kai.reactive_codeplanner.task_manager.api import (
     ValidationStep,
 )
 from kai.reactive_codeplanner.task_manager.task_manager import TaskManager
+from kai.reactive_codeplanner.task_runner.api import TaskRunner
 from kai.reactive_codeplanner.vfs.git_vfs import RepoContextManager
 from kai.reactive_codeplanner.vfs.repo_context_snapshot import RepoContextSnapshot
 
@@ -24,23 +25,30 @@ class MockValidationStep(ValidationStep):
         self.error_sequences = error_sequences
         self.run_count = 0
 
-    def run(self, scoped_paths: Optional[list[Path]] = None) -> ValidationResult:
+    async def run(self, scoped_paths: Optional[list[Path]] = None) -> ValidationResult:
         if self.run_count < len(self.error_sequences):
             errors = self.error_sequences[self.run_count]
         else:
             errors = []
         self.run_count += 1
         passed = len(errors) == 0
+
         return ValidationResult(passed=passed, errors=errors)
 
 
-class MockTaskRunner:
-    def can_handle_task(self, task: Task) -> bool:
+class MockTaskRunner(TaskRunner):
+    async def can_handle_task(self, task: Task) -> bool:
         return True  # For testing, assume it can handle any task
 
-    def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
+    async def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
         # Simulate task execution by returning a TaskResult
         return TaskResult(encountered_errors=[], modified_files=[], summary="")
+
+    async def can_handle_error(self, errors: list[str]) -> bool:
+        return True
+
+    async def refine_task(self, errors: list[str]) -> None:
+        pass
 
 
 class MockRCM:
@@ -50,12 +58,18 @@ class MockRCM:
     def __init__(self, snapshot: RepoContextSnapshot):
         self.snapshot = snapshot
 
-    def reset(self, snapshot: RepoContextSnapshot):
+    def reset(self, snapshot: RepoContextSnapshot) -> None:
         self.reset_snapshot = snapshot
 
+    async def refine_task(self, errors: list[str]) -> None:
+        return None
 
-class TestTaskManager(unittest.TestCase):
-    def test_simple_task_execution_order(self) -> None:
+    async def can_handle_error(self, errors: list[str]) -> bool:
+        return False
+
+
+class TestTaskManager(unittest.IsolatedAsyncioTestCase):
+    async def test_simple_task_execution_order(self) -> None:
         # Setup
         validator = MockValidationStep(
             config=None,
@@ -79,17 +93,17 @@ class TestTaskManager(unittest.TestCase):
         )
 
         # Collect executed tasks
-        executed_tasks = []
+        executed_tasks: list[Task] = []
 
         # Execute tasks
-        for task in task_manager.get_next_task():
+        async for task in task_manager.get_next_task():
             executed_tasks.append(task)
 
         # Assertions
         self.assertEqual(len(executed_tasks), 1)
         self.assertEqual(executed_tasks[0].message, "Error1")
 
-    def test_task_with_children_dfs_order(self) -> None:
+    async def test_task_with_children_dfs_order(self) -> None:
         # Setup
         parent = ValidationError(
             file="test.py", line=1, column=1, message="ParentError"
@@ -123,7 +137,7 @@ class TestTaskManager(unittest.TestCase):
 
         executed_tasks = []
 
-        for task in task_manager.get_next_task():
+        async for task in task_manager.get_next_task():
             executed_tasks.append(task)
 
         self.assertEqual(len(executed_tasks), 3)
@@ -135,7 +149,7 @@ class TestTaskManager(unittest.TestCase):
         self.assertTrue(executed_tasks[1].depth > executed_tasks[0].depth)
         self.assertTrue(executed_tasks[2].depth > executed_tasks[0].depth)
 
-    def test_task_retry_logic(self) -> None:
+    async def test_task_retry_logic(self) -> None:
         # Setup
         validator = MockValidationStep(
             config=None,
@@ -175,10 +189,10 @@ class TestTaskManager(unittest.TestCase):
             task_runners=[MockTaskRunner()],
         )
 
-        executed_tasks = []
+        executed_tasks: list[Task] = []
         retries = 0
 
-        for task in task_manager.get_next_task():
+        async for task in task_manager.get_next_task():
             executed_tasks.append(task)
             if task.retry_count > 0:
                 retries += 1
@@ -188,7 +202,7 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(executed_tasks[2].retry_count, 3)
         self.assertEqual(retries, 2)  # Retries occurred twice
 
-    def test_handling_ignored_tasks(self) -> None:
+    async def test_handling_ignored_tasks(self) -> None:
         # Setup
         validator = MockValidationStep(
             config=None,
@@ -232,7 +246,7 @@ class TestTaskManager(unittest.TestCase):
             task_runners=[MockTaskRunner()],
         )
 
-        for _task in task_manager.get_next_task():
+        async for _task in task_manager.get_next_task():
             pass
 
         self.assertEqual(len(task_manager.ignored_tasks), 1)
@@ -241,7 +255,7 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(ignored_task.retry_count, ignored_task.max_retries)
         self.assertEqual(rcm.snapshot, rcm.reset_snapshot)
 
-    def test_complex_task_tree(self) -> None:
+    async def test_complex_task_tree(self) -> None:
 
         parent = ValidationError(
             file="test.py", line=1, column=1, message="ParentError", priority=3
@@ -283,9 +297,9 @@ class TestTaskManager(unittest.TestCase):
             task_runners=[MockTaskRunner()],
         )
 
-        executed_tasks = []
+        executed_tasks: list[Task] = []
 
-        for task in task_manager.get_next_task():
+        async for task in task_manager.get_next_task():
             executed_tasks.append(task)
 
         self.assertEqual(len(executed_tasks), 5)
@@ -315,7 +329,7 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(toplevel.depth, 0)
         self.assertEqual(len(toplevel.children), 0)
 
-    def test_stop_iteration_with_seed(self) -> None:
+    async def test_stop_iteration_with_seed(self) -> None:
         # Setup
         parent = ValidationError(
             file="test.py", line=1, column=1, message="ParentError", priority=3
@@ -367,7 +381,7 @@ class TestTaskManager(unittest.TestCase):
         executed_tasks = []
 
         # Priority 0 means only seed issues and associated children will be processed
-        for task in task_manager.get_next_task(max_priority=0):
+        async for task in task_manager.get_next_task(max_priority=0):
             executed_tasks.append(task)
 
         self.assertEqual(len(executed_tasks), 4)
@@ -376,14 +390,14 @@ class TestTaskManager(unittest.TestCase):
         )
         self.assertNotIn(toplevel, executed_tasks)
 
-        for task in task_manager.get_next_task(max_priority=10):
+        async for task in task_manager.get_next_task(max_priority=10):
             executed_tasks.append(task)
 
         self.assertEqual(len(executed_tasks), 5)
         self.assertEqual(toplevel, executed_tasks[-1])
         self.assertEqual(task_manager.priority_queue.task_stacks, {})
 
-    def test_max_depth_handling(self) -> None:
+    async def test_max_depth_handling(self) -> None:
         # Setup
         # Validator returns a parent error, which reveals child errors, and so on
         errorlevel0 = ValidationError(
@@ -426,7 +440,7 @@ class TestTaskManager(unittest.TestCase):
         # Set max_depth to 1 (top-level children only)
         max_depth = 1
 
-        for task in task_manager.get_next_task(max_depth=max_depth):
+        async for task in task_manager.get_next_task(max_depth=max_depth):
             executed_tasks.append((task.depth, task.message))
 
         # Expected tasks: only those with depth <= max_depth
@@ -446,7 +460,7 @@ class TestTaskManager(unittest.TestCase):
         self.assertNotIn((3, "ErrorLevel3"), executed_tasks)
 
         max_depth = 10
-        for task in task_manager.get_next_task(max_depth=max_depth):
+        async for task in task_manager.get_next_task(max_depth=max_depth):
             executed_tasks.append((task.depth, task.message))
 
         self.assertIn((2, "ErrorLevel2"), executed_tasks)
