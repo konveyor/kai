@@ -44,6 +44,12 @@ class MockTaskRunner(TaskRunner):
         # Simulate task execution by returning a TaskResult
         return TaskResult(encountered_errors=[], modified_files=[], summary="")
 
+    async def can_handle_error(self, errors: list[str]) -> bool:
+        return True
+
+    async def refine_task(self, errors: list[str]) -> None:
+        pass
+
 
 class MockRCM:
     snapshot: RepoContextSnapshot
@@ -52,7 +58,7 @@ class MockRCM:
     def __init__(self, snapshot: RepoContextSnapshot):
         self.snapshot = snapshot
 
-    def reset(self, snapshot: RepoContextSnapshot):
+    def reset(self, snapshot: RepoContextSnapshot) -> None:
         self.reset_snapshot = snapshot
 
     async def refine_task(self, errors: list[str]) -> None:
