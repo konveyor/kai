@@ -119,6 +119,7 @@ class KaiRpcApplication(JsonRpcApplication):
         self.task_manager: Optional[TaskManager] = None
         self.rcm: Optional[RepoContextManager] = None
         self.filesystem_lock: asyncio.Lock = asyncio.Lock()
+        self.codeplan_agent_solution_task: Optional[asyncio.Task[None]] = None
 
 
 app = KaiRpcApplication()
@@ -452,6 +453,20 @@ class GetCodeplanAgentSolutionResult(BaseModel):
     diff: str
 
 
+@app.add_notify(
+    method="getCodeplanAgentSolution.cancel",
+)
+async def get_codeplan_agent_solution_cancel(
+    app: KaiRpcApplication,
+    server: JsonRpcServer,
+    id: JsonRpcId,
+    params: dict[str, Any],
+) -> None:
+    if app.codeplan_agent_solution_task is not None:
+        app.codeplan_agent_solution_task.cancel()
+        app.codeplan_agent_solution_task = None
+
+
 @app.add_request(
     method="getCodeplanAgentSolution",
     # NOTE(JonahSussman): This will make the entire get_codeplan_agent_solution
@@ -465,33 +480,38 @@ async def get_codeplan_agent_solution(
     id: JsonRpcId,
     params: GetCodeplanAgentSolutionParams,
 ) -> None:
-    # - Create a set of AnalyzerRuleViolations
-    # - Seed the task manager with these violations
-    # - Get the top task with priority 0 and do the whole loop
-
-    app.log.debug(f"get_codeplan_agent_solution: {params}")
-    if not app.initialized or not app.task_manager or not app.rcm:
-        await server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
-        return
-    app.config = cast(KaiRpcApplicationConfig, app.config)
-
-    chatter.set(Chatter(server, "my_progress", params.chat_token))
-
-    await chatter.get().chat_simple("Getting solution!")
-
-    overall_result = GetCodeplanAgentSolutionResult(
-        encountered_errors=[],
-        modified_files=[],
-        diff="",
-    )
-
-    await chatter.get().chat_simple("Setting Analysis Cache")
-    await app.analyzer.run_analyzer_lsp(scoped_paths=app.task_manager.unprocessed_files)
-    await chatter.get().chat_simple("Analysis Cache Reset")
-
     # ExitStack calls its callbacks in reverse order upon exiting the with
     # block, **even if an exception is raised**.
     with ExitStack() as defer:
+        app.codeplan_agent_solution_task = asyncio.current_task()
+        defer.callback(lambda: setattr(app, "codeplan_agent_solution_task", None))
+
+        # - Create a set of AnalyzerRuleViolations
+        # - Seed the task manager with these violations
+        # - Get the top task with priority 0 and do the whole loop
+
+        app.log.debug(f"get_codeplan_agent_solution: {params}")
+        if not app.initialized or not app.task_manager or not app.rcm:
+            await server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
+            return
+        app.config = cast(KaiRpcApplicationConfig, app.config)
+
+        chatter.set(Chatter(server, "my_progress", params.chat_token))
+
+        await chatter.get().chat_simple("Getting solution!")
+
+        overall_result = GetCodeplanAgentSolutionResult(
+            encountered_errors=[],
+            modified_files=[],
+            diff="",
+        )
+
+        await chatter.get().chat_simple("Setting Analysis Cache")
+        await app.analyzer.run_analyzer_lsp(
+            scoped_paths=app.task_manager.unprocessed_files
+        )
+        await chatter.get().chat_simple("Analysis Cache Reset")
+
         # Get a snapshot of the current state of the repo so we can reset it
         # later
         app.rcm.commit(
