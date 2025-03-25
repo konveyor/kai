@@ -97,24 +97,46 @@ class TaskManager:
             self.priority_queue.push(task)
             logger.info("Seed task %s added to stack.", task)
 
-    def execute_task(self, task: Task) -> TaskResult:
-        logger.info("Executing task: %s", task)
-        agent = self.get_agent_for_task(task)
-        logger.info("Agent selected for task: %s", agent)
+ 
 
-        result: TaskResult
-        try:
-            result = agent.execute_task(self.rcm, task)
-        except Exception as e:
-            logger.exception("Unhandled exception executing task %s", task)
-            chatter.get().chat_simple(f"Unhandled exception executing task {str(task)}")
+    def execute_task(self, task: Task) -> TaskResult:
+    logger.info("Executing task: %s", task)
+    agent = self.get_agent_for_task(task)
+    logger.info("Agent selected for task: %s", agent)
+
+    result: TaskResult
+    try:
+        result = agent.execute_task(self.rcm, task)
+    except IsADirectoryError as e:
+        logger.error("Task failed because a directory was treated as a file: %s", e)
+        chatter.get().chat_simple(f"Task error: {str(e)}")
+
+        # Ensure that directories are not being passed as files
+        if os.path.isdir(str(task)):
+            logger.error("Task references a directory instead of a file: %s", task)
             result = TaskResult(
-                encountered_errors=[str(e)], modified_files=[], summary=""
+                encountered_errors=["Directory used as file: " + str(task)],
+                modified_files=[],
+                summary="Check the task's file references.",
+            )
+        else:
+            result = TaskResult(
+                encountered_errors=[str(e)],
+                modified_files=[],
+                summary="",
             )
 
-        logger.debug("Task execution result: %s", result)
-        task.result = result
-        return result
+    except Exception as e:
+        logger.exception("Unhandled exception executing task %s", task)
+        chatter.get().chat_simple(f"Unhandled exception executing task {str(task)}")
+        result = TaskResult(
+            encountered_errors=[str(e)], modified_files=[], summary=""
+        )
+
+    logger.debug("Task execution result: %s", result)
+    task.result = result
+    return result
+
 
     def get_agent_for_task(self, task: Task) -> TaskRunner:
         for agent in self.task_runners:
