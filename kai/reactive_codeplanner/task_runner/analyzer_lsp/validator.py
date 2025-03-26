@@ -44,11 +44,11 @@ class AnalyzerLSPStep(ValidationStep):
         super().__init__(config)
 
     @tracer.start_as_current_span("analyzer_run_validation")
-    def run(self, scoped_paths: Optional[list[Path]] = None) -> ValidationResult:
+    async def run(self, scoped_paths: Optional[list[Path]] = None) -> ValidationResult:
         logger.debug("Running analyzer-lsp")
 
         # TODO(djzager): should these be arguments?
-        analyzer_output = self.analyzerLSP.run_analyzer_lsp(
+        analyzer_output = await self.analyzerLSP.run_analyzer_lsp(
             scoped_paths=scoped_paths,
         )
 

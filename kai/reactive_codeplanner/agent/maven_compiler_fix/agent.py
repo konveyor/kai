@@ -54,8 +54,8 @@ class MavenCompilerAgent(Agent):
     def __init__(self, model_provider: ModelProvider):
         self.model_provider = model_provider
 
-    def execute(self, ask: AgentRequest) -> AgentResult:
-        chatter.get().chat_simple("MavenCompilerAgent executing...")
+    async def execute(self, ask: AgentRequest) -> AgentResult:
+        await chatter.get().chat_simple("MavenCompilerAgent executing...")
 
         if not isinstance(ask, MavenCompilerAgentRequest):
             return AgentResult()
@@ -77,9 +77,9 @@ class MavenCompilerAgent(Agent):
             src_file_contents=ask.file_contents, compile_errors=compile_errors
         )
 
-        chatter.get().chat_simple("Waiting for response from LLM...")
+        await chatter.get().chat_simple("Waiting for response from LLM...")
 
-        ai_message = self.model_provider.invoke(
+        ai_message = await self.model_provider.ainvoke(
             [system_message, HumanMessage(content=content)],
             ask.cache_path_resolver,
         )
@@ -94,7 +94,7 @@ class MavenCompilerAgent(Agent):
         msg += f"File to modify: {ask.file_path}\n"
         msg += f"<details><summary>Reasoning</summary>\n{resp.reasoning}\n</details>\n"
         msg += f"<details><summary>Additional Information</summary>\n{resp.additional_information}\n</details>\n"
-        chatter.get().chat_markdown(msg)
+        await chatter.get().chat_markdown(msg)
 
         return resp
 

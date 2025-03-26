@@ -1,3 +1,4 @@
+import asyncio
 import os
 import platform
 import re
@@ -7,7 +8,7 @@ from contextlib import ExitStack
 from itertools import groupby
 from operator import attrgetter
 from pathlib import Path
-from typing import Any, Callable, Generator, Optional, ParamSpec, TypeVar, cast
+from typing import Any, AsyncIterator, Callable, Optional, ParamSpec, TypeVar, cast
 from unittest.mock import MagicMock
 from urllib.parse import urlparse
 
@@ -117,6 +118,8 @@ class KaiRpcApplication(JsonRpcApplication):
         self.analysis_validator: Optional[AnalyzerLSPStep] = None
         self.task_manager: Optional[TaskManager] = None
         self.rcm: Optional[RepoContextManager] = None
+        self.filesystem_lock: asyncio.Lock = asyncio.Lock()
+        self.codeplan_agent_solution_task: Optional[asyncio.Task[None]] = None
 
 
 app = KaiRpcApplication()
@@ -129,46 +132,48 @@ ERROR_NOT_INITIALIZED = JsonRpcError(
 
 @app.add_request(method="echo")
 @tracer.start_as_current_span("echo")
-def echo(
+async def echo(
     app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
-    server.send_response(id=id, result=params)
+    await server.send_response(id=id, result=params)
 
 
 @app.add_request(method="shutdown")
 @tracer.start_as_current_span("shutdown")
-def shutdown(
+async def shutdown(
     app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
     server.shutdown_flag = True
     if app.analyzer is not None:
-        app.analyzer.stop()
-    server.send_response(id=id, result={})
+        await app.analyzer.stop()
+
+    await server.send_response(id=id, result={})
 
 
 @app.add_request(method="exit")
 @tracer.start_as_current_span("exit")
-def exit(
+async def exit(
     app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
     server.shutdown_flag = True
     if app.analyzer is not None:
-        app.analyzer.stop()
-    server.send_response(id=id, result={})
+        await app.analyzer.stop()
+
+    await server.send_response(id=id, result={})
 
 
 # NOTE(shawn-hurley): would it ever make sense to have the server
 # "re-initialized" or would you just shutdown and restart the process?
 @app.add_request(method="initialize")
 @tracer.start_as_current_span("initialize")
-def initialize(
+async def initialize(
     app: KaiRpcApplication,
     server: JsonRpcServer,
     id: JsonRpcId,
     params: KaiRpcApplicationConfig,
 ) -> None:
     if app.initialized:
-        server.send_response(
+        await server.send_response(
             id=id,
             error=JsonRpcError(
                 code=JsonRpcErrorCode.ServerErrorStart,
@@ -196,9 +201,9 @@ def initialize(
             )
             cache.model_id = re.sub(r"[\.:\\/]", "_", model_provider.model_id)
 
-            model_provider.validate_environment()
+            await model_provider.validate_environment()
         except Exception as e:
-            server.send_response(
+            await server.send_response(
                 id=id,
                 error=JsonRpcError(
                     code=JsonRpcErrorCode.InternalError,
@@ -220,8 +225,10 @@ def initialize(
                 or Path(),
                 excluded_paths=app.config.analyzer_lsp_excluded_paths,
             )
+
+            await app.analyzer.start()
         except Exception as e:
-            server.send_response(
+            await server.send_response(
                 id=id,
                 error=JsonRpcError(
                     code=JsonRpcErrorCode.InternalError,
@@ -283,7 +290,7 @@ def initialize(
         )
 
     except Exception:
-        server.send_response(
+        await server.send_response(
             id=id,
             error=JsonRpcError(
                 code=JsonRpcErrorCode.InternalError,
@@ -294,46 +301,20 @@ def initialize(
 
     app.initialized = True
 
-    server.send_response(id=id, result=app.config.model_dump())
-
-
-# NOTE(shawn-hurley): I would just as soon make this another initialize call
-# rather than a separate endpoint. but open to others feedback.
-@app.add_request(method="setConfig")
-@tracer.start_as_current_span("set_config")
-def set_config(
-    app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
-) -> None:
-    if not app.initialized:
-        server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
-        return
-    app.config = cast(KaiRpcApplicationConfig, app.config)
-
-    # Basically reset everything
-    app.initialized = False
-    try:
-        initialize.func(app, server, id, KaiRpcApplicationConfig.model_validate(params))
-    except Exception as e:
-        server.send_response(
-            id=id,
-            error=JsonRpcError(
-                code=JsonRpcErrorCode.InternalError,
-                message=str(e),
-            ),
-        )
+    await server.send_response(id=id, result=app.config.model_dump())
 
 
 @app.add_request(method="analysis_engine.Analyze")
 @tracer.start_as_current_span("server_analysis_endpoint")
-def analyze(
+async def analyze(
     app: KaiRpcApplication, server: JsonRpcServer, id: JsonRpcId, params: dict[str, Any]
 ) -> None:
     if not app.initialized:
-        server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
+        await server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
         return
 
     try:
-        analyzer_output = app.analyzer.run_analyzer_lsp(
+        analyzer_output = await app.analyzer.run_analyzer_lsp(
             label_selector=params.get("label_selector", ""),
             included_paths=params.get("included_paths", []),
             incident_selector=params.get("incident_selector", ""),
@@ -342,7 +323,7 @@ def analyze(
         )
 
         if isinstance(analyzer_output, JsonRpcError):
-            server.send_response(
+            await server.send_response(
                 id=id,
                 error=JsonRpcError(
                     code=JsonRpcErrorCode.InternalError,
@@ -352,7 +333,7 @@ def analyze(
             return
 
         if analyzer_output is None:
-            server.send_response(
+            await server.send_response(
                 id=id,
                 error=JsonRpcError(
                     code=JsonRpcErrorCode.UnknownErrorCode,
@@ -362,7 +343,7 @@ def analyze(
             return
 
         if analyzer_output.result is None:
-            server.send_response(
+            await server.send_response(
                 id=id,
                 error=JsonRpcError(
                     code=JsonRpcErrorCode.UnknownErrorCode,
@@ -372,12 +353,14 @@ def analyze(
             return
 
         if isinstance(analyzer_output.result, BaseModel):
-            server.send_response(id=id, result=analyzer_output.result.model_dump())
+            await server.send_response(
+                id=id, result=analyzer_output.result.model_dump()
+            )
             return
 
-        server.send_response(id=id, result=analyzer_output.result)
+        await server.send_response(id=id, result=analyzer_output.result)
     except Exception as e:
-        server.send_response(
+        await server.send_response(
             id=id,
             error=JsonRpcError(
                 code=JsonRpcErrorCode.InternalError,
@@ -422,7 +405,7 @@ class TestRCMParams(BaseModel):
 
 
 @app.add_request(method="testRCM")
-def test_rcm(
+async def test_rcm(
     app: KaiRpcApplication,
     server: JsonRpcServer,
     id: JsonRpcId,
@@ -445,7 +428,7 @@ def test_rcm(
 
     rcm.reset(the_snapshot)
 
-    server.send_response(
+    await server.send_response(
         id=id,
         result={
             "diff": diff[1] + diff[2],
@@ -470,41 +453,65 @@ class GetCodeplanAgentSolutionResult(BaseModel):
     diff: str
 
 
-@app.add_request(method="getCodeplanAgentSolution")
-@tracer.start_as_current_span("get_code_plan_solution")
-def get_codeplan_agent_solution(
+@app.add_notify(
+    method="getCodeplanAgentSolution.cancel",
+)
+async def get_codeplan_agent_solution_cancel(
+    app: KaiRpcApplication,
+    server: JsonRpcServer,
+    id: JsonRpcId,
+    params: dict[str, Any],
+) -> None:
+    if app.codeplan_agent_solution_task is not None:
+        app.codeplan_agent_solution_task.cancel()
+        app.codeplan_agent_solution_task = None
+
+
+@app.add_request(
+    method="getCodeplanAgentSolution",
+    # NOTE(JonahSussman): This will make the entire get_codeplan_agent_solution
+    # function run in a lock. We need to figure out a concurrent VFS ASAP.
+    sync="error",
+)
+@tracer.start_as_current_span("get_codeplan_solution")
+async def get_codeplan_agent_solution(
     app: KaiRpcApplication,
     server: JsonRpcServer,
     id: JsonRpcId,
     params: GetCodeplanAgentSolutionParams,
 ) -> None:
-    # - Create a set of AnalyzerRuleViolations
-    # - Seed the task manager with these violations
-    # - Get the top task with priority 0 and do the whole loop
-
-    app.log.debug(f"get_codeplan_agent_solution: {params}")
-    if not app.initialized or not app.task_manager or not app.rcm:
-        server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
-        return
-    app.config = cast(KaiRpcApplicationConfig, app.config)
-
-    chatter.set(Chatter(server, "my_progress", params.chat_token))
-
-    chatter.get().chat_simple("Getting solution!")
-
-    overall_result = GetCodeplanAgentSolutionResult(
-        encountered_errors=[],
-        modified_files=[],
-        diff="",
-    )
-
-    chatter.get().chat_simple("Setting Analysis Cache")
-    app.analyzer.run_analyzer_lsp(scoped_paths=app.task_manager.unprocessed_files)
-    chatter.get().chat_simple("Analysis Cache Reset")
-
     # ExitStack calls its callbacks in reverse order upon exiting the with
     # block, **even if an exception is raised**.
     with ExitStack() as defer:
+        app.codeplan_agent_solution_task = asyncio.current_task()
+        defer.callback(lambda: setattr(app, "codeplan_agent_solution_task", None))
+
+        # - Create a set of AnalyzerRuleViolations
+        # - Seed the task manager with these violations
+        # - Get the top task with priority 0 and do the whole loop
+
+        app.log.debug(f"get_codeplan_agent_solution: {params}")
+        if not app.initialized or not app.task_manager or not app.rcm:
+            await server.send_response(id=id, error=ERROR_NOT_INITIALIZED)
+            return
+        app.config = cast(KaiRpcApplicationConfig, app.config)
+
+        chatter.set(Chatter(server, "my_progress", params.chat_token))
+
+        await chatter.get().chat_simple("Getting solution!")
+
+        overall_result = GetCodeplanAgentSolutionResult(
+            encountered_errors=[],
+            modified_files=[],
+            diff="",
+        )
+
+        await chatter.get().chat_simple("Setting Analysis Cache")
+        await app.analyzer.run_analyzer_lsp(
+            scoped_paths=app.task_manager.unprocessed_files
+        )
+        await chatter.get().chat_simple("Analysis Cache Reset")
+
         # Get a snapshot of the current state of the repo so we can reset it
         # later
         app.rcm.commit(
@@ -583,18 +590,18 @@ def get_codeplan_agent_solution(
         initial_ignored_tasks = set(app.task_manager.ignored_tasks).copy()
 
         overall_modified_files: set[str] = set()
-        for task in next_task_fn(params.max_priority, params.max_depth):
+        async for task in next_task_fn(params.max_priority, params.max_depth):
             app.log.debug(f"Executing task {task.__class__.__name__}: {task}")
 
-            chatter.get().chat_markdown(
+            await chatter.get().chat_markdown(
                 f"Executing task {task.__class__.__name__}."
                 f"<details><summary>Details</summary>\n{task.markdown()}</details>\n"
             )
 
-            result = app.task_manager.execute_task(task)
+            result = await app.task_manager.execute_task(task)
 
             app.log.debug(f"Task {task.__class__.__name__}, result: {result}")
-            chatter.get().chat_markdown(
+            await chatter.get().chat_markdown(
                 f"Finished task {task.__class__.__name__}!"
                 f"<details><summary>Details</summary>\n{task.markdown()}</details>\n"
             )
@@ -641,14 +648,14 @@ def get_codeplan_agent_solution(
                 msg += f"<li>{str(task)}</li>\n"
             msg += "</ul>\n"
             msg += "</details>\n"
-        chatter.get().chat_markdown(msg)
+        await chatter.get().chat_markdown(msg)
 
         diff = app.rcm.snapshot.diff(agent_solution_snapshot)
         overall_result.diff = diff[1] + diff[2]
 
-        chatter.get().chat_simple("Finished!")
+        await chatter.get().chat_simple("Finished!")
 
-    server.send_response(
+    await server.send_response(
         id=id,
         result=overall_result.model_dump(),  # Must dump as a dict for some reason?
     )
@@ -659,23 +666,27 @@ R = TypeVar("R")
 
 
 def scoped_task_fn(
-    max_iterations: Optional[int], next_task_fn: Callable[P, Generator[R, Any, None]]
-) -> Callable[P, Generator[R, Any, None]]:
+    max_iterations: Optional[int], next_task_fn: Callable[P, AsyncIterator[R]]
+) -> Callable[P, AsyncIterator[R]]:
     log = get_logger("fn_selection")
     if max_iterations is None:
         log.debug("No max_iterations, returning default get_next_task")
         return next_task_fn
 
     @tracer.start_as_current_span("scoped_task")
-    def inner(*args: P.args, **kwargs: P.kwargs) -> Generator[R, Any, None]:
+    async def inner(*args: P.args, **kwargs: P.kwargs) -> AsyncIterator[R]:
         log.info(f"In inner {args}, {kwargs}")
-        generator = next_task_fn(*args, **kwargs)
-        for i in range(max_iterations):
-            try:
-                log.debug(f"Yielding on iteration {i}")
-                yield next(generator)
-            except StopIteration:
+
+        i = 0
+        async for task in next_task_fn(*args, **kwargs):
+            if i >= max_iterations:
+                log.debug(f"Reached max iterations: {max_iterations}")
                 break
+
+            log.debug(f"Yielding on iteration {i}")
+            yield task
+
+            i += 1
 
     log.debug("Returning the iteration-scoped get_next_task function")
 

@@ -37,18 +37,18 @@ class DependencyTaskRunner(TaskRunner):
     def __init__(self, agent: MavenDependencyAgent) -> None:
         self._agent = agent
 
-    def can_handle_task(self, task: Task) -> bool:
+    async def can_handle_task(self, task: Task) -> bool:
         return isinstance(task, self.handled_type)
 
     @tracer.start_as_current_span("dependency_task_execute")
-    def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
+    async def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
         if not isinstance(task, PackageDoesNotExistError):
             logger.error("Unexpected task type %r", task)
             return TaskResult(encountered_errors=[], modified_files=[], summary="")
 
         msg = f"Maven Compiler Error:\n{task.compiler_error_message()}"
 
-        maven_dep_response = self._agent.execute(
+        maven_dep_response = await self._agent.execute(
             MavenDependencyRequest(
                 file_path=Path(task.file),
                 task=task,
@@ -123,10 +123,10 @@ class DependencyTaskRunner(TaskRunner):
 
         return TaskResult(modified_files=[Path(pom)], encountered_errors=[], summary="")
 
-    def refine_task(self, errors: list[str]) -> None:
+    async def refine_task(self, errors: list[str]) -> None:
         # Knows that it's the refine step so that it might not spawn as much
         # stuff.
         pass
 
-    def can_handle_error(self, errors: list[str]) -> bool:
+    async def can_handle_error(self, errors: list[str]) -> bool:
         return False

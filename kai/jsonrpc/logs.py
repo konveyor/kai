@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging as core_logging
 import sys
 from typing import TYPE_CHECKING
@@ -39,9 +40,13 @@ class JsonRpcLoggingHandler(core_logging.Handler):
                 "message": record.getMessage(),
             }
 
-            self.server.send_notification(
-                method=self.method,
-                params=params,
+            loop = asyncio.get_running_loop()
+
+            _ = loop.create_task(
+                self.server.send_notification(
+                    method=self.method,
+                    params=params,
+                )
             )
         except Exception:
             print("Failed to log message", file=sys.stderr)

@@ -33,20 +33,20 @@ class AnalyzerTaskRunner(TaskRunner):
     def __init__(self, agent: AnalyzerAgent) -> None:
         self.agent = agent
 
-    def refine_task(self, errors: list[str]) -> None:
+    async def refine_task(self, errors: list[str]) -> None:
         """We currently do not refine the tasks"""
         raise NotImplementedError("We currently do not refine the tasks")
 
-    def can_handle_error(self, errors: list[str]) -> bool:
+    async def can_handle_error(self, errors: list[str]) -> bool:
         """We currently do not know if we can handle errors"""
         raise NotImplementedError("We currently do not know if we can handle errors")
 
-    def can_handle_task(self, task: Task) -> bool:
+    async def can_handle_task(self, task: Task) -> bool:
         """Will determine if the task if a MavenCompilerError, and if we can handle these issues."""
         return isinstance(task, AnalyzerRuleViolation)
 
     @tracer.start_as_current_span("analyzer_execute_task")
-    def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
+    async def execute_task(self, rcm: RepoContextManager, task: Task) -> TaskResult:
         """This will be responsible for getting the full file from LLM and updating the file on disk"""
 
         # convert the task to the MavenCompilerError
@@ -67,7 +67,7 @@ class AnalyzerTaskRunner(TaskRunner):
             task=task,
             background=task.background(),
         )
-        result = self.agent.execute(agent_request)
+        result = await self.agent.execute(agent_request)
 
         if not result or not isinstance(result, AnalyzerFixResponse):
             return TaskResult(

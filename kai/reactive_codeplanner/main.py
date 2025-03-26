@@ -1,8 +1,9 @@
 import argparse
+import asyncio
 import time
 import tomllib
 from pathlib import Path
-from typing import Any, Generator
+from typing import AsyncIterator
 
 import kai.logging.logging as logging
 from kai.analyzer import AnalyzerLSP
@@ -34,7 +35,7 @@ from kai.rpc_server.server import KaiRpcApplicationConfig
 logger = logging.get_logger(__name__)
 
 
-def main() -> None:
+async def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run the CodePlan loop against a project"
     )
@@ -177,10 +178,10 @@ def main() -> None:
         ],
     )
     logger.info("TaskManager initialized with validators and agents.")
-    for task in timed_get_next_task(task_manager):
+    async for task in timed_get_next_task(task_manager):
         # Measure execution time
         start_exec_time = time.time()
-        result = task_manager.execute_task(task)
+        result = await task_manager.execute_task(task)
         exec_time = time.time() - start_exec_time
         logger.info(
             "PERFORMANCE: %.6f seconds to execute task: %s, with result: %s",
@@ -219,12 +220,13 @@ def main() -> None:
     logger.info("Codeplan execution completed.")
 
 
-def timed_get_next_task(task_manager: TaskManager) -> Generator[Task, Any, None]:
+async def timed_get_next_task(task_manager: TaskManager) -> AsyncIterator[Task]:
     task_iter = task_manager.get_next_task()
+
     while True:
         start_time = time.time()
         try:
-            task = next(task_iter)
+            task = await anext(task_iter)  # trunk-ignore(ruff/F821)
             get_task_time = time.time() - start_time
             logger.info(
                 "PERFORMANCE: %.6f seconds to receive next task: %s (priority=%s, depth=%s)",
@@ -239,4 +241,4 @@ def timed_get_next_task(task_manager: TaskManager) -> Generator[Task, Any, None]
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
