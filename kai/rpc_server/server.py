@@ -282,7 +282,7 @@ def initialize(
             ],
         )
 
-        app.log.info("Priming analyzer cache with default run")
+        app.log.info("Running analysis")
 
         app.analyzer.run_analyzer_lsp(
             label_selector=app.config.analyzer_lsp_label_selector or "",
