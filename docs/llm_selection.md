@@ -1,216 +1,249 @@
 # Large Language Model (LLM) configuration
 
-- [Large Language Model (LLM) configuration](#large-language-model-llm-configuration)
-  - [LLM API Keys](#llm-api-keys)
-    - [IBM BAM Service](#ibm-bam-service)
-    - [OpenAI Service](#openai-service)
-  - [Selecting a Model](#selecting-a-model)
-    - [IBM-Served granite](#ibm-served-granite)
-    - [IBM-Served mistral](#ibm-served-mistral)
-    - [IBM-Served codellama](#ibm-served-codellama)
-    - [IBM-Served llama3](#ibm-served-llama3)
-    - [IBM-Served Ollama](#ibm-served-ollama)
-    - [OpenAI GPT 4](#openai-gpt-4)
-    - [OpenAI GPT 3.5](#openai-gpt-35)
-  - [OpenAI API Compatible Alternatives](#openai-api-compatible-alternatives)
-    - [Podman Desktop](#podman-desktop)
-      - [Install](#install)
-      - [Configuration](#configuration)
+Kai is intended to be model agnostic in the sense of being able to connect to various Large Language Model (LLM) providers, yet it is important to understand the results from LLMs will vary widely and it's expected that smaller LLMs are less likely to provide satisfactory results.
+
+The below will help to share examples of connecting to various LLM providers.
+
+- [Basic LLM Configuration](#basic-llm-configuration)
+  - [Edit the configuration file: provider-settings.yaml](#configuration-file-provider-settingsyaml)
+  - [How do I make a specific provider setting active](#how-do-i-make-a-specific-provider-setting-active)
+  - [How do I restart the Konveyor AI rpc-server](#how-do-i-restart-the-konveyor-ai-server)
+- [Example LLM Provider Settings](#example-provider-settings)
+  - [Amazon Bedrock](#amazon-bedrock)
+  - [Azure OpenAI](#azure-openai)
+  - [DeepSeek](#deepseek)
+  - [Google Gemini](#google-gemini)
+  - [Ollama](#ollama)
+  - [OpenAI](#openai)
+  - [OpenAI Compatible Alternatives](#openai-api-compatible-alternatives)
     - [OpenShift AI](#openshift-ai)
-    - [Known Issues](#known-issues)
+    - [MaaS](#maas---models-as-a-service)
+    - [Podman Desktop](#podman-desktop)
 
-## LLM API Keys
+## Basic LLM configuration
 
-We expect that you have configured the environment variables required for the
-LLM you are attempting to use. For example:
+### LLM Parameters
 
-- OpenAI service requires: `OPENAI_API_KEY=my-secret-api-key-value`
-- IBM BAM service requires: `GENAI_KEY=my-secret-api-key-value`
+Kai requires access to a LLM to provide code suggestions. LLM access typically involves specifying a URL as well as authentication info such as an api key. The specific details of what is required will vary per LLM provider. Most provider values may be specified via parameters in the configuration file `provider-settings.yaml` or as specific environment variables which that provider plugin is aware of, i.e. `OPENAI_API_KEY`, `GOOGLE_API_KEY`, etc.
 
-### IBM BAM Service
+We attempt to share common patterns for accessing various providers, yet if you run into problems and need to dive deeper into how Kai is connecting to a provider you can look at [kai/llm_interfacing/model_provider.py](https://github.com/konveyor/kai/blob/main/kai/llm_interfacing/model_provider.py)
 
-The development team has been using the IBM BAM service to aid development and
-testing:
+### Configuration file `provider-settings.yaml`
 
-> IBM Big AI Model (BAM) laboratory is where IBM Research designs, builds, and
-> iterates on what’s next in foundation models. Our goal is to help accelerate
-> the transition from research to product. Come experiment with us.
+LLM configuration for the Kai IDE is controlled via a configuration file: `provider-settings.yaml`
 
-> [!WARNING]
-> In order to use this service an individual needs to obtain a w3id
-> from IBM. The kai development team is unable to help obtaining this access.
+The recommended way to find and open this file is to either:
 
-1. Login to https://bam.res.ibm.com/.
-2. To access via an API you can look at ‘Documentation’ after logging into
-   https://bam.res.ibm.com/. You will see a field embedded in the
-   'Documentation' section where you can generate/obtain an API Key.
-3. Ensure you have exported the key via `export
-GENAI_KEY=my-secret-api-key-value`.
+- At the Kai IDE configuration screen click "Configure Generative AI"
+  ![ConfigureGenerativeAI](images/configure_generative_ai.png)
 
-Related client tooling:
+- Use the IDE command palette to run: "Konveyor: Open the GenAI model provider configuration file"
+  - Use the IDE shortcut to open command palette: Control (or Command) + SHIFT + P
+  - Enter: "Konveyor: Open the GenAI model provider configuration file"
+    ![CommandOpenPaletteConfigureGenAI](images/cmd_palette_configure_gen_ai.png)
 
-- [IBM Generative AI Python SDK](https://github.com/IBM/ibm-generative-ai)
-- [LangChain
-  integration](https://ibm.github.io/ibm-generative-ai/v2.2.0/rst_source/examples.extensions.langchain.html#examples-extensions-langchain)
+#### Location of `provider-settings.yaml` is platform dependent
 
-### OpenAI Service
+`provider-settings.yaml` will be located where the IDE keeps global storage for the IDE plugin.
+This file is located under the IDE plugins "global storage" path.
+
+- For example on MacOS, `provider-settings.yaml` is found at:
+  - `~/Library/Application Support/Code/User/globalStorage/konveyor.konveyor-ai/settings/provider-settings.yaml`
+
+### How do I make a specific provider setting 'active'?
+
+You will see several examples of possible LLM provider settings in the default `provider-settings.yaml` file.
+The means of choosing a specific provider is done by using [YAML anchors and aliases](https://yaml.org/spec/1.2.2/#3222-anchors-and-aliases). An `&active` anchor is recommended to be placed only once at the provider configuration you wish to use.
+
+```yaml
+models:
+  ChatOllama: &active
+    provider: "ChatOllama"
+    args:
+      model: "granite-code:8b-instruct"
+
+  AmazonBedrock:
+    provider: "ChatBedrock"
+    args:
+      model_id: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+
+# This is the node used for configuring the server.  A simple anchor/reference
+# pair is an easy way to to select a configuration.  To change configs, move the
+# `&active` anchor to the desired block and restart the server.
+active: *active
+```
+
+- For the above we can see that the `&active` tag is applied to the `ChatOllama` setting and NOT to the AmazonBedrock stanza, therefore the `ChatOllama` configuration is what will be used by Kai.
+- As you change different LLM providers, move the yaml anchor `&active` to the selection you wish to use, then restart the Konveyor AI server.
+
+### How do I restart the Konveyor AI server
+
+If you have made a change to `provider-settings.yaml` you will want to ensure that you have restarted the Konveyor AI server. You may do this either by:
+
+- Restart VSCode IDE
+- Use the command palette (Control/Command + Shift + P) and "Konveyor: Stop Server" / "Konveyor: Start Server"
+  ![CommandOpenPaletteStartStopServer](./images/cmd_palette_start_stop_server.png)
+  - Note that as you "Stop" or "Start" the Kai RPC Server you will see the server status reflected in upper right corner of
+    ![KaiRPCServerStatus](./images/kai_rpc_server_status.png)
+
+## Example Provider Settings
+
+### Amazon Bedrock
+
+```yaml
+models:
+  AmazonBedrock: &active
+    provider: "ChatBedrock"
+    args:
+      model_id: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+
+active: *active
+```
+
+- Note that authentication to Amazon Bedrock will look for environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` to handle authentication.
+  - While not required, it's recommended to use the [aws cli](https://aws.amazon.com/cli/) and verify you have command line access to AWS services working before proceeding
+
+### Azure OpenAI
+
+```yaml
+models:
+  AzureChatOpenAI: &active
+    environment:
+      OPENAI_API_KEY: "sk-secret"
+    provider: "AzureChatOpenAI"
+    args:
+      azure_deployment: "gpt-35-turbo"
+
+active: *active
+```
+
+### DeepSeek
+
+```yaml
+models:
+  ChatDeepSeek: &active
+    environment:
+      DEEPSEEK_API_KEY: "sk-secret"
+    provider: "ChatDeepSeek"
+    args:
+      model: "deepseek-chat",
+
+active: *active
+```
+
+### Google Gemini
+
+```yaml
+models:
+  ChatGoogleGenerativeAI: &active
+    environment:
+      GOOGLE_API_KEY: "sk-secret"
+    provider: "ChatGoogleGenerativeAI"
+    args:
+      model: "gemini-pro"
+
+active: *active
+```
+
+### OpenAI
 
 If you have a valid API Key for OpenAI you may use this with Kai.
 
 1. Follow the directions from OpenAI
    [here](https://help.openai.com/en/articles/4936850-where-do-i-find-my-openai-api-key).
-2. Ensure you have exported the key via `export
-OPENAI_API_KEY=my-secret-api-key-value`
+2. Edit `provider-settings.yaml` with a sample like the below
 
-## Selecting a Model
+```yaml
+models:
+  OpenAI: &active
+    environment:
+      OPENAI_API_KEY: "sk-secret"
+    provider: "ChatOpenAI"
+    args:
+      model: "gpt-4o"
 
-We offer configuration choices of several models via
-[config.toml](/kai/config.toml) which line up to choices we know about from
-[kai/model_provider.py](https://github.com/konveyor-ecosystem/kai/blob/main/kai/model_provider.py).
-
-To change which llm you are targeting, open `config.toml` and change the
-`[models]` section to one of the following:
-
-### IBM-Served granite
-
-```toml
-[models]
-  provider = "ChatIBMGenAI"
-
-  [models.args]
-  model_id = "ibm/granite-13b-chat-v2"
+active: *active
 ```
 
-### IBM-Served mistral
+- Update your OpenAI API Key
+  - Note if you have `OPENAI_API_KEY` set as an environment variable which VSCode is able to read then you can ignore explicitly setting it in your `provider-settings.yaml`.
+- Update the model you wish to use
 
-```toml
-[models]
-  provider = "ChatIBMGenAI"
+### Ollama
 
-  [models.args]
-  model_id = "mistralai/mixtral-8x7b-instruct-v01"
+```yaml
+models:
+  ChatOllama: &active
+    provider: "ChatOllama"
+    args:
+      model: "granite-code:8b-instruct"
+
+active: *active
 ```
 
-### IBM-Served codellama
+- Update `model` to reflect the local ollama model you have running and want to use
 
-```toml
-[models]
-  provider = "ChatIBMGenAI"
+### OpenAI API Compatible Alternatives
 
-  [models.args]
-  model_id = "meta-llama/llama-2-13b-chat"
+In general Kai will work with OpenAI Compatible API alternatives. The general
+pattern is to specify the `base_url` and environment variable for `OPENAI_API_KEY`
+
+Below are examples of OpenAI API compatible services community members have
+raised questions about in past. We are including a few examples to help share
+information.
+
+#### OpenShift AI
+
+OpenShift AI or [OpenDataHub](https://opendatahub.io/) provides a means of running
+models on your own Kubernetes cluster. Kai is able to connect to these models via
+using an OpenAI compatible API.
+
+You may find deeper guidance on deploying this kind of setup at: [github.com/jmontleon/openshift-ai-with-gpu-autoscaling](https://github.com/jmontleon/openshift-ai-with-gpu-autoscaling)
+
+```yaml
+models:
+  openshift-kai-test-generation: &active
+    environment:
+      SSL_CERT_FILE: "<Server's SSL_CERT_FILE>"
+      REQUESTS_CA_BUNDLE: "<Server's REQUESTS_CA_BUNDLE>"
+      OPENAI_API_KEY: "<Server's OPENAI_API_KEY>"
+
+    provider: "ChatOpenAI"
+    args:
+      model: "kai-test-generation"
+      base_url: "https://kai-test-generation-llms.apps.konveyor-ai.migration.example.com/v1"
 ```
 
-### IBM-Served llama3
+#### MaaS - Models As A Service
 
-```toml
-  # Note:  llama3 complains if we use more than 2048 tokens
-  # See:  https://github.com/konveyor-ecosystem/kai/issues/172
-[models]
-  provider = "ChatIBMGenAI"
+Models As A Service https://github.com/rh-aiservices-bu/models-aas
 
-  [models.args]
-  model_id = "meta-llama/llama-3-70b-instruct"
-  parameters.max_new_tokens = 2048
+- Example deployment: https://maas.apps.prod.rhoai.rh-aiservices-bu.com/
+
+```yaml
+parasols-maas-granite:
+  environment:
+    OPENAI_API_KEY: "KEYVALUE"
+  provider: "ChatOpenAI"
+  args:
+    model: "granite-8b-code-instruct-128k"
+    base_url: "https://granite-8b-code-instruct-maas-apicast-production.apps.prod.rhoai.rh-aiservices-bu.com:443/v1"
 ```
 
-### IBM-Served Ollama
+- Note the `model` AND `base_url` both are related, i.e. for this service a different model also has a different and explicit endpoint, it is NOT sufficient to simply change the `model`
 
-```toml
-[models]
-  provider = "ChatOllama"
+#### Podman Desktop
 
-  [models.args]
-  model = "mistral"
+See [podman_with_local_models.md](podman_with_local_models.md) for more into walking through deploying local models with podman
+
+```yaml
+podman_mistral:
+    provider: "ChatOpenAI"
+     environment:
+      OPENAI_API_KEY: "unused value"
+    args:
+      model: "mistral-7b-instruct-v0-2"
+      base_url: "http://localhost:35841/v1"
 ```
 
-### OpenAI GPT 4
-
-```toml
-[models]
-  provider = "ChatOpenAI"
-
-  [models.args]
-  model = "gpt-4"
-```
-
-### OpenAI GPT 3.5
-
-```toml
-[models]
-  provider = "ChatOpenAI"
-
-  [models.args]
-  model = "gpt-3.5-turbo"
-```
-
-## OpenAI API Compatible Alternatives
-
-In general Kai will work with OpenAI Compatible API alternatives. Two examples
-are Podman Desktop and Oobabooga Text generation web UI. Once your alternative
-is installed all that is necessary is to export `OPENAI_API_BASE` in addition to
-`OPENAI_API_KEY`.
-
-### Podman Desktop
-
-#### Install
-
-Installation will vary depending on your operating system and distribution and is documented on the Podman Desktop website.
-
-https://podman-desktop.io/docs/installation
-
-#### Configuration
-
-- Start Podman Desktop
-  <img src="images/podman-desktop-dashboard.png" alt="Podman Desktop Dashboard Image"/>
-- Navigate to the Extensions
-- Select the Catalog
-- Search for `Podman AI Lab`
-  <img src="images/podman-desktop-extensions.png" alt="Podman Desktop Extensions Image"/>
-- Install the `Podman AI Lab` Extension
-- Navigate to the AI Lab
-- Under Models select Catalog
-  <img src="images/podman-ai-model-catalog.png" alt="Podman AI Model Catalog Image"/>
-- Download one or more models
-- Navigate to Services
-- Click `New Model Service`
-  <img src="images/podman-ai-create-service.png" alt="Podman AI Create Service Image"/>
-- Select a model to serve and click Create Service
-- On the Service details page note the server URL to use with Kai
-  <img src="images/podman-ai-service-details.png" alt="Podman AI Service Details Image"/>
-- Export the URL, for example `export OPENAI_API_BASE="http://localhost:35841/v1"`
-- Note that the Podman Desktop service endpoint is not passworded, but the
-  OpenAI library expects `OPENAI_API_KEY` to be set. In this case the value does
-  not matter.
-- Adjust your config.toml settings if necessary
-
-```toml
-[models]
-  provider = "ChatOpenAI"
-
-[models.args]
-  model = "mistral-7b-instruct-v0-2"
-```
-
-### OpenShift AI
-
-- OpenShift AI also provides an OpenAI compatible API with vLLM
-- The vLLM runtime can be added to your cluster if not already available by following these [instructions](https://github.com/rh-aiservices-bu/llm-on-openshift/blob/main/serving-runtimes/vllm_runtime/README.md)
-- Export the URL, for example `export OPENAI_API_BASE=https://mistralaimistral-7b-instruct-v02-kyma-workshop.apps.cluster.example.com/v1"`
-- When vLLM serves models it does so from the `/mnt/models/` directory in the container, and this is where the model name is taken from, so in all cases use '/mnt/models/` for the model name.
-- Adjust your config.toml
-
-```toml
-[models]
-  provider = "ChatOpenAI"
-
-[models.args]
-  model = "/mnt/models/"
-```
-
-### Known Issues
-
-We have experienced problems due to the model context being too short for our
-inputs with some models. [It is currently possibly, though somewhat difficult to
-workaround this
-issue](https://github.com/containers/podman-desktop-extension-ai-lab/issues/1074).
+- Note above `base_url` and `model` need to be updated to match what you have deployed in podman
