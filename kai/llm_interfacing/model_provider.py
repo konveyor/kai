@@ -11,6 +11,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, BaseMessageChunk, HumanMessage
 from langchain_core.prompt_values import PromptValue
 from langchain_core.runnables import ConfigurableField, Runnable, RunnableConfig
+from langchain_core.tools import BaseTool, tool
 from langchain_deepseek import ChatDeepSeek
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
@@ -73,6 +74,7 @@ class ModelProvider:
 
         self.model_args, self.model_id = self.prepare_model_args(defaults, config.args)
         self.llm: BaseChatModel = self.model_class(**self.model_args)
+        self._tools_supported: Optional[bool] = None
 
     @abstractmethod
     def prepare_model_args(
@@ -93,12 +95,20 @@ class ModelProvider:
         # raise Exception(f"Could not get model id for {self.model_class}. {dir(self.model_class)=}")
 
     async def default_challenge(self, k: str) -> BaseMessage:
-        return await self.ainvoke(
-            "a",
-            self.validate_environment_resolver,
-            configurable_fields={k: 1},
-            do_continuation=False,
+        @tool(
+            description="gammaPlus is a custom math operator that works on two numbers"
         )
+        def gammaPlus(a: int, b: int) -> int:
+            return a + b
+
+        response = await self.llm.bind_tools([gammaPlus]).ainvoke(
+            "what is 2 gammaPlus 3?"
+        )
+
+        if hasattr(response, "tool_calls") and getattr(response, "tool_calls"):
+            self._tools_supported = True
+
+        return response
 
     @abstractmethod
     async def validate_environment(self) -> None:
@@ -107,6 +117,11 @@ class ModelProvider:
         current model provider.
         """
         ...
+
+    async def tools_supported(self) -> bool:
+        if self._tools_supported is not None:
+            return self._tools_supported
+        return False
 
     def configurable_llm(
         self,
