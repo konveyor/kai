@@ -1,8 +1,21 @@
 from __future__ import annotations
 
 import os
+import typing
 from abc import abstractmethod
-from typing import Any, Iterator, Optional, Sequence, assert_never, cast, override
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterator,
+    Literal,
+    Optional,
+    Sequence,
+    Union,
+    assert_never,
+    cast,
+    override,
+)
 
 from langchain_aws import ChatBedrock
 from langchain_community.chat_models.fake import FakeListChatModel
@@ -11,6 +24,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, BaseMessageChunk, HumanMessage
 from langchain_core.prompt_values import PromptValue
 from langchain_core.runnables import ConfigurableField, Runnable, RunnableConfig
+from langchain_core.tools.base import BaseTool
 from langchain_deepseek import ChatDeepSeek
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
@@ -161,6 +175,59 @@ class ModelProvider:
                 input, config, stop=stop, **kwargs
             ),
         )
+
+    def bind_tools(
+        self,
+        tools: Sequence[
+            Union[typing.Dict[str, Any], type, Callable, BaseTool]  # noqa: UP006
+        ],
+        *,
+        tool_choice: Optional[Union[str, Literal["any"]]] = None,
+        **kwargs: Any,
+    ) -> Runnable[LanguageModelInput, BaseMessage]:
+        return self.llm.bind_tools(tools, tool_choice=tool_choice, **kwargs)
+
+    def invoke(
+        self,
+        input: LanguageModelInput,
+        cache_path_resolver: Optional[CachePathResolver] = None,
+        config: Optional[RunnableConfig] = None,
+        *,
+        configurable_fields: Optional[dict[str, Any]] = None,
+        stop: Optional[list[str]] = None,
+        do_continuation: bool = True,
+        **kwargs: Any,
+    ) -> BaseMessage:
+        if not (self.cache and cache_path_resolver):
+            return self.configurable_llm(configurable_fields).invoke(
+                input, config, stop=stop, **kwargs
+            )
+
+        cache_path = cache_path_resolver.cache_path()
+        cache_meta = cache_path_resolver.cache_meta()
+
+        if self.demo_mode:
+            cache_entry = self.cache.get(path=cache_path, input=input)
+
+            if cache_entry:
+                return cache_entry
+
+        response = self.configurable_llm(configurable_fields).invoke(
+            input, config, stop=stop, **kwargs
+        )
+
+        try:
+            self.cache.put(
+                path=cache_path,
+                input=input,
+                output=response,
+                cache_meta=cache_meta,
+            )
+        except Exception as e:
+            # only raise an exception when we are in demo mode
+            if self.demo_mode:
+                raise e
+        return response
 
     @tracer.start_as_current_span("invoke_llm")
     async def ainvoke(
