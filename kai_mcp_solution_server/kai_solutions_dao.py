@@ -1,8 +1,9 @@
 import json
 import sqlite3
+import threading
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 
 class SolutionStatus(str, Enum):
@@ -15,12 +16,52 @@ class SolutionStatus(str, Enum):
 @dataclass
 class KaiSolution:
     id: int
-    task: dict  # Store the entire task as JSON
-    task_key: str  # Separate column for easy filtering
+    task: dict
+    # TODO: I made this concept up, we need to actually figure out what would be meaningful here
+    task_key: str
     before_code: Optional[str]
     after_code: Optional[str]
     diff: Optional[str]
     status: SolutionStatus
+
+
+class ConnectionPool:
+    """
+    Singleton connection pool for SQLite database.
+    Ensures a single connection is shared across the application.
+    """
+
+    _instance = None
+    _lock = threading.Lock()
+
+    def __new__(cls):
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super(ConnectionPool, cls).__new__(cls)
+                cls._instance.connection = None
+        return cls._instance
+
+    def initialize(self, db_path: str = "kai_solutions.db"):
+        """Initialize the database connection."""
+        if self.connection is None:
+            self.connection = sqlite3.connect(db_path)
+            self.connection.row_factory = sqlite3.Row
+
+    def get_connection(self) -> sqlite3.Connection:
+        """Get the database connection."""
+        if self.connection is None:
+            self.initialize()
+        return self.connection
+
+    def close(self):
+        """Close the database connection."""
+        if self.connection is not None:
+            self.connection.close()
+            self.connection = None
+
+
+# Initialize the connection pool
+conn_pool = ConnectionPool()
 
 
 class KaiSolutionsDAO:
@@ -29,13 +70,16 @@ class KaiSolutionsDAO:
     This class encapsulates all DB operations.
     """
 
-    def __init__(self, conn: sqlite3.Connection):
+    def __init__(self, conn: Optional[sqlite3.Connection] = None):
         """
-        conn is a live database connection. For production usage,
-        you might want to manage concurrency, connection pooling, etc.
+        conn is a live database connection. If None, uses the connection pool.
+        For production usage, you might want to manage concurrency, connection pooling, etc.
         """
-        self.conn = conn
-        self.conn.row_factory = sqlite3.Row
+        self.conn = conn if conn is not None else conn_pool.get_connection()
+
+        if self.conn.row_factory is not sqlite3.Row:
+            self.conn.row_factory = sqlite3.Row
+
         self._initialize_table()
 
     def _initialize_table(self) -> None:
@@ -126,7 +170,7 @@ class KaiSolutionsDAO:
 
         return float(accepted) / float(total)
 
-    def get_solution_history(self, task_key: str) -> list[KaiSolution]:
+    def get_solution_history(self, task_key: str) -> List[KaiSolution]:
         """
         Return all solutions matching this task_key, as KaiSolution objects.
         """
@@ -154,3 +198,68 @@ class KaiSolutionsDAO:
                 )
             )
         return solutions
+
+    def get_all_solutions(self) -> List[KaiSolution]:
+        """
+        Return all solutions in the database, as KaiSolution objects.
+        """
+        rows = self.conn.execute(
+            """
+            SELECT *
+            FROM kai_solutions
+            ORDER BY id ASC
+            """
+        ).fetchall()
+
+        solutions = []
+        for row in rows:
+            solutions.append(
+                KaiSolution(
+                    id=row["id"],
+                    task=json.loads(row["task_json"]),
+                    task_key=row["task_key"],
+                    before_code=row["before_code"],
+                    after_code=row["after_code"],
+                    diff=row["diff"],
+                    status=SolutionStatus(row["status"]),
+                )
+            )
+        return solutions
+
+    def find_related_solutions(
+        self, task_key: str, limit: int = 5
+    ) -> List[KaiSolution]:
+        """
+        Find solutions related to specific criteria.
+
+        Args:
+            task_key: Optional specific task key to match exactly
+            keywords: Optional list of keywords to search for in task
+            source_framework: Optional source framework (e.g., "java-ee")
+            target_framework: Optional target framework (e.g., "quarkus")
+            language: Optional programming language (e.g., "java")
+            limit: Maximum number of results to return
+
+        Returns:
+            List of matching solutions
+        """
+        all_solutions = self.get_solution_history(task_key)
+
+        filtered_solutions = []
+        for solution in all_solutions:
+            task = solution.task
+
+            filtered_solutions.append(solution)
+
+            if len(filtered_solutions) >= limit:
+                break
+
+        return filtered_solutions
+
+    @classmethod
+    def get_instance(cls) -> "KaiSolutionsDAO":
+        """
+        Factory method to get a DAO instance using the connection pool.
+        This is useful for resources that don't have access to the context.
+        """
+        return cls(conn_pool.get_connection())
