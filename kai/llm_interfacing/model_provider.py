@@ -11,7 +11,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, BaseMessageChunk, HumanMessage
 from langchain_core.prompt_values import PromptValue
 from langchain_core.runnables import ConfigurableField, Runnable, RunnableConfig
-from langchain_core.tools import BaseTool, tool
+from langchain_core.tools import tool
 from langchain_deepseek import ChatDeepSeek
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
@@ -105,7 +105,7 @@ class ModelProvider:
             "what is 2 gammaPlus 3?"
         )
 
-        if hasattr(response, "tool_calls") and getattr(response, "tool_calls"):
+        if hasattr(response, "tool_calls") and response.tool_calls:
             self._tools_supported = True
 
         return response
