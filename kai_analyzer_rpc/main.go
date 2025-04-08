@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/rpc"
 	"os"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/konveyor/kai-analyzer/pkg/codec"
+	klog "github.com/konveyor/kai-analyzer/pkg/log"
 	"github.com/konveyor/kai-analyzer/pkg/service"
 	"github.com/konveyor/kai-analyzer/pkg/tracing"
 )
@@ -25,13 +27,15 @@ func main() {
 	lspServerPath := flag.String("lspServerPath", "", "this will be the path to the lsp")
 	bundles := flag.String("bundles", "", "Comma separated list of path to java analyzer bundles")
 	depOpenSourceLabelsFile := flag.String("depOpenSourceLabelsFile", "", "Path to the dep open source labels file")
-
-	// TODO(djzager): We should do verbosity type argument(s)
-	logLevel := slog.LevelDebug
+	inputLogLevel := flag.String("log-level", "DEBUG-1", "Log level")
 
 	flag.Parse()
-	// In the future add cobra for flags maybe
-	// create log file in working directory for now.
+
+	var logLevel slog.Level
+	err := logLevel.UnmarshalText([]byte(*inputLogLevel))
+	if err != nil {
+		panic(fmt.Errorf("invalid log level"))
+	}
 
 	if sourceDirectory == nil || *sourceDirectory == "" {
 		panic(fmt.Errorf("source directory must be valid"))
@@ -49,26 +53,27 @@ func main() {
 		panic(fmt.Errorf("bundles must be set"))
 	}
 
-	// TODO(djzager): Handle log level/location more like reputable LSP servers
-	// ChatGPT told me gopls and jdtls default to stderr but I couldn't confirm that
-	// for now I think it's enough to make it configurable to be one or the other.
-	// The editor extension(s) can tee stderr to a temp file.
-	var logger *slog.JSONHandler
+	// fileLogger is for user facing logs that contains
+	// detailed analysis logs
+	fileLogger := slog.NewJSONHandler(io.Discard, nil)
 	if logFile != nil && *logFile != "" {
 		file, err := os.Create(*logFile)
 		if err != nil {
 			panic(err)
 		}
-		logger = slog.NewJSONHandler(file, &slog.HandlerOptions{
-			Level: slog.Level(logLevel),
-		})
-	} else {
-		logger = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-			Level: slog.Level(logLevel),
+		fileLogger = slog.NewJSONHandler(file, &slog.HandlerOptions{
+			Level: logLevel,
 		})
 	}
 
-	l := logr.FromSlogHandler(logger)
+	// stderrLogger is for internal logs discovered by the extension
+	stderrLogger := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})
+
+	l := logr.FromSlogHandler(klog.NewCombinedHandler(stderrLogger, fileLogger))
+
+	l.Info("using logLevel", "logLevel", logLevel)
 
 	// Check if Java exists on the PATH
 	if err := exec.Command("java", "-version").Run(); err != nil {
@@ -130,5 +135,4 @@ func main() {
 	// When we get here, call stop on the analyzer server
 	l.Info("stopping server", "signal", sig)
 	analyzerService.Stop()
-
 }
