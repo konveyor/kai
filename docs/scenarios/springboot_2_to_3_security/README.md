@@ -76,7 +76,7 @@ Before we run the analysis, let’s understand the custom rules we are going to 
 
 The `SecurityConfig.java` class configures users and roles using the now-discouraged configure `(AuthenticationManagerBuilder auth)` method:
 
-**SecurityConfig.java (Before Migration)**
+#### Before Migration
 
 ```java
 
@@ -91,13 +91,15 @@ protected void configure(AuthenticationManagerBuilder auth) throws Exception {
 }
 ```
 
-**Problem**
+##### Problem
+
 Overriding `configure(AuthenticationManagerBuilder)` is discouraged in Spring Security 5.7 and won't work in Spring Boot 3/Spring 6, because `WebSecurityConfigurerAdapter` is removed.
 
-**Solution**
+##### Solution
+
 Define a separate `UserDetailsService bean` to configure in-memory authentication. This approach aligns with the modular, bean-based style recommended in Spring Boot 3+
 
-**Updated Code (After Migration)**
+#### After Migration
 
 ```java
 @Bean
@@ -113,7 +115,7 @@ public UserDetailsService userDetailsService(PasswordEncoder encoder) {
 }
 ```
 
-**Corresponding custom rule**
+#### Corresponding custom rule
 
 ````yaml
 - ruleID: spring-security-replace-authenticationmanagerbuilder-00001
@@ -157,7 +159,7 @@ public UserDetailsService userDetailsService(PasswordEncoder encoder) {
 The class also overrides the configure(HttpSecurity http) method to define security rules,
 login flow, and redirects
 
-**SecurityConfig.java (Before Migration)**
+#### Before Migration
 
 ```java
 @Override
@@ -176,13 +178,15 @@ protected void configure(HttpSecurity http) throws Exception {
 }
 ```
 
-**Problem**
+##### Problem
+
 Overriding `configure(HttpSecurity)` is discouraged in Spring Security 5.7. This approach is no longer recommended due to the deprecation of `WebSecurityConfigurerAdapter` in Spring Boot 3+.
 
-**Solution**
+##### Solution
+
 Declare a `SecurityFilterChain` bean to define all your security logic. Additionally, update `antMatchers()` to `requestMatchers()` in Spring Security 6+.
 
-**Updated Code (After Migration)**
+#### Updated Code (After Migration)
 
 ```java
 @Bean
@@ -203,7 +207,7 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
 }
 ```
 
-**custom rule**
+#### custom rule
 
 ````yaml
 - ruleID: spring-security-replace-httpsecurity-configure-00002
