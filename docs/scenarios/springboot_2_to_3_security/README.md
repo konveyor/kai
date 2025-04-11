@@ -499,7 +499,6 @@ sraghuna@sraghuna-mac springlogin % mvn clean install
 [INFO]  T E S T S
 [INFO] -------------------------------------------------------
 [INFO] Running com.konveyor.springlogin.SpringLoginApplicationTests
-13:46:23.706 [main] DEBUG org.springframework.boot.test.context.SpringBootTestContextBootstrapper - Neither @ContextConfiguration nor @ContextHierarchy found for test class [SpringLoginApplicationTests]: using SpringBootContextLoader
 ...
 ...
 
