@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"sync"
 	"syscall"
 
 	rpc "github.com/cenkalti/rpc2"
@@ -111,15 +110,13 @@ func main() {
 	// catch SIGETRM or SIGINTERRUPT
 	signal.Notify(cancelChan, syscall.SIGTERM, syscall.SIGINT)
 	//serverCodec := codec.NewCodec(codec.Connection{Input: os.Stdin, Output: os.Stdout, Logger: l}, l)
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
 	go func() {
 		l.Info("Starting Server")
-		s := kairpc.NewServer(server, l, wg, "notification.Notify")
+		s := kairpc.NewServer(server, l, "notification.Notify")
 		s.Accept(*pipePath)
 		l.Info("Stopping Server")
 	}()
-	wg.Wait()
+
 	sig := <-cancelChan
 	// When we get here, call stop on the analyzer server
 	l.Info("stopping server", "signal", sig)

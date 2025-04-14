@@ -36,6 +36,6 @@ type serverResponse struct {
 type clientRequest struct {
 	Method         string      `json:"method"`
 	Params         interface{} `json:"params"`
-	Id             *uint64     `json:"id"`
+	Id             *uint64     `json:"id,omitempty"`
 	JsonRPCVersion string      `json:"jsonrpc"`
 }
