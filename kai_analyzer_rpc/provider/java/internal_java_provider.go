@@ -65,7 +65,7 @@ func NewInternalProviderClientForPipe(ctx context.Context, log logr.Logger, cont
 	}
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
-	c := codec.NewCodec(reader, writer, log.WithName("provider"), "", rpc2.NewState())
+	c := codec.NewCodec(ctx, reader, writer, log.WithName("provider"), "", rpc2.NewState())
 	client := rpc2.NewClientWithCodec(c)
 
 	svcClient, _, err := p.Init(ctx, log, provider.InitConfig{
