@@ -66,6 +66,8 @@ class AnalyzerLSP:
             ",".join(map(str, java_bundles)),
             "-log-file",
             os.path.join(get_logfile_dir(), CONST_KAI_ANALYZER_LOG_FILE),
+            "-verbosity",
+            "-20",
         ]
 
         if dep_open_source_labels_path is not None:
