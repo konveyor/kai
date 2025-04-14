@@ -14,6 +14,7 @@ import (
 	rpc "github.com/cenkalti/rpc2"
 
 	"github.com/go-logr/logr"
+	"github.com/konveyor/kai-analyzer/pkg/codec"
 	kairpc "github.com/konveyor/kai-analyzer/pkg/rpc"
 	"github.com/konveyor/kai-analyzer/pkg/service"
 	"github.com/konveyor/kai-analyzer/pkg/tracing"
@@ -27,9 +28,10 @@ func main() {
 	bundles := flag.String("bundles", "", "Comma separated list of path to java analyzer bundles")
 	depOpenSourceLabelsFile := flag.String("depOpenSourceLabelsFile", "", "Path to the dep open source labels file")
 	pipePath := flag.String("pipePath", "", "Path to the pipe to use for bi-directional communication")
+	logVerbosity := flag.Int("verbosity", -4, "how verbose would you like the logs to be, error logs are 8, waringing logs are 4 info logs are 0 and debug logs are -4, going more negative gives more logs.")
 
 	// TODO(djzager): We should do verbosity type argument(s)
-	logLevel := slog.Level(-20)
+	logLevel := slog.Level(*logVerbosity)
 
 	flag.Parse()
 	// In the future add cobra for flags maybe
@@ -55,7 +57,7 @@ func main() {
 	}
 
 	l := logr.FromSlogHandler(logger)
-	_, err := validateFlags(sourceDirectory, rules, lspServerPath, bundles, depOpenSourceLabelsFile, pipePath, l)
+	usingPipe, err := validateFlags(sourceDirectory, rules, lspServerPath, bundles, depOpenSourceLabelsFile, pipePath, l)
 	if err != nil {
 		panic(err)
 	}
@@ -76,22 +78,43 @@ func main() {
 	server := rpc.NewServer()
 	notificationService := &service.NotificationService{Logger: l}
 	server.Handle("notification.Notify", notificationService.Notify)
-	// if err != nil {
-	// 	panic(err)
-	// }
 
+	ctx, cancelFunc := context.WithCancel(context.Background())
 	cancelChan := make(chan os.Signal, 1)
 	// catch SIGETRM or SIGINTERRUPT
 	signal.Notify(cancelChan, syscall.SIGTERM, syscall.SIGINT)
 	//serverCodec := codec.NewCodec(codec.Connection{Input: os.Stdin, Output: os.Stdout, Logger: l}, l)
 	go func() {
 		l.Info("Starting Server")
-		s := kairpc.NewServer(server, l, "notification.Notify", *rules, *sourceDirectory)
-		s.Accept(*pipePath)
+		var s *kairpc.Server
+		if !usingPipe {
+			l.Info("Starting Analyzer", "source-dir", *sourceDirectory, "rules-dir", *rules, "lspServerPath", *lspServerPath, "bundles", *bundles, "depOpenSourceLabelsFile", *depOpenSourceLabelsFile)
+			// We need to start up the JSON RPC server and start listening for messages
+			analyzerService, err := service.NewAnalyzer(
+				10000, 10, 10,
+				*sourceDirectory,
+				"",
+				*lspServerPath,
+				*bundles,
+				*depOpenSourceLabelsFile,
+				*rules,
+				l,
+			)
+			if err != nil {
+				panic(err)
+			}
+			server.Handle("analysis_engine.Analyze", analyzerService.Analyze)
+			codec := codec.NewConnectionCodec(codec.Connection{Input: os.Stdin, Output: os.Stdout}, l)
+			server.ServeCodec(codec)
+		} else {
+			s = kairpc.NewServer(ctx, server, l, "notification.Notify", *rules, *sourceDirectory)
+			s.Accept(*pipePath)
+		}
 		l.Info("Stopping Server")
 	}()
 
 	sig := <-cancelChan
+	cancelFunc()
 	// When we get here, call stop on the analyzer server
 	l.Info("stopping server", "signal", sig)
 

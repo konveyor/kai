@@ -3,6 +3,8 @@ package codec
 import (
 	"io"
 
+	"github.com/cenkalti/rpc2"
+	"github.com/cenkalti/rpc2/jsonrpc"
 	"github.com/go-logr/logr"
 )
 
@@ -34,4 +36,17 @@ func (c Connection) Close() error {
 		return rerr
 	}
 	return werr
+}
+
+type connectionCodec struct {
+	rpc2.Codec
+	log logr.Logger
+}
+
+func NewConnectionCodec(connection Connection, log logr.Logger) rpc2.Codec {
+	c := jsonrpc.NewJSONCodec(connection)
+	return connectionCodec{
+		Codec: c,
+		log:   log.WithName("connection-codec"),
+	}
 }

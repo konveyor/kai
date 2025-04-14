@@ -3,6 +3,7 @@ package codec
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	rpc "github.com/cenkalti/rpc2"
 
@@ -36,11 +38,12 @@ type codec struct {
 	isLanguageServer bool
 
 	state *rpc.State
+	ctx   context.Context
 
 	notificationServiceName string
 }
 
-func NewCodec(reader *bufio.Reader, writer *bufio.Writer, logger logr.Logger, notificationSericeName string, state *rpc.State) Codec {
+func NewCodec(ctx context.Context, reader *bufio.Reader, writer *bufio.Writer, logger logr.Logger, notificationSericeName string, state *rpc.State) Codec {
 	// Set new seq for this codec/connection
 	scanner := bufio.NewScanner(reader)
 	c := codec{
@@ -49,12 +52,19 @@ func NewCodec(reader *bufio.Reader, writer *bufio.Writer, logger logr.Logger, no
 		scanner:                 scanner,
 		writer:                  writer,
 		state:                   state,
+		ctx:                     ctx,
 		notificationServiceName: notificationSericeName,
 		isLanguageServer:        true,
 	}
 	scanner.Split(c.splitLanguageServer)
 	return &c
 }
+
+//TODO: we need to rewrite the rpc.Client to use the context from here, when calling a handler.
+// func (c *codec) setRequetContext(seq uint64, ctx context.Context, cancelFunc func()) {
+// 	c.state.Set(fmt.Sprintf("context-%v", seq), ctx)
+// 	c.state.Set(fmt.Sprintf("context-cancel-%v", seq), cancelFunc)
+// }
 
 func (c *codec) getPending(seq uint64) (*json.RawMessage, bool) {
 	if v, ok := c.state.Get(fmt.Sprintf("pending-%v", seq)); ok {
@@ -84,8 +94,12 @@ func (c *codec) removePending(a uint64) {
 
 func (c *codec) ReadHeader(r *rpc.Request, o *rpc.Response) error {
 	for !c.scanner.Scan() {
-		// Here, we will deal with canceled context.
-
+		select {
+		case <-c.ctx.Done():
+			return io.EOF
+		case <-time.After(100 * time.Millisecond):
+			continue
+		}
 	}
 	c.logger.V(7).Info("reading request header", "request", r, "body", c.scanner.Text())
 	// Need to figure out how to stop this
@@ -147,6 +161,9 @@ func (c *codec) handleMessage(r *rpc.Request, o *rpc.Response) error {
 			s := c.getSeq()
 			v := s.Add(1)
 			c.setPending(v, c.serverRequest.Id)
+			// TODO: enable when the client can use the state, to make pass the context to the handler
+			// requestContext, cancelFunc := context.WithCancel(c.ctx)
+			// c.setRequetContext(v, requestContext, cancelFunc)
 			c.serverRequest.Id = nil
 			r.Seq = v
 		}
@@ -188,8 +205,6 @@ func (c *codec) WriteRequest(r *rpc.Request, v any) error {
 		// Put anything else into a slice
 		req.Params = []interface{}{v}
 	}
-
-	c.logger.Info("params", "p", fmt.Sprintf("%+v", req.Params))
 
 	if r.Seq == 0 {
 		// Notification

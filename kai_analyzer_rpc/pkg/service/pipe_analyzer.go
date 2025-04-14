@@ -19,12 +19,12 @@ import (
 	"github.com/konveyor/kai-analyzer/provider/java"
 )
 
-func NewPipeAnalyzer(limitIncidents, limitCodeSnips, contextLines int, pipePath, rules, location string, l logr.Logger) (Analyzer, error) {
+func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contextLines int, pipePath, rules, location string, l logr.Logger) (Analyzer, error) {
 	prefix, err := filepath.Abs(location)
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancelFunc := context.WithCancel(context.Background())
+	ctx, cancelFunc := context.WithCancel(ctx)
 	eng := engine.CreateRuleEngine(ctx,
 		10,
 		l,
