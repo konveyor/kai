@@ -3,6 +3,7 @@ module github.com/konveyor/kai-analyzer
 go 1.23.1
 
 require (
+	github.com/cenkalti/rpc2 v1.0.4
 	github.com/go-logr/logr v1.4.2
 	github.com/konveyor/analyzer-lsp v0.6.0-alpha.2.0.20250306150354-b062f3757592
 	github.com/konveyor/analyzer-lsp/external-providers/java-external-provider v0.0.0-20250228162759-837d328174c3
@@ -24,7 +25,6 @@ require (
 	github.com/cbroglie/mustache v1.4.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cenkalti/hub v1.0.2 // indirect
-	github.com/cenkalti/rpc2 v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
@@ -47,7 +47,6 @@ require (
 	go.opentelemetry.io/otel/exporters/jaeger v1.17.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.34.0 // indirect
 	go.opentelemetry.io/otel/metric v1.35.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.34.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
 	golang.org/x/net v0.37.0 // indirect
 	golang.org/x/oauth2 v0.25.0 // indirect
@@ -61,3 +60,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 
 )
+
+replace github.com/konveyor/analyzer-lsp/external-providers/java-external-provider v0.0.0-20250228162759-837d328174c3 => /Users/shurley/repos/MTA/analyzer-lsp/external-providers/java-external-provider
+
+replace github.com/konveyor/analyzer-lsp => /Users/shurley/repos/MTA/analyzer-lsp

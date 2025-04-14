@@ -41,6 +41,7 @@ type codec struct {
 }
 
 func NewCodec(reader *bufio.Reader, writer *bufio.Writer, logger logr.Logger, notificationSericeName string, state *rpc.State) Codec {
+	// Set new seq for this codec/connection
 	scanner := bufio.NewScanner(reader)
 	c := codec{
 		logger:                  logger.WithName("json codec"),
@@ -113,15 +114,17 @@ func (c *codec) handleMessage(r *rpc.Request, o *rpc.Response) error {
 
 		r.Method = c.serverRequest.Method
 
-		b := []byte{}
-		c.serverRequest.Id.UnmarshalJSON(b)
-		if len(b) == 0 {
-			c.serverRequest.unMarshalledId = nil
-		} else {
+		if c.serverRequest.Id != nil {
+			b, err := c.serverRequest.Id.MarshalJSON()
+			if err != nil {
+				c.logger.Error(err, "unable to marhsal id")
+				return err
+			}
+			c.logger.Info("b", "b", b)
 			i, err := strconv.ParseUint(string(b), 10, 64)
 			if err != nil {
-				c.logger.Info("unable to parse id", "err", err)
-				return nil
+				c.logger.Error(err, "unable to parse id")
+				return err
 			}
 			c.serverRequest.unMarshalledId = &i
 		}
@@ -135,8 +138,8 @@ func (c *codec) handleMessage(r *rpc.Request, o *rpc.Response) error {
 		// JSON request id can be any JSON value;
 		// RPC package expects uint64.  Translate to
 		// internal uint64 and save JSON on the side.
-		c.logger.Info("server request", "server request", c.serverRequest, "b", b, "b-string", b, "l", len(b), "notificationService", c.notificationServiceName)
-		if len(b) == 0 && c.notificationServiceName != "" {
+		c.logger.Info("server request", "server request", c.serverRequest, "notificationService", c.notificationServiceName)
+		if c.serverRequest.unMarshalledId == nil && c.notificationServiceName != "" {
 			c.serverRequest.Method = c.notificationServiceName
 			r.Seq = 0
 			r.Method = c.notificationServiceName
@@ -306,7 +309,17 @@ func (c *codec) ReadResponseBody(v any) error {
 	if v == nil {
 		return nil
 	}
-	err := json.Unmarshal(*c.clientResponse.Result, v)
+	if c.clientResponse.Result == nil {
+		return nil
+	}
+	b, err := c.clientResponse.Result.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	if string(b) == string([]byte("null")) {
+		return nil
+	}
+	err = json.Unmarshal(*c.clientResponse.Result, v)
 	c.logger.V(7).Info("finished read response body", "err", err, "body", v)
 	return err
 }

@@ -55,7 +55,7 @@ func main() {
 	}
 
 	l := logr.FromSlogHandler(logger)
-	usingPipe, err := validateFlags(sourceDirectory, rules, lspServerPath, bundles, depOpenSourceLabelsFile, pipePath, l)
+	_, err := validateFlags(sourceDirectory, rules, lspServerPath, bundles, depOpenSourceLabelsFile, pipePath, l)
 	if err != nil {
 		panic(err)
 	}
@@ -73,33 +73,7 @@ func main() {
 			err = errors.Join(err, otelShutdown(context.Background()))
 		}()
 	}
-	var analyzerService service.Analyzer
-	if usingPipe {
-		l.Info("Starting Analyzer using pipe", "pipe", *pipePath, "rules-dir", *rules)
-		analyzerService, err = service.NewPipeAnalyzer(10000, 10, 10, *pipePath, *rules, *sourceDirectory, l)
-	} else {
-		l.Info("Starting Analyzer", "source-dir", *sourceDirectory, "rules-dir", *rules, "lspServerPath", *lspServerPath, "bundles", *bundles, "depOpenSourceLabelsFile", *depOpenSourceLabelsFile)
-		// We need to start up the JSON RPC server and start listening for messages
-		analyzerService, err = service.NewAnalyzer(
-			10000, 10, 10,
-			*sourceDirectory,
-			"",
-			*lspServerPath,
-			*bundles,
-			*depOpenSourceLabelsFile,
-			*rules,
-			l,
-		)
-	}
-	if err != nil {
-		panic(err)
-	}
 	server := rpc.NewServer()
-	server.Handle("analysis_engine.Analyze", analyzerService.Analyze)
-	// err = server.RegisterName("analysis_engine", analyzerService)
-	// if err != nil {
-	// 	panic(err)
-	// }
 	notificationService := &service.NotificationService{Logger: l}
 	server.Handle("notification.Notify", notificationService.Notify)
 	// if err != nil {
@@ -112,7 +86,7 @@ func main() {
 	//serverCodec := codec.NewCodec(codec.Connection{Input: os.Stdin, Output: os.Stdout, Logger: l}, l)
 	go func() {
 		l.Info("Starting Server")
-		s := kairpc.NewServer(server, l, "notification.Notify")
+		s := kairpc.NewServer(server, l, "notification.Notify", *rules, *sourceDirectory)
 		s.Accept(*pipePath)
 		l.Info("Stopping Server")
 	}()
@@ -120,7 +94,6 @@ func main() {
 	sig := <-cancelChan
 	// When we get here, call stop on the analyzer server
 	l.Info("stopping server", "signal", sig)
-	analyzerService.Stop()
 
 }
 

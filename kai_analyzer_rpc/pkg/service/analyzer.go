@@ -59,6 +59,12 @@ type analyzer struct {
 	discoveryCache      []konveyor.RuleSet
 	cache               map[string][]cacheValue
 	cacheMutex          sync.RWMutex
+
+	contextLines int
+	location     string
+	rules        string
+
+	updateConditionProvider func(*rpc.Client, []engine.RuleSet, []engine.RuleSet, logr.Logger, int, string, string) ([]engine.RuleSet, []engine.RuleSet, error)
 }
 
 func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, lspServerPath, bundles, depOpenSourceLabelsFile, rules string, log logr.Logger) (Analyzer, error) {
@@ -219,6 +225,19 @@ func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) er
 	ctx, span := tracer.Start(ctx, "analyze")
 	defer span.End()
 
+	dRulesets, vRulesets := a.discoveryRulesets, a.violationRulesets
+	if a.updateConditionProvider != nil {
+		var err error
+		dRulesets, vRulesets, err = a.updateConditionProvider(client, a.discoveryRulesets, a.violationRulesets, a.Logger.WithName("provider update"), a.contextLines, a.location, a.rules)
+		if err != nil {
+			a.Logger.Error(err, "unable to update Conditons with new client")
+			return err
+		}
+		a.Logger.Info("updated rulesets", "discovery", len(a.discoveryRulesets), "violations", len(a.violationRulesets))
+	}
+
+	//a.Logger.Info("compare before after", "before", fmt.Sprintf("%+v", a.violationRulesets), "after", fmt.Sprintf("%+v", vRulesets))
+
 	selectors := []engine.RuleSelector{}
 	if args.LabelSelector != "" {
 		selector, err := labels.NewLabelSelector[*engine.RuleMeta](args.LabelSelector, nil)
@@ -255,10 +274,10 @@ func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) er
 
 	// Adding spans to the discovery rules run and for the violation rules run
 	// to determine if discovery rule segmentation saves us enough
-	if len(a.discoveryRulesets) != 0 && args.ResetCache {
+	if len(dRulesets) != 0 && args.ResetCache {
 		// Here we want to refresh the discovery ruleset cache
 		ctx, span := tracer.Start(ctx, "discovery-rules")
-		rulesets := a.engine.RunRulesScoped(ctx, a.discoveryRulesets, engine.NewScope(scopes...), selectors...)
+		rulesets := a.engine.RunRulesScoped(ctx, dRulesets, engine.NewScope(scopes...), selectors...)
 		a.discoveryCacheMutex.Lock()
 		a.discoveryCache = rulesets
 		a.discoveryCacheMutex.Unlock()
@@ -269,7 +288,7 @@ func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) er
 	// This will already wait
 	//
 	violationCTX, violationSpan := tracer.Start(ctx, "violation-rules")
-	rulesets := a.engine.RunRulesScoped(violationCTX, a.violationRulesets, engine.NewScope(scopes...), selectors...)
+	rulesets := a.engine.RunRulesScoped(violationCTX, vRulesets, engine.NewScope(scopes...), selectors...)
 	violationSpan.End()
 
 	sort.SliceStable(rulesets, func(i, j int) bool {

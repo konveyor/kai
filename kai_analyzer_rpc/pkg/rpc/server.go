@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync/atomic"
 
 	rpc "github.com/cenkalti/rpc2"
 	"github.com/go-logr/logr"
 	"github.com/konveyor/kai-analyzer/pkg/codec"
+	"github.com/konveyor/kai-analyzer/pkg/service"
 )
 
 type Server struct {
@@ -17,11 +19,14 @@ type Server struct {
 	state                   *rpc.State
 	notificationServiceName string
 	connections             []net.Conn
+	rules                   string
+	sourceDirectory         string
 }
 
-func NewServer(s *rpc.Server, log logr.Logger, notificationServiceName string) *Server {
+func NewServer(s *rpc.Server, log logr.Logger, notificationServiceName string, rules string, sourceDirectory string) *Server {
 	state := rpc.NewState()
-	return &Server{Server: s, log: log, state: state, notificationServiceName: notificationServiceName}
+	state.Set("seq", &atomic.Uint64{})
+	return &Server{Server: s, log: log, state: state, notificationServiceName: notificationServiceName, rules: rules, sourceDirectory: sourceDirectory}
 }
 
 func (s *Server) Accept(pipePath string) {
@@ -30,6 +35,13 @@ func (s *Server) Accept(pipePath string) {
 	if err != nil {
 		s.log.Error(err, "can not listen")
 	}
+	// Register pipe analysis handler
+	analyzerService, err := service.NewPipeAnalyzer(10000, 10, 10, pipePath, s.rules, s.sourceDirectory, s.log.WithName("analyzer-service"))
+	if err != nil {
+		s.log.Error(err, "unable to create analyzer service")
+		return
+	}
+	s.Server.Handle("analysis_engine.Analyze", analyzerService.Analyze)
 	for {
 		conn, err := l.Accept()
 		if err != nil {
