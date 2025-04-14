@@ -28,7 +28,7 @@ func main() {
 	bundles := flag.String("bundles", "", "Comma separated list of path to java analyzer bundles")
 	depOpenSourceLabelsFile := flag.String("depOpenSourceLabelsFile", "", "Path to the dep open source labels file")
 	pipePath := flag.String("pipePath", "", "Path to the pipe to use for bi-directional communication")
-	logVerbosity := flag.Int("verbosity", -4, "how verbose would you like the logs to be, error logs are 8, waringing logs are 4 info logs are 0 and debug logs are -4, going more negative gives more logs.")
+	logVerbosity := flag.Int("verbosity", -4, "how verbose would you like the logs to be, error logs are 8, warning logs are 4 info logs are 0 and debug logs are -4, going more negative gives more logs.")
 
 	// TODO(djzager): We should do verbosity type argument(s)
 	logLevel := slog.Level(*logVerbosity)

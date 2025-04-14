@@ -31,7 +31,7 @@ type codec struct {
 	scanner *bufio.Scanner
 
 	//temp workspace a new codec is created on every connection
-	// This is the workspace to deal with a single conection
+	// This is the workspace to deal with a single connection
 	msg              message
 	serverRequest    serverRequest
 	clientResponse   clientResponse
@@ -43,7 +43,7 @@ type codec struct {
 	notificationServiceName string
 }
 
-func NewCodec(ctx context.Context, reader *bufio.Reader, writer *bufio.Writer, logger logr.Logger, notificationSericeName string, state *rpc.State) Codec {
+func NewCodec(ctx context.Context, reader *bufio.Reader, writer *bufio.Writer, logger logr.Logger, notificationServiceName string, state *rpc.State) Codec {
 	// Set new seq for this codec/connection
 	scanner := bufio.NewScanner(reader)
 	c := codec{
@@ -53,7 +53,7 @@ func NewCodec(ctx context.Context, reader *bufio.Reader, writer *bufio.Writer, l
 		writer:                  writer,
 		state:                   state,
 		ctx:                     ctx,
-		notificationServiceName: notificationSericeName,
+		notificationServiceName: notificationServiceName,
 		isLanguageServer:        true,
 	}
 	scanner.Split(c.splitLanguageServer)
@@ -61,7 +61,7 @@ func NewCodec(ctx context.Context, reader *bufio.Reader, writer *bufio.Writer, l
 }
 
 //TODO: we need to rewrite the rpc.Client to use the context from here, when calling a handler.
-// func (c *codec) setRequetContext(seq uint64, ctx context.Context, cancelFunc func()) {
+// func (c *codec) setRequestContext(seq uint64, ctx context.Context, cancelFunc func()) {
 // 	c.state.Set(fmt.Sprintf("context-%v", seq), ctx)
 // 	c.state.Set(fmt.Sprintf("context-cancel-%v", seq), cancelFunc)
 // }
@@ -111,7 +111,7 @@ func (c *codec) ReadHeader(r *rpc.Request, o *rpc.Response) error {
 	}
 	err := json.Unmarshal(b, &c.msg)
 	if err != nil {
-		c.logger.Error(err, "error unmarshelling body into request/response message", "b", string(b))
+		c.logger.Error(err, "error unmarshaling body into request/response message", "b", string(b))
 		return err
 	}
 	err = c.handleMessage(r, o)
@@ -131,7 +131,7 @@ func (c *codec) handleMessage(r *rpc.Request, o *rpc.Response) error {
 		if c.serverRequest.Id != nil {
 			b, err := c.serverRequest.Id.MarshalJSON()
 			if err != nil {
-				c.logger.Error(err, "unable to marhsal id")
+				c.logger.Error(err, "unable to marshal id")
 				return err
 			}
 			c.logger.Info("b", "b", b)
@@ -163,7 +163,7 @@ func (c *codec) handleMessage(r *rpc.Request, o *rpc.Response) error {
 			c.setPending(v, c.serverRequest.Id)
 			// TODO: enable when the client can use the state, to make pass the context to the handler
 			// requestContext, cancelFunc := context.WithCancel(c.ctx)
-			// c.setRequetContext(v, requestContext, cancelFunc)
+			// c.setRequestContext(v, requestContext, cancelFunc)
 			c.serverRequest.Id = nil
 			r.Seq = v
 		}
@@ -224,7 +224,7 @@ func (c *codec) WriteRequest(r *rpc.Request, v any) error {
 			c.logger.Error(err, "unable to write header string")
 			return err
 		}
-		c.logger.V(7).Info("finshed writing language server header", "wrote", n)
+		c.logger.V(7).Info("finished writing language server header", "wrote", n)
 	}
 	n, err := c.writer.Write(b)
 	if err != nil {
@@ -303,7 +303,7 @@ func (c *codec) WriteResponse(r *rpc.Response, v any) error {
 			c.logger.Info("unable to write header", "err", err)
 			return nil
 		}
-		c.logger.V(7).Info("finshed writing language server header", "wrote", n)
+		c.logger.V(7).Info("finished writing language server header", "wrote", n)
 	}
 	n, err := c.writer.Write(outBytes)
 	if err != nil {
@@ -351,9 +351,9 @@ func (c *codec) splitLanguageServer(data []byte, atEOF bool) (advance int, token
 	// Find any headers
 	if i := bytes.Index(data, []byte("\r\n\r\n")); i >= 0 {
 		readContentHeader := data[0:i]
-		c.logger.V(7).Info("found header", "hearder", fmt.Sprintf("%q", readContentHeader))
+		c.logger.V(7).Info("found header", "header", fmt.Sprintf("%q", readContentHeader))
 		if !strings.Contains(string(readContentHeader), "Content-Length") {
-			return 0, nil, fmt.Errorf("found header seperator but not content-length header")
+			return 0, nil, fmt.Errorf("found header separator but not content-length header")
 		}
 		pieces := strings.Split(string(readContentHeader), ":")
 		if len(pieces) != 2 {

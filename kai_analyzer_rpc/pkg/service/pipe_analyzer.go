@@ -3,9 +3,7 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"sync"
 
@@ -174,113 +172,114 @@ func updateProviderConditionToUseNewRPClientParseRules(client *rpc2.Client,
 	return parseRules(parser, rules, log, func() {})
 }
 
-func updateProviderConditionToUseNewRPClient(client *rpc2.Client,
-	discoveryRulesets, violationRulesets []engine.RuleSet,
-	log logr.Logger,
-	contextLines int,
-	location, _ string) ([]engine.RuleSet, []engine.RuleSet, error) {
-	//create new java provider
+// TODO: This code was not working but should work and should be the more correct way to do this rather then re-parsing rules.
+// func updateProviderConditionToUseNewRPClient(client *rpc2.Client,
+// 	discoveryRulesets, violationRulesets []engine.RuleSet,
+// 	log logr.Logger,
+// 	contextLines int,
+// 	location, _ string) ([]engine.RuleSet, []engine.RuleSet, error) {
+// 	//create new java provider
 
-	c, err := java.NewInternalProviderClientForRPCClient(context.TODO(), log, contextLines, location, client)
-	if err != nil {
-		return nil, nil, err
-	}
-	client.Notify("started", nil)
-	reply := map[string]interface{}{}
-	client.Call("workspace/executeCommand", []map[string]interface{}{{"command": "io.konveyor.tackle.ruleEntry",
-		"arguments": map[string]interface{}{
-			"analysisMode": "source-only",
-			"location":     "11",
-			"project":      "java",
-			"query":        "java.rmi*"},
-		"id":      1,
-		"jsonrpc": "2.0"}}, reply)
+// 	c, err := java.NewInternalProviderClientForRPCClient(context.TODO(), log, contextLines, location, client)
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
+// 	client.Notify("started", nil)
+// 	reply := map[string]interface{}{}
+// 	client.Call("workspace/executeCommand", []map[string]interface{}{{"command": "io.konveyor.tackle.ruleEntry",
+// 		"arguments": map[string]interface{}{
+// 			"analysisMode": "source-only",
+// 			"location":     "11",
+// 			"project":      "java",
+// 			"query":        "java.rmi*"},
+// 		"id":      1,
+// 		"jsonrpc": "2.0"}}, reply)
 
-	for _, rs := range discoveryRulesets {
-		for _, r := range rs.Rules {
-			switch r.When.(type) {
-			case engine.ConditionEntry:
-				log.Info("dealing with simplest case", "before", fmt.Sprintf("%+v", r.When))
-				v := r.When.(engine.ConditionEntry)
-				if x, ok := v.ProviderSpecificConfig.(provider.ProviderCondition); ok {
-					if strings.Contains(reflect.TypeOf(x.Client).String(), "java") {
-						x.Client = c
-						v.ProviderSpecificConfig = x
-					}
-					r.When = v
-					log.Info("dealing with simplest case", "after", fmt.Sprintf("%+v", r.When))
-				}
-			case engine.AndCondition:
-				v := r.When.(engine.AndCondition)
-				conditions := handleConditionEntries(v.Conditions, c)
-				v.Conditions = conditions
-				r.When = v
-			case engine.OrCondition:
-				v := r.When.(engine.OrCondition)
-				conditions := handleConditionEntries(v.Conditions, c)
-				v.Conditions = conditions
-				r.When = v
-			default:
-				panic(fmt.Errorf("invalid top level concret when type: %T -- %+v", r.When, r.When))
-			}
-		}
-	}
-	for _, rs := range violationRulesets {
-		for _, r := range rs.Rules {
-			switch r.When.(type) {
-			case engine.ConditionEntry:
-				v := r.When.(engine.ConditionEntry)
-				if x, ok := v.ProviderSpecificConfig.(provider.ProviderCondition); ok {
-					if strings.Contains(reflect.TypeOf(x.Client).String(), "java") {
-						x.Client = c
-						v.ProviderSpecificConfig = x
-					}
-				}
-				r.When = v
-			case engine.AndCondition:
-				v := r.When.(engine.AndCondition)
-				conditions := handleConditionEntries(v.Conditions, c)
-				v.Conditions = conditions
-				r.When = v
-			case engine.OrCondition:
-				v := r.When.(engine.OrCondition)
-				conditions := handleConditionEntries(v.Conditions, c)
-				v.Conditions = conditions
-				r.When = v
-			default:
-				panic(fmt.Errorf("invalid top level concret when type: %T -- %+v", r.When, r.When))
-			}
+// 	for _, rs := range discoveryRulesets {
+// 		for _, r := range rs.Rules {
+// 			switch r.When.(type) {
+// 			case engine.ConditionEntry:
+// 				log.Info("dealing with simplest case", "before", fmt.Sprintf("%+v", r.When))
+// 				v := r.When.(engine.ConditionEntry)
+// 				if x, ok := v.ProviderSpecificConfig.(provider.ProviderCondition); ok {
+// 					if strings.Contains(reflect.TypeOf(x.Client).String(), "java") {
+// 						x.Client = c
+// 						v.ProviderSpecificConfig = x
+// 					}
+// 					r.When = v
+// 					log.Info("dealing with simplest case", "after", fmt.Sprintf("%+v", r.When))
+// 				}
+// 			case engine.AndCondition:
+// 				v := r.When.(engine.AndCondition)
+// 				conditions := handleConditionEntries(v.Conditions, c)
+// 				v.Conditions = conditions
+// 				r.When = v
+// 			case engine.OrCondition:
+// 				v := r.When.(engine.OrCondition)
+// 				conditions := handleConditionEntries(v.Conditions, c)
+// 				v.Conditions = conditions
+// 				r.When = v
+// 			default:
+// 				panic(fmt.Errorf("invalid top level condition when type: %T -- %+v", r.When, r.When))
+// 			}
+// 		}
+// 	}
+// 	for _, rs := range violationRulesets {
+// 		for _, r := range rs.Rules {
+// 			switch r.When.(type) {
+// 			case engine.ConditionEntry:
+// 				v := r.When.(engine.ConditionEntry)
+// 				if x, ok := v.ProviderSpecificConfig.(provider.ProviderCondition); ok {
+// 					if strings.Contains(reflect.TypeOf(x.Client).String(), "java") {
+// 						x.Client = c
+// 						v.ProviderSpecificConfig = x
+// 					}
+// 				}
+// 				r.When = v
+// 			case engine.AndCondition:
+// 				v := r.When.(engine.AndCondition)
+// 				conditions := handleConditionEntries(v.Conditions, c)
+// 				v.Conditions = conditions
+// 				r.When = v
+// 			case engine.OrCondition:
+// 				v := r.When.(engine.OrCondition)
+// 				conditions := handleConditionEntries(v.Conditions, c)
+// 				v.Conditions = conditions
+// 				r.When = v
+// 			default:
+// 				panic(fmt.Errorf("invalid top level condition when type: %T -- %+v", r.When, r.When))
+// 			}
 
-		}
-	}
-	return discoveryRulesets, violationRulesets, nil
-}
+// 		}
+// 	}
+// 	return discoveryRulesets, violationRulesets, nil
+// }
 
-func handleConditionEntries(entries []engine.ConditionEntry, c provider.InternalProviderClient) []engine.ConditionEntry {
-	ret := []engine.ConditionEntry{}
-	for _, ce := range entries {
-		switch ce.ProviderSpecificConfig.(type) {
-		case engine.ConditionEntry:
-			v := ce.ProviderSpecificConfig.(engine.ConditionEntry)
-			if x, ok := v.ProviderSpecificConfig.(provider.ProviderCondition); ok {
-				x.Client = c
-				v.ProviderSpecificConfig = x
-			}
-			ret = append(ret, ce)
-		case engine.AndCondition:
-			v := ce.ProviderSpecificConfig.(engine.AndCondition)
-			conditions := handleConditionEntries(v.Conditions, c)
-			v.Conditions = conditions
-			ce.ProviderSpecificConfig = v
-			ret = append(ret, ce)
+// func handleConditionEntries(entries []engine.ConditionEntry, c provider.InternalProviderClient) []engine.ConditionEntry {
+// 	ret := []engine.ConditionEntry{}
+// 	for _, ce := range entries {
+// 		switch ce.ProviderSpecificConfig.(type) {
+// 		case engine.ConditionEntry:
+// 			v := ce.ProviderSpecificConfig.(engine.ConditionEntry)
+// 			if x, ok := v.ProviderSpecificConfig.(provider.ProviderCondition); ok {
+// 				x.Client = c
+// 				v.ProviderSpecificConfig = x
+// 			}
+// 			ret = append(ret, ce)
+// 		case engine.AndCondition:
+// 			v := ce.ProviderSpecificConfig.(engine.AndCondition)
+// 			conditions := handleConditionEntries(v.Conditions, c)
+// 			v.Conditions = conditions
+// 			ce.ProviderSpecificConfig = v
+// 			ret = append(ret, ce)
 
-		case engine.OrCondition:
-			v := ce.ProviderSpecificConfig.(engine.OrCondition)
-			conditions := handleConditionEntries(v.Conditions, c)
-			v.Conditions = conditions
-			ce.ProviderSpecificConfig = v
-			ret = append(ret, ce)
-		}
-	}
-	return ret
-}
+// 		case engine.OrCondition:
+// 			v := ce.ProviderSpecificConfig.(engine.OrCondition)
+// 			conditions := handleConditionEntries(v.Conditions, c)
+// 			v.Conditions = conditions
+// 			ce.ProviderSpecificConfig = v
+// 			ret = append(ret, ce)
+// 		}
+// 	}
+// 	return ret
+// }

@@ -230,7 +230,7 @@ func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) er
 		var err error
 		dRulesets, vRulesets, err = a.updateConditionProvider(client, a.discoveryRulesets, a.violationRulesets, a.Logger.WithName("provider update"), a.contextLines, a.location, a.rules)
 		if err != nil {
-			a.Logger.Error(err, "unable to update Conditons with new client")
+			a.Logger.Error(err, "unable to update Conditions with new client")
 			return err
 		}
 		a.Logger.Info("updated rulesets", "discovery", len(a.discoveryRulesets), "violations", len(a.violationRulesets))
