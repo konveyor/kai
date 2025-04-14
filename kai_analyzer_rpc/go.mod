@@ -3,6 +3,7 @@ module github.com/konveyor/kai-analyzer
 go 1.23.1
 
 require (
+	github.com/Microsoft/go-winio v0.6.2
 	github.com/cenkalti/rpc2 v1.0.4
 	github.com/go-logr/logr v1.4.2
 	github.com/konveyor/analyzer-lsp v0.7.0-alpha.2.0.20250414173818-69f16ed24d65
@@ -37,7 +38,6 @@ require (
 	github.com/nxadm/tail v1.4.11 // indirect
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/swaggest/jsonschema-go v0.3.73 // indirect
 	github.com/swaggest/openapi-go v0.2.57 // indirect
 	github.com/swaggest/refl v1.3.1 // indirect

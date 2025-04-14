@@ -1,11 +1,11 @@
-//go:build !windows
+//go:build windows
 
 package java
 
 import (
 	"bufio"
+	"bytes"
 	"context"
-	"net"
 
 	"github.com/cenkalti/rpc2"
 	"github.com/go-logr/logr"
@@ -61,12 +61,8 @@ func NewInternalProviderClientForPipe(ctx context.Context, log logr.Logger, cont
 		"lspServerName": "java",
 	}
 
-	conn, err := net.Dial("unix", pipeFile)
-	if err != nil {
-		return p, err
-	}
-	reader := bufio.NewReader(conn)
-	writer := bufio.NewWriter(conn)
+	reader := bufio.NewReader(bytes.NewBuffer([]byte{}))
+	writer := bufio.NewWriter(bytes.NewBuffer([]byte{}))
 	c := codec.NewCodec(ctx, reader, writer, log.WithName("provider"), "", rpc2.NewState())
 	client := rpc2.NewClientWithCodec(c)
 

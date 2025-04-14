@@ -173,7 +173,7 @@ class AnalyzerLSP:
                 "analysis_engine.Analyze",
                 params=[request_params],
             )
-            logger.debug("Received response from analyzer-lsp")
+            logger.debug(f"Received response from analyzer-lsp: ${result}")
             return result
         except Exception as e:
             logger.error(f"failed to analyze {str(e)}")

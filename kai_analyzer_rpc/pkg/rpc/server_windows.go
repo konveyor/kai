@@ -1,4 +1,4 @@
-//go:build !windows
+//go:build windows
 
 package rpc
 
@@ -8,9 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"path/filepath"
+	"sync"
 	"sync/atomic"
 
+	"github.com/Microsoft/go-winio"
 	rpc "github.com/cenkalti/rpc2"
 	"github.com/go-logr/logr"
 	"github.com/konveyor/kai-analyzer/pkg/codec"
@@ -26,6 +27,7 @@ type Server struct {
 	connections             []net.Conn
 	rules                   string
 	sourceDirectory         string
+	initService             *sync.Once
 }
 
 func NewServer(ctx context.Context, s *rpc.Server, log logr.Logger, notificationServiceName string, rules string, sourceDirectory string) *Server {
@@ -37,31 +39,29 @@ func NewServer(ctx context.Context, s *rpc.Server, log logr.Logger, notification
 		state:                   state,
 		notificationServiceName: notificationServiceName,
 		rules:                   rules,
-		sourceDirectory:         sourceDirectory}
+		sourceDirectory:         sourceDirectory,
+		initService:             &sync.Once{},
+	}
 }
 
 func (s *Server) Accept(pipePath string) {
-	pipePath, err := filepath.Abs(pipePath)
-	if err != nil {
-		panic(err)
-	}
-	pipePath = filepath.Clean(pipePath)
+	s.log.Info("pipepath", "p", pipePath)
 	s.log.Info("dialing connection connections")
-	lc := net.ListenConfig{}
-	l, err := lc.Listen(s.ctx, "unix", pipePath)
+	l, err := winio.ListenPipe(pipePath, &winio.PipeConfig{})
 	if err != nil {
-		s.log.Error(err, "can not listen")
 		panic(err)
 	}
-	// Register pipe analysis handler
 	analyzerService, err := service.NewPipeAnalyzer(s.ctx, 10000, 10, 10, pipePath, s.rules, s.sourceDirectory, s.log.WithName("analyzer-service"))
 	if err != nil {
 		s.log.Error(err, "unable to create analyzer service")
 		return
 	}
+	s.log.Info("handle analysis")
 	s.Server.Handle("analysis_engine.Analyze", analyzerService.Analyze)
+	// Register pipe analysis handler
 	for {
 		conn, err := l.Accept()
+
 		if err != nil {
 			if !errors.Is(err, net.ErrClosed) {
 				s.log.Info("rpc.Serve: accept:", err.Error())
