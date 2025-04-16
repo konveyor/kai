@@ -66,8 +66,6 @@ class AnalyzerLSP:
             ",".join(map(str, java_bundles)),
             "-log-file",
             os.path.join(get_logfile_dir(), CONST_KAI_ANALYZER_LOG_FILE),
-            "-verbosity",
-            "-20",
         ]
 
         if dep_open_source_labels_path is not None:
@@ -117,7 +115,7 @@ class AnalyzerLSP:
                     cast(BufferedReader, self.rpc_server.stdout),
                     cast(BufferedWriter, self.rpc_server.stdin),
                 ),
-                request_timeout=4 * 60,
+                request_timeout=None,
                 log=get_logger("kai.analyzer-rpc-client"),
             )
 
@@ -173,7 +171,7 @@ class AnalyzerLSP:
                 "analysis_engine.Analyze",
                 params=[request_params],
             )
-            logger.debug(f"Received response from analyzer-lsp: ${result}")
+            logger.debug("Received response from analyzer-lsp")
             return result
         except Exception as e:
             logger.error(f"failed to analyze {str(e)}")

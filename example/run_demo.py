@@ -11,7 +11,6 @@ from logging import DEBUG
 from pathlib import Path
 from typing import Any, AsyncGenerator, cast
 
-import aiofiles
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
@@ -289,19 +288,6 @@ async def get_analysis_from_analyzer(server: JsonRpcServer) -> Report:
         raise Exception(f"Failed to get analysis: {e}") from e
 
 
-async def tail_analysis_log(log_file: Path) -> None:
-    try:
-        async with aiofiles.open(log_file, "r") as f:
-            while True:
-                line = await f.readline()
-                if not line:
-                    await asyncio.sleep(0.1)
-                    continue
-                KAI_LOG.info(line)
-    except FileNotFoundError:
-        KAI_LOG.info(f"unable to find log file: {log_file}")
-
-
 async def main() -> None:
     kai_config = KaiRpcApplicationConfig.model_validate_filepath("initialize.toml")
     init_logging_from_log_config(kai_config.log_config)
@@ -321,11 +307,6 @@ async def main() -> None:
 
         async with initialize_rpc_server(kai_config) as server:
             KAI_LOG.info("starting to load report")
-            asyncio.create_task(
-                tail_analysis_log(
-                    Path(kai_config.log_config.log_dir_path) / "kai-analyzer-server.log"
-                )
-            )
             report = await get_analysis_from_analyzer(server)
             KAI_LOG.info("done loading report")
             await run_demo(report, server)
