@@ -55,7 +55,7 @@ Before we run the analysis, let’s understand the custom rules we are going to 
 
 ### 2.1. Custom Rule for Deprecated configure(AuthenticationManagerBuilder) Method
 
-The `SecurityConfig.java` class configures users and roles using the now-discouraged configure `(AuthenticationManagerBuilder auth)` method:
+The `SecurityConfig.java` class configures users and roles using the now-discouraged `configure (AuthenticationManagerBuilder auth)` method:
 
 #### Before Migration
 
