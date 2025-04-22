@@ -6,3 +6,4 @@ This document provides a list of migration scenarios utilizing Kai. These scenar
 
 1. [OpenJDK8 to openJDK17 migration of a simple book management application using Kai](./jdk_8_to_17_migration/README.md)
 2. [JavaEE to Quarkus migration of a coolstore application using Kai](./javaEE_to_quarkus/README.md)
+3. [Modernizing a Spring Boot 2 Application to Spring Boot 3 Using Konveyor AI](./springboot_2_to_3_security/README.md)
