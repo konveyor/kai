@@ -54,7 +54,18 @@ type Analyzer struct {
 	cacheMutex          sync.RWMutex
 }
 
-func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, lspServerPath, bundles, depOpenSourceLabelsFile, rules string, log logr.Logger) (*Analyzer, error) {
+func NewAnalyzer(
+	limitIncidents,
+	limitCodeSnips,
+	contextLines int,
+	location,
+	incidentSelector,
+	lspServerPath,
+	bundles,
+	depOpenSourceLabelsFile,
+	rules string,
+	log logr.Logger,
+) (*Analyzer, error) {
 	prefix, err := filepath.Abs(location)
 	if err != nil {
 		return nil, err
