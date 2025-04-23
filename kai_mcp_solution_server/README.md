@@ -1,4 +1,4 @@
-# Kai Solution MCP Server
+# Kai MCP Solution Server
 
 A Model Context Protocol (MCP) server for managing Kai solutions database. This server allows AI agents to store, retrieve, and analyze solutions for code migration tasks.
 
@@ -15,160 +15,148 @@ The server implements the following functionality:
 - Find related solutions for LLM retrieval augmented generation (RAG)
 - Format solution examples for LLM consumption
 
-## Installation
-
-### Prerequisites
+## Prerequisites
 
 - Python 3.9 or higher
 - pip
+- Podman (for containerized deployment)
 
-### Setup
+## Getting Started
 
-1. Clone this repository:
+### Local Development
 
+1. Install dependencies:
    ```bash
-   git clone https://github.com/yourusername/kai-mcp-server.git
-   cd kai-mcp-server
+   pip install mcp
    ```
 
-2. Create a virtual environment:
-
+2. Run the server locally:
    ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # On Unix/macOS
-   .venv\Scripts\activate     # On Windows
+   # Using SSE transport (HTTP server)
+   python -m main --transport sse --host 0.0.0.0 --port 8000
+
+   # Using stdio transport (for direct process communication)
+   python -m main --transport stdio
+   
+   # Using a custom database path
+   python -m main --db-path /path/to/custom/database.db
+   
+   # With debug logging
+   python -m main --log-level debug
    ```
 
-3. Install dependencies:
+3. Test with the provided test client:
    ```bash
-   pip install mcp-sdk
+   # Test using stdio transport
+   python scripts/test_client.py --transport stdio
+   
+   # Test against a running HTTP server
+   python scripts/test_client.py --transport http --host localhost --port 8000
+   
+   # Show detailed output for resources
+   python scripts/test_client.py --full-output
    ```
 
-## Running the Server
+4. For convenience, you can also use the Makefile:
+   ```bash
+   # Run server locally
+   make run-local
+   
+   # Test with stdio transport
+   make test-stdio
+   
+   # Test with HTTP transport
+   make test-http
+   ```
 
-Start the MCP server:
+### Containerized Deployment
 
-```bash
-python main.py
-```
+1. Build the container image:
+   ```bash
+   make build
+   ```
 
-The server will run using the STDIO transport, which is the standard transport for MCP servers.
+2. Run the server in a container:
+   ```bash
+   make run-podman
+   ```
 
-## Development and Testing
+3. Test against the containerized server:
+   ```bash
+   make test-http
+   ```
 
-### Creating Test Data
-
-You can use the MCP Inspector to create test data for your Kai solutions database:
-
-1. Use the `store_solution` tool to create a new solution
-2. Provide test data in the parameters
-3. Update the solution status using the `update_solution_status` tool
-4. Test querying success rates and retrieving solutions
-
-## Integration with Claude Desktop
-
-To use this MCP server with Claude Desktop:
-
-1. Make sure you have Claude Desktop installed
-2. Open the Claude Desktop configuration file:
-
-   - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-   - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-
-3. Add your server to the `mcpServers` section:
-
-```json
-{
-  "mcpServers": {
-    "kaiSolutions": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "/absolute/path/to/your/kai-mcp-server",
-        "run",
-        "main.py"
-      ]
-    }
-  }
-}
-```
-
-4. Restart Claude Desktop
-
-## API Reference
+## MCP API Reference
 
 ### Tools
 
-| Tool                     | Description                      | Parameters                                            |
-| ------------------------ | -------------------------------- | ----------------------------------------------------- |
-| `store_solution`         | Create a new solution            | `task`, `before_code`, `after_code`, `diff`, `status` |
-| `update_solution_status` | Update solution status           | `solution_id`, `status`                               |
-| `find_related_solutions` | Find solutions based on criteria | `task_key`, `limit`                                   |
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `store_solution` | Create a new solution | `task`, `before_code`, `after_code`, `diff`, `status` |
+| `find_related_solutions` | Find solutions based on criteria | `task_key`, `limit` |
 
 ### Resources
 
-| Resource                            | Description                     | Parameters |
-| ----------------------------------- | ------------------------------- | ---------- |
-| `kai://success_rate/{task_key}`     | Get success rate for a task     | `task_key` |
-| `kai://solutions/{task_key}`        | Get solution history for a task | `task_key` |
-| `kai://example_solution/{task_key}` | Get best solution example       | `task_key` |
+| Resource | Description | Parameters |
+|----------|-------------|------------|
+| `kai://success_rate/{task_key}` | Get success rate for a task | `task_key` |
+| `kai://solutions/{task_key}` | Get solution history for a task | `task_key` |
+| `kai://example_solution/{task_key}` | Get best solution example | `task_key` |
 
-## Architecture
+## Development
 
-This project consists of two main components:
+### Project Structure
 
-1. **DAO Layer** (`kai_solutions_dao.py`):
+- **main.py**: The main MCP server implementation
+- **kai_solutions_dao.py**: Data access layer for the SQLite database
+- **deploy/**: Contains the Docker build context
+- **scripts/**: Contains utility scripts for testing
 
-   - Data structures and database operations
-   - Connection pool management
-   - Solution querying and filtering logic
+### Running Tests
 
-2. **MCP Server** (`main.py`):
-   - MCP server setup and lifecycle management
-   - Tool implementations
-   - Resource formatting and exposure
+- Test with STDIO transport (spawns a new server):
+  ```bash
+  make test-stdio
+  ```
 
-## Example Usage with Claude
+- Test with HTTP transport (requires a running server):
+  ```bash
+  make run-local  # In one terminal
+  make test-http  # In another terminal
+  ```
 
-Once connected to Claude Desktop, you can interact with your database using natural language:
+- Test with a full containerized setup:
+  ```bash
+  make run-with-tests
+  ```
 
-```
-Could you create a new solution for migrating from Java EE to Quarkus? Here's an example:
+## Test Client Usage
 
-Task:
-{
-  "key": "jms-to-quarkus",
-  "description": "Convert JMS Topic to Quarkus Reactive Messaging",
-  "source_framework": "java-ee",
-  "target_framework": "quarkus",
-  "language": "java"
-}
+The test client (`scripts/test_client.py`) is provided to help test and verify the functionality of the MCP solution server. It can connect to the server using either HTTP or stdio transport.
 
-Before code:
-@Resource(lookup = "java:/topic/HELLOWORLDMDBTopic")
-private Topic topic;
+```bash
+# Basic usage with HTTP transport
+python scripts/test_client.py --transport http --host localhost --port 8000
 
-After code:
-@Inject
-@Channel("prices")
-Emitter<String> pricesEmitter;
+# Using stdio transport (spawns a server process)
+python scripts/test_client.py --transport stdio
 
-Diff:
-- @Resource(lookup = "java:/topic/HELLOWORLDMDBTopic")
-- private Topic topic;
-+ @Inject
-+ @Channel("prices")
-+ Emitter<String> pricesEmitter;
-```
+# Use a specific task key for testing
+python scripts/test_client.py --task-key migration-task-123
 
-Then you can ask about success rates:
+# Show full output for resources instead of truncated summaries
+python scripts/test_client.py --full-output
 
-```
-What's the success rate for jms-to-quarkus migrations?
+# Show verbose output for debugging
+python scripts/test_client.py --verbose
 ```
 
-Or find related solutions:
+The test client will run through all available tools and resources, demonstrating how to interact with the MCP solution server.
 
-```
-Can you find me related solutions for Java EE to Quarkus migrations involving JMS?
-```
+## Integration with Claude and other LLMs
+
+This MCP server can be integrated with Claude and other LLMs that support the Model Context Protocol. For detailed instructions on how to configure Claude Desktop with this MCP server, refer to the [Claude Desktop documentation](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview).
+
+## License
+
+This project is part of the Konveyor/Kai project and is licensed under the same license.
