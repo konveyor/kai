@@ -11,10 +11,8 @@ import asyncio
 import json
 import os
 import sys
-import time
-from typing import Any, Dict, List, Optional, Tuple
 
-from mcp import ClientSession, StdioServerParameters, types
+from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
 
@@ -353,7 +351,7 @@ async def run_test_suite(session: ClientSession, args) -> None:
     print("Connected to MCP server successfully!")
 
     # Run tests
-    solution_id = await test_store_solution(session)
+    await test_store_solution(session)
 
     # Wait a bit for data to be persisted
     print("Waiting for database operations to complete...")

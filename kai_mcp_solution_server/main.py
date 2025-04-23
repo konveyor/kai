@@ -1,13 +1,11 @@
 import argparse
 import logging
 import os
-import sqlite3
-import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, List, Optional
+from typing import List, Optional
 
-from kai_solutions_dao import KaiSolution, KaiSolutionsDAO, SolutionStatus, conn_pool
+from kai_solutions_dao import KaiSolutionsDAO, SolutionStatus, conn_pool
 from mcp.server.fastmcp import Context, FastMCP
 
 

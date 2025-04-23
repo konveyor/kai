@@ -26,45 +26,49 @@ The server implements the following functionality:
 ### Local Development
 
 1. Install dependencies:
+
    ```bash
    pip install mcp
    ```
 
 2. Run the server locally:
+
    ```bash
    # Using SSE transport (HTTP server)
    python -m main --transport sse --host 0.0.0.0 --port 8000
 
    # Using stdio transport (for direct process communication)
    python -m main --transport stdio
-   
+
    # Using a custom database path
    python -m main --db-path /path/to/custom/database.db
-   
+
    # With debug logging
    python -m main --log-level debug
    ```
 
 3. Test with the provided test client:
+
    ```bash
    # Test using stdio transport
    python scripts/test_client.py --transport stdio
-   
+
    # Test against a running HTTP server
    python scripts/test_client.py --transport http --host localhost --port 8000
-   
+
    # Show detailed output for resources
    python scripts/test_client.py --full-output
    ```
 
 4. For convenience, you can also use the Makefile:
+
    ```bash
    # Run server locally
    make run-local
-   
+
    # Test with stdio transport
    make test-stdio
-   
+
    # Test with HTTP transport
    make test-http
    ```
@@ -72,11 +76,13 @@ The server implements the following functionality:
 ### Containerized Deployment
 
 1. Build the container image:
+
    ```bash
    make build
    ```
 
 2. Run the server in a container:
+
    ```bash
    make run-podman
    ```
@@ -90,18 +96,18 @@ The server implements the following functionality:
 
 ### Tools
 
-| Tool | Description | Parameters |
-|------|-------------|------------|
-| `store_solution` | Create a new solution | `task`, `before_code`, `after_code`, `diff`, `status` |
-| `find_related_solutions` | Find solutions based on criteria | `task_key`, `limit` |
+| Tool                     | Description                      | Parameters                                            |
+| ------------------------ | -------------------------------- | ----------------------------------------------------- |
+| `store_solution`         | Create a new solution            | `task`, `before_code`, `after_code`, `diff`, `status` |
+| `find_related_solutions` | Find solutions based on criteria | `task_key`, `limit`                                   |
 
 ### Resources
 
-| Resource | Description | Parameters |
-|----------|-------------|------------|
-| `kai://success_rate/{task_key}` | Get success rate for a task | `task_key` |
-| `kai://solutions/{task_key}` | Get solution history for a task | `task_key` |
-| `kai://example_solution/{task_key}` | Get best solution example | `task_key` |
+| Resource                            | Description                     | Parameters |
+| ----------------------------------- | ------------------------------- | ---------- |
+| `kai://success_rate/{task_key}`     | Get success rate for a task     | `task_key` |
+| `kai://solutions/{task_key}`        | Get solution history for a task | `task_key` |
+| `kai://example_solution/{task_key}` | Get best solution example       | `task_key` |
 
 ## Development
 
@@ -115,11 +121,13 @@ The server implements the following functionality:
 ### Running Tests
 
 - Test with STDIO transport (spawns a new server):
+
   ```bash
   make test-stdio
   ```
 
 - Test with HTTP transport (requires a running server):
+
   ```bash
   make run-local  # In one terminal
   make test-http  # In another terminal

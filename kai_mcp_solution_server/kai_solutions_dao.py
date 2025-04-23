@@ -4,7 +4,7 @@ import sqlite3
 import threading
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, List, Optional
+from typing import List, Optional
 
 DB_PATH: str = os.getenv("DB_PATH", "kai_solutions.db")
 
@@ -250,7 +250,6 @@ class KaiSolutionsDAO:
 
         filtered_solutions = []
         for solution in all_solutions:
-            task = solution.task
 
             filtered_solutions.append(solution)
 
