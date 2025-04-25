@@ -20,6 +20,7 @@ The server implements the following functionality:
 - Python 3.9 or higher
 - pip
 - Podman (for containerized deployment)
+- Kubernetes/OpenShift (for cluster deployment)
 
 ## Getting Started
 
@@ -92,6 +93,51 @@ The server implements the following functionality:
    make test-http
    ```
 
+### Kubernetes/OpenShift Deployment
+
+The KAI MCP Solution Server can be deployed to Kubernetes or OpenShift using our Ansible-based deployment:
+
+1. Deploy to Kubernetes or OpenShift:
+
+   ```bash
+   make deploy
+   ```
+
+2. Deploy with custom settings:
+
+   ```bash
+   # Custom namespace
+   make deploy NAMESPACE=my-namespace
+
+   # Custom image
+   make deploy IMAGE=quay.io/custom/image:v1.0.0
+
+   # Ansible variables using EXTRA_VARS
+   make deploy EXTRA_VARS="storage_class=gp2 storage_size=5Gi"
+
+   # OpenShift route settings
+   make deploy EXTRA_VARS="route_tls_enabled=false"
+
+   # Multiple Ansible variables
+   make deploy EXTRA_VARS="route_tls_enabled=true route_tls_termination=edge route_tls_insecure_policy=Allow"
+
+   # Combined customizations
+   make deploy NAMESPACE=my-namespace IMAGE=quay.io/custom/image:v1.0.0 EXTRA_VARS="storage_class=gp2"
+   ```
+
+3. Check the deployment status:
+
+   ```bash
+   make status
+   ```
+
+4. Remove the deployment:
+   ```bash
+   make undeploy
+   ```
+
+See the [Ansible deployment documentation](deploy/ansible/README.md) for more details.
+
 ## MCP API Reference
 
 ### Tools
@@ -115,8 +161,9 @@ The server implements the following functionality:
 
 - **main.py**: The main MCP server implementation
 - **kai_solutions_dao.py**: Data access layer for the SQLite database
-- **deploy/**: Contains the Docker build context
-- **scripts/**: Contains utility scripts for testing
+- **deploy/**: Contains the Containerfile and deployment resources
+  - **ansible/**: Ansible playbooks and roles for Kubernetes/OpenShift deployment
+- **scripts/**: Contains utility scripts for testing and deployment
 
 ### Running Tests
 
