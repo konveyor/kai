@@ -200,7 +200,7 @@ def parse_args():
         help="Transport protocol (sse or stdio)",
     )
     parser.add_argument(
-        "--host", default="0.0.0.0", help="Host to bind to (for sse transport)"
+        "--host", default="localhost", help="Host to bind to (for sse transport)"
     )
     parser.add_argument(
         "--port", type=int, default=8000, help="Port to listen on (for sse transport)"
