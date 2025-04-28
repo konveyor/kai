@@ -88,7 +88,7 @@ run-podman: build
 test-http:
 	@echo "Running MCP test client against HTTP server..."
 	@echo "Make sure the server is running with 'make run-local' or 'make run-podman'"
-	cd $(PROJECT_ROOT)/.. && python $(SCRIPTS_DIR)/test_client.py --transport http --host $(HOST) --port $(PORT)
+	cd $(PROJECT_ROOT)/.. && python $(SCRIPTS_DIR)/test_client.py --transport http --host $(HOST) --port $(PORT) --insecure
 
 # Test using stdio transport
 .PHONY: test-stdio
