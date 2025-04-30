@@ -141,6 +141,7 @@ func parseRules(parser parser.RuleParser, rules string, l logr.Logger, cancelFun
 }
 
 func updateProviderConditionToUseNewRPClientParseRules(client *rpc2.Client,
+	existingProviders map[string]provider.InternalProviderClient,
 	discoveryRulesets, violationRulesets []engine.RuleSet,
 	log logr.Logger,
 	contextLines int,
@@ -151,13 +152,18 @@ func updateProviderConditionToUseNewRPClientParseRules(client *rpc2.Client,
 		return nil, nil, err
 	}
 
-	bProvider, err := lib.GetProviderClient(provider.Config{Name: "builtin"}, log)
-	if err != nil {
-		return nil, nil, err
-	}
-	_, err = bProvider.ProviderInit(context.Background(), []provider.InitConfig{{Location: location}})
-	if err != nil {
-		return nil, nil, err
+	var bProvider provider.InternalProviderClient
+	if val, ok := existingProviders["builtin"]; ok {
+		bProvider = val
+	} else {
+		bProvider, err := lib.GetProviderClient(provider.Config{Name: "builtin"}, log)
+		if err != nil {
+			return nil, nil, err
+		}
+		_, err = bProvider.ProviderInit(context.Background(), []provider.InitConfig{{Location: location}})
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	providers := map[string]provider.InternalProviderClient{

@@ -60,6 +60,8 @@ func (s *Server) Accept(pipePath string) {
 		return
 	}
 	s.Server.Handle("analysis_engine.Analyze", analyzerService.Analyze)
+	// s.Server.Handle("analysis_engine.Stop", analyzerService.Stop)
+	s.Server.Handle("analysis_engine.NotifyFileChanges", analyzerService.NotifyFileChanges)
 	for {
 		conn, err := l.Accept()
 		if err != nil {

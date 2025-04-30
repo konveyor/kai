@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -41,7 +42,16 @@ type cacheValue struct {
 
 type Analyzer interface {
 	Analyze(client *rpc.Client, args Args, response *Response) error
+	NotifyFileChanges(client *rpc.Client, changes NotifyFileChangesArgs, response *NotifyFileChangesResponse) error
 	Stop()
+}
+
+type NotifyFileChangesArgs struct {
+	Changes []provider.FileChange
+}
+
+type NotifyFileChangesResponse struct {
+	err error
 }
 
 type analyzer struct {
@@ -64,7 +74,7 @@ type analyzer struct {
 	location     string
 	rules        string
 
-	updateConditionProvider func(*rpc.Client, []engine.RuleSet, []engine.RuleSet, logr.Logger, int, string, string) ([]engine.RuleSet, []engine.RuleSet, error)
+	updateConditionProvider func(*rpc.Client, map[string]provider.InternalProviderClient, []engine.RuleSet, []engine.RuleSet, logr.Logger, int, string, string) ([]engine.RuleSet, []engine.RuleSet, error)
 }
 
 func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, lspServerPath, bundles, depOpenSourceLabelsFile, rules string, log logr.Logger) (Analyzer, error) {
@@ -228,7 +238,7 @@ func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) er
 	dRulesets, vRulesets := a.discoveryRulesets, a.violationRulesets
 	if a.updateConditionProvider != nil {
 		var err error
-		dRulesets, vRulesets, err = a.updateConditionProvider(client, a.discoveryRulesets, a.violationRulesets, a.Logger.WithName("provider update"), a.contextLines, a.location, a.rules)
+		dRulesets, vRulesets, err = a.updateConditionProvider(client, a.initedProviders, a.discoveryRulesets, a.violationRulesets, a.Logger.WithName("provider update"), a.contextLines, a.location, a.rules)
 		if err != nil {
 			a.Logger.Error(err, "unable to update Conditions with new client")
 			return err
@@ -306,6 +316,19 @@ func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) er
 
 	// Now we need to invalidate anything, from the files in included paths
 	response.Rulesets = a.createRulesetsFromCache()
+	return nil
+}
+
+func (a *analyzer) NotifyFileChanges(client *rpc.Client, args NotifyFileChangesArgs, response *NotifyFileChangesResponse) error {
+	errs := []error{}
+	for name, svcClient := range a.initedProviders {
+		err := svcClient.NotifyFileChanges(context.Background(), args.Changes...)
+		if err != nil {
+			errs = append(errs, err)
+		}
+		a.Logger.Info("[pg] sent notify request", "name", name)
+	}
+	response.err = errors.Join(errs...)
 	return nil
 }
 

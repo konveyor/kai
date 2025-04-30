@@ -81,7 +81,7 @@ func main() {
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	cancelChan := make(chan os.Signal, 1)
-	// catch SIGETRM or SIGINTERRUPT
+	// catch SIGTERM or SIGINT
 	signal.Notify(cancelChan, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
 		l.Info("Starting Server")
@@ -103,6 +103,8 @@ func main() {
 				panic(err)
 			}
 			server.Handle("analysis_engine.Analyze", analyzerService.Analyze)
+			// server.Handle("analysis_engine.Stop", analyzerService.Stop)
+			server.Handle("analysis_engine.NotifyFileChanges", analyzerService.NotifyFileChanges)
 			codec := codec.NewConnectionCodec(codec.Connection{Input: os.Stdin, Output: os.Stdout}, l)
 			server.ServeCodec(codec)
 		} else {

@@ -6,8 +6,8 @@ require (
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/cenkalti/rpc2 v1.0.4
 	github.com/go-logr/logr v1.4.2
-	github.com/konveyor/analyzer-lsp v0.7.0-alpha.2.0.20250414173818-69f16ed24d65
-	github.com/konveyor/analyzer-lsp/external-providers/java-external-provider v0.0.0-20250414173818-69f16ed24d65
+	github.com/konveyor/analyzer-lsp v0.7.0-alpha.2.0.20250430134745-b8bcd7a0b268
+	github.com/konveyor/analyzer-lsp/external-providers/java-external-provider v0.0.0-20250430134745-b8bcd7a0b268
 	go.opentelemetry.io/otel v1.35.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.34.0
 	go.opentelemetry.io/otel/sdk v1.35.0
