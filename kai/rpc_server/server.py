@@ -289,6 +289,15 @@ async def initialize(
             ],
         )
 
+        app.log.info("Running analysis")
+
+        app.analyzer.run_analyzer_lsp(
+            label_selector=app.config.analyzer_lsp_label_selector or "",
+            included_paths=[],
+            incident_selector=None,
+            scoped_paths=None,
+            reset_cache=False,
+        )
     except Exception:
         await server.send_response(
             id=id,
