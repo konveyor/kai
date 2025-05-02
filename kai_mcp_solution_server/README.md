@@ -52,13 +52,13 @@ The server implements the following functionality:
 
    ```bash
    # Test using stdio transport
-   python scripts/test_client.py --transport stdio
+   python tests/test_client.py --transport stdio
 
    # Test against a running HTTP server
-   python scripts/test_client.py --transport http --host localhost --port 8000
+   python tests/test_client.py --transport http --host localhost --port 8000
 
    # Show detailed output for resources
-   python scripts/test_client.py --full-output
+   python tests/test_client.py --full-output
    ```
 
 4. For convenience, you can also use the Makefile:
@@ -163,7 +163,7 @@ See the [Ansible deployment documentation](deploy/ansible/README.md) for more de
 - **kai_solutions_dao.py**: Data access layer for the SQLite database
 - **deploy/**: Contains the Containerfile and deployment resources
   - **ansible/**: Ansible playbooks and roles for Kubernetes/OpenShift deployment
-- **scripts/**: Contains utility scripts for testing and deployment
+- **tests/**: Contains utility tests for testing and deployment
 
 ### Running Tests
 
@@ -187,23 +187,23 @@ See the [Ansible deployment documentation](deploy/ansible/README.md) for more de
 
 ## Test Client Usage
 
-The test client (`scripts/test_client.py`) is provided to help test and verify the functionality of the MCP solution server. It can connect to the server using either HTTP or stdio transport.
+The test client (`tests/test_client.py`) is provided to help test and verify the functionality of the MCP solution server. It can connect to the server using either HTTP or stdio transport.
 
 ```bash
 # Basic usage with HTTP transport
-python scripts/test_client.py --transport http --host localhost --port 8000
+python tests/test_client.py --transport http --host localhost --port 8000
 
 # Using stdio transport (spawns a server process)
-python scripts/test_client.py --transport stdio
+python tests/test_client.py --transport stdio
 
 # Use a specific task key for testing
-python scripts/test_client.py --task-key migration-task-123
+python tests/test_client.py --task-key migration-task-123
 
 # Show full output for resources instead of truncated summaries
-python scripts/test_client.py --full-output
+python tests/test_client.py --full-output
 
 # Show verbose output for debugging
-python scripts/test_client.py --verbose
+python tests/test_client.py --verbose
 ```
 
 The test client will run through all available tools and resources, demonstrating how to interact with the MCP solution server.

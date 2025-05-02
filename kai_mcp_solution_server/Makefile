@@ -7,7 +7,7 @@ NAMESPACE ?= konveyor-kai-solution-server
 # Directories
 PROJECT_ROOT = $(shell pwd)
 BUILD_DIR = $(PROJECT_ROOT)/deploy
-SCRIPTS_DIR = $(PROJECT_ROOT)/scripts
+TESTS_DIR = $(PROJECT_ROOT)/tests
 
 HOST ?= localhost
 PORT ?= 8000
@@ -88,13 +88,13 @@ run-podman: build
 test-http:
 	@echo "Running MCP test client against HTTP server..."
 	@echo "Make sure the server is running with 'make run-local' or 'make run-podman'"
-	cd $(PROJECT_ROOT)/.. && python $(SCRIPTS_DIR)/test_client.py --transport http --host $(HOST) --port $(PORT) --insecure
+	cd $(PROJECT_ROOT)/.. && python $(TESTS_DIR)/test_client.py --transport http --host $(HOST) --port $(PORT) --insecure
 
 # Test using stdio transport
 .PHONY: test-stdio
 test-stdio:
 	@echo "Running MCP test client using stdio transport..."
-	cd $(PROJECT_ROOT)/.. && python $(SCRIPTS_DIR)/test_client.py --transport stdio --server-path $(PROJECT_ROOT)
+	cd $(PROJECT_ROOT)/.. && python $(TESTS_DIR)/test_client.py --transport stdio --server-path $(PROJECT_ROOT)
 
 # Run with test client in separate pod
 .PHONY: run-with-tests
@@ -117,7 +117,7 @@ run-with-tests: build
 	sleep 5
 
 	@echo "Running MCP test client..."
-	cd $(PROJECT_ROOT)/.. && python $(SCRIPTS_DIR)/test_client.py --transport http --host localhost --port 8000
+	cd $(PROJECT_ROOT)/.. && python $(TESTS_DIR)/test_client.py --transport http --host localhost --port 8000
 
 	@echo "Cleaning up..."
 	podman pod rm -f kai-mcp-pod

@@ -13,7 +13,6 @@ import logging
 import os
 import ssl
 import sys
-import time
 import warnings
 
 from mcp import ClientSession, StdioServerParameters
@@ -56,7 +55,7 @@ def format_diff_block(diff: str) -> str:
     return f"```diff\n{diff}\n```"
 
 
-async def test_store_solution(session: ClientSession) -> int:
+async def _run_store_solution(session: ClientSession) -> int:
     """Test the store_solution tool by creating a new solution."""
     print("\n--- Testing store_solution ---")
 
@@ -158,7 +157,7 @@ public class ExampleService {
         return -1
 
 
-async def test_find_related_solutions(session: ClientSession, task_key: str) -> None:
+async def _run_find_related_solutions(session: ClientSession, task_key: str) -> None:
     """Test the find_related_solutions tool by searching for existing solutions."""
     print("\n--- Testing find_related_solutions ---")
 
@@ -244,7 +243,7 @@ async def test_find_related_solutions(session: ClientSession, task_key: str) -> 
         print(f"❌ Error finding related solutions: {e}")
 
 
-async def test_success_rate(session: ClientSession, task_key: str) -> None:
+async def _run_success_rate(session: ClientSession, task_key: str) -> None:
     """Test the success_rate resource by getting the success rate for a task key."""
     print("\n--- Testing success_rate resource ---")
 
@@ -281,7 +280,7 @@ async def test_success_rate(session: ClientSession, task_key: str) -> None:
         print(f"❌ Error fetching success rate: {e}")
 
 
-async def test_solutions(session: ClientSession, task_key: str) -> None:
+async def _run_solutions(session: ClientSession, task_key: str) -> None:
     """Test the solutions resource by getting all solutions for a task key."""
     print("\n--- Testing solutions resource ---")
 
@@ -344,7 +343,7 @@ async def test_solutions(session: ClientSession, task_key: str) -> None:
         print(f"❌ Error fetching solutions: {e}")
 
 
-async def test_example_solution(session: ClientSession, task_key: str) -> None:
+async def _run_example_solution(session: ClientSession, task_key: str) -> None:
     """Test the example_solution resource by getting the best solution example."""
     print("\n--- Testing example_solution resource ---")
 
@@ -611,9 +610,9 @@ async def run_test_suite(session: ClientSession, args) -> None:
     logger.debug("MCP connection initialized successfully")
 
     # Run tests
-    logger.debug("Starting test_store_solution")
-    solution_id = await test_store_solution(session)
-    logger.debug("test_store_solution completed with solution_id: %s", solution_id)
+    logger.debug("Starting store_solution test")
+    solution_id = await _run_store_solution(session)
+    logger.debug("store_solution test completed with solution_id: %s", solution_id)
 
     # Wait a bit for data to be persisted
     print("Waiting for database operations to complete...")
@@ -621,18 +620,18 @@ async def run_test_suite(session: ClientSession, args) -> None:
     await asyncio.sleep(1)
 
     logger.debug(
-        "Starting test_find_related_solutions with task_key: %s", args.task_key
+        "Starting find_related_solutions test with task_key: %s", args.task_key
     )
-    await test_find_related_solutions(session, args.task_key)
+    await _run_find_related_solutions(session, args.task_key)
 
-    logger.debug("Starting test_success_rate with task_key: %s", args.task_key)
-    await test_success_rate(session, args.task_key)
+    logger.debug("Starting success_rate test with task_key: %s", args.task_key)
+    await _run_success_rate(session, args.task_key)
 
-    logger.debug("Starting test_solutions with task_key: %s", args.task_key)
-    await test_solutions(session, args.task_key)
+    logger.debug("Starting solutions test with task_key: %s", args.task_key)
+    await _run_solutions(session, args.task_key)
 
-    logger.debug("Starting test_example_solution with task_key: %s", args.task_key)
-    await test_example_solution(session, args.task_key)
+    logger.debug("Starting example_solution test with task_key: %s", args.task_key)
+    await _run_example_solution(session, args.task_key)
 
     print("\n✅ All tests completed successfully!")
     logger.debug("All test functions completed successfully")
@@ -655,7 +654,7 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     default_server_path = os.path.dirname(
         script_dir
-    )  # Parent directory of the scripts dir
+    )  # Parent directory of the tests dir
 
     parser.add_argument(
         "--server-path",
@@ -686,6 +685,58 @@ def main():
 
     success = asyncio.run(run_tests(args))
     sys.exit(0 if success else 1)
+
+
+# A pytest-compatible test function that actually runs the tests
+def test_mcp_solution_client():
+    """Test function that will be run by pytest.
+
+    This runs the same tests as when using the script directly, but with a non-async
+    entry point that pytest can call.
+
+    This test actually starts an MCP server using stdio transport and runs the
+    full test suite against it.
+    """
+
+    # Create args for stdio transport
+    class Args:
+        host = "localhost"
+        port = 8000
+        transport = "stdio"  # Use stdio transport to test without network
+
+        # Calculate correct server path regardless of where the test is run from
+        # This handles both pytest . from kai_mcp_solution_server dir
+        # and ./run_tests.sh from project root
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        server_path = os.path.dirname(script_dir)
+
+        # If running from project root via run_tests.sh, the relative path
+        # will be different, so check if we need to adjust
+        if not os.path.exists(os.path.join(server_path, "main.py")):
+            # Try looking for the correct directory
+            possible_server_path = os.path.join(os.getcwd(), "kai_mcp_solution_server")
+            if os.path.exists(os.path.join(possible_server_path, "main.py")):
+                server_path = possible_server_path
+                print(f"Adjusted server path to: {server_path}")
+            else:
+                print(
+                    f"WARNING: Could not find main.py in {server_path} or {possible_server_path}"
+                )
+
+        task_key = "test-migration"
+        full_output = False
+        verbose = False  # Only enable verbose logging when debugging problems
+        insecure = False
+
+    print(f"Using server path: {Args.server_path}")
+    print(f"Current working directory: {os.getcwd()}")
+
+    # Run the tests using the same function as the CLI
+    # This will start up the stdio server and run the full test suite
+    success = asyncio.run(run_tests(Args()))
+
+    # Assert that the tests succeeded
+    assert success, "MCP solution client tests failed"
 
 
 if __name__ == "__main__":
