@@ -581,13 +581,26 @@ async def run_tests(args) -> bool:
             logger.debug("STDIO server parameters: %s", server_params)
 
             try:
-                async with stdio_client(server_params) as (read, write):
-                    logger.debug("STDIO client connection established")
-                    async with ClientSession(read, write) as session:
-                        logger.debug("MCP ClientSession initialized")
-                        await run_test_suite(session, args)
-                logger.debug("Test suite completed successfully with STDIO transport")
-                return True
+                # Create a timeout to prevent hanging in case of issues
+                async def run_with_timeout():
+                    async with stdio_client(server_params) as (read, write):
+                        logger.debug("STDIO client connection established")
+                        async with ClientSession(read, write) as session:
+                            logger.debug("MCP ClientSession initialized")
+                            await run_test_suite(session, args)
+                    logger.debug(
+                        "Test suite completed successfully with STDIO transport"
+                    )
+                    return True
+
+                # Run with timeout to prevent hanging indefinitely
+                try:
+                    await asyncio.wait_for(run_with_timeout(), timeout=15.0)
+                    return True
+                except asyncio.TimeoutError:
+                    logger.error("STDIO transport timed out after 15 seconds")
+                    print("❌ STDIO transport timed out after 15 seconds")
+                    return False
             except Exception as e:
                 logger.error("STDIO transport error: %s", str(e), exc_info=True)
                 print(f"❌ Error with STDIO transport: {e}")
@@ -731,9 +744,14 @@ def test_mcp_solution_client():
     print(f"Using server path: {Args.server_path}")
     print(f"Current working directory: {os.getcwd()}")
 
-    # Run the tests using the same function as the CLI
+    # Run the tests using the same function as the CLI with a timeout
     # This will start up the stdio server and run the full test suite
-    success = asyncio.run(run_tests(Args()))
+    try:
+        # Set a reasonable timeout to prevent hanging in CI/CD
+        success = asyncio.run(asyncio.wait_for(run_tests(Args()), timeout=30.0))
+    except asyncio.TimeoutError:
+        print("❌ Test timed out after 30 seconds")
+        success = False
 
     # Assert that the tests succeeded
     assert success, "MCP solution client tests failed"
