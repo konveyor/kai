@@ -1,9 +1,12 @@
 import json
+import os
 import sqlite3
 import threading
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, List, Optional
+from typing import List, Optional
+
+DB_PATH: str = os.getenv("DB_PATH", "kai_solutions.db")
 
 
 class SolutionStatus(str, Enum):
@@ -41,7 +44,7 @@ class ConnectionPool:
                 cls._instance.connection = None
         return cls._instance
 
-    def initialize(self, db_path: str = "kai_solutions.db"):
+    def initialize(self, db_path: str = DB_PATH):
         """Initialize the database connection."""
         if self.connection is None:
             self.connection = sqlite3.connect(db_path)
@@ -247,7 +250,6 @@ class KaiSolutionsDAO:
 
         filtered_solutions = []
         for solution in all_solutions:
-            task = solution.task
 
             filtered_solutions.append(solution)
 
