@@ -7,7 +7,7 @@ and verifies that it completes successfully.
 """
 
 import os
-import subprocess
+import subprocess  # nosec B404 - Subprocess is necessary for integration testing
 import sys
 import tempfile
 import unittest
@@ -55,8 +55,18 @@ class TestMCPIntegration(unittest.TestCase):
         print(f"Starting server: {main_path}")
 
         # Run the server with --help to verify it works
-        result = subprocess.run(
-            [sys.executable, main_path, "--help"],
+        # Use explicit path to Python executable and validate path existence for security
+        python_executable = sys.executable
+        if not os.path.isfile(python_executable):
+            self.fail(f"Invalid Python executable path: {python_executable}")
+
+        if not os.path.isfile(main_path):
+            self.fail(f"Invalid main script path: {main_path}")
+
+        # Use secure paths and arguments
+        # Paths are validated above to prevent security issues
+        result = subprocess.run(  # nosec B603 - We've validated the command arguments above
+            [python_executable, main_path, "--help"],
             capture_output=True,
             text=True,
             env={
@@ -124,12 +134,48 @@ class TestMCPIntegration(unittest.TestCase):
 
             # Check if MCP module can be imported
             try:
-                from mcp.server.fastmcp import Context, FastMCP
+                import importlib.util
 
-                print("Successfully imported mcp.server.fastmcp")
+                import pkg_resources
+
+                # Print all installed packages containing 'mcp'
+                print("\nMCP-related packages:")
+                for pkg in pkg_resources.working_set:
+                    if "mcp" in pkg.key.lower():
+                        print(f"  {pkg.key}=={pkg.version}")
+
+                # Check for base MCP module
+                base_spec = importlib.util.find_spec("mcp")
+                if base_spec:
+                    print(f"Found base mcp package at: {base_spec.origin}")
+
+                    # Check for server module
+                    server_spec = importlib.util.find_spec("mcp.server")
+                    if server_spec:
+                        print(f"Found mcp.server at: {server_spec.origin}")
+                    else:
+                        print("mcp.server not found - this is the issue!")
+                        print("Available 'mcp' submodules:")
+                        import pkgutil
+
+                        import mcp
+
+                        for _finder, name, is_pkg in pkgutil.iter_modules(mcp.__path__):
+                            print(f"  {name} ({'package' if is_pkg else 'module'})")
+                else:
+                    print("Base mcp module not found")
+
+                # Use importlib.util.find_spec instead of direct import to avoid unused import warnings
+                spec = importlib.util.find_spec("mcp.server.fastmcp")
+                if spec is not None:
+                    print("Successfully found mcp.server.fastmcp module")
+                else:
+                    print("mcp.server.fastmcp module not found in sys.path")
             except ImportError as e:
-                print(f"Failed to import mcp.server.fastmcp: {e}")
-                # Continue with the test even if this fails - it might be a warning only
+                print(f"Failed to check mcp.server.fastmcp: {e}")
+            except Exception as e:
+                print(f"Error inspecting MCP package: {e}")
+            # Continue with the test even if this fails - it will fail naturally later if needed
 
             # Verify basic functionality
             self.assertTrue(

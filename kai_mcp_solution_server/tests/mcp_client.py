@@ -754,7 +754,9 @@ def test_mcp_solution_client():
         success = False
 
     # Assert that the tests succeeded
-    assert success, "MCP solution client tests failed"
+    assert (
+        success
+    ), "MCP solution client tests failed"  # nosec B101 - This is a test script
 
 
 if __name__ == "__main__":
