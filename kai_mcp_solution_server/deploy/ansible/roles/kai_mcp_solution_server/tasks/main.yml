@@ -1,0 +1,179 @@
+---
+# Main tasks file for the kai_mcp_solution_server role
+#
+- name: Ensure namespace exists
+  kubernetes.core.k8s:
+    state: "{{ state }}"
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ namespace }}"
+
+- name: Manage PVC for solution database
+  kubernetes.core.k8s:
+    state: "{{ state }}"
+    definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: "{{ app_name }}-pvc"
+        namespace: "{{ namespace }}"
+        labels:
+          app: "{{ app_name }}"
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: "{{ storage_size }}"
+        storageClassName: "{{ storage_class | default(omit) }}"
+
+- name: Manage KAI MCP Solution Server deployment
+  kubernetes.core.k8s:
+    state: "{{ state }}"
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: "{{ app_name }}"
+        namespace: "{{ namespace }}"
+        labels:
+          app: "{{ app_name }}"
+      spec:
+        replicas: "{{ replicas }}"
+        selector:
+          matchLabels:
+            app: "{{ app_name }}"
+        strategy:
+          type: Recreate # Since we're using persistent storage
+        template:
+          metadata:
+            labels:
+              app: "{{ app_name }}"
+          spec:
+            containers:
+              - name: server
+                image: "{{ image }}"
+                imagePullPolicy: "{{ image_pull_policy }}"
+                ports:
+                  - containerPort: "{{ port }}"
+                    name: http
+                resources:
+                  limits:
+                    cpu: "{{ resources_limits_cpu }}"
+                    memory: "{{ resources_limits_memory }}"
+                  requests:
+                    cpu: "{{ resources_requests_cpu }}"
+                    memory: "{{ resources_requests_memory }}"
+                volumeMounts:
+                  - name: data-volume
+                    mountPath: /data
+                env:
+                  - name: DB_PATH
+                    value: "{{ db_path }}"
+                command:
+                  - python
+                  - -m
+                  - main
+                  - --transport
+                  - sse
+                  - --host
+                  - "{{ host }}"
+                  - --port
+                  - "{{ port | string }}"
+                  - --log-level
+                  - "{{ log_level }}"
+                readinessProbe:
+                  tcpSocket:
+                    port: "{{ port }}"
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                livenessProbe:
+                  tcpSocket:
+                    port: "{{ port }}"
+                  initialDelaySeconds: 15
+                  periodSeconds: 20
+            volumes:
+              - name: data-volume
+                persistentVolumeClaim:
+                  claimName: "{{ app_name }}-pvc"
+
+- name: Manage service for MCP server
+  kubernetes.core.k8s:
+    state: "{{ state }}"
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: "{{ app_name }}"
+        namespace: "{{ namespace }}"
+        labels:
+          app: "{{ app_name }}"
+      spec:
+        ports:
+          - port: "{{ port }}"
+            targetPort: "{{ port }}"
+            protocol: TCP
+            name: http
+        selector:
+          app: "{{ app_name }}"
+        type: "{{ service_type }}"
+
+# Check if OpenShift Route API is available
+- name: Check for OpenShift Route API
+  kubernetes.core.k8s_info:
+    api_version: route.openshift.io/v1
+    kind: Route
+  register: route_check
+
+- name: Manage OpenShift Route if available
+  kubernetes.core.k8s:
+    state: "{{ state }}"
+    definition:
+      apiVersion: route.openshift.io/v1
+      kind: Route
+      metadata:
+        name: "{{ app_name }}"
+        namespace: "{{ namespace }}"
+        labels:
+          app: "{{ app_name }}"
+      spec:
+        port:
+          targetPort: http
+        to:
+          kind: Service
+          name: "{{ app_name }}"
+          weight: 100
+        host: "{{ route_host | default(omit) }}"
+        tls:
+          termination: "{{ route_tls_termination if route_tls_enabled else omit }}"
+          insecureEdgeTerminationPolicy: "{{ route_tls_insecure_policy if route_tls_enabled else omit }}"
+  when: route_check.api_found | default(false)
+
+- name: Manage Kubernetes Ingress if Route API is not available
+  kubernetes.core.k8s:
+    state: "{{ state }}"
+    definition:
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: "{{ app_name }}"
+        namespace: "{{ namespace }}"
+        labels:
+          app: "{{ app_name }}"
+        annotations:
+          kubernetes.io/ingress.class: nginx
+          nginx.ingress.kubernetes.io/rewrite-target: /
+      spec:
+        rules:
+          - http:
+              paths:
+                - path: "/{{ app_name }}"
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: "{{ app_name }}"
+                      port:
+                        name: http
+  when: not route_check.api_found | default(false)

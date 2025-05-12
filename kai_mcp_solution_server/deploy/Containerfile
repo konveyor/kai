@@ -1,0 +1,24 @@
+FROM python:3.13-slim
+
+WORKDIR /app
+RUN mkdir -p /data/
+ENV DB_PATH=/data/kai_solutions.db
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY kai_mcp_solution_server/pyproject.toml ./
+RUN pip install --no-cache-dir -e .
+COPY kai_mcp_solution_server/main.py kai_mcp_solution_server/kai_solutions_dao.py ./
+
+# Create a non-root user
+RUN useradd -m mcp
+# Set permissions for the data directory
+RUN chown -R mcp:mcp /data
+USER mcp
+
+# Default to SSE transport on port 8000
+EXPOSE 8000
+CMD ["python", "-m", "main", "--transport", "sse", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info"]

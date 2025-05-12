@@ -1,9 +1,11 @@
-import sqlite3
+import argparse
+import logging
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, List, Optional
+from typing import List, Optional
 
-from kai_solutions_dao import KaiSolution, KaiSolutionsDAO, SolutionStatus, conn_pool
+from kai_solutions_dao import KaiSolutionsDAO, SolutionStatus, conn_pool
 from mcp.server.fastmcp import Context, FastMCP
 
 
@@ -188,5 +190,57 @@ def get_best_solution_example(task_key: str) -> str:
     return result
 
 
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description="MCP Solution Server for KAI")
+    parser.add_argument(
+        "--transport",
+        default="sse",
+        choices=["sse", "stdio"],
+        help="Transport protocol (sse or stdio)",
+    )
+    parser.add_argument(
+        "--host", default="localhost", help="Host to bind to (for sse transport)"
+    )
+    parser.add_argument(
+        "--port", type=int, default=8000, help="Port to listen on (for sse transport)"
+    )
+    parser.add_argument("--db-path", help="Path to SQLite database file")
+    parser.add_argument(
+        "--log-level",
+        default="info",
+        choices=["debug", "info", "warning", "error", "critical"],
+        help="Logging level",
+    )
+
+    return parser.parse_args()
+
+
+def main():
+    """Main function."""
+    args = parse_args()
+
+    # TODO: Can probably just defer to the envvars with some same defaults
+    if args.db_path:
+        os.environ["DB_PATH"] = args.db_path
+
+    log_level = getattr(logging, args.log_level.upper())
+    logging.basicConfig(
+        level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
+    print(f"Starting MCP Solution Server with {args.transport} transport")
+
+    # Set environment variables for host and port that might be used internally
+    # TODO: Can probably just defer to the envvars with some same defaults
+    if args.transport == "sse":
+        print(f"Listening on {args.host}:{args.port}")
+        os.environ["MCP_HOST"] = args.host
+        os.environ["MCP_PORT"] = str(args.port)
+
+    # Run the server with the specified transport
+    mcp.run(transport=args.transport)
+
+
 if __name__ == "__main__":
-    mcp.run()
+    main()
