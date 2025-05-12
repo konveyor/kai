@@ -88,13 +88,19 @@ run-podman: build
 test-http:
 	@echo "Running MCP test client against HTTP server..."
 	@echo "Make sure the server is running with 'make run-local' or 'make run-podman'"
-	cd $(PROJECT_ROOT)/.. && python $(TESTS_DIR)/test_client.py --transport http --host $(HOST) --port $(PORT) --insecure
+	cd $(PROJECT_ROOT)/.. && python $(TESTS_DIR)/mcp_client.py --transport http --host $(HOST) --port $(PORT) --insecure
 
 # Test using stdio transport
 .PHONY: test-stdio
 test-stdio:
 	@echo "Running MCP test client using stdio transport..."
-	cd $(PROJECT_ROOT)/.. && python $(TESTS_DIR)/test_client.py --transport stdio --server-path $(PROJECT_ROOT)
+	cd $(PROJECT_ROOT)/.. && python $(TESTS_DIR)/mcp_client.py --transport stdio --server-path $(PROJECT_ROOT)
+
+# Run pytest integration tests
+.PHONY: pytest
+pytest:
+	@echo "Running MCP integration tests with pytest..."
+	cd $(PROJECT_ROOT) && python -m pytest $(TESTS_DIR)/test_integration.py -v
 
 # Run with test client in separate pod
 .PHONY: run-with-tests
@@ -117,10 +123,16 @@ run-with-tests: build
 	sleep 5
 
 	@echo "Running MCP test client..."
-	cd $(PROJECT_ROOT)/.. && python $(TESTS_DIR)/test_client.py --transport http --host localhost --port 8000
+	cd $(PROJECT_ROOT)/.. && python $(TESTS_DIR)/mcp_client.py --transport http --host localhost --port 8000
 
 	@echo "Cleaning up..."
 	podman pod rm -f kai-mcp-pod
+
+# Run pytest integration tests
+.PHONY: pytest
+pytest:
+	@echo "Running MCP integration tests with pytest..."
+	cd $(PROJECT_ROOT) && python -m pytest $(TESTS_DIR)/test_integration.py -v
 
 # Help documentation
 .PHONY: help
@@ -141,6 +153,7 @@ help:
 	@echo "  run-podman     : Run server in Podman container for testing"
 	@echo "  test-http      : Test server using HTTP transport"
 	@echo "  test-stdio     : Test server using STDIO transport"
+	@echo "  pytest         : Run pytest integration tests"
 	@echo "  run-with-tests : Run server and test client together"
 	@echo "  help           : Show this help message"
 	@echo ""
