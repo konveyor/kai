@@ -52,13 +52,13 @@ The server implements the following functionality:
 
    ```bash
    # Test using stdio transport
-   python tests/test_client.py --transport stdio
+   python tests/mcp_client.py --transport stdio
 
    # Test against a running HTTP server
-   python tests/test_client.py --transport http --host localhost --port 8000
+   python tests/mcp_client.py --transport http --host localhost --port 8000
 
    # Show detailed output for resources
-   python tests/test_client.py --full-output
+   python tests/mcp_client.py --full-output
    ```
 
 4. For convenience, you can also use the Makefile:
@@ -187,23 +187,23 @@ See the [Ansible deployment documentation](deploy/ansible/README.md) for more de
 
 ## Test Client Usage
 
-The test client (`tests/test_client.py`) is provided to help test and verify the functionality of the MCP solution server. It can connect to the server using either HTTP or stdio transport.
+The test client (`tests/mcp_client.py`) is provided to help test and verify the functionality of the MCP solution server. It can connect to the server using either HTTP or stdio transport.
 
 ```bash
 # Basic usage with HTTP transport
-python tests/test_client.py --transport http --host localhost --port 8000
+python tests/mcp_client.py --transport http --host localhost --port 8000
 
 # Using stdio transport (spawns a server process)
-python tests/test_client.py --transport stdio
+python tests/mcp_client.py --transport stdio
 
 # Use a specific task key for testing
-python tests/test_client.py --task-key migration-task-123
+python tests/mcp_client.py --task-key migration-task-123
 
 # Show full output for resources instead of truncated summaries
-python tests/test_client.py --full-output
+python tests/mcp_client.py --full-output
 
 # Show verbose output for debugging
-python tests/test_client.py --verbose
+python tests/mcp_client.py --verbose
 ```
 
 The test client will run through all available tools and resources, demonstrating how to interact with the MCP solution server.
