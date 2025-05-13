@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """
-Simple integration test for KAI MCP solution server.
+Integration tests for KAI MCP solution server.
 
-This test module simply runs the original test_client.py script directly 
-and verifies that it completes successfully.
+This test module verifies that the MCP solution server can be started,
+imported, and communicates correctly via the Model Context Protocol.
 """
 
+import asyncio
 import os
 import subprocess  # nosec B404 - Subprocess is necessary for integration testing
 import sys
 import tempfile
+import time
 import unittest
 
 
@@ -49,7 +51,7 @@ class TestMCPIntegration(unittest.TestCase):
             print(f"Warning: Failed to clean up temp file: {e}")
 
     def test_server_start(self):
-        """Test that the MCP solution server can be started."""
+        """Test that the MCP solution server can be started with the help command."""
         # Start the server process
         main_path = os.path.join(self.server_dir, "main.py")
         print(f"Starting server: {main_path}")
@@ -102,10 +104,7 @@ class TestMCPIntegration(unittest.TestCase):
         # This test ensures that the modules can be imported directly
         # which tests that the package structure is correct
 
-        # Add debug output for Python paths
-        print("Python sys.path:")
-        for idx, path in enumerate(sys.path):
-            print(f"  {idx}: {path}")
+        # Make sure the server directory is in the path
 
         try:
             # Add the server directory to the path if needed
@@ -134,48 +133,23 @@ class TestMCPIntegration(unittest.TestCase):
 
             # Check if MCP module can be imported
             try:
+                # Check for the required MCP modules using importlib.util
                 import importlib.util
 
-                import pkg_resources
+                # Verify MCP is installed
+                spec = importlib.util.find_spec("mcp")
+                self.assertIsNotNone(spec, "MCP package is not installed")
 
-                # Print all installed packages containing 'mcp'
-                print("\nMCP-related packages:")
-                for pkg in pkg_resources.working_set:
-                    if "mcp" in pkg.key.lower():
-                        print(f"  {pkg.key}=={pkg.version}")
+                # Verify the required fastmcp module
+                fastmcp_spec = importlib.util.find_spec("mcp.server.fastmcp")
+                self.assertIsNotNone(
+                    fastmcp_spec, "mcp.server.fastmcp module not found"
+                )
 
-                # Check for base MCP module
-                base_spec = importlib.util.find_spec("mcp")
-                if base_spec:
-                    print(f"Found base mcp package at: {base_spec.origin}")
-
-                    # Check for server module
-                    server_spec = importlib.util.find_spec("mcp.server")
-                    if server_spec:
-                        print(f"Found mcp.server at: {server_spec.origin}")
-                    else:
-                        print("mcp.server not found - this is the issue!")
-                        print("Available 'mcp' submodules:")
-                        import pkgutil
-
-                        import mcp
-
-                        for _finder, name, is_pkg in pkgutil.iter_modules(mcp.__path__):
-                            print(f"  {name} ({'package' if is_pkg else 'module'})")
-                else:
-                    print("Base mcp module not found")
-
-                # Use importlib.util.find_spec instead of direct import to avoid unused import warnings
-                spec = importlib.util.find_spec("mcp.server.fastmcp")
-                if spec is not None:
-                    print("Successfully found mcp.server.fastmcp module")
-                else:
-                    print("mcp.server.fastmcp module not found in sys.path")
+                print("Successfully found MCP modules")
             except ImportError as e:
-                print(f"Failed to check mcp.server.fastmcp: {e}")
-            except Exception as e:
-                print(f"Error inspecting MCP package: {e}")
-            # Continue with the test even if this fails - it will fail naturally later if needed
+                print(f"Failed to check MCP modules: {e}")
+                raise
 
             # Verify basic functionality
             self.assertTrue(
@@ -210,6 +184,57 @@ class TestMCPIntegration(unittest.TestCase):
 
         except ImportError as e:
             self.fail(f"Failed to import modules: {e}")
+
+    def test_mcp_client_endpoints(self):
+        """Test the server endpoints using the mcp_client's test_mcp_solution_client function."""
+        # Import the mcp_client module
+        sys.path.insert(0, self.script_dir)
+        import mcp_client
+
+        # Use a unique task key for this test run
+        task_key = f"endpoint-test-{int(time.time())}"
+        print(f"Testing MCP client endpoints with task key: {task_key}")
+
+        # Set environment variable to use our test database
+        os.environ["DB_PATH"] = self.temp_db_path
+
+        # Run the existing test function from mcp_client by running its body directly
+        # This will test all the endpoints using the client's built-in test functionality
+
+        # Create args for stdio transport - copied from test_mcp_solution_client
+        task_key_val = (
+            task_key  # Create a local var that can be accessed inside the class
+        )
+        server_dir = self.server_dir  # Same for server dir
+
+        class Args:
+            host = "localhost"
+            port = 8000
+            transport = "stdio"  # Use stdio transport to test without network
+            server_path = server_dir
+            task_key = task_key_val
+            full_output = False
+            verbose = False
+            insecure = False
+
+        # Run the tests using the same function as the CLI with a timeout
+        # This will start up the stdio server and run the full test suite
+        try:
+            # Set a reasonable timeout to prevent hanging in CI/CD
+            success = asyncio.run(
+                asyncio.wait_for(mcp_client.run_tests(Args()), timeout=30.0)
+            )
+            # Verify the test succeeded
+            self.assertTrue(success, "MCP client tests should succeed")
+        except asyncio.TimeoutError:
+            self.fail("MCP client tests timed out after 30 seconds")
+        except Exception as e:
+            self.fail(f"MCP client tests failed with error: {e}")
+
+        # The tests are already verified by checking the success variable
+        # and the test_mcp_solution_client function prints appropriate output
+
+        print("MCP client endpoints test completed successfully!")
 
 
 if __name__ == "__main__":
