@@ -1,246 +1,220 @@
-import argparse
-import logging
+import asyncio
+import difflib
 import os
+import sys
+from asyncio import sleep
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import List, Optional
+from typing import Any, cast
 
-from kai_solutions_dao import KaiSolutionsDAO, SolutionStatus, conn_pool
-from mcp.server.fastmcp import Context, FastMCP
+from analyzer_types import Category, ExtendedIncident
+from dao import DBKaiSolution, SolutionStatus, get_async_engine
+from fastmcp import Context, FastMCP
+from pydantic import BaseModel, PostgresDsn
+from pydantic_settings import BaseSettings
+from sqlalchemy import Text
+from sqlalchemy import cast as sacast
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+
+
+class SolutionServerSettings(BaseSettings):
+    pg_dsn: str = cast(
+        str, "postgresql+asyncpg://postgres:mysecretpassword@localhost:5432/postgres"
+    )
+    # llm_params: dict[str, Any] = {
+    #     "model": "gpt-4o-mini",
+    #     "model_provider": "openai",
+    #     "openai_api_key": os.getenv("OPENAI_API_KEY"),
+    # }
+
+
+class KaiSolutionServerContext:
+    def __init__(self, settings: SolutionServerSettings) -> None:
+        self.settings = settings
+
+    async def create(self) -> None:
+        self.engine = await get_async_engine(self.settings.pg_dsn)
+        self.session_maker = async_sessionmaker(
+            bind=self.engine, expire_on_commit=False
+        )
 
 
 @asynccontextmanager
-async def lifespan(server: FastMCP) -> AsyncIterator[KaiSolutionsDAO]:
-    """
-    This function is called once at server startup and once at shutdown.
-    We create a DAO instance that will be available to tools.
-    """
-    conn_pool.initialize()
-
-    dao = KaiSolutionsDAO.get_instance()
-
+async def kai_solution_server_lifespan(
+    server: FastMCP,
+) -> AsyncIterator[KaiSolutionServerContext]:
+    print("kai_solution_server_lifespan", file=sys.stderr)
     try:
-        yield dao
+        print("getting settings", file=sys.stderr)
+        settings = SolutionServerSettings()
+        print("creating context", file=sys.stderr)
+        ctx = KaiSolutionServerContext(settings)
+        await ctx.create()
+        print("yielding context", file=sys.stderr)
+        yield ctx
+    except Exception as e:
+        print(f"Error in lifespan: {e}", file=sys.stderr)
+        raise e
     finally:
-        conn_pool.close()
+        pass
 
 
-mcp = FastMCP("KaiSolutionServer", lifespan=lifespan)
-
-
-def get_dao(ctx: Optional[Context] = None) -> KaiSolutionsDAO:
-    """
-    Retrieve or create a KaiSolutionsDAO.
-    If context is provided, gets DAO from lifespan context.
-    Otherwise, creates a new DAO using the connection pool.
-    """
-    if ctx is not None and hasattr(ctx.request_context, "lifespan_context"):
-        return ctx.request_context.lifespan_context
-    else:
-        return KaiSolutionsDAO.get_instance()
+mcp: FastMCP = FastMCP(
+    "KaiSolutionServer", lifespan=kai_solution_server_lifespan, dependencies=[]
+)
 
 
 @mcp.tool()
-def store_solution(
+async def request_llm(
+    ctx: Context, text: str
+) -> dict:  # TODO: Use a more specific type
+    prompt = f"Analyze the sentiment of the following text as positive, negative, or neutral. Just output a single word - 'positive', 'negative', or 'neutral'. Text to analyze: {text}"
+
+    response = await ctx.sample(prompt)
+
+    sentiment = response.text.strip().lower()
+
+    if "positive" in sentiment:
+        sentiment = "positive"
+    elif "negative" in sentiment:
+        sentiment = "negative"
+    else:
+        sentiment = "neutral"
+
+    return {"text": text, "sentiment": sentiment}
+
+
+@mcp.tool()
+async def create_solution(
     ctx: Context,
-    task: dict,
-    before_code: str = "",
-    after_code: str = "",
-    # TODO THis should probably just be computed?
-    diff: str = "",
-    status: str = "unknown",
+    before_filename: str = "before.txt",
+    before_text: str = "before text",
+    after_filename: str = "after.txt",
+    after_text: str = "after text",
+    extended_incident: ExtendedIncident = ExtendedIncident(
+        ruleset_name="example_ruleset",
+        violation_name="example_violation",
+        uri="example_uri",
+        message="example_message",
+    ),
+    status: SolutionStatus = SolutionStatus.UNKNOWN,
+    hint: str | None = None,
 ) -> int:
     """
-    Insert a new Kai solution.
-
-    Args:
-        task: The task/issue JSON object
-        before_code: Original code before the fix
-        after_code: Modified code after the fix
-        diff: Code diff between before and after
-        status: Solution status (accepted/rejected/modified/unknown)
-
-    Returns:
-        The ID of the newly created solution
+    Add the given data to the database.
     """
-    dao = get_dao(ctx)
-    solution_id = dao.create_solution(
-        task=task,
-        before_code=before_code,
-        after_code=after_code,
-        diff=diff,
-        status=status,
-    )
-    return solution_id
+    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    async with kai_ctx.session_maker.begin() as session:
+        # Assuming you have a function to add data to the database
+        # add_data_to_db(session, data)
+        sln = DBKaiSolution(
+            before_filename=before_filename,
+            before_text=before_text,
+            after_filename=after_filename,
+            after_text=after_text,
+            extended_incident=extended_incident.model_dump(),
+            status=status,
+            hint=hint,
+        )
+        session.add(sln)
+        await session.commit()
+
+    async def add_hint():
+        print("Getting sample...", file=sys.stderr)
+
+        diff = "".join(
+            difflib.context_diff(
+                before_text.splitlines(keepends=True),
+                after_text.splitlines(keepends=True),
+                fromfile=before_filename,
+                tofile=after_filename,
+            )
+        )
+
+        hint = await ctx.sample(
+            "The following incident was solved by the following diff. "
+            "Describe the changes required in a step-by-step manner so similar situations "
+            f"can be solved in the future:\n\nIncident\n{extended_incident.model_dump_json()}\n\n"
+            f"diff\n```\n{diff}\n```\n\n"
+        )
+
+        async with kai_ctx.session_maker.begin() as session:
+            print("Adding hint to the database...", file=sys.stderr)
+            sln.hint = hint.text.strip()
+            print("session.add(sln)", file=sys.stderr)
+            session.add(sln)
+            print("await session.commit()", file=sys.stderr)
+            await session.commit()
+        print("Hint added to the database.", file=sys.stderr)
+
+    asyncio.create_task(add_hint())
+
+    return sln.id
 
 
 @mcp.tool()
-def find_related_solutions(
-    ctx: Context, task_key: Optional[str] = None, limit: int = 5
-) -> List[dict]:
+async def delete_solution(
+    ctx: Context,
+    solution_id: int,
+) -> bool:
     """
-    Find solutions related to specific criteria.
-
-    Args:
-        task_key: Optional specific task key to match
-        limit: Maximum number of results to return
-
-    Returns:
-        List of matching solutions
+    Delete the solution with the given ID from the database.
     """
-    dao = get_dao(ctx)
-    solutions = dao.find_related_solutions(task_key=task_key, limit=limit)
-
-    return [
-        {
-            "id": s.id,
-            "task": s.task,
-            "task_key": s.task_key,
-            "before_code": s.before_code,
-            "after_code": s.after_code,
-            "diff": s.diff,
-            "status": s.status.value,
-        }
-        for s in solutions
-    ]
+    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    async with kai_ctx.session_maker.begin() as session:
+        sln = await session.get(DBKaiSolution, solution_id)
+        if sln is None:
+            return False
+        await session.delete(sln)
+        await session.commit()
+    return True
 
 
-@mcp.resource("kai://success_rate/{task_key}")
-def get_success_rate(task_key: str) -> str:
+@mcp.tool()
+async def update_solution_status(
+    ctx: Context,
+    solution_id: int,
+    status: str = "accepted",
+) -> bool:
     """
-    Resource to compute success rate (fraction of solutions with status=ACCEPTED).
-
-    Args:
-        task_key: The task key to get success rate for
-
-    Returns:
-        Success rate as a formatted string percentage
+    Update the status of the solution with the given ID in the database.
     """
-    dao = KaiSolutionsDAO.get_instance()
-    success_rate = dao.get_success_rate(task_key)
-    return f"Success rate for task '{task_key}': {success_rate:.2%}"
+    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    async with kai_ctx.session_maker.begin() as session:
+        sln = await session.get(DBKaiSolution, solution_id)
+        if sln is None:
+            return False
+        sln.status = status
+        await session.commit()
+    return True
 
 
-@mcp.resource("kai://solutions/{task_key}")
-def get_solution_history(task_key: str) -> str:
+@mcp.tool()
+async def get_success_rate(
+    ctx: Context,
+    extended_incident: ExtendedIncident,
+) -> float:
     """
-    Resource to fetch the history of solutions for a given task_key.
-
-    Args:
-        task_key: The task key to get solutions for
-
-    Returns:
-        Formatted string with solution history
+    Get the success rate of the given incident in the database.
     """
-    dao = KaiSolutionsDAO.get_instance()
-    solutions = dao.get_solution_history(task_key)
+    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    async with kai_ctx.session_maker.begin() as session:
+        solutions_result = await session.execute(select(DBKaiSolution))
+        solutions = list(solutions_result)
 
-    if not solutions:
-        return f"No solutions found for task '{task_key}'"
+        print(f"Solutions: {solutions}", file=sys.stderr)
 
-    result = f"Found {len(solutions)} solutions for task '{task_key}':\n\n"
+        if not solutions:
+            return -1.0
 
-    for s in solutions:
-        result += f"Solution ID: {s.id}\n"
-        result += f"Status: {s.status.value}\n"
-        if s.before_code:
-            result += "Before Code:\n```\n" + s.before_code + "\n```\n"
-        if s.after_code:
-            result += "After Code:\n```\n" + s.after_code + "\n```\n"
-        if s.diff:
-            result += "Diff:\n```\n" + s.diff + "\n```\n"
-        result += "\n---\n\n"
-
-    return result
-
-
-@mcp.resource("kai://example_solution/{task_key}")
-def get_best_solution_example(task_key: str) -> str:
-    """
-    Resource to get the best (accepted) solution example for a task.
-
-    Args:
-        task_key: The task key to get an example solution for
-
-    Returns:
-        Formatted string with the best solution example
-    """
-    dao = KaiSolutionsDAO.get_instance()
-    solutions = dao.get_solution_history(task_key)
-
-    accepted_solutions = [s for s in solutions if s.status == SolutionStatus.ACCEPTED]
-
-    if not accepted_solutions:
-        return f"No accepted solutions found for task '{task_key}'"
-
-    solution = accepted_solutions[-1]
-
-    result = f"Best solution example for task '{task_key}':\n\n"
-    result += f"Solution ID: {solution.id}\n"
-
-    if solution.before_code:
-        result += "Before Code:\n```\n" + solution.before_code + "\n```\n\n"
-
-    if solution.after_code:
-        result += "After Code:\n```\n" + solution.after_code + "\n```\n\n"
-
-    if solution.diff:
-        result += "Changes:\n```diff\n" + solution.diff + "\n```\n"
-
-    return result
-
-
-def parse_args():
-    """Parse command line arguments."""
-    parser = argparse.ArgumentParser(description="MCP Solution Server for KAI")
-    parser.add_argument(
-        "--transport",
-        default="sse",
-        choices=["sse", "stdio"],
-        help="Transport protocol (sse or stdio)",
-    )
-    parser.add_argument(
-        "--host", default="localhost", help="Host to bind to (for sse transport)"
-    )
-    parser.add_argument(
-        "--port", type=int, default=8000, help="Port to listen on (for sse transport)"
-    )
-    parser.add_argument("--db-path", help="Path to SQLite database file")
-    parser.add_argument(
-        "--log-level",
-        default="info",
-        choices=["debug", "info", "warning", "error", "critical"],
-        help="Logging level",
-    )
-
-    return parser.parse_args()
-
-
-def main():
-    """Main function."""
-    args = parse_args()
-
-    # TODO: Can probably just defer to the envvars with some same defaults
-    if args.db_path:
-        os.environ["DB_PATH"] = args.db_path
-
-    log_level = getattr(logging, args.log_level.upper())
-    logging.basicConfig(
-        level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-
-    print(f"Starting MCP Solution Server with {args.transport} transport")
-
-    # Set environment variables for host and port that might be used internally
-    # TODO: Can probably just defer to the envvars with some same defaults
-    if args.transport == "sse":
-        print(f"Listening on {args.host}:{args.port}")
-        os.environ["MCP_HOST"] = args.host
-        os.environ["MCP_PORT"] = str(args.port)
-
-    # Run the server with the specified transport
-    mcp.run(transport=args.transport)
+        accepted_count = sum(
+            1 for solution in solutions if solution[0].status == SolutionStatus.ACCEPTED
+        )
+        proportion = accepted_count / len(solutions)
+        return proportion
 
 
 if __name__ == "__main__":
-    main()
+    mcp.run()
