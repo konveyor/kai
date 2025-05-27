@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import pathlib
 import shutil
@@ -313,7 +314,7 @@ class Report:
         try:
             os.makedirs(output_dir, exist_ok=True)
         except OSError as error:
-            KAI_LOG.error(f"Error creating directory {output_dir}: {error}")
+            logging.error(f"Error creating directory {output_dir}: {error}")
             raise error
 
         # Iterate through each Ruleset that has data. Write a separate file per
@@ -328,7 +329,7 @@ class Report:
                 self._write_markdown_snippet(ruleset_name, ruleset, buffer)
                 buffer.seek(0)
                 shutil.copyfileobj(buffer, f)
-                KAI_LOG.info(
+                logging.info(
                     f"Writing {ruleset_name} to {output_dir}/{ruleset_name_display}.md"
                 )
                 buffer.close()

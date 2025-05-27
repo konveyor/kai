@@ -1,16 +1,32 @@
+import sys
 from enum import StrEnum
 from functools import cache
 from typing import Any
 
-from analyzer_types import ExtendedIncident
 from pydantic import BaseModel, Field, TypeAdapter
 from sqlalchemy import JSON, Engine
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import Integer, Text, TypeDecorator, create_engine
+from sqlalchemy import (
+    ForeignKey,
+    ForeignKeyConstraint,
+    Integer,
+    Text,
+    TypeDecorator,
+    create_engine,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    Session,
+    mapped_column,
+    relationship,
+    sessionmaker,
+)
 from sqlalchemy.sql import elements
+
+import kai_mcp_solution_server.analyzer_types as analyzer_types
 
 # from difflib import context_diff
 
@@ -72,40 +88,85 @@ class Base(DeclarativeBase):
     type_annotation_map = {dict[str, Any]: JSONB}
 
 
-async def get_async_engine(url: str) -> AsyncEngine:
+async def get_async_engine(url: str, drop_all: bool = True) -> AsyncEngine:
     engine = create_async_engine(url)
 
     async with engine.begin() as conn:
-        # TODO: DONT DO THIS
-        await conn.run_sync(Base.metadata.drop_all)
+        if drop_all:  # TODO: DONT DO THIS
+            print("Dropping all tables", file=sys.stderr)
+            await conn.run_sync(Base.metadata.drop_all)
+
         await conn.run_sync(Base.metadata.create_all)
 
     return engine
 
 
-class SolutionStatus(StrEnum):
+class DBViolation(Base):
+    __tablename__ = "kai_violations"
+
+    ruleset_name: Mapped[str] = mapped_column(primary_key=True)
+    ruleset_description: Mapped[str | None]
+
+    violation_name: Mapped[str] = mapped_column(primary_key=True)
+    violation_category: Mapped[analyzer_types.Category]
+
+    incidents: Mapped[list["DBIncident"]] = relationship(back_populates="violation")
+
+
+class DBIncident(Base):
+    __tablename__ = "kai_incidents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    uri: Mapped[str]
+    message: Mapped[str]
+    code_snip: Mapped[str]
+    line_number: Mapped[int]
+    variables: Mapped[dict[str, Any]]
+
+    ruleset_name: Mapped[str] = mapped_column()
+    violation_name: Mapped[str] = mapped_column()
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["ruleset_name", "violation_name"],
+            ["kai_violations.ruleset_name", "kai_violations.violation_name"],
+            # ondelete="CASCADE",
+        ),
+    )
+
+    violation: Mapped["DBViolation"] = relationship(back_populates="incidents")
+
+    fixes: Mapped[list["DBFix"]] = relationship(back_populates="incident")
+
+
+class FixStatus(StrEnum):
     ACCEPTED = "accepted"
     REJECTED = "rejected"
     MODIFIED = "modified"
     UNKNOWN = "unknown"
 
 
-class DBKaiSolution(Base):
-    __tablename__ = "kai_solutions"
+class DBFix(Base):
+    __tablename__ = "kai_fixes"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    before_filename: Mapped[str] = mapped_column(Text, nullable=False)
-    before_text: Mapped[str] = mapped_column(Text, nullable=False)
+    before_filename: Mapped[str]
+    before_text: Mapped[str]
 
-    after_filename: Mapped[str] = mapped_column(Text, nullable=False)
-    after_text: Mapped[str] = mapped_column(Text, nullable=False)
+    after_filename: Mapped[str]
+    after_text: Mapped[str]
 
-    extended_incident: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    solution_status: Mapped[FixStatus]
 
-    status: Mapped[SolutionStatus] = mapped_column(
-        SAEnum(SolutionStatus, name="solution_status", native_enum=False),
-        nullable=False,
+    incident_id: Mapped[int] = mapped_column(
+        ForeignKey("kai_incidents.id", ondelete="CASCADE"),
     )
+    incident: Mapped["DBIncident"] = relationship(back_populates="fixes")
 
-    hint: Mapped[str] = mapped_column(Text, nullable=True)
+
+class DBHint(Base):
+    __tablename__ = "kai_hints"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

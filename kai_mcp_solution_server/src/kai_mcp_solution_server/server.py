@@ -7,8 +7,6 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any, cast
 
-from analyzer_types import Category, ExtendedIncident
-from dao import DBKaiSolution, SolutionStatus, get_async_engine
 from fastmcp import Context, FastMCP
 from pydantic import BaseModel, PostgresDsn
 from pydantic_settings import BaseSettings
@@ -17,6 +15,9 @@ from sqlalchemy import cast as sacast
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+
+from kai_mcp_solution_server.analyzer_types import Category, ExtendedIncident
+from kai_mcp_solution_server.dao import DBFix, FixStatus, get_async_engine
 
 
 class SolutionServerSettings(BaseSettings):
@@ -99,7 +100,7 @@ async def create_solution(
         uri="example_uri",
         message="example_message",
     ),
-    status: SolutionStatus = SolutionStatus.UNKNOWN,
+    status: FixStatus = FixStatus.UNKNOWN,
     hint: str | None = None,
 ) -> int:
     """
@@ -109,7 +110,7 @@ async def create_solution(
     async with kai_ctx.session_maker.begin() as session:
         # Assuming you have a function to add data to the database
         # add_data_to_db(session, data)
-        sln = DBKaiSolution(
+        sln = DBFix(
             before_filename=before_filename,
             before_text=before_text,
             after_filename=after_filename,
@@ -121,7 +122,7 @@ async def create_solution(
         session.add(sln)
         await session.commit()
 
-    async def add_hint():
+    async def add_hint() -> None:
         print("Getting sample...", file=sys.stderr)
 
         diff = "".join(
@@ -147,6 +148,7 @@ async def create_solution(
             session.add(sln)
             print("await session.commit()", file=sys.stderr)
             await session.commit()
+
         print("Hint added to the database.", file=sys.stderr)
 
     asyncio.create_task(add_hint())
@@ -164,7 +166,7 @@ async def delete_solution(
     """
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     async with kai_ctx.session_maker.begin() as session:
-        sln = await session.get(DBKaiSolution, solution_id)
+        sln = await session.get(DBFix, solution_id)
         if sln is None:
             return False
         await session.delete(sln)
@@ -183,7 +185,7 @@ async def update_solution_status(
     """
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     async with kai_ctx.session_maker.begin() as session:
-        sln = await session.get(DBKaiSolution, solution_id)
+        sln = await session.get(DBFix, solution_id)
         if sln is None:
             return False
         sln.status = status
@@ -201,7 +203,7 @@ async def get_success_rate(
     """
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     async with kai_ctx.session_maker.begin() as session:
-        solutions_result = await session.execute(select(DBKaiSolution))
+        solutions_result = await session.execute(select(DBFix))
         solutions = list(solutions_result)
 
         print(f"Solutions: {solutions}", file=sys.stderr)
@@ -210,11 +212,7 @@ async def get_success_rate(
             return -1.0
 
         accepted_count = sum(
-            1 for solution in solutions if solution[0].status == SolutionStatus.ACCEPTED
+            1 for solution in solutions if solution[0].status == FixStatus.ACCEPTED
         )
         proportion = accepted_count / len(solutions)
         return proportion
-
-
-if __name__ == "__main__":
-    mcp.run()
