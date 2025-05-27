@@ -165,8 +165,15 @@ class DBFix(Base):
     )
     incident: Mapped["DBIncident"] = relationship(back_populates="fixes")
 
+    hint: Mapped["DBHint"] = relationship(back_populates="fix")
+
 
 class DBHint(Base):
     __tablename__ = "kai_hints"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+
+    hint: Mapped[str | None]
+
+    fix_id: Mapped[int] = mapped_column(ForeignKey("kai_fixes.id"))
+    fix: Mapped["DBFix"] = relationship(back_populates="hint")
