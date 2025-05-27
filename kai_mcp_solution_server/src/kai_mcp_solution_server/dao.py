@@ -1,10 +1,11 @@
 import sys
+from datetime import datetime
 from enum import StrEnum
 from functools import cache
 from typing import Any
 
 from pydantic import BaseModel, Field, TypeAdapter
-from sqlalchemy import JSON, Engine
+from sqlalchemy import JSON, DateTime, Engine
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy import (
     ForeignKey,
@@ -13,6 +14,7 @@ from sqlalchemy import (
     Text,
     TypeDecorator,
     create_engine,
+    func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
@@ -151,6 +153,11 @@ class DBFix(Base):
     __tablename__ = "kai_fixes"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
 
     before_filename: Mapped[str]
     before_text: Mapped[str]
@@ -172,6 +179,11 @@ class DBHint(Base):
     __tablename__ = "kai_hints"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
 
     hint: Mapped[str | None]
 
