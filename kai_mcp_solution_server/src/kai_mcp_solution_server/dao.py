@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 import sys
+from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from functools import cache
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, TypeAdapter
-from sqlalchemy import JSON, DateTime, Engine
+from sqlalchemy import JSON, Connection, DateTime, Engine
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy import (
     ForeignKey,
@@ -17,6 +20,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -26,6 +30,13 @@ from sqlalchemy.orm import (
     relationship,
     sessionmaker,
 )
+from sqlalchemy.schema import (
+    DropConstraint,
+    DropTable,
+    ForeignKeyConstraint,
+    MetaData,
+    Table,
+)
 from sqlalchemy.sql import elements
 
 import kai_mcp_solution_server.analyzer_types as analyzer_types
@@ -33,6 +44,44 @@ import kai_mcp_solution_server.analyzer_types as analyzer_types
 # from difflib import context_diff
 
 
+# https://github.com/pallets-eco/flask-sqlalchemy/issues/722#issuecomment-705672929
+def drop_everything(con: Connection):
+    """(On a live db) drops all foreign key constraints before dropping all tables.
+    Workaround for SQLAlchemy not doing DROP ## CASCADE for drop_all()
+    (https://github.com/pallets/flask-sqlalchemy/issues/722)
+    """
+    # trans = con.begin()
+    inspector = Inspector.from_engine(con.engine)
+
+    # We need to re-create a minimal metadata with only the required things to
+    # successfully emit drop constraints and tables commands for postgres (based
+    # on the actual schema of the running instance)
+    meta = MetaData()
+    tables = []
+    all_fkeys = []
+
+    for table_name in inspector.get_table_names():
+        fkeys = []
+
+        for fkey in inspector.get_foreign_keys(table_name):
+            if not fkey["name"]:
+                continue
+
+            fkeys.append(ForeignKeyConstraint((), (), name=fkey["name"]))
+
+        tables.append(Table(table_name, meta, *fkeys))
+        all_fkeys.extend(fkeys)
+
+    for fkey in all_fkeys:
+        con.execute(DropConstraint(fkey))
+
+    for table in tables:
+        con.execute(DropTable(table))
+
+    # trans.commit()
+
+
+"""
 class PydanticJson(TypeDecorator):
     impl = JSON
     cache_ok = True
@@ -84,19 +133,23 @@ class PydanticJson(TypeDecorator):
             return json_deserializer(value)
 
         return process
+"""
 
 
 class Base(DeclarativeBase):
-    type_annotation_map = {dict[str, Any]: JSONB}
+    type_annotation_map = {
+        dict[str, Any]: JSONB,
+        dict["str", "Any"]: JSONB,
+    }
 
 
-async def get_async_engine(url: str, drop_all: bool = True) -> AsyncEngine:
+async def get_async_engine(url: str, drop_all: bool = False) -> AsyncEngine:
     engine = create_async_engine(url)
 
     async with engine.begin() as conn:
         if drop_all:  # TODO: DONT DO THIS
             print("Dropping all tables", file=sys.stderr)
-            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(drop_everything)
 
         await conn.run_sync(Base.metadata.create_all)
 
@@ -112,7 +165,8 @@ class DBViolation(Base):
     violation_name: Mapped[str] = mapped_column(primary_key=True)
     violation_category: Mapped[analyzer_types.Category]
 
-    incidents: Mapped[list["DBIncident"]] = relationship(back_populates="violation")
+    incidents: Mapped[set["DBIncident"]] = relationship(back_populates="violation")
+    hints: Mapped[set["DBHint"]] = relationship(back_populates="violation")
 
 
 class DBIncident(Base):
@@ -128,29 +182,41 @@ class DBIncident(Base):
 
     ruleset_name: Mapped[str] = mapped_column()
     violation_name: Mapped[str] = mapped_column()
-
     __table_args__ = (
         ForeignKeyConstraint(
             ["ruleset_name", "violation_name"],
             ["kai_violations.ruleset_name", "kai_violations.violation_name"],
-            # ondelete="CASCADE",
+            ondelete="CASCADE",
+            onupdate="CASCADE",
         ),
     )
-
     violation: Mapped["DBViolation"] = relationship(back_populates="incidents")
 
-    fixes: Mapped[list["DBFix"]] = relationship(back_populates="incident")
+    solutions: Mapped[set["DBSolution"]] = relationship(back_populates="incident")
+    hints: Mapped[set["DBHint"]] = relationship(back_populates="incident")
 
 
-class FixStatus(StrEnum):
+class SolutionStatus(StrEnum):
     ACCEPTED = "accepted"
     REJECTED = "rejected"
     MODIFIED = "modified"
     UNKNOWN = "unknown"
 
 
-class DBFix(Base):
-    __tablename__ = "kai_fixes"
+class Solution(BaseModel):
+    before_uri: str
+    before_content: str
+
+    after_uri: str
+    after_content: str
+
+    hint_id: int | None = None
+
+    solution_status: SolutionStatus
+
+
+class DBSolution(Base):
+    __tablename__ = "kai_solutions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -159,20 +225,28 @@ class DBFix(Base):
         nullable=False,
     )
 
-    before_filename: Mapped[str]
-    before_text: Mapped[str]
+    before_uri: Mapped[str]
+    before_content: Mapped[str]
 
-    after_filename: Mapped[str]
-    after_text: Mapped[str]
+    after_uri: Mapped[str]
+    after_content: Mapped[str]
 
-    solution_status: Mapped[FixStatus]
+    solution_status: Mapped[SolutionStatus]
 
     incident_id: Mapped[int] = mapped_column(
-        ForeignKey("kai_incidents.id", ondelete="CASCADE"),
+        ForeignKey("kai_incidents.id", ondelete="CASCADE", onupdate="CASCADE"),
     )
-    incident: Mapped["DBIncident"] = relationship(back_populates="fixes")
+    incident: Mapped["DBIncident"] = relationship(back_populates="solutions")
 
-    hint: Mapped["DBHint"] = relationship(back_populates="fix")
+    hint_id: Mapped[int | None] = mapped_column(
+        ForeignKey("kai_hints.id", ondelete="SET NULL", onupdate="CASCADE"),
+        nullable=True,
+    )
+    hint: Mapped["DBHint | None"] = relationship(
+        back_populates="solutions",
+        foreign_keys=[hint_id],
+        uselist=False,
+    )
 
 
 class DBHint(Base):
@@ -185,7 +259,28 @@ class DBHint(Base):
         nullable=False,
     )
 
-    hint: Mapped[str | None]
+    text: Mapped[str | None]
 
-    fix_id: Mapped[int] = mapped_column(ForeignKey("kai_fixes.id"))
-    fix: Mapped["DBFix"] = relationship(back_populates="hint")
+    incident_id: Mapped[int] = mapped_column(
+        ForeignKey("kai_incidents.id", ondelete="CASCADE", onupdate="CASCADE")
+    )
+    incident: Mapped["DBIncident"] = relationship(
+        back_populates="hints",
+        foreign_keys=[incident_id],
+    )
+
+    ruleset_name: Mapped[str] = mapped_column()
+    violation_name: Mapped[str] = mapped_column()
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["ruleset_name", "violation_name"],
+            ["kai_violations.ruleset_name", "kai_violations.violation_name"],
+            ondelete="CASCADE",
+            onupdate="CASCADE",
+        ),
+    )
+
+    violation: Mapped["DBViolation"] = relationship(back_populates="hints")
+
+    solutions: Mapped[set["DBSolution"]] = relationship(back_populates="hint")

@@ -87,6 +87,8 @@ class ExtendedIncident(Incident):
     An Incident with extra metadata.
     """
 
+    incident_id: Optional[int] = None
+
     ruleset_name: str
     ruleset_description: Optional[str] = None
 

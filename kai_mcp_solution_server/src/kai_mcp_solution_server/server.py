@@ -2,14 +2,17 @@ import asyncio
 import difflib
 import os
 import sys
+import traceback
 from asyncio import sleep
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any, cast
 
 from fastmcp import Context, FastMCP
+from langchain.chat_models import init_chat_model
+from mcp import ServerSession
 from pydantic import BaseModel, PostgresDsn
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import Text
 from sqlalchemy import cast as sacast
 from sqlalchemy import func, select
@@ -17,18 +20,35 @@ from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from kai_mcp_solution_server.analyzer_types import Category, ExtendedIncident
-from kai_mcp_solution_server.dao import DBFix, FixStatus, get_async_engine
+from kai_mcp_solution_server.dao import (
+    DBHint,
+    DBIncident,
+    DBSolution,
+    DBViolation,
+    Solution,
+    SolutionStatus,
+    get_async_engine,
+)
+
+# print_err = lambda *args, **kwargs: print(*args, file=sys.stderr, **kwargs)
+log_file = open("stderr.log", "a")
+log = lambda *args, **kwargs: print(*args, file=log_file, **kwargs)
 
 
 class SolutionServerSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="kai_")
+
     pg_dsn: str = cast(
         str, "postgresql+asyncpg://postgres:mysecretpassword@localhost:5432/postgres"
     )
-    # llm_params: dict[str, Any] = {
-    #     "model": "gpt-4o-mini",
-    #     "model_provider": "openai",
-    #     "openai_api_key": os.getenv("OPENAI_API_KEY"),
-    # }
+
+    llm_params: dict[str, Any] = {
+        "model": "gpt-4o-mini",
+        "model_provider": "openai",
+        "openai_api_key": os.getenv("OPENAI_API_KEY"),
+    }
+
+    drop_all: bool = False
 
 
 class KaiSolutionServerContext:
@@ -36,27 +56,33 @@ class KaiSolutionServerContext:
         self.settings = settings
 
     async def create(self) -> None:
-        self.engine = await get_async_engine(self.settings.pg_dsn)
+        self.engine = await get_async_engine(
+            self.settings.pg_dsn, self.settings.drop_all
+        )
         self.session_maker = async_sessionmaker(
             bind=self.engine, expire_on_commit=False
         )
+        self.model = init_chat_model(**self.settings.llm_params)
 
 
 @asynccontextmanager
 async def kai_solution_server_lifespan(
     server: FastMCP,
 ) -> AsyncIterator[KaiSolutionServerContext]:
-    print("kai_solution_server_lifespan", file=sys.stderr)
+    log("kai_solution_server_lifespan")
     try:
-        print("getting settings", file=sys.stderr)
         settings = SolutionServerSettings()
-        print("creating context", file=sys.stderr)
+        log(f"Settings: {settings.model_dump_json(indent=2)}")
+
+        log("creating context")
         ctx = KaiSolutionServerContext(settings)
         await ctx.create()
-        print("yielding context", file=sys.stderr)
+        log("yielding context")
+
         yield ctx
     except Exception as e:
-        print(f"Error in lifespan: {e}", file=sys.stderr)
+
+        log(f"Error in lifespan: {traceback.format_exc()}")
         raise e
     finally:
         pass
@@ -67,93 +93,118 @@ mcp: FastMCP = FastMCP(
 )
 
 
-@mcp.tool()
-async def request_llm(
-    ctx: Context, text: str
-) -> dict:  # TODO: Use a more specific type
-    prompt = f"Analyze the sentiment of the following text as positive, negative, or neutral. Just output a single word - 'positive', 'negative', or 'neutral'. Text to analyze: {text}"
-
-    response = await ctx.sample(prompt)
-
-    sentiment = response.text.strip().lower()
-
-    if "positive" in sentiment:
-        sentiment = "positive"
-    elif "negative" in sentiment:
-        sentiment = "negative"
-    else:
-        sentiment = "neutral"
-
-    return {"text": text, "sentiment": sentiment}
+class CreateProposedSolutionResult(BaseModel):
+    incident_id: int
+    solution_id: int
 
 
 @mcp.tool()
 async def create_solution(
     ctx: Context,
-    before_filename: str = "before.txt",
-    before_text: str = "before text",
-    after_filename: str = "after.txt",
-    after_text: str = "after text",
-    extended_incident: ExtendedIncident = ExtendedIncident(
-        ruleset_name="example_ruleset",
-        violation_name="example_violation",
-        uri="example_uri",
-        message="example_message",
-    ),
-    status: FixStatus = FixStatus.UNKNOWN,
-    hint: str | None = None,
-) -> int:
+    extended_incident: ExtendedIncident,
+    proposed_solution: Solution,
+) -> CreateProposedSolutionResult:
+    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+
+    async with kai_ctx.session_maker.begin() as session:
+        violation_stmt = select(DBViolation).where(
+            DBViolation.ruleset_name == extended_incident.ruleset_name,
+            DBViolation.violation_name == extended_incident.violation_name,
+        )
+
+        violation = (await session.execute(violation_stmt)).scalar_one_or_none()
+        if violation is None:
+            log(
+                f"Violation {extended_incident.ruleset_name} - {extended_incident.violation_name} not found in the database.",
+            )
+
+            violation = DBViolation(
+                ruleset_name=extended_incident.ruleset_name,
+                ruleset_description=extended_incident.ruleset_description,
+                violation_name=extended_incident.violation_name,
+                violation_category=extended_incident.violation_category,
+                incidents=set(),
+                hints=set(),
+            )
+            session.add(violation)
+            # await session.commit()
+
+        incident_stmt = select(DBIncident).where(
+            DBIncident.id == extended_incident.incident_id
+        )
+
+        incident = (await session.execute(incident_stmt)).scalar_one_or_none()
+        if incident is None:
+            log(f"Incident {extended_incident.incident_id} not found in the database.")
+
+            incident = DBIncident(
+                id=extended_incident.incident_id,
+                uri=extended_incident.uri,
+                message=extended_incident.message,
+                code_snip=extended_incident.code_snip,
+                line_number=extended_incident.line_number,
+                variables=extended_incident.variables,
+                violation=violation,
+                solutions=set(),
+                hints=set(),
+            )
+            session.add(incident)
+
+        hint_smt = select(DBHint).where(DBHint.id == proposed_solution.hint_id)
+        hint = (await session.execute(hint_smt)).scalar_one_or_none()
+        if hint is None and proposed_solution.hint_id is not None:
+            raise ValueError(
+                f"Hint {proposed_solution.hint_id} not found in the database."
+            )
+        elif hint is not None:
+            if hint not in incident.hints:
+                raise ValueError(
+                    f"Hint {proposed_solution.hint_id} is not associated with the incident {extended_incident.incident_id}."
+                )
+            if hint not in violation.hints:
+                raise ValueError(
+                    f"Hint {proposed_solution.hint_id} is not associated with the violation {extended_incident.ruleset_name} - {extended_incident.violation_name}."
+                )
+
+        # create the solution
+
+        solution = DBSolution(
+            before_uri=proposed_solution.before_uri,
+            before_content=proposed_solution.before_content,
+            after_uri=proposed_solution.after_uri,
+            after_content=proposed_solution.after_content,
+            solution_status=proposed_solution.solution_status,
+            incident=incident,
+            hint=hint,
+        )
+
+        session.add(solution)
+        await session.commit()
+
+    return CreateProposedSolutionResult(
+        incident_id=incident.id,
+        solution_id=solution.id,
+    )
+
+
+@mcp.tool()
+async def update_solution_status(
+    ctx: Context,
+    solution_id: int,
+    solution_status: SolutionStatus = SolutionStatus.ACCEPTED,
+) -> DBSolution:
     """
-    Add the given data to the database.
+    Update the status of the solution with the given ID in the database.
     """
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     async with kai_ctx.session_maker.begin() as session:
-        # Assuming you have a function to add data to the database
-        # add_data_to_db(session, data)
-        sln = DBFix(
-            before_filename=before_filename,
-            before_text=before_text,
-            after_filename=after_filename,
-            after_text=after_text,
-            extended_incident=extended_incident.model_dump(),
-            status=status,
-            hint=hint,
-        )
-        session.add(sln)
+        sln = await session.get(DBSolution, solution_id)
+        if sln is None:
+            raise ValueError(f"Solution with ID {solution_id} not found.")
+
+        sln.solution_status = solution_status
         await session.commit()
-
-    async def add_hint() -> None:
-        print("Getting sample...", file=sys.stderr)
-
-        diff = "".join(
-            difflib.context_diff(
-                before_text.splitlines(keepends=True),
-                after_text.splitlines(keepends=True),
-                fromfile=before_filename,
-                tofile=after_filename,
-            )
-        )
-
-        hint = await ctx.sample(
-            "The following incident was solved by the following diff. "
-            "Describe the changes required in a step-by-step manner so similar situations "
-            f"can be solved in the future:\n\nIncident\n{extended_incident.model_dump_json()}\n\n"
-            f"diff\n```\n{diff}\n```\n\n"
-        )
-
-        async with kai_ctx.session_maker.begin() as session:
-            print("Adding hint to the database...", file=sys.stderr)
-            sln.hint = hint.text.strip()
-            print("session.add(sln)", file=sys.stderr)
-            session.add(sln)
-            print("await session.commit()", file=sys.stderr)
-            await session.commit()
-
-        print("Hint added to the database.", file=sys.stderr)
-
-    asyncio.create_task(add_hint())
-
-    return sln.id
+        return sln
 
 
 @mcp.tool()
@@ -166,7 +217,7 @@ async def delete_solution(
     """
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     async with kai_ctx.session_maker.begin() as session:
-        sln = await session.get(DBFix, solution_id)
+        sln = await session.get(DBSolution, solution_id)
         if sln is None:
             return False
         await session.delete(sln)
@@ -185,10 +236,10 @@ async def update_solution_status(
     """
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     async with kai_ctx.session_maker.begin() as session:
-        sln = await session.get(DBFix, solution_id)
+        sln = await session.get(DBSolution, solution_id)
         if sln is None:
             return False
-        sln.status = status
+        sln.solution_status = status
         await session.commit()
     return True
 
@@ -203,16 +254,16 @@ async def get_success_rate(
     """
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     async with kai_ctx.session_maker.begin() as session:
-        solutions_result = await session.execute(select(DBFix))
+        solutions_result = await session.execute(select(DBSolution))
         solutions = list(solutions_result)
 
-        print(f"Solutions: {solutions}", file=sys.stderr)
+        log(f"Solutions: {solutions}")
 
         if not solutions:
             return -1.0
 
         accepted_count = sum(
-            1 for solution in solutions if solution[0].status == FixStatus.ACCEPTED
+            1 for solution in solutions if solution[0].status == SolutionStatus.ACCEPTED
         )
         proportion = accepted_count / len(solutions)
         return proportion
