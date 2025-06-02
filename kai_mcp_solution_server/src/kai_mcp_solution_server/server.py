@@ -10,13 +10,19 @@ from typing import Any, cast
 
 from fastmcp import Context, FastMCP
 from langchain.chat_models import init_chat_model
+from langchain.chat_models.base import BaseChatModel, BaseMessage
 from mcp import ServerSession
 from pydantic import BaseModel, PostgresDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import Text
 from sqlalchemy import cast as sacast
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from kai_mcp_solution_server.analyzer_types import Category, ExtendedIncident
@@ -32,7 +38,11 @@ from kai_mcp_solution_server.dao import (
 
 # print_err = lambda *args, **kwargs: print(*args, file=sys.stderr, **kwargs)
 log_file = open("stderr.log", "a")
-log = lambda *args, **kwargs: print(*args, file=log_file, **kwargs)
+log_file.close()
+
+
+def log(*args, **kwargs) -> None:
+    print(*args, file=log_file if not log_file.closed else sys.stderr, **kwargs)
 
 
 class SolutionServerSettings(BaseSettings):
@@ -67,7 +77,7 @@ class KaiSolutionServerContext:
 
 @asynccontextmanager
 async def kai_solution_server_lifespan(
-    server: FastMCP,
+    server: FastMCP[KaiSolutionServerContext],
 ) -> AsyncIterator[KaiSolutionServerContext]:
     log("kai_solution_server_lifespan")
     try:
@@ -88,7 +98,7 @@ async def kai_solution_server_lifespan(
         pass
 
 
-mcp: FastMCP = FastMCP(
+mcp: FastMCP[KaiSolutionServerContext] = FastMCP(
     "KaiSolutionServer", lifespan=kai_solution_server_lifespan, dependencies=[]
 )
 
@@ -100,7 +110,7 @@ class CreateProposedSolutionResult(BaseModel):
 
 @mcp.tool()
 async def create_solution(
-    ctx: Context,
+    ctx: Context,  # type: ignore[type-arg]
     extended_incident: ExtendedIncident,
     proposed_solution: Solution,
 ) -> CreateProposedSolutionResult:
@@ -127,7 +137,6 @@ async def create_solution(
                 hints=set(),
             )
             session.add(violation)
-            # await session.commit()
 
         incident_stmt = select(DBIncident).where(
             DBIncident.id == extended_incident.incident_id
@@ -166,8 +175,6 @@ async def create_solution(
                     f"Hint {proposed_solution.hint_id} is not associated with the violation {extended_incident.ruleset_name} - {extended_incident.violation_name}."
                 )
 
-        # create the solution
-
         solution = DBSolution(
             before_uri=proposed_solution.before_uri,
             before_content=proposed_solution.before_content,
@@ -181,15 +188,67 @@ async def create_solution(
         session.add(solution)
         await session.commit()
 
+    asyncio.create_task(generate_hint(kai_ctx, incident.id))
+
     return CreateProposedSolutionResult(
         incident_id=incident.id,
         solution_id=solution.id,
     )
 
 
+async def generate_hint(
+    kai_ctx: KaiSolutionServerContext,
+    incident_id: int,
+) -> None:
+    async with kai_ctx.session_maker.begin() as session:
+        session = cast(AsyncSession, session)  # TODO: fix type hinting
+
+        incident_stmt = select(DBIncident).where(DBIncident.id == incident_id)
+        incident = (await session.execute(incident_stmt)).scalar_one_or_none()
+        if incident is None:
+            raise ValueError(
+                f"Incident with ID {incident_id} not found in the database."
+            )
+
+        should_generate_hint = not any(
+            solution.solution_status == SolutionStatus.ACCEPTED
+            for solution in incident.solutions
+        )
+
+        if not should_generate_hint:
+            log(
+                f"No new hint generated for incident {incident_id} as there are accepted solutions."
+            )
+            return
+
+        log(f"Generating hint for incident {incident_id}...")
+        prompt = (
+            f"Generate a hint for the following incident:\n"
+            f"URI: {incident.uri}\n"
+            f"Message: {incident.message}\n"
+            f"Code Snippet: {incident.code_snip}\n"
+            f"Line Number: {incident.line_number}\n"
+            f"Variables: {incident.variables}\n"
+            f"Violation: {incident.violation.ruleset_name} - {incident.violation.violation_name}\n"
+        )
+        response = cast(
+            BaseMessage, await cast(BaseChatModel, kai_ctx.model).ainvoke(prompt)
+        )
+
+        log(f"Generated hint: {response}")
+
+        hint = DBHint(
+            text=str(response.content),
+            incident=incident,
+            violation=incident.violation,
+        )
+        session.add(hint)
+        await session.commit()
+
+
 @mcp.tool()
 async def update_solution_status(
-    ctx: Context,
+    ctx: Context,  # type: ignore[type-arg]
     solution_id: int,
     solution_status: SolutionStatus = SolutionStatus.ACCEPTED,
 ) -> DBSolution:
@@ -209,7 +268,7 @@ async def update_solution_status(
 
 @mcp.tool()
 async def delete_solution(
-    ctx: Context,
+    ctx: Context,  # type: ignore[type-arg]
     solution_id: int,
 ) -> bool:
     """
@@ -226,27 +285,44 @@ async def delete_solution(
 
 
 @mcp.tool()
-async def update_solution_status(
-    ctx: Context,
-    solution_id: int,
-    status: str = "accepted",
-) -> bool:
-    """
-    Update the status of the solution with the given ID in the database.
-    """
+async def get_best_hint(
+    ctx: Context,  # type: ignore[type-arg]
+    incident_id: int,
+) -> str | None:
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     async with kai_ctx.session_maker.begin() as session:
-        sln = await session.get(DBSolution, solution_id)
-        if sln is None:
-            return False
-        sln.solution_status = status
-        await session.commit()
-    return True
+        incident_stmt = select(DBIncident).where(DBIncident.id == incident_id)
+        incident = (await session.execute(incident_stmt)).scalar_one_or_none()
+        if incident is None:
+            raise ValueError(
+                f"Incident with ID {incident_id} not found in the database."
+            )
+
+        hints = list(incident.hints)
+        if len(hints) == 0:
+            return None
+
+        # try to get a hint that is associated with an accepted solution
+        # if no solutions are accepted, return a random hint
+        accepted_hints = [
+            h
+            for h in hints
+            if any(
+                s.solution_status == SolutionStatus.ACCEPTED for s in incident.solutions
+            )
+        ]
+
+        if len(accepted_hints) > 0:
+            return accepted_hints[0].text
+
+        # if no accepted hints, return the most recently created hint
+        hints.sort(key=lambda h: h.created_at, reverse=True)
+        return hints[0].text
 
 
 @mcp.tool()
 async def get_success_rate(
-    ctx: Context,
+    ctx: Context,  # type: ignore[type-arg]
     extended_incident: ExtendedIncident,
 ) -> float:
     """

@@ -45,7 +45,7 @@ import kai_mcp_solution_server.analyzer_types as analyzer_types
 
 
 # https://github.com/pallets-eco/flask-sqlalchemy/issues/722#issuecomment-705672929
-def drop_everything(con: Connection):
+def drop_everything(con: Connection) -> None:
     """(On a live db) drops all foreign key constraints before dropping all tables.
     Workaround for SQLAlchemy not doing DROP ## CASCADE for drop_all()
     (https://github.com/pallets/flask-sqlalchemy/issues/722)
@@ -165,8 +165,12 @@ class DBViolation(Base):
     violation_name: Mapped[str] = mapped_column(primary_key=True)
     violation_category: Mapped[analyzer_types.Category]
 
-    incidents: Mapped[set["DBIncident"]] = relationship(back_populates="violation")
-    hints: Mapped[set["DBHint"]] = relationship(back_populates="violation")
+    incidents: Mapped[set["DBIncident"]] = relationship(
+        back_populates="violation", lazy="selectin"
+    )
+    hints: Mapped[set["DBHint"]] = relationship(
+        back_populates="violation", lazy="selectin"
+    )
 
 
 class DBIncident(Base):
@@ -190,10 +194,16 @@ class DBIncident(Base):
             onupdate="CASCADE",
         ),
     )
-    violation: Mapped["DBViolation"] = relationship(back_populates="incidents")
+    violation: Mapped["DBViolation"] = relationship(
+        back_populates="incidents", lazy="selectin"
+    )
 
-    solutions: Mapped[set["DBSolution"]] = relationship(back_populates="incident")
-    hints: Mapped[set["DBHint"]] = relationship(back_populates="incident")
+    solutions: Mapped[set["DBSolution"]] = relationship(
+        back_populates="incident", lazy="selectin"
+    )
+    hints: Mapped[set["DBHint"]] = relationship(
+        back_populates="incident", lazy="selectin"
+    )
 
 
 class SolutionStatus(StrEnum):
@@ -236,7 +246,9 @@ class DBSolution(Base):
     incident_id: Mapped[int] = mapped_column(
         ForeignKey("kai_incidents.id", ondelete="CASCADE", onupdate="CASCADE"),
     )
-    incident: Mapped["DBIncident"] = relationship(back_populates="solutions")
+    incident: Mapped["DBIncident"] = relationship(
+        back_populates="solutions", lazy="selectin"
+    )
 
     hint_id: Mapped[int | None] = mapped_column(
         ForeignKey("kai_hints.id", ondelete="SET NULL", onupdate="CASCADE"),
@@ -281,6 +293,11 @@ class DBHint(Base):
         ),
     )
 
-    violation: Mapped["DBViolation"] = relationship(back_populates="hints")
+    violation: Mapped["DBViolation"] = relationship(
+        back_populates="hints", lazy="selectin"
+    )
 
-    solutions: Mapped[set["DBSolution"]] = relationship(back_populates="hint")
+    # Solutions that use this hint
+    solutions: Mapped[set["DBSolution"]] = relationship(
+        back_populates="hint", lazy="selectin"
+    )
