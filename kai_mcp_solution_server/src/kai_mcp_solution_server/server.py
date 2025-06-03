@@ -284,7 +284,7 @@ async def delete_solution(
     return True
 
 
-@mcp.tool()
+@mcp.resource()
 async def get_best_hint(
     ctx: Context,  # type: ignore[type-arg]
     incident_id: int,
@@ -320,26 +320,55 @@ async def get_best_hint(
         return hints[0].text
 
 
-@mcp.tool()
+@mcp.resource()
 async def get_success_rate(
     ctx: Context,  # type: ignore[type-arg]
-    extended_incident: ExtendedIncident,
+    ruleset_name: str,
+    violation_name: str,
+    all_attempts: bool = False,
 ) -> float:
     """
-    Get the success rate of the given incident in the database.
+    Retrieve the success rate for a specific violation from the database.
+    Parameters:
+        ctx (Context): The execution context carrying request details and lifespan management.
+        ruleset_name (str): The name of the ruleset containing the violation.
+        violation_name (str): The specific violation identifier to be evaluated.
+        all_attempts (bool, optional): If True, an incident is marked as successful if at least one solution is accepted. Defaults to False.
+    Returns:
+        float: A value between 0.0 and 1.0 indicating the success rate. Returns NaN if the specified violation does not exist. Returns -1.0 if there are no solutions for the violation.
     """
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+
     async with kai_ctx.session_maker.begin() as session:
-        solutions_result = await session.execute(select(DBSolution))
-        solutions = list(solutions_result)
-
-        log(f"Solutions: {solutions}")
-
-        if not solutions:
-            return -1.0
-
-        accepted_count = sum(
-            1 for solution in solutions if solution[0].status == SolutionStatus.ACCEPTED
+        violation_stmt = select(DBViolation).where(
+            DBViolation.ruleset_name == ruleset_name,
+            DBViolation.violation_name == violation_name,
         )
-        proportion = accepted_count / len(solutions)
-        return proportion
+
+        violation = (await session.execute(violation_stmt)).scalar_one_or_none()
+        if violation is None:
+            return float("NaN")
+
+        counted_solutions = 0
+        accepted_solutions = 0
+
+        for incident in violation.incidents:
+            if all_attempts:
+                counted_solutions += len(incident.solutions)
+                accepted_solutions += sum(
+                    solution.solution_status == SolutionStatus.ACCEPTED
+                    for solution in incident.solutions
+                )
+            else:
+                counted_solutions += 1
+                accepted_solutions += int(
+                    any(
+                        solution.solution_status == SolutionStatus.ACCEPTED
+                        for solution in incident.solutions
+                    )
+                )
+
+    if counted_solutions == 0:
+        return -1.0
+
+    return accepted_solutions / counted_solutions
