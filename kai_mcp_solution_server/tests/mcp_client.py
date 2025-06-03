@@ -650,7 +650,7 @@ async def run_test_suite(session: ClientSession, args) -> None:
     logger.debug("All test functions completed successfully")
 
 
-def main():
+def main() -> None:
     """Main function to parse arguments and run tests."""
     parser = argparse.ArgumentParser(description="Test client for MCP Solution Server")
     parser.add_argument(
@@ -701,7 +701,7 @@ def main():
 
 
 # A pytest-compatible test function that actually runs the tests
-def test_mcp_solution_client():
+def test_mcp_solution_client() -> None:
     """Test function that will be run by pytest.
 
     This runs the same tests as when using the script directly, but with a non-async
