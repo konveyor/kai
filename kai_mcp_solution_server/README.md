@@ -142,18 +142,51 @@ See the [Ansible deployment documentation](deploy/ansible/README.md) for more de
 
 ### Tools
 
-| Tool                     | Description                      | Parameters                                            |
-| ------------------------ | -------------------------------- | ----------------------------------------------------- |
-| `store_solution`         | Create a new solution            | `task`, `before_code`, `after_code`, `diff`, `status` |
-| `find_related_solutions` | Find solutions based on criteria | `task_key`, `limit`                                   |
+#### `create_solution`
+
+Creates a proposed solution in the database.
+
+- **Parameters**:
+  - `extended_incident`: An `ExtendedIncident` object containing details about the incident.
+  - `proposed_solution`: A `Solution` object containing details about the proposed solution.
+- **Returns**: `CreateProposedSolutionResult` (object with `incident_id` and `solution_id`).
+
+#### `update_solution_status`
+
+Updates the status of a solution with the given ID in the database.
+
+- **Parameters**:
+  - `solution_id`: The ID of the solution to update.
+  - `solution_status`: The new status for the solution (default: `SolutionStatus.ACCEPTED`).
+- **Returns**: `DBSolution` (the updated solution object).
+
+#### `delete_solution`
+
+Deletes a solution with the given ID from the database.
+
+- **Parameters**:
+  - `solution_id`: The ID of the solution to delete.
+- **Returns**: `bool` (True if the solution was deleted, False otherwise).
 
 ### Resources
 
-| Resource                            | Description                     | Parameters |
-| ----------------------------------- | ------------------------------- | ---------- |
-| `kai://success_rate/{task_key}`     | Get success rate for a task     | `task_key` |
-| `kai://solutions/{task_key}`        | Get solution history for a task | `task_key` |
-| `kai://example_solution/{task_key}` | Get best solution example       | `task_key` |
+#### `get_best_hint`
+
+Retrieves the best hint for a given incident. It prioritizes hints associated with accepted solutions, otherwise, it returns the most recently created hint.
+
+- **Parameters**:
+  - `incident_id`: The ID of the incident.
+- **Returns**: `str | None` (The text of the best hint, or None if no hints are available).
+
+#### `get_success_rate`
+
+Retrieves the success rate for a specific violation from the database.
+
+- **Parameters**:
+  - `ruleset_name` (str): The name of the ruleset containing the violation.
+  - `violation_name` (str): The specific violation identifier to be evaluated.
+  - `all_attempts` (bool, optional): If True, an incident is marked as successful if at least one solution is accepted. Defaults to False.
+- **Returns**: `float` (A value between 0.0 and 1.0 indicating the success rate. Returns NaN if the specified violation does not exist. Returns -1.0 if there are no solutions for the violation.).
 
 ## Development
 
