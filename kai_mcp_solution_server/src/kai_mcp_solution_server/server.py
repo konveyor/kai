@@ -1,31 +1,20 @@
 import asyncio
-import difflib
 import os
 import sys
 import traceback
-from asyncio import sleep
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any, cast
 
 from fastmcp import Context, FastMCP
 from langchain.chat_models import init_chat_model
-from langchain.chat_models.base import BaseChatModel, BaseMessage
-from mcp import ServerSession
-from pydantic import BaseModel, PostgresDsn
+from langchain.chat_models.base import BaseChatModel
+from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy import Text
-from sqlalchemy import cast as sacast
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+from sqlalchemy import and_, or_, select
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from kai_mcp_solution_server.analyzer_types import Category, ExtendedIncident
+from kai_mcp_solution_server.analyzer_types import ExtendedIncident
 from kai_mcp_solution_server.dao import (
     DBHint,
     DBIncident,
@@ -33,6 +22,7 @@ from kai_mcp_solution_server.dao import (
     DBViolation,
     Solution,
     SolutionStatus,
+    ViolationID,
     get_async_engine,
 )
 
@@ -41,15 +31,15 @@ log_file = open("stderr.log", "a")
 log_file.close()
 
 
-def log(*args, **kwargs) -> None:
+def log(*args: Any, **kwargs: Any) -> None:
     print(*args, file=log_file if not log_file.closed else sys.stderr, **kwargs)
 
 
 class SolutionServerSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="kai_")
 
-    pg_dsn: str = cast(
-        str, "postgresql+asyncpg://postgres:mysecretpassword@localhost:5432/postgres"
+    pg_dsn: str = (
+        "postgresql+asyncpg://postgres:mysecretpassword@localhost:5432/postgres"
     )
 
     llm_params: dict[str, Any] = {
@@ -110,7 +100,8 @@ class CreateProposedSolutionResult(BaseModel):
 
 @mcp.tool()
 async def create_solution(
-    ctx: Context,  # type: ignore[type-arg]
+    ctx: Context,
+    client_id: str,
     extended_incident: ExtendedIncident,
     proposed_solution: Solution,
 ) -> CreateProposedSolutionResult:
@@ -188,7 +179,7 @@ async def create_solution(
         session.add(solution)
         await session.commit()
 
-    asyncio.create_task(generate_hint(kai_ctx, incident.id))
+    asyncio.create_task(generate_hint(kai_ctx, client_id, incident.id))
 
     return CreateProposedSolutionResult(
         incident_id=incident.id,
@@ -198,11 +189,10 @@ async def create_solution(
 
 async def generate_hint(
     kai_ctx: KaiSolutionServerContext,
+    client_id: str,
     incident_id: int,
 ) -> None:
     async with kai_ctx.session_maker.begin() as session:
-        session = cast(AsyncSession, session)  # TODO: fix type hinting
-
         incident_stmt = select(DBIncident).where(DBIncident.id == incident_id)
         incident = (await session.execute(incident_stmt)).scalar_one_or_none()
         if incident is None:
@@ -231,9 +221,7 @@ async def generate_hint(
             f"Variables: {incident.variables}\n"
             f"Violation: {incident.violation.ruleset_name} - {incident.violation.violation_name}\n"
         )
-        response = cast(
-            BaseMessage, await cast(BaseChatModel, kai_ctx.model).ainvoke(prompt)
-        )
+        response = await cast(BaseChatModel, kai_ctx.model).ainvoke(prompt)
 
         log(f"Generated hint: {response}")
 
@@ -248,7 +236,8 @@ async def generate_hint(
 
 @mcp.tool()
 async def update_solution_status(
-    ctx: Context,  # type: ignore[type-arg]
+    ctx: Context,
+    client_id: str,
     solution_id: int,
     solution_status: SolutionStatus = SolutionStatus.ACCEPTED,
 ) -> DBSolution:
@@ -268,7 +257,8 @@ async def update_solution_status(
 
 @mcp.tool()
 async def delete_solution(
-    ctx: Context,  # type: ignore[type-arg]
+    ctx: Context,
+    client_id: str,
     solution_id: int,
 ) -> bool:
     """
@@ -284,9 +274,10 @@ async def delete_solution(
     return True
 
 
-@mcp.resource()
+# TODO: Make this a resource instead of a tool
+@mcp.tool()
 async def get_best_hint(
-    ctx: Context,  # type: ignore[type-arg]
+    ctx: Context,
     incident_id: int,
 ) -> str | None:
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
@@ -320,55 +311,81 @@ async def get_best_hint(
         return hints[0].text
 
 
-@mcp.resource()
+class GetSuccessRateResult(BaseModel):
+    counted_solutions: int
+    accepted_solutions: int
+
+
+# TODO: Make this a resource instead of a tool
+@mcp.tool()
 async def get_success_rate(
-    ctx: Context,  # type: ignore[type-arg]
-    ruleset_name: str,
-    violation_name: str,
+    ctx: Context,
+    violation_ids: list[ViolationID],
     all_attempts: bool = False,
-) -> float:
+) -> list[GetSuccessRateResult] | None:
     """
-    Retrieve the success rate for a specific violation from the database.
+    Computes the success rate for each specified violation from the database.
+
     Parameters:
-        ctx (Context): The execution context carrying request details and lifespan management.
-        ruleset_name (str): The name of the ruleset containing the violation.
-        violation_name (str): The specific violation identifier to be evaluated.
-        all_attempts (bool, optional): If True, an incident is marked as successful if at least one solution is accepted. Defaults to False.
+        ctx (Context): The execution context carrying request and lifespan details.
+        violation_ids (ViolationID): A list of ViolationIDs, which contains
+            ruleset name and violation name that uniquely identify a violation.
+        all_attempts (bool, optional):
+            If True, the metrics are computed based on every solution attempt per incident.
+            When False, each incident is counted only once regardless of the number of solutions.
+            Defaults to False.
+
     Returns:
-        float: A value between 0.0 and 1.0 indicating the success rate. Returns NaN if the specified violation does not exist. Returns -1.0 if there are no solutions for the violation.
+        list[GetSuccessRateResult]:
+            A list of GetSuccessRateResult objects, each containing:
+                - counted_solutions: Total number of solution attempts (or incidents if all_attempts is False).
+                - accepted_solutions: Count of instances with an accepted solution
+                  (or binary count per incident if all_attempts is False).
+            If no violations are found, an empty list is returned.
     """
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    result: list[GetSuccessRateResult] = []
+
+    if len(violation_ids) == 0:
+        return result
 
     async with kai_ctx.session_maker.begin() as session:
-        violation_stmt = select(DBViolation).where(
-            DBViolation.ruleset_name == ruleset_name,
-            DBViolation.violation_name == violation_name,
+        violations_stmt = select(DBViolation).where(
+            or_(
+                *(
+                    and_(
+                        DBViolation.ruleset_name == ruleset_name,
+                        DBViolation.violation_name == violation_name,
+                    )
+                    for ruleset_name, violation_name in violation_ids
+                )
+            )
         )
 
-        violation = (await session.execute(violation_stmt)).scalar_one_or_none()
-        if violation is None:
-            return float("NaN")
+        violations = (await session.execute(violations_stmt)).scalars().all()
 
-        counted_solutions = 0
-        accepted_solutions = 0
+        for violation in violations:
+            violation_metric = GetSuccessRateResult(
+                counted_solutions=0,
+                accepted_solutions=0,
+            )
 
-        for incident in violation.incidents:
-            if all_attempts:
-                counted_solutions += len(incident.solutions)
-                accepted_solutions += sum(
-                    solution.solution_status == SolutionStatus.ACCEPTED
-                    for solution in incident.solutions
-                )
-            else:
-                counted_solutions += 1
-                accepted_solutions += int(
-                    any(
+            for incident in violation.incidents:
+                if all_attempts:
+                    violation_metric.counted_solutions += len(incident.solutions)
+                    violation_metric.accepted_solutions += sum(
                         solution.solution_status == SolutionStatus.ACCEPTED
                         for solution in incident.solutions
                     )
-                )
+                else:
+                    violation_metric.counted_solutions += 1
+                    violation_metric.accepted_solutions += int(
+                        any(
+                            solution.solution_status == SolutionStatus.ACCEPTED
+                            for solution in incident.solutions
+                        )
+                    )
 
-    if counted_solutions == 0:
-        return -1.0
+            result.append(violation_metric)
 
-    return accepted_solutions / counted_solutions
+    return result

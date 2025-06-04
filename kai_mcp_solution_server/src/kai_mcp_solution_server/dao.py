@@ -1,35 +1,23 @@
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from functools import cache
-from typing import Any, Optional
+from typing import Any
 
-from pydantic import BaseModel, Field, TypeAdapter
-from sqlalchemy import JSON, Connection, DateTime, Engine
-from sqlalchemy import Enum as SAEnum
+from pydantic import BaseModel
 from sqlalchemy import (
+    Connection,
+    DateTime,
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
-    Text,
-    TypeDecorator,
-    create_engine,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from sqlalchemy.orm import (
-    DeclarativeBase,
-    Mapped,
-    Session,
-    mapped_column,
-    relationship,
-    sessionmaker,
-)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.schema import (
     DropConstraint,
     DropTable,
@@ -37,7 +25,6 @@ from sqlalchemy.schema import (
     MetaData,
     Table,
 )
-from sqlalchemy.sql import elements
 
 import kai_mcp_solution_server.analyzer_types as analyzer_types
 
@@ -57,17 +44,17 @@ def drop_everything(con: Connection) -> None:
     # successfully emit drop constraints and tables commands for postgres (based
     # on the actual schema of the running instance)
     meta = MetaData()
-    tables = []
-    all_fkeys = []
+    tables: list[Table] = []
+    all_fkeys: list[ForeignKeyConstraint] = []
 
     for table_name in inspector.get_table_names():
-        fkeys = []
+        fkeys: list[ForeignKeyConstraint] = []
 
-        for fkey in inspector.get_foreign_keys(table_name):
-            if not fkey["name"]:
+        for refl_fkey in inspector.get_foreign_keys(table_name):
+            if not refl_fkey["name"]:
                 continue
 
-            fkeys.append(ForeignKeyConstraint((), (), name=fkey["name"]))
+            fkeys.append(ForeignKeyConstraint((), (), name=refl_fkey["name"]))
 
         tables.append(Table(table_name, meta, *fkeys))
         all_fkeys.extend(fkeys)
@@ -156,6 +143,11 @@ async def get_async_engine(url: str, drop_all: bool = False) -> AsyncEngine:
     return engine
 
 
+class ViolationID(BaseModel):
+    ruleset_name: str
+    violation_name: str
+
+
 class DBViolation(Base):
     __tablename__ = "kai_violations"
 
@@ -220,6 +212,8 @@ class Solution(BaseModel):
     after_uri: str
     after_content: str
 
+    diff: str
+
     hint_id: int | None = None
 
     solution_status: SolutionStatus
@@ -241,6 +235,8 @@ class DBSolution(Base):
     after_uri: Mapped[str]
     after_content: Mapped[str]
 
+    diff: Mapped[str]
+
     solution_status: Mapped[SolutionStatus]
 
     incident_id: Mapped[int] = mapped_column(
@@ -259,6 +255,11 @@ class DBSolution(Base):
         foreign_keys=[hint_id],
         uselist=False,
     )
+
+    # TODO: Add whether or not it was RAG or agent?
+    # TODO: Store Langgraph output?
+    # TODO: Add model information?
+    # TODO: Tie into the profile work?
 
 
 class DBHint(Base):
