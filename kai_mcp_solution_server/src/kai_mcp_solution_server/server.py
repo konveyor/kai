@@ -15,6 +15,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from kai_mcp_solution_server.analyzer_types import ExtendedIncident
+from kai_mcp_solution_server.constants import log
 from kai_mcp_solution_server.dao import (
     DBHint,
     DBIncident,
@@ -25,14 +26,6 @@ from kai_mcp_solution_server.dao import (
     ViolationID,
     get_async_engine,
 )
-
-# print_err = lambda *args, **kwargs: print(*args, file=sys.stderr, **kwargs)
-log_file = open("stderr.log", "a")
-log_file.close()
-
-
-def log(*args: Any, **kwargs: Any) -> None:
-    print(*args, file=log_file if not log_file.closed else sys.stderr, **kwargs)
 
 
 class SolutionServerSettings(BaseSettings):
@@ -274,7 +267,8 @@ async def delete_solution(
     return True
 
 
-# TODO: Make this a resource instead of a tool
+# TODO: Make this a resource instead of a tool. Need to figure out how to handle
+# lists in a resource.
 @mcp.tool()
 async def get_best_hint(
     ctx: Context,
@@ -311,81 +305,58 @@ async def get_best_hint(
         return hints[0].text
 
 
-class GetSuccessRateResult(BaseModel):
+class SuccessRateMetric(BaseModel):
     counted_solutions: int
     accepted_solutions: int
 
 
-# TODO: Make this a resource instead of a tool
+# TODO: Make this a resource instead of a tool. Need to figure out how to handle
+# lists in a resource.
 @mcp.tool()
 async def get_success_rate(
     ctx: Context,
     violation_ids: list[ViolationID],
     all_attempts: bool = False,
-) -> list[GetSuccessRateResult] | None:
-    """
-    Computes the success rate for each specified violation from the database.
-
-    Parameters:
-        ctx (Context): The execution context carrying request and lifespan details.
-        violation_ids (ViolationID): A list of ViolationIDs, which contains
-            ruleset name and violation name that uniquely identify a violation.
-        all_attempts (bool, optional):
-            If True, the metrics are computed based on every solution attempt per incident.
-            When False, each incident is counted only once regardless of the number of solutions.
-            Defaults to False.
-
-    Returns:
-        list[GetSuccessRateResult]:
-            A list of GetSuccessRateResult objects, each containing:
-                - counted_solutions: Total number of solution attempts (or incidents if all_attempts is False).
-                - accepted_solutions: Count of instances with an accepted solution
-                  (or binary count per incident if all_attempts is False).
-            If no violations are found, an empty list is returned.
-    """
+) -> list[SuccessRateMetric] | None:
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
-    result: list[GetSuccessRateResult] = []
+    result: list[SuccessRateMetric] = []
 
     if len(violation_ids) == 0:
         return result
 
     async with kai_ctx.session_maker.begin() as session:
-        violations_stmt = select(DBViolation).where(
-            or_(
-                *(
-                    and_(
-                        DBViolation.ruleset_name == ruleset_name,
-                        DBViolation.violation_name == violation_name,
-                    )
-                    for ruleset_name, violation_name in violation_ids
-                )
+        violation_ids_stmt = [
+            and_(
+                DBViolation.ruleset_name == ruleset_name,
+                DBViolation.violation_name == violation_name,
             )
-        )
-
+            for ruleset_name, violation_name in violation_ids
+        ]
+        violations_stmt = select(DBViolation).where(or_(*violation_ids_stmt))
         violations = (await session.execute(violations_stmt)).scalars().all()
 
         for violation in violations:
-            violation_metric = GetSuccessRateResult(
+            metric = SuccessRateMetric(
                 counted_solutions=0,
                 accepted_solutions=0,
             )
 
             for incident in violation.incidents:
                 if all_attempts:
-                    violation_metric.counted_solutions += len(incident.solutions)
-                    violation_metric.accepted_solutions += sum(
+                    metric.counted_solutions += len(incident.solutions)
+                    metric.accepted_solutions += sum(
                         solution.solution_status == SolutionStatus.ACCEPTED
                         for solution in incident.solutions
                     )
                 else:
-                    violation_metric.counted_solutions += 1
-                    violation_metric.accepted_solutions += int(
+                    metric.counted_solutions += 1
+                    metric.accepted_solutions += int(
                         any(
                             solution.solution_status == SolutionStatus.ACCEPTED
                             for solution in incident.solutions
                         )
                     )
 
-            result.append(violation_metric)
+            result.append(metric)
 
     return result
