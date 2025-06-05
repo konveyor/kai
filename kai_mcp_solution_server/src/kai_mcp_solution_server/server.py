@@ -22,6 +22,7 @@ from kai_mcp_solution_server.dao import (
     DBSolution,
     DBViolation,
     Solution,
+    SolutionChangeSet,
     SolutionStatus,
     ViolationID,
     get_async_engine,
@@ -92,12 +93,12 @@ class CreateProposedSolutionResult(BaseModel):
 
 
 @mcp.tool()
-async def create_solution(
+async def create_incident(
     ctx: Context,
     client_id: str,
     extended_incident: ExtendedIncident,
-    proposed_solution: Solution,
-) -> CreateProposedSolutionResult:
+    # proposed_solution: Solution,
+) -> int:
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
 
     async with kai_ctx.session_maker.begin() as session:
@@ -122,69 +123,96 @@ async def create_solution(
             )
             session.add(violation)
 
-        incident_stmt = select(DBIncident).where(
-            DBIncident.id == extended_incident.incident_id
+        incident = DBIncident(
+            client_id=client_id,
+            uri=extended_incident.uri,
+            message=extended_incident.message,
+            code_snip=extended_incident.code_snip,
+            line_number=extended_incident.line_number,
+            variables=extended_incident.variables,
+            violation=violation,
+            solution=None,
         )
+        session.add(incident)
 
-        incident = (await session.execute(incident_stmt)).scalar_one_or_none()
-        if incident is None:
-            log(f"Incident {extended_incident.incident_id} not found in the database.")
+        await session.commit()
 
-            incident = DBIncident(
-                id=extended_incident.incident_id,
-                uri=extended_incident.uri,
-                message=extended_incident.message,
-                code_snip=extended_incident.code_snip,
-                line_number=extended_incident.line_number,
-                variables=extended_incident.variables,
-                violation=violation,
-                solutions=set(),
-                hints=set(),
-            )
-            session.add(incident)
+    return incident.id
 
-        hint_smt = select(DBHint).where(DBHint.id == proposed_solution.hint_id)
-        hint = (await session.execute(hint_smt)).scalar_one_or_none()
-        if hint is None and proposed_solution.hint_id is not None:
-            raise ValueError(
-                f"Hint {proposed_solution.hint_id} not found in the database."
-            )
-        elif hint is not None:
-            if hint not in incident.hints:
-                raise ValueError(
-                    f"Hint {proposed_solution.hint_id} is not associated with the incident {extended_incident.incident_id}."
-                )
-            if hint not in violation.hints:
-                raise ValueError(
-                    f"Hint {proposed_solution.hint_id} is not associated with the violation {extended_incident.ruleset_name} - {extended_incident.violation_name}."
-                )
+
+@mcp.tool()
+async def create_solution(
+    ctx: Context,
+    client_id: str,
+    incident_ids: list[int],
+    change_set: SolutionChangeSet,
+    reasoning: str | None = None,
+    used_hint_id: int | None = None,
+) -> int:
+    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+
+    if len(incident_ids) == 0:
+        raise ValueError("At least one incident ID must be provided.")
+
+    async with kai_ctx.session_maker.begin() as session:
+        incident_ids_cond = [
+            and_(DBIncident.id == incident_id, DBIncident.client_id == client_id)
+            for incident_id in incident_ids
+        ]
+        incidents_stmt = select(DBIncident).where(or_(*incident_ids_cond))
+        incidents = (await session.execute(incidents_stmt)).scalars().all()
+
+        hint_stmt = select(DBHint).where(DBHint.id == used_hint_id)
+        hint = (await session.execute(hint_stmt)).scalar_one_or_none()
+        if used_hint_id is not None and hint is None:
+            raise ValueError(f"Hint with ID {used_hint_id} not found in the database.")
 
         solution = DBSolution(
-            before_uri=proposed_solution.before_uri,
-            before_content=proposed_solution.before_content,
-            after_uri=proposed_solution.after_uri,
-            after_content=proposed_solution.after_content,
-            solution_status=proposed_solution.solution_status,
-            incident=incident,
+            client_id=client_id,
+            change_set=change_set,
+            reasoning=reasoning,
+            solution_status=SolutionStatus.PENDING,
+            incidents=set(incidents),
             hint=hint,
         )
 
         session.add(solution)
         await session.commit()
 
-    asyncio.create_task(generate_hint(kai_ctx, client_id, incident.id))
+    return solution.id
 
-    return CreateProposedSolutionResult(
-        incident_id=incident.id,
-        solution_id=solution.id,
-    )
+
+@mcp.tool()
+async def update_solution_status(
+    ctx: Context,
+    client_id: str,
+    solution_status: SolutionStatus = SolutionStatus.ACCEPTED,
+) -> None:
+    """
+    Update the status of the solution with the given ID in the database.
+    """
+    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    async with kai_ctx.session_maker.begin() as session:
+        solutions_stmt = select(DBSolution).where(
+            DBSolution.client_id == client_id,
+        )
+        solutions = (await session.execute(solutions_stmt)).scalars().all()
+
+        for solution in solutions:
+            solution.solution_status = solution_status
+
+        await session.commit()
+
+    if solution_status == SolutionStatus.ACCEPTED:
+        asyncio.create_task(generate_hint(kai_ctx, client_id))
 
 
 async def generate_hint(
     kai_ctx: KaiSolutionServerContext,
     client_id: str,
-    incident_id: int,
 ) -> None:
+    return
+    """
     async with kai_ctx.session_maker.begin() as session:
         incident_stmt = select(DBIncident).where(DBIncident.id == incident_id)
         incident = (await session.execute(incident_stmt)).scalar_one_or_none()
@@ -225,27 +253,7 @@ async def generate_hint(
         )
         session.add(hint)
         await session.commit()
-
-
-@mcp.tool()
-async def update_solution_status(
-    ctx: Context,
-    client_id: str,
-    solution_id: int,
-    solution_status: SolutionStatus = SolutionStatus.ACCEPTED,
-) -> DBSolution:
     """
-    Update the status of the solution with the given ID in the database.
-    """
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
-    async with kai_ctx.session_maker.begin() as session:
-        sln = await session.get(DBSolution, solution_id)
-        if sln is None:
-            raise ValueError(f"Solution with ID {solution_id} not found.")
-
-        sln.solution_status = solution_status
-        await session.commit()
-        return sln
 
 
 @mcp.tool()

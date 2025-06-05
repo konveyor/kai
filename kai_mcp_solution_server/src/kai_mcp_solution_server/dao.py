@@ -22,7 +22,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, MappedAsDataclass, mapped_column
 from sqlalchemy.orm import relationship as _relationship
 from sqlalchemy.schema import (
     DropConstraint,
@@ -149,10 +149,11 @@ class SolutionStatus(StrEnum):
     ACCEPTED = "accepted"
     REJECTED = "rejected"
     MODIFIED = "modified"
+    PENDING = "pending"
     UNKNOWN = "unknown"
 
 
-class SolutionChangeSetJSONB(TypeDecorator):
+class SolutionChangeSetJSONB(TypeDecorator):  # type: ignore[type-arg]
     """Adapter that bridges Pydantic SolutionChangeSet to Postgres JSONB."""
 
     impl = JSONB
@@ -176,7 +177,7 @@ class SolutionChangeSetJSONB(TypeDecorator):
         return SolutionChangeSet.model_validate(value)
 
 
-class Base(DeclarativeBase):
+class Base(MappedAsDataclass, DeclarativeBase):
     type_annotation_map = {
         dict[str, Any]: JSONB,
         list[str]: ARRAY(String),
@@ -240,7 +241,8 @@ class DBIncident(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(init=False, primary_key=True, autoincrement=True)
+    client_id: Mapped[str]
 
     uri: Mapped[str]
     message: Mapped[str]
@@ -248,11 +250,17 @@ class DBIncident(Base):
     line_number: Mapped[int]
     variables: Mapped[dict[str, Any]]
 
-    ruleset_name: Mapped[str] = mapped_column()
-    violation_name: Mapped[str] = mapped_column()
+    # Exclude from __init__
+    ruleset_name: Mapped[str] = mapped_column(init=False)
+    violation_name: Mapped[str] = mapped_column(init=False)
     violation: Mapped["DBViolation"] = relationship(back_populates="incidents")
 
-    solution: Mapped["DBSolution" | None] = relationship(
+    solution_id: Mapped[int | None] = mapped_column(
+        ForeignKey("kai_solutions.id", ondelete="SET NULL", onupdate="CASCADE"),
+        init=False,
+        nullable=True,
+    )
+    solution: Mapped["DBSolution | None"] = relationship(
         back_populates="incident", uselist=False
     )
 
@@ -271,10 +279,11 @@ class Solution(BaseModel):
 class DBSolution(Base):
     __tablename__ = "kai_solutions"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(init=False, primary_key=True, autoincrement=True)
     client_id: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
+        init=False,
         server_default=func.now(),
         nullable=False,
     )
@@ -285,10 +294,7 @@ class DBSolution(Base):
 
     solution_status: Mapped[SolutionStatus]
 
-    incident_id: Mapped[int] = mapped_column(
-        ForeignKey("kai_incidents.id", ondelete="CASCADE", onupdate="CASCADE"),
-    )
-    incident: Mapped["DBIncident"] = relationship(
+    incidents: Mapped["set[DBIncident]"] = relationship(
         back_populates="solution",
     )
 
@@ -297,11 +303,13 @@ class DBSolution(Base):
     # TODO: Add model information?
     # TODO: Tie into the profile work?
 
+    # TODO: Make this accept more than one hint?
     hint_id: Mapped[int | None] = mapped_column(
         ForeignKey("kai_hints.id", ondelete="SET NULL", onupdate="CASCADE"),
+        init=False,
         nullable=True,
     )
-    hint: Mapped["DBHint"] = relationship(
+    hint: Mapped["DBHint | None"] = relationship(
         back_populates="solutions",
         uselist=False,
     )
