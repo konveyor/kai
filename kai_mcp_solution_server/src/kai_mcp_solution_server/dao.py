@@ -7,17 +7,23 @@ from typing import Any
 
 from pydantic import BaseModel
 from sqlalchemy import (
+    ARRAY,
+    Column,
     Connection,
     DateTime,
+    Dialect,
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
+    String,
+    TypeDecorator,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import relationship as _relationship
 from sqlalchemy.schema import (
     DropConstraint,
     DropTable,
@@ -28,7 +34,11 @@ from sqlalchemy.schema import (
 
 import kai_mcp_solution_server.analyzer_types as analyzer_types
 
-# from difflib import context_diff
+
+def relationship(*args: Any, **kwargs: Any) -> Any:
+    """A wrapper around sqlalchemy.orm.relationship to set lazy='selectin' by default."""
+    kwargs.setdefault("lazy", "selectin")
+    return _relationship(*args, **kwargs)
 
 
 # https://github.com/pallets-eco/flask-sqlalchemy/issues/722#issuecomment-705672929
@@ -123,10 +133,54 @@ class PydanticJson(TypeDecorator):
 """
 
 
+class SolutionFile(BaseModel):
+    uri: str
+    content: str
+
+
+class SolutionChangeSet(BaseModel):
+    diff: str
+
+    before: list[SolutionFile]
+    after: list[SolutionFile]
+
+
+class SolutionStatus(StrEnum):
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    MODIFIED = "modified"
+    UNKNOWN = "unknown"
+
+
+class SolutionChangeSetJSONB(TypeDecorator):
+    """Adapter that bridges Pydantic SolutionChangeSet to Postgres JSONB."""
+
+    impl = JSONB
+    cache_ok = True
+
+    def process_bind_param(
+        self, value: SolutionChangeSet | None, dialect: Dialect
+    ) -> dict[str, Any] | None:
+        if value is None:
+            return None
+        return value.model_dump(mode="json")
+
+    def process_result_value(
+        self, value: Any | None, dialect: Dialect
+    ) -> SolutionChangeSet | None:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return SolutionChangeSet.model_validate_json(value)
+
+        return SolutionChangeSet.model_validate(value)
+
+
 class Base(DeclarativeBase):
     type_annotation_map = {
         dict[str, Any]: JSONB,
-        dict["str", "Any"]: JSONB,
+        list[str]: ARRAY(String),
+        SolutionChangeSet: SolutionChangeSetJSONB,
     }
 
 
@@ -134,7 +188,8 @@ async def get_async_engine(url: str, drop_all: bool = False) -> AsyncEngine:
     engine = create_async_engine(url)
 
     async with engine.begin() as conn:
-        if drop_all:  # TODO: DONT DO THIS
+        # NOTE: Only do this in dev/test environments!
+        if drop_all:
             print("Dropping all tables", file=sys.stderr)
             await conn.run_sync(drop_everything)
 
@@ -158,15 +213,32 @@ class DBViolation(Base):
     violation_category: Mapped[analyzer_types.Category]
 
     incidents: Mapped[set["DBIncident"]] = relationship(
-        back_populates="violation", lazy="selectin"
+        back_populates="violation",
     )
     hints: Mapped[set["DBHint"]] = relationship(
-        back_populates="violation", lazy="selectin"
+        back_populates="violation",
     )
+
+
+# kai_incidents_solution_association_table = Table(
+#     "kai_incidents_solution_association",
+#     Base.metadata,
+#     Column("incident_id", ForeignKey("kai_incidents.id", primary_key=True, ondelete="CASCADE", onupdate="CASCADE")),
+#     Column("solution_id", ForeignKey("kai_solutions.id", primary_key=True, ondelete="CASCADE", onupdate="CASCADE")),
+# )
 
 
 class DBIncident(Base):
     __tablename__ = "kai_incidents"
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["ruleset_name", "violation_name"],
+            ["kai_violations.ruleset_name", "kai_violations.violation_name"],
+            ondelete="CASCADE",
+            onupdate="CASCADE",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
@@ -178,6 +250,66 @@ class DBIncident(Base):
 
     ruleset_name: Mapped[str] = mapped_column()
     violation_name: Mapped[str] = mapped_column()
+    violation: Mapped["DBViolation"] = relationship(back_populates="incidents")
+
+    solution: Mapped["DBSolution" | None] = relationship(
+        back_populates="incident", uselist=False
+    )
+
+
+class Solution(BaseModel):
+    # TODO: Turn this into a more general "Trajectory" thing?
+    change_set: SolutionChangeSet
+
+    reasoning: str | None = None
+
+    solution_status: SolutionStatus
+
+    hint_id: int | None = None
+
+
+class DBSolution(Base):
+    __tablename__ = "kai_solutions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    client_id: Mapped[str]
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    change_set: Mapped[SolutionChangeSet]
+
+    reasoning: Mapped[str | None]
+
+    solution_status: Mapped[SolutionStatus]
+
+    incident_id: Mapped[int] = mapped_column(
+        ForeignKey("kai_incidents.id", ondelete="CASCADE", onupdate="CASCADE"),
+    )
+    incident: Mapped["DBIncident"] = relationship(
+        back_populates="solution",
+    )
+
+    # TODO: Add whether or not it was RAG or agent?
+    # TODO: Store Langgraph output?
+    # TODO: Add model information?
+    # TODO: Tie into the profile work?
+
+    hint_id: Mapped[int | None] = mapped_column(
+        ForeignKey("kai_hints.id", ondelete="SET NULL", onupdate="CASCADE"),
+        nullable=True,
+    )
+    hint: Mapped["DBHint"] = relationship(
+        back_populates="solutions",
+        uselist=False,
+    )
+
+
+class DBHint(Base):
+    __tablename__ = "kai_hints"
+
     __table_args__ = (
         ForeignKeyConstraint(
             ["ruleset_name", "violation_name"],
@@ -186,84 +318,6 @@ class DBIncident(Base):
             onupdate="CASCADE",
         ),
     )
-    violation: Mapped["DBViolation"] = relationship(
-        back_populates="incidents", lazy="selectin"
-    )
-
-    solutions: Mapped[set["DBSolution"]] = relationship(
-        back_populates="incident", lazy="selectin"
-    )
-    hints: Mapped[set["DBHint"]] = relationship(
-        back_populates="incident", lazy="selectin"
-    )
-
-
-class SolutionStatus(StrEnum):
-    ACCEPTED = "accepted"
-    REJECTED = "rejected"
-    MODIFIED = "modified"
-    UNKNOWN = "unknown"
-
-
-class Solution(BaseModel):
-    before_uri: str
-    before_content: str
-
-    after_uri: str
-    after_content: str
-
-    diff: str
-
-    hint_id: int | None = None
-
-    solution_status: SolutionStatus
-
-
-class DBSolution(Base):
-    __tablename__ = "kai_solutions"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        nullable=False,
-    )
-
-    before_uri: Mapped[str]
-    before_content: Mapped[str]
-
-    after_uri: Mapped[str]
-    after_content: Mapped[str]
-
-    diff: Mapped[str]
-
-    solution_status: Mapped[SolutionStatus]
-
-    incident_id: Mapped[int] = mapped_column(
-        ForeignKey("kai_incidents.id", ondelete="CASCADE", onupdate="CASCADE"),
-    )
-    incident: Mapped["DBIncident"] = relationship(
-        back_populates="solutions", lazy="selectin"
-    )
-
-    hint_id: Mapped[int | None] = mapped_column(
-        ForeignKey("kai_hints.id", ondelete="SET NULL", onupdate="CASCADE"),
-        nullable=True,
-    )
-    hint: Mapped["DBHint | None"] = relationship(
-        back_populates="solutions",
-        foreign_keys=[hint_id],
-        uselist=False,
-    )
-
-    # TODO: Add whether or not it was RAG or agent?
-    # TODO: Store Langgraph output?
-    # TODO: Add model information?
-    # TODO: Tie into the profile work?
-
-
-class DBHint(Base):
-    __tablename__ = "kai_hints"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -274,31 +328,13 @@ class DBHint(Base):
 
     text: Mapped[str | None]
 
-    incident_id: Mapped[int] = mapped_column(
-        ForeignKey("kai_incidents.id", ondelete="CASCADE", onupdate="CASCADE")
-    )
-    incident: Mapped["DBIncident"] = relationship(
-        back_populates="hints",
-        foreign_keys=[incident_id],
-    )
-
     ruleset_name: Mapped[str] = mapped_column()
     violation_name: Mapped[str] = mapped_column()
-
-    __table_args__ = (
-        ForeignKeyConstraint(
-            ["ruleset_name", "violation_name"],
-            ["kai_violations.ruleset_name", "kai_violations.violation_name"],
-            ondelete="CASCADE",
-            onupdate="CASCADE",
-        ),
-    )
-
     violation: Mapped["DBViolation"] = relationship(
-        back_populates="hints", lazy="selectin"
+        back_populates="hints",
     )
 
     # Solutions that use this hint
     solutions: Mapped[set["DBSolution"]] = relationship(
-        back_populates="hint", lazy="selectin"
+        back_populates="hint",
     )
