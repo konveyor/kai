@@ -22,8 +22,15 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, MappedAsDataclass, mapped_column
-from sqlalchemy.orm import relationship as _relationship
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    MappedAsDataclass,
+    mapped_column,
+    relationship,
+)
+
+# from sqlalchemy.orm import relationship as _relationship
 from sqlalchemy.schema import (
     DropConstraint,
     DropTable,
@@ -34,11 +41,10 @@ from sqlalchemy.schema import (
 
 import kai_mcp_solution_server.analyzer_types as analyzer_types
 
-
-def relationship(*args: Any, **kwargs: Any) -> Any:
-    """A wrapper around sqlalchemy.orm.relationship to set lazy='selectin' by default."""
-    kwargs.setdefault("lazy", "selectin")
-    return _relationship(*args, **kwargs)
+# def relationship(*args: Any, **kwargs: Any) -> Any:
+#     """A wrapper around sqlalchemy.orm.relationship to set lazy='selectin' by default."""
+#     kwargs.setdefault("lazy", "selectin")
+#     return _relationship(*args, **kwargs)
 
 
 # https://github.com/pallets-eco/flask-sqlalchemy/issues/722#issuecomment-705672929
@@ -47,6 +53,8 @@ def drop_everything(con: Connection) -> None:
     Workaround for SQLAlchemy not doing DROP ## CASCADE for drop_all()
     (https://github.com/pallets/flask-sqlalchemy/issues/722)
     """
+
+    # TODO: Enum data types
     # trans = con.begin()
     inspector = Inspector.from_engine(con.engine)
 
@@ -204,6 +212,25 @@ class ViolationID(BaseModel):
     violation_name: str
 
 
+violation_hint_association_table = Table(
+    "kai_violation_hint_association",
+    Base.metadata,
+    Column("violation_ruleset_name", String),
+    Column("violation_violation_name", String),
+    Column(
+        "hint_id",
+        Integer,
+        ForeignKey("kai_hints.id", ondelete="CASCADE", onupdate="CASCADE"),
+    ),
+    ForeignKeyConstraint(
+        ["violation_ruleset_name", "violation_violation_name"],
+        ["kai_violations.ruleset_name", "kai_violations.violation_name"],
+        ondelete="CASCADE",
+        onupdate="CASCADE",
+    ),
+)
+
+
 class DBViolation(Base):
     __tablename__ = "kai_violations"
 
@@ -215,10 +242,28 @@ class DBViolation(Base):
 
     incidents: Mapped[set["DBIncident"]] = relationship(
         back_populates="violation",
+        lazy="selectin",
     )
     hints: Mapped[set["DBHint"]] = relationship(
-        back_populates="violation",
+        secondary=violation_hint_association_table,
+        back_populates="violations",
+        lazy="selectin",
     )
+
+    def __hash__(self) -> int:
+        return hash((self.ruleset_name, self.violation_name))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, DBViolation):
+            raise NotImplementedError(f"Cannot compare DBViolation with {type(other)}")
+
+        return (self.ruleset_name, self.violation_name) == (
+            other.ruleset_name,
+            other.violation_name,
+        )
+
+    def __neq__(self, other: object) -> bool:
+        return not self.__eq__(other)
 
 
 # kai_incidents_solution_association_table = Table(
@@ -253,7 +298,10 @@ class DBIncident(Base):
     # Exclude from __init__
     ruleset_name: Mapped[str] = mapped_column(init=False)
     violation_name: Mapped[str] = mapped_column(init=False)
-    violation: Mapped["DBViolation"] = relationship(back_populates="incidents")
+    violation: Mapped["DBViolation"] = relationship(
+        back_populates="incidents",
+        lazy="selectin",
+    )
 
     solution_id: Mapped[int | None] = mapped_column(
         ForeignKey("kai_solutions.id", ondelete="SET NULL", onupdate="CASCADE"),
@@ -261,8 +309,22 @@ class DBIncident(Base):
         nullable=True,
     )
     solution: Mapped["DBSolution | None"] = relationship(
-        back_populates="incident", uselist=False
+        back_populates="incidents",
+        uselist=False,
+        lazy="selectin",
     )
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, DBIncident):
+            raise NotImplementedError(f"Cannot compare DBIncident with {type(other)}")
+
+        return self.id == other.id
+
+    def __neq__(self, other: object) -> bool:
+        return not self.__eq__(other)
 
 
 class Solution(BaseModel):
@@ -294,8 +356,9 @@ class DBSolution(Base):
 
     solution_status: Mapped[SolutionStatus]
 
-    incidents: Mapped["set[DBIncident]"] = relationship(
+    incidents: Mapped[set["DBIncident"]] = relationship(
         back_populates="solution",
+        lazy="selectin",
     )
 
     # TODO: Add whether or not it was RAG or agent?
@@ -312,37 +375,66 @@ class DBSolution(Base):
     hint: Mapped["DBHint | None"] = relationship(
         back_populates="solutions",
         uselist=False,
+        lazy="selectin",
     )
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, DBSolution):
+            raise NotImplementedError(f"Cannot compare DBSolution with {type(other)}")
+
+        return self.id == other.id
+
+    def __neq__(self, other: object) -> bool:
+        return not self.__eq__(other)
 
 
 class DBHint(Base):
     __tablename__ = "kai_hints"
 
-    __table_args__ = (
-        ForeignKeyConstraint(
-            ["ruleset_name", "violation_name"],
-            ["kai_violations.ruleset_name", "kai_violations.violation_name"],
-            ondelete="CASCADE",
-            onupdate="CASCADE",
-        ),
-    )
+    # __table_args__ = (
+    #     ForeignKeyConstraint(
+    #         ["ruleset_name", "violation_name"],
+    #         ["kai_violations.ruleset_name", "kai_violations.violation_name"],
+    #         ondelete="CASCADE",
+    #         onupdate="CASCADE",
+    #     ),
+    # )
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, init=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
+        init=False,
     )
 
     text: Mapped[str | None]
 
-    ruleset_name: Mapped[str] = mapped_column()
-    violation_name: Mapped[str] = mapped_column()
-    violation: Mapped["DBViolation"] = relationship(
+    # ruleset_name: Mapped[str] = mapped_column()
+    # violation_name: Mapped[str] = mapped_column()
+    violations: Mapped[set["DBViolation"]] = relationship(
+        secondary=violation_hint_association_table,
         back_populates="hints",
+        lazy="selectin",
     )
 
     # Solutions that use this hint
     solutions: Mapped[set["DBSolution"]] = relationship(
         back_populates="hint",
+        lazy="selectin",
     )
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, DBHint):
+            raise NotImplementedError(f"Cannot compare DBHint with {type(other)}")
+
+        return self.id == other.id
+
+    def __neq__(self, other: object) -> bool:
+        return not self.__eq__(other)

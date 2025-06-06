@@ -4,14 +4,14 @@ import sys
 import traceback
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, cast
+from typing import Any, Sequence, cast
 
 from fastmcp import Context, FastMCP
 from langchain.chat_models import init_chat_model
 from langchain.chat_models.base import BaseChatModel
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, or_, select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from kai_mcp_solution_server.analyzer_types import ExtendedIncident
@@ -192,6 +192,7 @@ async def update_solution_status(
     Update the status of the solution with the given ID in the database.
     """
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+
     async with kai_ctx.session_maker.begin() as session:
         solutions_stmt = select(DBSolution).where(
             DBSolution.client_id == client_id,
@@ -211,49 +212,60 @@ async def generate_hint(
     kai_ctx: KaiSolutionServerContext,
     client_id: str,
 ) -> None:
-    return
-    """
     async with kai_ctx.session_maker.begin() as session:
-        incident_stmt = select(DBIncident).where(DBIncident.id == incident_id)
-        incident = (await session.execute(incident_stmt)).scalar_one_or_none()
-        if incident is None:
-            raise ValueError(
-                f"Incident with ID {incident_id} not found in the database."
-            )
-
-        should_generate_hint = not any(
-            solution.solution_status == SolutionStatus.ACCEPTED
-            for solution in incident.solutions
+        solutions_stmt = select(DBSolution).where(
+            DBSolution.client_id == client_id,
+            DBSolution.solution_status == SolutionStatus.ACCEPTED,
         )
-
-        if not should_generate_hint:
+        solutions = (await session.execute(solutions_stmt)).scalars().all()
+        if len(solutions) == 0:
             log(
-                f"No new hint generated for incident {incident_id} as there are accepted solutions."
+                f"No accepted solutions found for client {client_id}. No hint generated."
             )
             return
 
-        log(f"Generating hint for incident {incident_id}...")
-        prompt = (
-            f"Generate a hint for the following incident:\n"
-            f"URI: {incident.uri}\n"
-            f"Message: {incident.message}\n"
-            f"Code Snippet: {incident.code_snip}\n"
-            f"Line Number: {incident.line_number}\n"
-            f"Variables: {incident.variables}\n"
-            f"Violation: {incident.violation.ruleset_name} - {incident.violation.violation_name}\n"
-        )
-        response = await cast(BaseChatModel, kai_ctx.model).ainvoke(prompt)
+        for solution in solutions:
+            prompt = (
+                f"The following incidents had this accepted solution. "
+                f"Generate a hint for the user so that they can perform the same solution:\n"
+            )
 
-        log(f"Generated hint: {response}")
+            for i, incident in enumerate(solution.incidents):
+                prompt += (
+                    f"Incident {i + 1}:\n"
+                    f"  URI: {incident.uri}\n"
+                    f"  Message: {incident.message}\n"
+                    f"  Code Snippet: {incident.code_snip}\n"
+                    f"  Line Number: {incident.line_number}\n"
+                    f"  Variables: {incident.variables}\n"
+                    f"  Violation: {incident.violation.ruleset_name} - "
+                    f"  {incident.violation.violation_name}\n\n"
+                )
 
-        hint = DBHint(
-            text=str(response.content),
-            incident=incident,
-            violation=incident.violation,
-        )
-        session.add(hint)
+            prompt += "Solution:\n" f"{solution.change_set.diff}\n\n"
+
+            log(f"Generating hint for client {client_id} with prompt:\n{prompt}")
+
+            response = await cast(BaseChatModel, kai_ctx.model).ainvoke(prompt)
+
+            log(f"Generated hint: {response.content}")
+
+            hint = DBHint(
+                text=str(response.content),
+                violations=set(
+                    incident.violation
+                    for incident in solution.incidents
+                    if incident.violation is not None
+                ),
+                solutions=set([solution]),
+            )
+            session.add(hint)
+
+            await session.flush()
+
         await session.commit()
-    """
+
+    return
 
 
 @mcp.tool()
@@ -280,37 +292,30 @@ async def delete_solution(
 @mcp.tool()
 async def get_best_hint(
     ctx: Context,
-    incident_id: int,
+    ruleset_name: str,
+    violation_name: str,
 ) -> str | None:
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
-    async with kai_ctx.session_maker.begin() as session:
-        incident_stmt = select(DBIncident).where(DBIncident.id == incident_id)
-        incident = (await session.execute(incident_stmt)).scalar_one_or_none()
-        if incident is None:
-            raise ValueError(
-                f"Incident with ID {incident_id} not found in the database."
-            )
 
-        hints = list(incident.hints)
-        if len(hints) == 0:
+    async with kai_ctx.session_maker.begin() as session:
+        violation_name_stmt = select(DBViolation).where(
+            DBViolation.ruleset_name == ruleset_name,
+            DBViolation.violation_name == violation_name,
+        )
+        violation = (await session.execute(violation_name_stmt)).scalar_one_or_none()
+        if violation is None:
+            log(
+                f"Violation {ruleset_name} - {violation_name} not found in the database.",
+            )
             return None
 
-        # try to get a hint that is associated with an accepted solution
-        # if no solutions are accepted, return a random hint
-        accepted_hints = [
-            h
-            for h in hints
+        for hint in sorted(violation.hints, key=lambda h: h.created_at, reverse=True):
             if any(
-                s.solution_status == SolutionStatus.ACCEPTED for s in incident.solutions
-            )
-        ]
+                s.solution_status == SolutionStatus.ACCEPTED for s in hint.solutions
+            ):
+                return hint.text
 
-        if len(accepted_hints) > 0:
-            return accepted_hints[0].text
-
-        # if no accepted hints, return the most recently created hint
-        hints.sort(key=lambda h: h.created_at, reverse=True)
-        return hints[0].text
+    return None
 
 
 class SuccessRateMetric(BaseModel):
@@ -324,7 +329,6 @@ class SuccessRateMetric(BaseModel):
 async def get_success_rate(
     ctx: Context,
     violation_ids: list[ViolationID],
-    all_attempts: bool = False,
 ) -> list[SuccessRateMetric] | None:
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     result: list[SuccessRateMetric] = []
@@ -333,15 +337,29 @@ async def get_success_rate(
         return result
 
     async with kai_ctx.session_maker.begin() as session:
-        violation_ids_stmt = [
+        violations_where = or_(  # type: ignore[arg-type]
             and_(
-                DBViolation.ruleset_name == ruleset_name,
-                DBViolation.violation_name == violation_name,
+                DBViolation.ruleset_name == violation_id.ruleset_name,
+                DBViolation.violation_name == violation_id.violation_name,
             )
-            for ruleset_name, violation_name in violation_ids
-        ]
-        violations_stmt = select(DBViolation).where(or_(*violation_ids_stmt))
+            for violation_id in violation_ids
+        )
+        # Hack using text() to avoid strange tuple error with SQLAlchemy
+        violations_stmt = select(DBViolation).where(violations_where)
+        # violations_values = {}
+        # for i, violation_id in enumerate(violation_ids, 1):
+        #     violations_values[f"ruleset_name_{i}"] = violation_id.ruleset_name
+        #     violations_values[f"violation_name_{i}"] = violation_id.violation_name
+
+        # print(f"Violations values: {violations_values}", file=sys.stderr)
+
+        # violations_stmt = violations_stmt.bindparams(**violations_values)
+
+        # print(f"SQL Statement: {str(violations_stmt)}", file=sys.stderr)
+        # return None
+
         violations = (await session.execute(violations_stmt)).scalars().all()
+        # violations = cast(Sequence[DBViolation], violations)
 
         for violation in violations:
             metric = SuccessRateMetric(
@@ -350,20 +368,14 @@ async def get_success_rate(
             )
 
             for incident in violation.incidents:
-                if all_attempts:
-                    metric.counted_solutions += len(incident.solutions)
-                    metric.accepted_solutions += sum(
-                        solution.solution_status == SolutionStatus.ACCEPTED
-                        for solution in incident.solutions
-                    )
-                else:
-                    metric.counted_solutions += 1
-                    metric.accepted_solutions += int(
-                        any(
-                            solution.solution_status == SolutionStatus.ACCEPTED
-                            for solution in incident.solutions
-                        )
-                    )
+                if incident.solution is None:
+                    continue
+
+                metric.counted_solutions += 1
+                metric.accepted_solutions += int(
+                    incident.solution is not None
+                    and incident.solution.solution_status == SolutionStatus.ACCEPTED
+                )
 
             result.append(metric)
 

@@ -2,7 +2,8 @@
 import sys
 from typing import Any
 
-log_file = open("stderr.log", "a")
+log_file = open("stderr.log", "a+")
+log_file.close()
 
 
 def log(*args: Any, **kwargs: Any) -> None:
