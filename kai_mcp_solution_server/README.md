@@ -17,8 +17,8 @@ The server implements the following functionality:
 
 ## Prerequisites
 
-- Python 3.9 or higher
-- pip
+- Python 3.12 or higher
+- [uv](https://docs.astral.sh/uv/)
 - Podman (for containerized deployment)
 - Kubernetes/OpenShift (for cluster deployment)
 
@@ -29,23 +29,20 @@ The server implements the following functionality:
 1. Install dependencies:
 
    ```bash
-   pip install mcp
+   uv sync
    ```
 
 2. Run the server locally:
 
    ```bash
    # Using SSE transport (HTTP server)
-   python -m main --transport sse --host 0.0.0.0 --port 8000
+   uv run python -m kai_mcp_solution_server --transport sse --host 0.0.0.0 --port 8000
 
    # Using stdio transport (for direct process communication)
-   python -m main --transport stdio
-
-   # Using a custom database path
-   python -m main --db-path /path/to/custom/database.db
+   uv run python -m kai_mcp_solution_server --transport stdio
 
    # With debug logging
-   python -m main --log-level debug
+   uv run python -m kai_mcp_solution_server --log-level debug
    ```
 
 3. Test with the provided test client:

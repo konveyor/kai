@@ -8,16 +8,22 @@ a proper Model Context Protocol connection and testing the available tools and r
 
 import argparse
 import asyncio
-import json
 import logging
 import os
 import ssl
 import sys
+import uuid
 import warnings
+from pathlib import Path
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
+from pydantic import BaseModel
+
+from kai_mcp_solution_server.analyzer_types import ExtendedIncident
+from kai_mcp_solution_server.dao import SolutionChangeSet, SolutionFile, ViolationID
+from kai_mcp_solution_server.server import SuccessRateMetric
 
 # Store the original SSL context creator to patch it properly
 original_create_default_context = ssl.create_default_context
@@ -55,18 +61,48 @@ def format_diff_block(diff: str) -> str:
     return f"```diff\n{diff}\n```"
 
 
-async def _run_store_solution(session: ClientSession) -> int:
-    """Test the store_solution tool by creating a new solution."""
-    print("\n--- Testing store_solution ---")
+async def _run_create_incident(session: ClientSession, client_id: str) -> int:
+    print("\n--- Testing create_incident ---")
 
-    task = {
-        "key": "test-migration",
-        "description": "Test migration task",
-        "source_framework": "java-ee",
-        "target_framework": "quarkus",
-        "language": "java",
+    request = {
+        "client_id": client_id,
+        "extended_incident": ExtendedIncident(
+            uri="file://ExampleService.java",
+            message="Example incident for testing",
+            line_number=1,
+            variables={},
+            ruleset_name="test-ruleset",
+            violation_name="test-violation",
+        ).model_dump(),
     }
-    logger.debug("Preparing task data: %s", task)
+
+    logger.debug(f"Preparing create_incident request: {request}")
+
+    try:
+        result = await session.call_tool(
+            "create_incident",
+            arguments=request,
+        )
+
+        incident_id = int(result.content[0].text) if result.content else None
+
+        if incident_id is None:
+            raise ValueError("Incident ID is None, check server response")
+
+        print(f"o Incident created with ID: {incident_id}")
+
+        return incident_id
+    except Exception as e:
+        logger.error("Error creating incident: %s", str(e), exc_info=True)
+        print(f"x Error creating incident: {e}")
+        raise e
+
+
+async def _run_create_solution(
+    session: ClientSession, client_id: str, incident_ids: list[int]
+) -> int:
+    """Test the create_solution tool by creating a new solution."""
+    print("\n--- Testing create_solution ---")
 
     before_code = """
 // Original Java EE code
@@ -80,7 +116,6 @@ public class ExampleService {
     }
 }
 """
-    logger.debug("Before code prepared (length: %d)", len(before_code))
 
     after_code = """
 // Migrated Quarkus code
@@ -94,7 +129,6 @@ public class ExampleService {
     }
 }
 """
-    logger.debug("After code prepared (length: %d)", len(after_code))
 
     diff = """
 -// Original Java EE code
@@ -111,305 +145,151 @@ public class ExampleService {
      }
  }
 """
+    logger.debug("Before code prepared (length: %d)", len(before_code))
+    logger.debug("After code prepared (length: %d)", len(after_code))
     logger.debug("Diff prepared (length: %d)", len(diff))
-    status = "accepted"
+
+    request = {
+        "client_id": client_id,
+        "incident_ids": incident_ids,
+        "change_set": SolutionChangeSet(
+            diff=diff,
+            before=[
+                SolutionFile(
+                    uri="file://ExampleService.java",
+                    content=before_code,
+                )
+            ],
+            after=[
+                SolutionFile(
+                    uri="file://ExampleService.java",
+                    content=after_code,
+                )
+            ],
+        ).model_dump(),
+    }
 
     try:
-        logger.debug("Calling store_solution tool with status: %s", status)
+        logger.debug("Calling create_solution tool")
         result = await session.call_tool(
-            "store_solution",
-            arguments={
-                "task": task,
-                "before_code": before_code,
-                "after_code": after_code,
-                "diff": diff,
-                "status": status,
-            },
+            "create_solution",
+            arguments=request,
         )
-        logger.debug("store_solution tool call completed, processing result")
 
-        # Extract the solution ID from the result
-        solution_id = None
-        if hasattr(result, "content"):
-            logger.debug(
-                "Result has content attribute with %d items", len(result.content)
-            )
-            for content_item in result.content:
-                if hasattr(content_item, "text"):
-                    try:
-                        solution_id = int(content_item.text)
-                        logger.debug("Found solution_id: %s", solution_id)
-                        break
-                    except (ValueError, TypeError):
-                        logger.debug(
-                            "Failed to parse content item as integer: %s",
-                            content_item.text,
-                        )
-                        pass
-                else:
-                    logger.debug("Content item has no text attribute: %s", content_item)
+        solution_id = int(result.content[0].text) if result.content else None
 
-        print(f"✅ Solution created with ID: {solution_id}")
-        return solution_id or -1
+        if solution_id is None:
+            raise ValueError("Solution ID is None, check server response")
+
+        print(f"o Solution created with ID: {solution_id}")
+        return solution_id
     except Exception as e:
         logger.error("Error creating solution: %s", str(e), exc_info=True)
-        print(f"❌ Error creating solution: {e}")
-        return -1
+        print(f"x Error creating solution: {e}")
+        raise e
 
 
-async def _run_find_related_solutions(session: ClientSession, task_key: str) -> None:
-    """Test the find_related_solutions tool by searching for existing solutions."""
-    print("\n--- Testing find_related_solutions ---")
+async def _run_update_solution_status(session: ClientSession, client_id: str) -> None:
+    print("\n--- Testing update_solution_status ---")
+
+    request = {
+        "client_id": client_id,
+        "solution_status": "accepted",
+    }
 
     try:
-        logger.debug(
-            "Calling find_related_solutions tool with task_key: %s, limit: 5", task_key
-        )
+        logger.debug("Calling update_solution_status tool with request: %s", request)
         result = await session.call_tool(
-            "find_related_solutions", arguments={"task_key": task_key, "limit": 5}
+            "update_solution_status",
+            arguments=request,
         )
-        logger.debug("find_related_solutions tool call completed, processing result")
+        logger.debug("update_solution_status tool call completed, result: %s", result)
 
-        # Extract the solutions from the result
-        solutions = []
-        if hasattr(result, "content"):
-            logger.debug(
-                "Result has content attribute with %d items", len(result.content)
-            )
-            for content_item in result.content:
-                if hasattr(content_item, "text"):
-                    try:
-                        # Parse each item as an individual JSON object
-                        logger.debug(
-                            "Parsing JSON from content item: %s",
-                            (
-                                content_item.text[:100] + "..."
-                                if len(content_item.text) > 100
-                                else content_item.text
-                            ),
-                        )
-                        solution_data = json.loads(content_item.text)
-                        solutions.append(solution_data)
-                        logger.debug(
-                            "Successfully parsed JSON solution: %s",
-                            solution_data.get("id", "No ID"),
-                        )
-                    except (json.JSONDecodeError, TypeError) as json_err:
-                        logger.error("Failed to parse JSON: %s", str(json_err))
-                        print(f"Failed to parse JSON from: {content_item.text}")
-                        pass
-                else:
-                    logger.debug("Content item has no text attribute: %s", content_item)
+    except Exception as e:
+        logger.error("Error updating solution status: %s", str(e), exc_info=True)
+        print(f"x Error updating solution status: {e}")
+        raise e
 
-        if solutions:
-            logger.debug("Found %d solutions", len(solutions))
-            print(f"✅ Found {len(solutions)} related solutions:")
-            for i, solution in enumerate(solutions):
-                logger.debug("Processing solution %d: %s", i, solution.get("id"))
-                print(f"  - ID: {solution.get('id')}")
-                print(f"    Status: {solution.get('status')}")
-                print(f"    Task Key: {solution.get('task_key')}")
 
-                # Add snippet of before/after code if available
-                before_code = solution.get("before_code", "")
-                after_code = solution.get("after_code", "")
+async def _run_get_best_hint(session: ClientSession) -> str | None:
+    print("\n--- Testing get_best_hint ---")
 
-                if before_code:
-                    logger.debug(
-                        "Solution has before_code (length: %d)", len(before_code)
-                    )
-                    print(
-                        f"    Before: {before_code[:30]}..."
-                        if len(before_code) > 30
-                        else f"    Before: {before_code}"
-                    )
-                if after_code:
-                    logger.debug(
-                        "Solution has after_code (length: %d)", len(after_code)
-                    )
-                    print(
-                        f"    After: {after_code[:30]}..."
-                        if len(after_code) > 30
-                        else f"    After: {after_code}"
-                    )
+    request = {
+        "ruleset_name": "test-ruleset",
+        "violation_name": "test-violation",
+    }
 
-                print()
-        else:
-            logger.debug("No solutions found for task_key: %s", task_key)
-            print("ℹ️ No related solutions found")
+    try:
+        logger.debug("Preparing get_best_hint request: %s", request)
+        result = await session.call_tool(
+            "get_best_hint",
+            arguments=request,
+        )
+
+        print("get_best_hint tool call completed, result: %s", result)
+
+        if not result:
+            print("! No related solutions found")
+            return None
+
+        return result
 
     except Exception as e:
         logger.error("Error finding related solutions: %s", str(e), exc_info=True)
-        print(f"❌ Error finding related solutions: {e}")
+        print(f"x Error finding related solutions: {e}")
+        raise e
 
 
-async def _run_success_rate(session: ClientSession, task_key: str) -> None:
-    """Test the success_rate resource by getting the success rate for a task key."""
-    print("\n--- Testing success_rate resource ---")
+async def _run_get_success_rate(
+    session: ClientSession,
+) -> list[SuccessRateMetric] | None:
+    print("\n--- Testing get_success_rate ---")
 
-    try:
-        resource_uri = f"kai://success_rate/{task_key}"
-        logger.debug("Reading resource: %s", resource_uri)
-        result = await session.read_resource(resource_uri)
-        logger.debug("Resource read completed, processing result")
-
-        # Extract the content from ReadResourceResult
-        content = ""
-        if hasattr(result, "contents") and result.contents:
-            logger.debug(
-                "Result has contents attribute with %d items", len(result.contents)
-            )
-            for content_item in result.contents:
-                if hasattr(content_item, "text"):
-                    content = content_item.text
-                    logger.debug("Found content text: %s", content)
-                    break
-                else:
-                    logger.debug("Content item has no text attribute: %s", content_item)
-
-        if content:
-            logger.debug("Successfully retrieved success rate information")
-            print(f"✅ {content}")
-        else:
-            logger.debug(
-                "No success rate information available for task_key: %s", task_key
-            )
-            print("ℹ️ No success rate information available")
-    except Exception as e:
-        logger.error("Error fetching success rate: %s", str(e), exc_info=True)
-        print(f"❌ Error fetching success rate: {e}")
-
-
-async def _run_solutions(session: ClientSession, task_key: str) -> None:
-    """Test the solutions resource by getting all solutions for a task key."""
-    print("\n--- Testing solutions resource ---")
+    request = {
+        "violation_ids": [
+            ViolationID(
+                violation_name="test-violation",
+                ruleset_name="test-ruleset",
+            ).model_dump(),
+        ]
+    }
 
     try:
-        resource_uri = f"kai://solutions/{task_key}"
-        logger.debug("Reading resource: %s", resource_uri)
-        result = await session.read_resource(resource_uri)
-        logger.debug("Resource read completed, processing result")
+        logger.debug("Preparing get_success_rate request: %s", request)
+        result = await session.call_tool(
+            "get_success_rate",
+            arguments=request,
+        )
 
-        # Extract the content from ReadResourceResult
-        content = ""
-        if hasattr(result, "contents") and result.contents:
-            logger.debug(
-                "Result has contents attribute with %d items", len(result.contents)
-            )
-            for content_item in result.contents:
-                if hasattr(content_item, "text"):
-                    content = content_item.text
-                    logger.debug("Found content text (length: %d)", len(content))
-                    break
-                else:
-                    logger.debug("Content item has no text attribute: %s", content_item)
+        print("get_success_rate resource call completed, result: %s", result)
 
-        if content:
-            logger.debug("Successfully retrieved solutions history")
-            print("✅ Solutions history retrieved successfully")
-            # Display a summary
-            if "No solutions found" in content:
-                logger.debug("No solutions found message in content")
-                print("ℹ️ " + content)
-            else:
-                solution_count = content.count("Solution ID:")
-                logger.debug(
-                    "Found %d solutions for task '%s'", solution_count, task_key
-                )
-                print(f"ℹ️ Found {solution_count} solutions for task '{task_key}'")
+        if not result:
+            print("! No success rate data found")
+            return None
 
-                # Print the first solution details only to avoid overwhelming output
-                if solution_count > 0:
-                    first_solution = content.split("---")[0].strip()
-                    logger.debug(
-                        "First solution: %s",
-                        (
-                            first_solution[:100] + "..."
-                            if len(first_solution) > 100
-                            else first_solution
-                        ),
-                    )
-                    print("\nFirst solution:")
-                    print(first_solution)
+        # Convert to list of SuccessRateMetric objects
+        return result
+        # success_rates = [SuccessRateMetric(**item) for item in result]
+        # print(f"o Success rates retrieved: {len(success_rates)} metrics")
+        # return success_rates
 
-                    if solution_count > 1:
-                        logger.debug("There are %d more solutions", solution_count - 1)
-                        print(f"\n... and {solution_count-1} more solutions")
-        else:
-            logger.debug("No solutions history available for task_key: %s", task_key)
-            print("ℹ️ No solutions history available")
     except Exception as e:
-        logger.error("Error fetching solutions: %s", str(e), exc_info=True)
-        print(f"❌ Error fetching solutions: {e}")
+        logger.error("Error retrieving success rate: %s", str(e), exc_info=True)
+        print(f"x Error retrieving success rate: {e}")
+        raise e
 
 
-async def _run_example_solution(session: ClientSession, task_key: str) -> None:
-    """Test the example_solution resource by getting the best solution example."""
-    print("\n--- Testing example_solution resource ---")
-
-    try:
-        resource_uri = f"kai://example_solution/{task_key}"
-        logger.debug("Reading resource: %s", resource_uri)
-        result = await session.read_resource(resource_uri)
-        logger.debug("Resource read completed, processing result")
-
-        # Extract the content from ReadResourceResult
-        content = ""
-        if hasattr(result, "contents") and result.contents:
-            logger.debug(
-                "Result has contents attribute with %d items", len(result.contents)
-            )
-            for content_item in result.contents:
-                if hasattr(content_item, "text"):
-                    content = content_item.text
-                    logger.debug("Found content text (length: %d)", len(content))
-                    break
-                else:
-                    logger.debug("Content item has no text attribute: %s", content_item)
-
-        if content:
-            logger.debug("Successfully retrieved example solution content")
-            if "No accepted solutions found" in content:
-                logger.debug("No accepted solutions found message in content")
-                print(f"ℹ️ {content}")
-            else:
-                logger.debug("Example solution retrieved successfully")
-                print("✅ Example solution retrieved successfully:")
-                header = content.split("\n\n")[0]
-                logger.debug("Solution header: %s", header)
-                print(header)  # Show just the header
-
-                # Preview the solution with limited output
-                if "Before Code:" in content:
-                    before_index = content.find("Before Code:") + len("Before Code:")
-                    before_end = content.find("```\n\n", before_index)
-                    if before_end > before_index:
-                        code_preview = content[before_index : before_index + 60].strip()
-                        if len(code_preview) > 50:
-                            code_preview = code_preview[:50] + "..."
-                        logger.debug("Before code preview: %s", code_preview)
-                        print(f"Before code preview: {code_preview}")
-
-                if "After Code:" in content:
-                    after_index = content.find("After Code:") + len("After Code:")
-                    after_end = content.find("```\n\n", after_index)
-                    if after_end > after_index:
-                        code_preview = content[after_index : after_index + 60].strip()
-                        if len(code_preview) > 50:
-                            code_preview = code_preview[:50] + "..."
-                        logger.debug("After code preview: %s", code_preview)
-                        print(f"After code preview: {code_preview}")
-
-                print("\nUse --full-output to see complete solutions")
-        else:
-            logger.debug("No example solution available for task_key: %s", task_key)
-            print("ℹ️ No example solution available")
-    except Exception as e:
-        logger.error("Error fetching example solution: %s", str(e), exc_info=True)
-        print(f"❌ Error fetching example solution: {e}")
+class MCPClientArgs(BaseModel):
+    host: str = "localhost"
+    port: int = 8000
+    transport: str = "stdio"  # Use stdio transport to test without network
+    server_path: Path
+    full_output: bool = False
+    verbose: bool = False
+    insecure: bool = False
 
 
-async def run_tests(args) -> bool:
+async def run_tests(args: MCPClientArgs) -> bool:
     """Run all the tests with the appropriate transport.
     Returns True if all tests completed successfully, False otherwise.
     """
@@ -418,7 +298,7 @@ async def run_tests(args) -> bool:
     print(f"Host: {args.host}")
     print(f"Port: {args.port}")
     print(f"Transport: {args.transport}")
-    print(f"Task key: {args.task_key}")
+
     if args.insecure and args.transport == "http":
         print("SSL verification: Disabled (insecure mode)")
 
@@ -545,8 +425,8 @@ async def run_tests(args) -> bool:
                         logger.debug("Cleaned up all SSL verification settings")
             except Exception as e:
                 logger.error("HTTP transport error: %s", str(e), exc_info=True)
-                print(f"❌ Error with HTTP transport: {e}")
-                print(f"ℹ️ Make sure the server is running at {server_url}")
+                print(f"x Error with HTTP transport: {e}")
+                print(f"! Make sure the server is running at {server_url}")
 
                 # Add specific advice for SSL certificate errors
                 if (
@@ -554,35 +434,36 @@ async def run_tests(args) -> bool:
                     or "ssl" in str(e).lower()
                     or "certificate" in str(e).lower()
                 ):
-                    print("ℹ️ SSL certificate verification error. Try these options:")
+                    print("! SSL certificate verification error. Try these options:")
                     print(
                         "   1. Use the --insecure flag to bypass SSL verification (not recommended for production)"
                     )
                     print("   2. Use a valid SSL certificate on the server")
                     print("   3. Add the server's certificate to your trusted CA store")
 
-                print("ℹ️ Try using the STDIO transport instead with --transport stdio")
+                print("! Try using the STDIO transport instead with --transport stdio")
                 return False
 
         else:  # stdio transport
             # Use the server path from args (which already has the correct default)
-            server_path = args.server_path
-            print(f"Using server path: {server_path}")
+            print(f"Using server path: {args.server_path}")
             logger.debug(
-                "Initializing STDIO transport with server path: %s", server_path
+                f"Initializing STDIO transport with server path: {args.server_path}"
             )
 
             # Setup STDIO transport
             server_params = StdioServerParameters(
                 command="python",
-                args=["-m", "main", "--transport", "stdio"],
-                cwd=server_path,
+                args=[str(args.server_path), "--transport", "stdio"],
+                cwd=args.server_path.parent,
+                env=os.environ.copy(),
             )
             logger.debug("STDIO server parameters: %s", server_params)
 
             try:
                 # Create a timeout to prevent hanging in case of issues
                 async def run_with_timeout():
+
                     async with stdio_client(server_params) as (read, write):
                         logger.debug("STDIO client connection established")
                         async with ClientSession(read, write) as session:
@@ -599,17 +480,17 @@ async def run_tests(args) -> bool:
                     return True
                 except asyncio.TimeoutError:
                     logger.error("STDIO transport timed out after 15 seconds")
-                    print("❌ STDIO transport timed out after 15 seconds")
+                    print("x STDIO transport timed out after 15 seconds")
                     return False
             except Exception as e:
                 logger.error("STDIO transport error: %s", str(e), exc_info=True)
-                print(f"❌ Error with STDIO transport: {e}")
-                print(f"ℹ️ Make sure the main.py exists in {server_path}")
+                print(f"x Error with STDIO transport: {e}")
+                print(f"! Make sure the server script exists: {args.server_path}")
                 return False
 
     except Exception as e:
         logger.error("Unexpected error: %s", str(e), exc_info=True)
-        print(f"❌ Unexpected error: {e}")
+        print(f"x Unexpected error: {e}")
         return False
 
 
@@ -619,34 +500,40 @@ async def run_test_suite(session: ClientSession, args) -> None:
     print("Initializing MCP connection...")
     logger.debug("Calling session.initialize()")
     await session.initialize()
+
     print("Connected to MCP server successfully!")
     logger.debug("MCP connection initialized successfully")
 
+    # generate a uuid
+    client_id = uuid.uuid4().hex
+    print(f"Using client ID: {client_id}")
+
     # Run tests
-    logger.debug("Starting store_solution test")
-    solution_id = await _run_store_solution(session)
-    logger.debug("store_solution test completed with solution_id: %s", solution_id)
+    incident_id = await _run_create_incident(session, client_id)
+    logger.debug(f"create_incident test completed with incident_id: {incident_id}")
+    await asyncio.sleep(0.1)
 
-    # Wait a bit for data to be persisted
-    print("Waiting for database operations to complete...")
-    logger.debug("Waiting for database operations to complete...")
-    await asyncio.sleep(1)
+    solution_id = await _run_create_solution(session, client_id, [incident_id])
+    logger.debug(f"create_solution test completed with solution_id: {solution_id}")
+    await asyncio.sleep(0.1)
 
+    await _run_update_solution_status(session, client_id)
+    logger.debug("update_solution_status test completed")
+    await asyncio.sleep(0.1)
+
+    best_hint = await _run_get_best_hint(session)
     logger.debug(
-        "Starting find_related_solutions test with task_key: %s", args.task_key
-    )
-    await _run_find_related_solutions(session, args.task_key)
+        f"get_best_hint test completed with result: {best_hint}"
+    )  # (len: {len(best_hint) if best_hint else 0})")
+    await asyncio.sleep(0.1)
 
-    logger.debug("Starting success_rate test with task_key: %s", args.task_key)
-    await _run_success_rate(session, args.task_key)
+    success_rates = await _run_get_success_rate(session)
+    logger.debug(
+        f"success_rate test completed with result: {success_rates}"
+    )  # (len: {len(success_rates) if success_rates else 0})")
+    await asyncio.sleep(0.1)
 
-    logger.debug("Starting solutions test with task_key: %s", args.task_key)
-    await _run_solutions(session, args.task_key)
-
-    logger.debug("Starting example_solution test with task_key: %s", args.task_key)
-    await _run_example_solution(session, args.task_key)
-
-    print("\n✅ All tests completed successfully!")
+    print("\no All tests completed successfully!")
     logger.debug("All test functions completed successfully")
 
 
@@ -672,7 +559,7 @@ def main() -> None:
     parser.add_argument(
         "--server-path",
         default=default_server_path,
-        help="Path to the MCP server directory (for stdio transport)",
+        help="Path to the MCP server script (for stdio transport)",
     )
     parser.add_argument(
         "--task-key", default="test-migration", help="Task key to use for tests"
@@ -712,45 +599,42 @@ def test_mcp_solution_client() -> None:
     """
 
     # Create args for stdio transport
-    class Args:
-        host = "localhost"
-        port = 8000
-        transport = "stdio"  # Use stdio transport to test without network
-
+    args = MCPClientArgs(
+        host="localhost",
+        port=8000,
+        transport="stdio",  # Use stdio transport to test without network
         # Calculate correct server path regardless of where the test is run from
         # This handles both pytest . from kai_mcp_solution_server dir
         # and ./run_tests.sh from project root
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        server_path = os.path.dirname(script_dir)
-
+        server_path=Path(os.path.abspath(__file__)).parent
+        / "src/kai_mcp_solution_server/__main__.py",
         # If running from project root via run_tests.sh, the relative path
         # will be different, so check if we need to adjust
-        if not os.path.exists(os.path.join(server_path, "main.py")):
-            # Try looking for the correct directory
-            possible_server_path = os.path.join(os.getcwd(), "kai_mcp_solution_server")
-            if os.path.exists(os.path.join(possible_server_path, "main.py")):
-                server_path = possible_server_path
-                print(f"Adjusted server path to: {server_path}")
-            else:
-                print(
-                    f"WARNING: Could not find main.py in {server_path} or {possible_server_path}"
-                )
+        # if not os.path.exists(os.path.join(server_path, "main.py")):
+        #     # Try looking for the correct directory
+        #     possible_server_path = os.path.join(os.getcwd(), "kai_mcp_solution_server")
+        #     if os.path.exists(os.path.join(possible_server_path, "main.py")):
+        #         server_path = possible_server_path
+        #         print(f"Adjusted server path to: {server_path}")
+        #     else:
+        #         print(
+        #             f"WARNING: Could not find main.py in {server_path} or {possible_server_path}"
+        #         )
+        full_output=False,
+        verbose=False,  # Only enable verbose logging when debugging problems
+        insecure=False,
+    )
 
-        task_key = "test-migration"
-        full_output = False
-        verbose = False  # Only enable verbose logging when debugging problems
-        insecure = False
-
-    print(f"Using server path: {Args.server_path}")
+    print(f"Using server script path: {args.server_path}")
     print(f"Current working directory: {os.getcwd()}")
 
     # Run the tests using the same function as the CLI with a timeout
     # This will start up the stdio server and run the full test suite
     try:
         # Set a reasonable timeout to prevent hanging in CI/CD
-        success = asyncio.run(asyncio.wait_for(run_tests(Args()), timeout=30.0))
+        success = asyncio.run(asyncio.wait_for(run_tests(args), timeout=30.0))
     except asyncio.TimeoutError:
-        print("❌ Test timed out after 30 seconds")
+        print("x Test timed out after 30 seconds")
         success = False
 
     # Assert that the tests succeeded
