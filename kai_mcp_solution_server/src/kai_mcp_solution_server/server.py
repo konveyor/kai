@@ -141,7 +141,6 @@ async def create_incident(
     return incident.id
 
 
-# TODO: Support multiple hint ids
 @mcp.tool()
 async def create_solution(
     ctx: Context,
