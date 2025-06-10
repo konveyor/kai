@@ -32,7 +32,29 @@ The server implements the following functionality:
    uv sync
    ```
 
-2. Run the server locally:
+1. Set the `KAI_LLM_PARAMS` environment variable. The environment variable will be turned into a Python dictionary and passed along to Langchain's [`init_chat_model`](https://python.langchain.com/docs/how_to/chat_models_universal_init/). Look there for more detailed information. Here are some standard configurations:
+
+   ```bash
+   # GPT 4o
+   KAI_LLM_PARAMS='{"model": "gpt-4o", "model_provider": "openai"}'
+   # Claude 3
+   KAI_LLM_PARAMS='{"model": "claude-3-opus-20240229", "model_provider": "anthropic"}'
+   # Gemini 1.5
+   KAI_LLM_PARAMS='{"model": "gemini-1.5-pro", "model_provider": "google_vertexai"}'
+   # Custom fake model, returns fake responses
+   KAI_LLM_PARAMS='{"model": "fake"}'
+   ```
+
+1. Set the `KAI_DB_DSN` environment variable. Here are two common ones:
+
+   ```bash
+   # Postgres
+   KAI_DB_DSN='postgresql+asyncpg://postgres:mysecretpassword@localhost:5432/postgres'
+   # SQLite (Yes, quadruple slashes are required)
+   KAI_DB_DSN='sqlite+aiosqlite:////path/to/a/file.db'
+   ```
+
+1. Run the server locally:
 
    ```bash
    # Using SSE transport (HTTP server)
@@ -45,7 +67,7 @@ The server implements the following functionality:
    uv run python -m kai_mcp_solution_server --log-level debug
    ```
 
-3. Test with the provided test client:
+1. Test with the provided test client:
 
    ```bash
    # Test using stdio transport
@@ -58,7 +80,7 @@ The server implements the following functionality:
    python tests/mcp_client.py --full-output
    ```
 
-4. For convenience, you can also use the Makefile:
+1. For convenience, you can also use the Makefile:
 
    ```bash
    # Run server locally
@@ -137,53 +159,65 @@ See the [Ansible deployment documentation](deploy/ansible/README.md) for more de
 
 ## MCP API Reference
 
+---
+
 ### Tools
+
+#### `create_incident`
+
+Creates a new incident in the database.
+
+- **Parameters**:
+  - `client_id`: A string identifier for the client.
+  - `extended_incident`: An `ExtendedIncident` object containing details about the incident.
+- **Returns**: `int` (the ID of the created incident).
 
 #### `create_solution`
 
-Creates a proposed solution in the database.
+Creates a proposed solution in the database and associates it with one or more incidents.
 
 - **Parameters**:
-  - `extended_incident`: An `ExtendedIncident` object containing details about the incident.
-  - `proposed_solution`: A `Solution` object containing details about the proposed solution.
-- **Returns**: `CreateProposedSolutionResult` (object with `incident_id` and `solution_id`).
+  - `client_id`: A string identifier for the client.
+  - `incident_ids`: A list of IDs of the incidents this solution addresses.
+  - `change_set`: A `SolutionChangeSet` object detailing the proposed changes.
+  - `reasoning`: An optional string explaining the reasoning behind the solution.
+  - `used_hint_ids`: An optional list of IDs of hints used to generate this solution.
+- **Returns**: `int` (the ID of the created solution).
 
 #### `update_solution_status`
 
-Updates the status of a solution with the given ID in the database.
+Updates the status of solutions associated with the given client ID in the database.
 
 - **Parameters**:
-  - `solution_id`: The ID of the solution to update.
+  - `client_id`: A string identifier for the client.
   - `solution_status`: The new status for the solution (default: `SolutionStatus.ACCEPTED`).
-- **Returns**: `DBSolution` (the updated solution object).
+- **Returns**: `None`.
 
 #### `delete_solution`
 
 Deletes a solution with the given ID from the database.
 
 - **Parameters**:
+  - `client_id`: A string identifier for the client.
   - `solution_id`: The ID of the solution to delete.
 - **Returns**: `bool` (True if the solution was deleted, False otherwise).
 
-### Resources
-
 #### `get_best_hint`
 
-Retrieves the best hint for a given incident. It prioritizes hints associated with accepted solutions, otherwise, it returns the most recently created hint.
+Retrieves the most recent accepted hint for a given ruleset and violation.
 
 - **Parameters**:
-  - `incident_id`: The ID of the incident.
-- **Returns**: `str | None` (The text of the best hint, or None if no hints are available).
+  - `ruleset_name`: The name of the ruleset.
+  - `violation_name`: The name of the violation.
+- **Returns**: `GetBestHintResult` (an object with `hint` and `hint_id`) or `None` if no hint is found.
 
 #### `get_success_rate`
 
-Retrieves the success rate for a specific violation from the database.
+Calculates the success rate (accepted solutions) for a list of violations.
 
 - **Parameters**:
-  - `ruleset_name` (str): The name of the ruleset containing the violation.
-  - `violation_name` (str): The specific violation identifier to be evaluated.
-  - `all_attempts` (bool, optional): If True, an incident is marked as successful if at least one solution is accepted. Defaults to False.
-- **Returns**: `float` (A value between 0.0 and 1.0 indicating the success rate. Returns NaN if the specified violation does not exist. Returns -1.0 if there are no solutions for the violation.).
+  - `violation_ids`: A list of `ViolationID` objects, each containing `ruleset_name` and `violation_name`.
+- **Returns**: `list[SuccessRateMetric]` (a list of objects with `counted_solutions` and `accepted_solutions`) or `None` if no violations are provided.
 
 ## Development
 
