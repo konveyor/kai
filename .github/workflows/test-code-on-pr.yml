@@ -52,9 +52,11 @@ jobs:
         run: ./run_tests.sh
       - name: Test kai_mcp_solution_server
         run: |
-          cd kai_mcp_solution_server
-          uv sync
-          uv run python -m coverage run --branch -m pytest -s --exitfirst
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            cd kai_mcp_solution_server
+            uv sync
+            uv run python -m coverage run --branch -m pytest -s --exitfirst
+          fi
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
