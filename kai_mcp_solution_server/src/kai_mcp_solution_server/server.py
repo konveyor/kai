@@ -253,7 +253,7 @@ async def generate_hint(
 
             log(f"Generating hint for client {client_id} with prompt:\n{prompt}")
 
-            response = await cast(BaseChatModel, kai_ctx.model).ainvoke(prompt)
+            response = await kai_ctx.model.ainvoke(prompt)
 
             log(f"Generated hint: {response.content}")
 
@@ -328,7 +328,7 @@ async def get_best_hint(
                 s.solution_status == SolutionStatus.ACCEPTED for s in hint.solutions
             ):
                 return GetBestHintResult(
-                    hint=hint.text,
+                    hint=hint.text or "",
                     hint_id=hint.id,
                 )
 
