@@ -4,9 +4,9 @@ package java
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 
+	"github.com/Microsoft/go-winio"
 	"github.com/cenkalti/rpc2"
 	"github.com/go-logr/logr"
 	extjava "github.com/konveyor/analyzer-lsp/external-providers/java-external-provider/pkg/java_external_provider"
@@ -53,6 +53,7 @@ func NewInternalProviderClient(ctx context.Context, log logr.Logger, contextLine
 }
 
 func NewInternalProviderClientForPipe(ctx context.Context, log logr.Logger, contextLines int, location, pipeFile string) (provider.InternalProviderClient, error) {
+	log.Info("NewInternalProviderClientForPipe", "build", "windows")
 	p := extjava.NewJavaProvider(log, "java", contextLines, provider.Config{
 		Name: "java",
 	})
@@ -61,8 +62,12 @@ func NewInternalProviderClientForPipe(ctx context.Context, log logr.Logger, cont
 		"lspServerName": "java",
 	}
 
-	reader := bufio.NewReader(bytes.NewBuffer([]byte{}))
-	writer := bufio.NewWriter(bytes.NewBuffer([]byte{}))
+	conn, err := winio.DialPipe(pipeFile, nil)
+	if err != nil {
+		return p, err
+	}
+	reader := bufio.NewReader(conn)
+	writer := bufio.NewWriter(conn)
 	c := codec.NewCodec(ctx, reader, writer, log.WithName("provider"), "", rpc2.NewState())
 	client := rpc2.NewClientWithCodec(c)
 
