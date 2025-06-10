@@ -9,6 +9,7 @@ from typing import Any, Sequence, cast
 from fastmcp import Context, FastMCP
 from langchain.chat_models import init_chat_model
 from langchain.chat_models.base import BaseChatModel
+from langchain_core.language_models.fake_chat_models import FakeChatModel
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import and_, or_, select, text
@@ -32,15 +33,11 @@ from kai_mcp_solution_server.dao import (
 class SolutionServerSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="kai_")
 
-    pg_dsn: str = (
-        "postgresql+asyncpg://postgres:mysecretpassword@localhost:5432/postgres"
-    )
+    # "postgresql+asyncpg://postgres:mysecretpassword@localhost:5432/postgres"
+    # "sqlite+aiosqlite:////home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/kai_mcp_solution_server/kai_mcp_solution_server.db"
+    db_dsn: str
 
-    llm_params: dict[str, Any] = {
-        "model": "gpt-4o-mini",
-        "model_provider": "openai",
-        "openai_api_key": os.getenv("OPENAI_API_KEY"),
-    }
+    llm_params: dict[str, Any] | None
 
     drop_all: bool = False
 
@@ -51,12 +48,19 @@ class KaiSolutionServerContext:
 
     async def create(self) -> None:
         self.engine = await get_async_engine(
-            self.settings.pg_dsn, self.settings.drop_all
+            self.settings.db_dsn, self.settings.drop_all
         )
         self.session_maker = async_sessionmaker(
             bind=self.engine, expire_on_commit=False
         )
-        self.model = init_chat_model(**self.settings.llm_params)
+        self.model: BaseChatModel
+
+        if self.settings.llm_params is None:
+            raise ValueError("LLM parameters must be provided in the settings.")
+        elif self.settings.llm_params.get("model") == "fake":
+            self.model = FakeChatModel()
+        else:
+            self.model = init_chat_model(**self.settings.llm_params)
 
 
 @asynccontextmanager
@@ -87,7 +91,7 @@ mcp: FastMCP[KaiSolutionServerContext] = FastMCP(
 )
 
 
-class CreateProposedSolutionResult(BaseModel):
+class CreateIncidentResult(BaseModel):
     incident_id: int
     solution_id: int
 
@@ -140,6 +144,7 @@ async def create_incident(
     return incident.id
 
 
+# TODO: Support multiple hint ids
 @mcp.tool()
 async def create_solution(
     ctx: Context,

@@ -8,6 +8,7 @@ from typing import Any
 from pydantic import BaseModel
 from sqlalchemy import (
     ARRAY,
+    JSON,
     Column,
     Connection,
     DateTime,
@@ -19,7 +20,6 @@ from sqlalchemy import (
     TypeDecorator,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.orm import (
@@ -161,10 +161,10 @@ class SolutionStatus(StrEnum):
     UNKNOWN = "unknown"
 
 
-class SolutionChangeSetJSONB(TypeDecorator):  # type: ignore[type-arg]
+class SolutionChangeSetJSON(TypeDecorator):  # type: ignore[type-arg]
     """Adapter that bridges Pydantic SolutionChangeSet to Postgres JSONB."""
 
-    impl = JSONB
+    impl = JSON
     cache_ok = True
 
     def process_bind_param(
@@ -187,9 +187,9 @@ class SolutionChangeSetJSONB(TypeDecorator):  # type: ignore[type-arg]
 
 class Base(MappedAsDataclass, DeclarativeBase):
     type_annotation_map = {
-        dict[str, Any]: JSONB,
+        dict[str, Any]: JSON,
         list[str]: ARRAY(String),
-        SolutionChangeSet: SolutionChangeSetJSONB,
+        SolutionChangeSet: SolutionChangeSetJSON,
     }
 
 
