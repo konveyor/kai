@@ -115,7 +115,7 @@ class AnalyzerLSP:
                     cast(BufferedReader, self.rpc_server.stdout),
                     cast(BufferedWriter, self.rpc_server.stdin),
                 ),
-                request_timeout=4 * 60,
+                request_timeout=None,
                 log=get_logger("kai.analyzer-rpc-client"),
             )
 
