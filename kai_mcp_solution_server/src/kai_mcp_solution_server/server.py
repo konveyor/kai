@@ -291,12 +291,19 @@ async def delete_solution(
 
 # TODO: Make this a resource instead of a tool. Need to figure out how to handle
 # lists in a resource.
+
+
+class GetBestHintResult(BaseModel):
+    hint: str
+    hint_id: int
+
+
 @mcp.tool()
 async def get_best_hint(
     ctx: Context,
     ruleset_name: str,
     violation_name: str,
-) -> str | None:
+) -> GetBestHintResult | None:
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
 
     async with kai_ctx.session_maker.begin() as session:
@@ -315,7 +322,10 @@ async def get_best_hint(
             if any(
                 s.solution_status == SolutionStatus.ACCEPTED for s in hint.solutions
             ):
-                return hint.text
+                return GetBestHintResult(
+                    hint=hint.text,
+                    hint_id=hint.id,
+                )
 
     return None
 
