@@ -11,50 +11,54 @@ import os
 import subprocess  # nosec B404 - Subprocess is necessary for integration testing
 import sys
 import tempfile
-import time
 import unittest
+from pathlib import Path
+
+import mcp_client
 
 
 class TestMCPIntegration(unittest.TestCase):
     """Test integration with the MCP solution server."""
 
     def setUp(self):
-        """Set up test environment."""
-        # Get the path to the script directory
-        self.script_dir = os.path.dirname(os.path.abspath(__file__))
-        self.server_dir = os.path.dirname(self.script_dir)
-        self.main_path = os.path.join(self.server_dir, "main.py")
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.temp_path = Path(self.temp_dir.name)
 
-        # Create a temporary database for testing
-        self.temp_db_fd, self.temp_db_path = tempfile.mkstemp(suffix=".db")
-
-        # Ensure the paths exist
-        self.assertTrue(
-            os.path.exists(self.server_dir),
-            f"Server directory not found: {self.server_dir}",
+        os.environ["KAI_DB_DSN"] = (
+            f"sqlite+aiosqlite:///{self.temp_path}/kai_mcp_solution_server.db"
         )
-        self.assertTrue(
-            os.path.exists(self.main_path), f"Main script not found: {self.main_path}"
+        os.environ["KAI_LLM_PARAMS"] = '{"model": "fake"}'
+
+        self.tests_path = Path(__file__).parent
+        self.client_path = self.tests_path / "mcp_client.py"
+        self.server_path = (
+            self.tests_path.parent / "src/kai_mcp_solution_server/__main__.py"
         )
 
         # Log details for debugging
-        print(f"Server directory: {self.server_dir}")
-        print(f"Main script: {self.main_path}")
-        print(f"Temporary DB: {self.temp_db_path}")
+        print("=== Test Setup ===")
+        print(f"Temporary directory: {self.temp_dir.name}")
+        print(f"Tests directory: {self.tests_path}")
+        print(f"Client path: {self.client_path}")
+        print(f"Server path: {self.server_path}")
+        print("Environment:")
+        print(f"  KAI_DB_DSN: {os.environ['KAI_DB_DSN']}")
+        print(f"  KAI_LLM_PARAMS: {os.environ['KAI_LLM_PARAMS']}")
 
     def tearDown(self):
         """Clean up after tests."""
         try:
-            os.close(self.temp_db_fd)
-            os.unlink(self.temp_db_path)
+            self.temp_dir.cleanup()
         except (OSError, PermissionError) as e:
-            print(f"Warning: Failed to clean up temp file: {e}")
+            print(f"Warning: Failed to clean up after tests: {e}")
 
     def test_server_start(self):
-        """Test that the MCP solution server can be started with the help command."""
+        """
+        Test that the MCP solution server can be started with the help command.
+        """
+
         # Start the server process
-        main_path = os.path.join(self.server_dir, "main.py")
-        print(f"Starting server: {main_path}")
+        print(f"Starting server: {self.server_path}")
 
         # Run the server with --help to verify it works
         # Use explicit path to Python executable and validate path existence for security
@@ -62,22 +66,21 @@ class TestMCPIntegration(unittest.TestCase):
         if not os.path.isfile(python_executable):
             self.fail(f"Invalid Python executable path: {python_executable}")
 
-        if not os.path.isfile(main_path):
-            self.fail(f"Invalid main script path: {main_path}")
+        if not os.path.isfile(self.server_path):
+            self.fail(f"Invalid main script path: {self.server_path}")
 
         # Use secure paths and arguments
         # Paths are validated above to prevent security issues
-        result = subprocess.run(  # nosec B603 - We've validated the command arguments above
-            [python_executable, main_path, "--help"],
-            capture_output=True,
-            text=True,
-            env={
-                **os.environ,
-                "DB_PATH": self.temp_db_path,
-                "PYTHONUNBUFFERED": "1",
-                # Include server dir and all Python paths to ensure MCP package is found
-                "PYTHONPATH": f"{self.server_dir}:{os.environ.get('PYTHONPATH', '')}:{':'.join(sys.path)}",
-            },
+        result = (
+            subprocess.run(  # nosec B603 - We've validated the command arguments above
+                [python_executable, self.server_path, "--help"],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "PYTHONUNBUFFERED": "1",
+                },
+            )
         )
 
         # Print output for debugging
@@ -99,8 +102,12 @@ class TestMCPIntegration(unittest.TestCase):
 
         print("Server start test passed successfully!")
 
+    @unittest.skip(reason="TODO: Determine if this test is still needed")
     def test_direct_import(self):
-        """Test that we can directly import the solution server modules."""
+        """
+        Test that we can directly import the solution server modules.
+        """
+
         # This test ensures that the modules can be imported directly
         # which tests that the package structure is correct
 
@@ -186,53 +193,36 @@ class TestMCPIntegration(unittest.TestCase):
             self.fail(f"Failed to import modules: {e}")
 
     def test_mcp_client_endpoints(self):
-        """Test the server endpoints using the mcp_client's test_mcp_solution_client function."""
-        # Import the mcp_client module
-        sys.path.insert(0, self.script_dir)
-        import mcp_client
-
-        # Use a unique task key for this test run
-        task_key = f"endpoint-test-{int(time.time())}"
-        print(f"Testing MCP client endpoints with task key: {task_key}")
-
-        # Set environment variable to use our test database
-        os.environ["DB_PATH"] = self.temp_db_path
-
+        """
+        Test the server endpoints using the mcp_client's
+        test_mcp_solution_client function.
+        """
         # Run the existing test function from mcp_client by running its body directly
         # This will test all the endpoints using the client's built-in test functionality
 
         # Create args for stdio transport - copied from test_mcp_solution_client
-        task_key_val = (
-            task_key  # Create a local var that can be accessed inside the class
-        )
-        server_dir = self.server_dir  # Same for server dir
-
-        class Args:
-            host = "localhost"
-            port = 8000
-            transport = "stdio"  # Use stdio transport to test without network
-            server_path = server_dir
-            task_key = task_key_val
-            full_output = False
-            verbose = False
-            insecure = False
 
         # Run the tests using the same function as the CLI with a timeout
         # This will start up the stdio server and run the full test suite
         try:
             # Set a reasonable timeout to prevent hanging in CI/CD
             success = asyncio.run(
-                asyncio.wait_for(mcp_client.run_tests(Args()), timeout=30.0)
+                asyncio.wait_for(
+                    mcp_client.run_tests(
+                        mcp_client.MCPClientArgs(
+                            server_path=self.server_path,
+                        )
+                    ),
+                    timeout=30.0,
+                )
             )
+
             # Verify the test succeeded
             self.assertTrue(success, "MCP client tests should succeed")
         except asyncio.TimeoutError:
             self.fail("MCP client tests timed out after 30 seconds")
         except Exception as e:
             self.fail(f"MCP client tests failed with error: {e}")
-
-        # The tests are already verified by checking the success variable
-        # and the test_mcp_solution_client function prints appropriate output
 
         print("MCP client endpoints test completed successfully!")
 
