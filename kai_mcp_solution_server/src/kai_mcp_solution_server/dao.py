@@ -14,7 +14,6 @@ from sqlalchemy import (
     DateTime,
     Dialect,
     ForeignKey,
-    ForeignKeyConstraint,
     Integer,
     String,
     TypeDecorator,

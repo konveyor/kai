@@ -11,13 +11,10 @@ import os
 import subprocess  # nosec B404 - Subprocess is necessary for integration testing
 import sys
 import tempfile
-import time
 import unittest
 from pathlib import Path
 
 import mcp_client
-
-from kai_mcp_solution_server.server import SolutionServerSettings
 
 
 class TestMCPIntegration(unittest.TestCase):
@@ -44,7 +41,7 @@ class TestMCPIntegration(unittest.TestCase):
         print(f"Tests directory: {self.tests_path}")
         print(f"Client path: {self.client_path}")
         print(f"Server path: {self.server_path}")
-        print(f"Environment:")
+        print("Environment:")
         print(f"  KAI_DB_DSN: {os.environ['KAI_DB_DSN']}")
         print(f"  KAI_LLM_PARAMS: {os.environ['KAI_LLM_PARAMS']}")
 

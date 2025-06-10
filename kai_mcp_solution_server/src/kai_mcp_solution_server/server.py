@@ -1,10 +1,8 @@
 import asyncio
-import os
-import sys
 import traceback
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, Sequence, cast
+from typing import Any, cast
 
 from fastmcp import Context, FastMCP
 from langchain.chat_models import init_chat_model
@@ -12,7 +10,7 @@ from langchain.chat_models.base import BaseChatModel
 from langchain_core.language_models.fake_chat_models import FakeChatModel
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy import and_, or_, select, text
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from kai_mcp_solution_server.analyzer_types import ExtendedIncident
@@ -22,7 +20,6 @@ from kai_mcp_solution_server.dao import (
     DBIncident,
     DBSolution,
     DBViolation,
-    Solution,
     SolutionChangeSet,
     SolutionStatus,
     ViolationID,
@@ -231,8 +228,8 @@ async def generate_hint(
 
         for solution in solutions:
             prompt = (
-                f"The following incidents had this accepted solution. "
-                f"Generate a hint for the user so that they can perform the same solution:\n"
+                "The following incidents had this accepted solution. "
+                "Generate a hint for the user so that they can perform the same solution:\n"
             )
 
             for i, incident in enumerate(solution.incidents):

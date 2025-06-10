@@ -8,7 +8,6 @@ a proper Model Context Protocol connection and testing the available tools and r
 
 import argparse
 import asyncio
-import json
 import logging
 import os
 import ssl
