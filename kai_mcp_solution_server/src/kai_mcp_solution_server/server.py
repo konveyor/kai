@@ -149,12 +149,15 @@ async def create_solution(
     incident_ids: list[int],
     change_set: SolutionChangeSet,
     reasoning: str | None = None,
-    used_hint_id: int | None = None,
+    used_hint_ids: list[int] | None = None,
 ) -> int:
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
 
     if len(incident_ids) == 0:
         raise ValueError("At least one incident ID must be provided.")
+
+    if used_hint_ids is None:
+        used_hint_ids = []
 
     async with kai_ctx.session_maker.begin() as session:
         incident_ids_cond = [
@@ -164,10 +167,13 @@ async def create_solution(
         incidents_stmt = select(DBIncident).where(or_(*incident_ids_cond))
         incidents = (await session.execute(incidents_stmt)).scalars().all()
 
-        hint_stmt = select(DBHint).where(DBHint.id == used_hint_id)
-        hint = (await session.execute(hint_stmt)).scalar_one_or_none()
-        if used_hint_id is not None and hint is None:
-            raise ValueError(f"Hint with ID {used_hint_id} not found in the database.")
+        hint_stmt = select(DBHint).where(DBHint.id.in_(used_hint_ids))
+        hints = (await session.execute(hint_stmt)).scalars().all()
+
+        if missing_ids := set(used_hint_ids) - {hint.id for hint in hints}:
+            raise ValueError(
+                f"Some hint IDs {missing_ids} do not exist in the database."
+            )
 
         solution = DBSolution(
             client_id=client_id,
@@ -175,7 +181,7 @@ async def create_solution(
             reasoning=reasoning,
             solution_status=SolutionStatus.PENDING,
             incidents=set(incidents),
-            hint=hint,
+            hints=set(hints),
         )
 
         session.add(solution)

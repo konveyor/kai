@@ -337,6 +337,19 @@ class Solution(BaseModel):
     hint_id: int | None = None
 
 
+solution_hint_association_table = Table(
+    "kai_solution_hint_association",
+    Base.metadata,
+    Column(
+        "solution_id",
+        ForeignKey("kai_solutions.id", ondelete="CASCADE", onupdate="CASCADE"),
+    ),
+    Column(
+        "hint_id", ForeignKey("kai_hints.id", ondelete="CASCADE", onupdate="CASCADE")
+    ),
+)
+
+
 class DBSolution(Base):
     __tablename__ = "kai_solutions"
 
@@ -366,14 +379,9 @@ class DBSolution(Base):
     # TODO: Tie into the profile work?
 
     # TODO: Make this accept more than one hint?
-    hint_id: Mapped[int | None] = mapped_column(
-        ForeignKey("kai_hints.id", ondelete="SET NULL", onupdate="CASCADE"),
-        init=False,
-        nullable=True,
-    )
-    hint: Mapped["DBHint | None"] = relationship(
+    hints: Mapped[set["DBHint"]] = relationship(
+        secondary=solution_hint_association_table,
         back_populates="solutions",
-        uselist=False,
         lazy="selectin",
     )
 
@@ -422,7 +430,8 @@ class DBHint(Base):
 
     # Solutions that use this hint
     solutions: Mapped[set["DBSolution"]] = relationship(
-        back_populates="hint",
+        secondary=solution_hint_association_table,
+        back_populates="hints",
         lazy="selectin",
     )
 
