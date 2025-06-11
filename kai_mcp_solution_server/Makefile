@@ -6,7 +6,9 @@ NAMESPACE ?= konveyor-kai-solution-server
 
 # Directories
 PROJECT_ROOT = $(shell pwd)
-BUILD_DIR = $(PROJECT_ROOT)/deploy
+
+BUILD_DIR = $(PROJECT_ROOT)/tools/deploy
+
 TESTS_DIR = $(PROJECT_ROOT)/tests
 
 HOST ?= localhost
@@ -20,7 +22,9 @@ all: build
 .PHONY: build
 build:
 	@echo "Building container image $(IMAGE) with Podman..."
-	podman build -t $(IMAGE) -f $(BUILD_DIR)/Containerfile $(PROJECT_ROOT)/..
+
+	podman build -t $(IMAGE) -f $(BUILD_DIR)/Containerfile $(PROJECT_ROOT)
+
 
 # Push the container image to the registry
 .PHONY: push
@@ -75,7 +79,9 @@ port-forward:
 .PHONY: run-local
 run-local:
 	@echo "Running MCP solution server locally..."
-	cd $(PROJECT_ROOT) && python -m main --transport sse --host 0.0.0.0 --port 8000 --log-level info
+
+	cd $(PROJECT_ROOT) && uv run python -m kai_mcp_solution_server --transport sse --host 0.0.0.0 --port 8000
+
 
 # Run with Podman for testing
 .PHONY: run-podman
