@@ -2,10 +2,13 @@ package service
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
+
+	rpc "github.com/cenkalti/rpc2"
 
 	"github.com/go-logr/logr"
 	"github.com/konveyor/analyzer-lsp/engine"
@@ -37,7 +40,21 @@ type cacheValue struct {
 	ruleset       konveyor.RuleSet
 }
 
-type Analyzer struct {
+type Analyzer interface {
+	Analyze(client *rpc.Client, args Args, response *Response) error
+	NotifyFileChanges(client *rpc.Client, changes NotifyFileChangesArgs, response *NotifyFileChangesResponse) error
+	Stop()
+}
+
+type NotifyFileChangesArgs struct {
+	Changes []provider.FileChange
+}
+
+type NotifyFileChangesResponse struct {
+	err error
+}
+
+type analyzer struct {
 	Logger logr.Logger
 
 	engine     engine.RuleEngine
@@ -52,9 +69,15 @@ type Analyzer struct {
 	discoveryCache      []konveyor.RuleSet
 	cache               map[string][]cacheValue
 	cacheMutex          sync.RWMutex
+
+	contextLines int
+	location     string
+	rules        string
+
+	updateConditionProvider func(*rpc.Client, map[string]provider.InternalProviderClient, []engine.RuleSet, []engine.RuleSet, logr.Logger, int, string, string) ([]engine.RuleSet, []engine.RuleSet, error)
 }
 
-func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, lspServerPath, bundles, depOpenSourceLabelsFile, rules string, log logr.Logger) (*Analyzer, error) {
+func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, lspServerPath, bundles, depOpenSourceLabelsFile, rules string, log logr.Logger) (Analyzer, error) {
 	prefix, err := filepath.Abs(location)
 	if err != nil {
 		return nil, err
@@ -149,7 +172,7 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 	log.Info("using rulesets", "discoverRulesets", len(discoveryRulesets), "violationRulesets", len(violationRulesets))
 	// Generate discoveryRulesetCache here??
 
-	return &Analyzer{
+	return &analyzer{
 		Logger:              log,
 		engine:              eng,
 		engineCtx:           ctx,
@@ -195,7 +218,7 @@ type Response struct {
 	Rulesets []konveyor.RuleSet
 }
 
-func (a *Analyzer) Stop() {
+func (a *analyzer) Stop() {
 	a.Logger.Info("stopping engine")
 	a.engine.Stop()
 	a.Logger.Info("engine stopped")
@@ -206,11 +229,24 @@ func (a *Analyzer) Stop() {
 	}
 }
 
-func (a *Analyzer) Analyze(args Args, response *Response) error {
+func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) error {
 	prop := otel.GetTextMapPropagator()
 	ctx := prop.Extract(context.Background(), args.Carrier)
 	ctx, span := tracer.Start(ctx, "analyze")
 	defer span.End()
+
+	dRulesets, vRulesets := a.discoveryRulesets, a.violationRulesets
+	if a.updateConditionProvider != nil {
+		var err error
+		dRulesets, vRulesets, err = a.updateConditionProvider(client, a.initedProviders, a.discoveryRulesets, a.violationRulesets, a.Logger.WithName("provider update"), a.contextLines, a.location, a.rules)
+		if err != nil {
+			a.Logger.Error(err, "unable to update Conditions with new client")
+			return err
+		}
+		a.Logger.Info("updated rulesets", "discovery", len(a.discoveryRulesets), "violations", len(a.violationRulesets))
+	}
+
+	//a.Logger.Info("compare before after", "before", fmt.Sprintf("%+v", a.violationRulesets), "after", fmt.Sprintf("%+v", vRulesets))
 
 	selectors := []engine.RuleSelector{}
 	if args.LabelSelector != "" {
@@ -248,10 +284,10 @@ func (a *Analyzer) Analyze(args Args, response *Response) error {
 
 	// Adding spans to the discovery rules run and for the violation rules run
 	// to determine if discovery rule segmentation saves us enough
-	if len(a.discoveryRulesets) != 0 && args.ResetCache {
+	if len(dRulesets) != 0 && args.ResetCache {
 		// Here we want to refresh the discovery ruleset cache
 		ctx, span := tracer.Start(ctx, "discovery-rules")
-		rulesets := a.engine.RunRulesScoped(ctx, a.discoveryRulesets, engine.NewScope(scopes...), selectors...)
+		rulesets := a.engine.RunRulesScoped(ctx, dRulesets, engine.NewScope(scopes...), selectors...)
 		a.discoveryCacheMutex.Lock()
 		a.discoveryCache = rulesets
 		a.discoveryCacheMutex.Unlock()
@@ -262,7 +298,7 @@ func (a *Analyzer) Analyze(args Args, response *Response) error {
 	// This will already wait
 	//
 	violationCTX, violationSpan := tracer.Start(ctx, "violation-rules")
-	rulesets := a.engine.RunRulesScoped(violationCTX, a.violationRulesets, engine.NewScope(scopes...), selectors...)
+	rulesets := a.engine.RunRulesScoped(violationCTX, vRulesets, engine.NewScope(scopes...), selectors...)
 	violationSpan.End()
 
 	sort.SliceStable(rulesets, func(i, j int) bool {
@@ -283,7 +319,20 @@ func (a *Analyzer) Analyze(args Args, response *Response) error {
 	return nil
 }
 
-func (a *Analyzer) setCache(rulesets []konveyor.RuleSet) {
+func (a *analyzer) NotifyFileChanges(client *rpc.Client, args NotifyFileChangesArgs, response *NotifyFileChangesResponse) error {
+	errs := []error{}
+	for name, svcClient := range a.initedProviders {
+		err := svcClient.NotifyFileChanges(context.Background(), args.Changes...)
+		if err != nil {
+			errs = append(errs, err)
+		}
+		a.Logger.Info("[pg] sent notify request", "name", name)
+	}
+	response.err = errors.Join(errs...)
+	return nil
+}
+
+func (a *analyzer) setCache(rulesets []konveyor.RuleSet) {
 	a.cacheMutex.Lock()
 	defer a.cacheMutex.Unlock()
 	a.cache = map[string][]cacheValue{}
@@ -291,7 +340,7 @@ func (a *Analyzer) setCache(rulesets []konveyor.RuleSet) {
 	a.addRulesetsToCache(rulesets)
 }
 
-func (a *Analyzer) updateCache(rulesets []konveyor.RuleSet, includedPaths []string) {
+func (a *analyzer) updateCache(rulesets []konveyor.RuleSet, includedPaths []string) {
 	a.cacheMutex.Lock()
 	defer a.cacheMutex.Unlock()
 	if includedPaths != nil {
@@ -300,7 +349,7 @@ func (a *Analyzer) updateCache(rulesets []konveyor.RuleSet, includedPaths []stri
 	a.addRulesetsToCache(rulesets)
 }
 
-func (a *Analyzer) addRulesetsToCache(rulesets []konveyor.RuleSet) {
+func (a *analyzer) addRulesetsToCache(rulesets []konveyor.RuleSet) {
 
 	for _, r := range rulesets {
 		for violationName, v := range r.Violations {
@@ -349,14 +398,14 @@ func (a *Analyzer) addRulesetsToCache(rulesets []konveyor.RuleSet) {
 	}
 }
 
-func (a *Analyzer) invalidateCachePerFile(paths []string) {
+func (a *analyzer) invalidateCachePerFile(paths []string) {
 	for _, p := range paths {
 		a.Logger.Info("deleting cache entry for path", "path", p)
 		delete(a.cache, p)
 	}
 }
 
-func (a *Analyzer) createRulesetsFromCache() []konveyor.RuleSet {
+func (a *analyzer) createRulesetsFromCache() []konveyor.RuleSet {
 	a.cacheMutex.RLock()
 	defer a.cacheMutex.RUnlock()
 

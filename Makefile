@@ -36,11 +36,10 @@ build-kai-rpc-server:
 	pyinstaller --clean build/build.spec
 
 # This will build both binaries for kai, the kai-analyzer-rpc and the kai-rpc-server
-build-binaries: build-kai-analyzer build-kai-rpc-server
+build-binaries: build-kai-analyzer 
 
 # This will build the binaries in build-binaries and then move them to the correct location for run_demo.py
 set-binaries-demo: build-binaries
-	mv dist/kai-rpc-server example/analysis/kai-rpc-server
 	mv kai_analyzer_rpc/kai-analyzer example/analysis/kai-analyzer-rpc 
 	
 # This will set up the demo run, with all the things that you need for run_demo.py

@@ -14,7 +14,7 @@ from typing import Any, Iterator, Optional
 from urllib.parse import urlparse
 
 import yaml
-from pydantic import AliasChoices, BaseModel, Field, RootModel
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, RootModel
 
 """
 Report types ripped straight from analyzer-lsp.
@@ -31,6 +31,8 @@ class Incident(BaseModel):
     """
     An Incident is a specific instance of a rule being violated.
     """
+
+    model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
 
     # NOTE: `str` is the best equivalent of Go's `json.RawMessage`
     uri: str

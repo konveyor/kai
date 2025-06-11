@@ -7,6 +7,7 @@ ENV DB_PATH=/data/kai_solutions.db
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     python3-dev \
+
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
@@ -23,13 +24,14 @@ ENV UV_WORKSPACE=src
 # Install Python dependencies using uv
 RUN uv sync
 
+
 # Create a non-root user
 RUN useradd -m mcp
 # Set permissions for the data directory
 RUN chown -R mcp:mcp /data
+
 #allow access to write logs (this is a hack)
 RUN chown -R mcp:mcp /app
-
 USER mcp
 
 # Default to SSE transport on port 8000
