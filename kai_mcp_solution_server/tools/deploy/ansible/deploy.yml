@@ -1,0 +1,17 @@
+---
+# Ansible playbook to deploy/undeploy the KAI MCP Solution Server
+# This playbook runs locally and communicates with the cluster via k8s modules
+# Usage:
+#   - Deploy: ansible-playbook deploy.yml -e "namespace=konveyor-kai state=present"
+#   - Undeploy: ansible-playbook deploy.yml -e "namespace=konveyor-kai state=absent"
+
+- name: Manage KAI MCP Solution Server
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    state: "{{ state | default('present') }}"
+
+  roles:
+    - kai_mcp_solution_server
