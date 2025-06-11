@@ -1,3 +1,5 @@
+# Hints
+
 A proposed solution either uses a hint or it doesn't.
 
 Later on, when the agent requests a hint, for now, we'll take the most recent, hint with acceptance.
