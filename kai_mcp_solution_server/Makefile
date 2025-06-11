@@ -4,6 +4,7 @@
 IMAGE ?= quay.io/konveyor/kai-mcp-solution-server:latest
 NAMESPACE ?= konveyor-kai-solution-server
 MOUNT_PATH ?= /sse
+KAI_DB_DSN ?= sqlite+aiosqlite:///kai_solution_server.db
 
 # Directories
 PROJECT_ROOT = $(shell pwd)
@@ -80,15 +81,21 @@ port-forward:
 .PHONY: run-local
 run-local:
 	@echo "Running MCP solution server locally..."
-
-	cd $(PROJECT_ROOT) && uv run python -m kai_mcp_solution_server --transport sse --host 0.0.0.0 --port 8000 --mount-path=$(MOUNT_PATH)
+	@if [ -z "$(KAI_LLM_PARAMS)" ]; then echo "Error: KAI_LLM_PARAMS is required"; exit 1; fi
+	cd $(PROJECT_ROOT) && KAI_DB_DSN='$(KAI_DB_DSN)' KAI_LLM_PARAMS='$(KAI_LLM_PARAMS)' uv run python -m kai_mcp_solution_server --transport sse --host 0.0.0.0 --port 8000 --mount-path=$(MOUNT_PATH)
 
 
 # Run with Podman for testing
 .PHONY: run-podman
 run-podman: build
 	@echo "Running MCP solution server in Podman..."
-	podman run --rm -it -p 8000:8000 -e MOUNT_PATH='$(MOUNT_PATH)' --name kai-mcp-solution-server $(IMAGE) 
+	@if [ -z "$(KAI_LLM_PARAMS)" ]; then echo "Error: KAI_LLM_PARAMS is required"; exit 1; fi
+	podman run --rm -it -p 8000:8000 \
+		-e MOUNT_PATH='$(MOUNT_PATH)' \
+		-e KAI_LLM_PARAMS='$(KAI_LLM_PARAMS)' \
+		-e KAI_DB_DSN='$(KAI_DB_DSN)' \
+		$(if $(PODMAN_ENV_VARS),$(PODMAN_ENV_VARS),) \
+		--name kai-mcp-solution-server $(IMAGE) 
 
 # Test against HTTP server
 .PHONY: test-http
