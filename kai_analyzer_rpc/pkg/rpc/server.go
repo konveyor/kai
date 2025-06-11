@@ -29,6 +29,7 @@ type Server struct {
 }
 
 func NewServer(ctx context.Context, s *rpc.Server, log logr.Logger, notificationServiceName string, rules string, sourceDirectory string) *Server {
+	log.Info("NewServer", "build", "unix")
 	state := rpc.NewState()
 	state.Set("seq", &atomic.Uint64{})
 	return &Server{ctx: ctx,

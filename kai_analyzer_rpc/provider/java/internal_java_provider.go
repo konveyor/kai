@@ -53,6 +53,7 @@ func NewInternalProviderClient(ctx context.Context, log logr.Logger, contextLine
 }
 
 func NewInternalProviderClientForPipe(ctx context.Context, log logr.Logger, contextLines int, location, pipeFile string) (provider.InternalProviderClient, error) {
+	log.Info("NewInternalProviderClientForPipe", "build", "unix")
 	p := extjava.NewJavaProvider(log, "java", contextLines, provider.Config{
 		Name: "java",
 	})
