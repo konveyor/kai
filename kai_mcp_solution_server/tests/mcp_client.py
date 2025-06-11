@@ -310,7 +310,7 @@ async def run_tests(args: MCPClientArgs) -> bool:
             transport = ""
             if not args.host.startswith("http"):
                 transport = "http://"
-            server_url = f"{transport}{args.host}:{args.port}/sse"
+            server_url = f"{transport}{args.host}:{args.port}{args.mount_path}"
             print(f"Connecting to server at {server_url}...")
             logger.debug("Initializing HTTP/SSE transport with URL: %s", server_url)
 
@@ -541,14 +541,27 @@ def main() -> None:
     """Main function to parse arguments and run tests."""
     parser = argparse.ArgumentParser(description="Test client for MCP Solution Server")
     parser.add_argument(
-        "--host", default="localhost", help="Hostname of the MCP server"
+        "--host",
+        default="localhost",
+        help="Hostname of the MCP server (for http transport)",
     )
-    parser.add_argument("--port", type=int, default=8000, help="Port of the MCP server")
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port of the MCP server (for http transport)",
+    )
     parser.add_argument(
         "--transport",
         default="stdio",
         choices=["http", "stdio"],
         help="Transport protocol (http or stdio)",
+    )
+    parser.add_argument(
+        "--mount-path",
+        type=str,
+        default="/sse",
+        help="Path the MCP server is mounted behind (ie, /hub/services/kai) (for http transport)",
     )
     # Calculate default server path relative to this script
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -573,7 +586,7 @@ def main() -> None:
     parser.add_argument(
         "--insecure",
         action="store_true",
-        help="Allow insecure connections (skip SSL verification)",
+        help="Allow insecure connections (skip SSL verification for http transport",
     )
 
     args = parser.parse_args()
