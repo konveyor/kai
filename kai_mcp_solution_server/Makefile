@@ -3,6 +3,7 @@
 # Configuration
 IMAGE ?= quay.io/konveyor/kai-mcp-solution-server:latest
 NAMESPACE ?= konveyor-kai-solution-server
+MOUNT_PATH ?= /sse
 
 # Directories
 PROJECT_ROOT = $(shell pwd)
@@ -80,21 +81,21 @@ port-forward:
 run-local:
 	@echo "Running MCP solution server locally..."
 
-	cd $(PROJECT_ROOT) && uv run python -m kai_mcp_solution_server --transport sse --host 0.0.0.0 --port 8000
+	cd $(PROJECT_ROOT) && uv run python -m kai_mcp_solution_server --transport sse --host 0.0.0.0 --port 8000 --mount-path=$(MOUNT_PATH)
 
 
 # Run with Podman for testing
 .PHONY: run-podman
 run-podman: build
 	@echo "Running MCP solution server in Podman..."
-	podman run --rm -it -p 8000:8000 --name kai-mcp-solution-server $(IMAGE)
+	podman run --rm -it -p 8000:8000 -e MOUNT_PATH='$(MOUNT_PATH)' --name kai-mcp-solution-server $(IMAGE) 
 
 # Test against HTTP server
 .PHONY: test-http
 test-http:
 	@echo "Running MCP test client against HTTP server..."
 	@echo "Make sure the server is running with 'make run-local' or 'make run-podman'"
-	cd $(PROJECT_ROOT)/.. && python $(TESTS_DIR)/mcp_client.py --transport http --host $(HOST) --port $(PORT) --insecure
+	cd $(PROJECT_ROOT)/.. && python $(TESTS_DIR)/mcp_client.py --transport http --host $(HOST) --port $(PORT) --insecure --mount-path $(MOUNT_PATH)
 
 # Test using stdio transport
 .PHONY: test-stdio
