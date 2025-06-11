@@ -8,7 +8,6 @@ Create Date: 2025-05-21 12:53:40.009990
 
 from typing import Sequence, Union
 
-
 # trunk-ignore-begin(ruff/F401)
 import sqlalchemy as sa
 from alembic import op
