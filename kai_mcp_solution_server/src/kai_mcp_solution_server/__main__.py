@@ -8,9 +8,7 @@ if __name__ == "__main__":
         description="Run the KAI MCP Solution Server",
     )
     parser.add_argument(
-        "--transport",
-        type=str,
-        default="stdio",
+        "--transport", type=str, default="stdio", choices=["stdio", "streamable-http"]
     )
 
     parser.add_argument(
@@ -30,7 +28,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mount-path",
         type=str,
-        default="/sse",
+        default="/",
         help="Path the MCP server is mounted behind (ie, /hub/services/kai)",
     )
 

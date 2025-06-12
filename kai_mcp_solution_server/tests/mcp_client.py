@@ -17,8 +17,8 @@ import warnings
 from pathlib import Path
 
 from mcp import ClientSession, StdioServerParameters
-from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
+from mcp.client.streamable_http import streamablehttp_client
 from pydantic import BaseModel
 
 from kai_mcp_solution_server.analyzer_types import ExtendedIncident
@@ -306,13 +306,15 @@ async def run_tests(args: MCPClientArgs) -> bool:
 
     try:
         if args.transport == "http":
-            # Setup HTTP transport using SSE
+            # Setup HTTP transport using streamable-http
             transport = ""
             if not args.host.startswith("http"):
                 transport = "http://"
             server_url = f"{transport}{args.host}:{args.port}{args.mount_path}"
             print(f"Connecting to server at {server_url}...")
-            logger.debug("Initializing HTTP/SSE transport with URL: %s", server_url)
+            logger.debug(
+                "Initializing streamable-http transport with URL: %s", server_url
+            )
 
             try:
                 # Configure SSL verification if insecure flag is set
@@ -371,8 +373,13 @@ async def run_tests(args: MCPClientArgs) -> bool:
                     print("⚠️ Warning: SSL certificate verification is disabled")
 
                 try:
-                    async with sse_client(server_url) as (read, write):
-                        logger.debug("SSE client connection established")
+                    # Use streamable-http client for the new transport
+                    async with streamablehttp_client(server_url) as (
+                        read,
+                        write,
+                        get_session_id,
+                    ):
+                        logger.debug("Streamable HTTP client connection established")
                         async with ClientSession(read, write) as session:
                             logger.debug("MCP ClientSession initialized")
                             await run_test_suite(session, args)
@@ -454,8 +461,8 @@ async def run_tests(args: MCPClientArgs) -> bool:
             # Setup STDIO transport
             server_params = StdioServerParameters(
                 command="python",
-                args=[str(args.server_path), "--transport", "stdio"],
-                cwd=args.server_path.parent,
+                args=["-m", "kai_mcp_solution_server", "--transport", "stdio"],
+                cwd=str(args.server_path),
                 env=os.environ.copy(),
             )
             logger.debug("STDIO server parameters: %s", server_params)

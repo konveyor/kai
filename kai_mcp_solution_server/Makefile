@@ -3,7 +3,7 @@
 # Configuration
 IMAGE ?= quay.io/konveyor/kai-mcp-solution-server:latest
 NAMESPACE ?= konveyor-kai-solution-server
-MOUNT_PATH ?= /sse
+MOUNT_PATH ?= /
 KAI_DB_DSN ?= sqlite+aiosqlite:///kai_solution_server.db
 
 # Directories
@@ -82,7 +82,7 @@ port-forward:
 run-local:
 	@echo "Running MCP solution server locally..."
 	@if [ -z "$(KAI_LLM_PARAMS)" ]; then echo "Error: KAI_LLM_PARAMS is required"; exit 1; fi
-	cd $(PROJECT_ROOT) && KAI_DB_DSN='$(KAI_DB_DSN)' KAI_LLM_PARAMS='$(KAI_LLM_PARAMS)' uv run python -m kai_mcp_solution_server --transport sse --host 0.0.0.0 --port 8000 --mount-path=$(MOUNT_PATH)
+	cd $(PROJECT_ROOT) && KAI_DB_DSN='$(KAI_DB_DSN)' KAI_LLM_PARAMS='$(KAI_LLM_PARAMS)' uv run python -m kai_mcp_solution_server --transport streamable-http --host 0.0.0.0 --port 8000 --mount-path=$(MOUNT_PATH)
 
 
 # Run with Podman for testing
@@ -94,7 +94,7 @@ run-podman: build
 		-e MOUNT_PATH='$(MOUNT_PATH)' \
 		-e KAI_LLM_PARAMS='$(KAI_LLM_PARAMS)' \
 		-e KAI_DB_DSN='$(KAI_DB_DSN)' \
-		$(if $(PODMAN_ENV_VARS),$(PODMAN_ENV_VARS),) \
+		$(if $(PODMAN_ARGS),$(PODMAN_ARGS),) \
 		--name kai-mcp-solution-server $(IMAGE) 
 
 # Test against HTTP server
