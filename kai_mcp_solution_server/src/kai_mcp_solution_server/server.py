@@ -1,16 +1,18 @@
 import asyncio
+import json
+import os
 import traceback
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, cast
+from typing import Annotated, Any, cast
 
 from fastmcp import Context, FastMCP
 from langchain.chat_models import init_chat_model
 from langchain.chat_models.base import BaseChatModel
 from langchain_core.language_models.fake_chat_models import FakeChatModel
-from pydantic import BaseModel
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy import and_, or_, select
+from pydantic import BaseModel, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+from sqlalchemy import URL, and_, make_url, or_, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from kai_mcp_solution_server.analyzer_types import ExtendedIncident
@@ -32,11 +34,56 @@ class SolutionServerSettings(BaseSettings):
 
     # "postgresql+asyncpg://postgres:mysecretpassword@localhost:5432/postgres"
     # "sqlite+aiosqlite:////home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/kai_mcp_solution_server/kai_mcp_solution_server.db"
-    db_dsn: str
+
+    db_dsn: Annotated[URL, NoDecode]
 
     llm_params: dict[str, Any] | None
 
     drop_all: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_db_dsn(cls, data: Any) -> Any:
+        print(data)
+        print(type(data))
+
+        if isinstance(data, dict):
+            kwargs: dict[str, Any]
+
+            if "db_dsn" not in data:
+                kwargs = {}
+
+            elif isinstance(data["db_dsn"], URL):
+                kwargs = data["db_dsn"]._asdict()
+
+            elif isinstance(data["db_dsn"], dict):
+                kwargs = data["db_dsn"]
+
+            elif isinstance(data["db_dsn"], str):
+                try:
+                    kwargs = json.loads(data["db_dsn"])
+                except json.JSONDecodeError:
+                    kwargs = make_url(data["db_dsn"])._asdict()
+
+            else:
+                raise ValueError(
+                    f"Invalid type for db_dsn: {type(data['db_dsn'])}. Expected missing, str, dict, or URL."
+                )
+
+            for key in [
+                "drivername",
+                "username",
+                "password",
+                "host",
+                "port",
+                "database",
+            ]:
+                if kwargs.get(key) is None:
+                    kwargs[key] = os.getenv(f"KAI_DB_{key.upper()}", None)
+
+            data["db_dsn"] = URL.create(**kwargs)
+
+        return data
 
 
 class KaiSolutionServerContext:
