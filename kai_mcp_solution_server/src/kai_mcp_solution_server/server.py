@@ -44,8 +44,23 @@ class SolutionServerSettings(BaseSettings):
     @model_validator(mode="before")
     @classmethod
     def validate_db_dsn(cls, data: Any) -> Any:
-        print(data)
-        print(type(data))
+        """
+        Environment variables added:
+        - `KAI_DB_DRIVERNAME`
+        - `KAI_DB_USERNAME`
+        - `KAI_DB_PASSWORD`
+        - `KAI_DB_HOST`
+        - `KAI_DB_PORT`
+        - `KAI_DB_DATABASE`
+
+        1. Any parameters supplied via Python's `SolutionServerSettings`
+           constructor takes highest precedence, then any configuration supplied
+           via `KAI_DB_DSN`.
+        2. Try to parse `KAI_DB_DSN` as a json object, containing `drivername`,
+           `username`, etc... If that fails, parse it as a connection string.
+        3. If the `KAI_DB_DSN` environment variable or the `db_dsn` field is not
+           supplied, try to get all information from the new variables
+        """
 
         if isinstance(data, dict):
             kwargs: dict[str, Any]
