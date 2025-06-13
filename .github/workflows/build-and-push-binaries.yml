@@ -188,6 +188,7 @@ jobs:
           echo PATH=$PATH >> $GITHUB_ENV
 
       - name: Build RPC server
+        if: false
         run: |
           pip install pyinstaller
           pip install -e .
@@ -195,15 +196,17 @@ jobs:
         env:
           PATH: ${{ env.PATH }}
 
-      - name: Build Kai Analyzer (non-windows)
-        if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
+      - name: Build Kai Analyzer
+        # if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
         run: |
-          cd kai_analyzer_rpc && go build -ldflags="-extldflags=-static" -o kai-analyzer-rpc main.go && cd ..
+          cd kai_analyzer_rpc
+          go build -ldflags="-extldflags=-static" -o kai-analyzer-rpc main.go
+          cd ..
 
-      - name: Build Kai Analyzer (windows)
-        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
-        run: |
-          cd kai_analyzer_rpc; go build -ldflags="-extldflags=-static" -o kai-analyzer-rpc main.go; cd ..
+      # - name: Build Kai Analyzer (windows)
+      #   if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
+      #   run: |
+      #     cd kai_analyzer_rpc; go build -ldflags="-extldflags=-static" -o kai-analyzer-rpc main.go; cd ..
 
       - name: Download Build Artifact
         uses: actions/download-artifact@v4
@@ -284,7 +287,6 @@ jobs:
         env:
           GENAI_KEY: "BWAHAHA"
           OPENAI_API_KEY: "BWAHAHA"
-
 
       - name: Run e2e test
         if: false 
@@ -371,15 +373,22 @@ jobs:
 
       - name: Archive binaries (linux & mac)
         if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
+        # run: |
+        #   zip -j kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip dist/kai-rpc-server kai_analyzer_rpc/kai-analyzer-rpc ./example/analysis/maven.default.index ./example/analysis/bundle.jar 
+        #   zip -r kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip ./example/analysis/jdtls ./example/analysis/rulesets
         run: |
-          zip -j kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip dist/kai-rpc-server kai_analyzer_rpc/kai-analyzer-rpc ./example/analysis/maven.default.index ./example/analysis/bundle.jar 
+          zip -j kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip kai_analyzer_rpc/kai-analyzer-rpc ./example/analysis/maven.default.index ./example/analysis/bundle.jar 
           zip -r kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip ./example/analysis/jdtls ./example/analysis/rulesets
 
       - name: Archive binaries (windows)
         if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
+        # run: |
+        #   mv kai_analyzer_rpc\kai-analyzer-rpc kai_analyzer_rpc\kai-analyzer-rpc.exe
+        #   $filesToInclude = "dist\kai-rpc-server.exe", "kai_analyzer_rpc\kai-analyzer-rpc.exe", "java-deps\maven.default.index", "java-deps\rulesets", "java-deps\bundle.jar", "java-deps\jdtls"
+        #   Compress-Archive -Path $filesToInclude -Destination kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip
         run: |
           mv kai_analyzer_rpc\kai-analyzer-rpc kai_analyzer_rpc\kai-analyzer-rpc.exe
-          $filesToInclude = "dist\kai-rpc-server.exe", "kai_analyzer_rpc\kai-analyzer-rpc.exe", "java-deps\maven.default.index", "java-deps\rulesets", "java-deps\bundle.jar", "java-deps\jdtls"
+          $filesToInclude = "kai_analyzer_rpc\kai-analyzer-rpc.exe", "java-deps\maven.default.index", "java-deps\rulesets", "java-deps\bundle.jar", "java-deps\jdtls"
           Compress-Archive -Path $filesToInclude -Destination kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip
 
       - name: Upload binary
