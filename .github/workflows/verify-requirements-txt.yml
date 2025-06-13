@@ -1,0 +1,40 @@
+name: Check requirements.txt is up to date
+
+on: [pull_request]
+
+jobs:
+  verify-requirements:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: Sync production environment
+        run: |
+          cd kai_mcp_solution_server/
+          uv sync --no-dev
+          uv pip freeze --exclude-editable > new-requirements.txt
+
+      - name: Compare with committed requirements.txt
+        run: |
+          cd kai_mcp_solution_server/
+
+          # Normalize line endings
+          sed -i 's/\r$//' requirements.txt new-requirements.txt
+
+          # Show unified diff and fail if different
+          if ! diff -u requirements.txt new-requirements.txt ; then
+            echo "::error file=requirements.txt::Committed requirements.txt is stale. Run 'uv sync --no-dev && uv pip freeze > requirements.txt' and commit the result."
+            exit 1
+          fi
