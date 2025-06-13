@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo "Running mypy..."
-uv run mypy kai kai_solution_server --namespace-packages --enable-error-code unused-awaitable
+uv run mypy src --enable-error-code unused-awaitable
 mypy_result=$?
 if [ "${mypy_result}" -ne 0 ]; then
 	echo "mypy failed."
