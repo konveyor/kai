@@ -212,7 +212,7 @@ async def update_solution_status(
         await session.commit()
 
     if solution_status == SolutionStatus.ACCEPTED:
-        asyncio.create_task(generate_hint(kai_ctx, client_id))
+        asyncio.create_task(generate_hint(kai_ctx, client_id))  # type: ignore[unused-awaitable]
 
 
 async def generate_hint(
