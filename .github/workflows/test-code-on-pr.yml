@@ -48,14 +48,12 @@ jobs:
           cd ..
           git config --global user.email "tester@example.com"
           git config --global user.name "Tester"
-      - name: Test with unittest and generate coverage report
-        run: ./run_tests.sh
       - name: Test kai_mcp_solution_server
         run: |
           if [ "$RUNNER_OS" == "Linux" ]; then
             cd kai_mcp_solution_server
             uv sync
-            uv run python -m coverage run --branch -m pytest -s --exitfirst
+            ./run_tests.sh
           fi
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
