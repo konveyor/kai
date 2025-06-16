@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy import (
     ARRAY,
     JSON,
+    URL,
     Column,
     Connection,
     DateTime,
@@ -192,7 +193,7 @@ class Base(MappedAsDataclass, DeclarativeBase):
     }
 
 
-async def get_async_engine(url: str, drop_all: bool = False) -> AsyncEngine:
+async def get_async_engine(url: URL | str, drop_all: bool = False) -> AsyncEngine:
     engine = create_async_engine(url)
 
     async with engine.begin() as conn:
