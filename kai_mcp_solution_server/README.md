@@ -249,6 +249,33 @@ Calculates the success rate (accepted solutions) for a list of violations.
   make run-with-tests
   ```
 
+## Authentication
+
+The KAI MCP Solution Server supports bearer token authentication for HTTP transport connections.
+
+### Bearer Token Authentication
+
+Bearer tokens can be provided through the test client for HTTP connections:
+
+```bash
+# Using bearer token with test client
+python tests/mcp_client.py --transport http --host api.example.com --bearer-token "your-jwt-token"
+
+# Using Makefile with bearer token
+make test-http BEARER_TOKEN="your-jwt-token"
+
+# Combined with other options
+python tests/mcp_client.py --transport http --host secure-server.com --port 443 --bearer-token "token" --insecure
+```
+
+### Authentication Headers
+
+When a bearer token is provided, the client automatically adds the proper Authorization header to all HTTP requests:
+
+```
+Authorization: Bearer your-jwt-token
+```
+
 ## Test Client Usage
 
 The test client (`tests/mcp_client.py`) is provided to help test and verify the functionality of the MCP solution server. It can connect to the server using either HTTP or stdio transport.
@@ -268,6 +295,9 @@ python tests/mcp_client.py --full-output
 
 # Show verbose output for debugging
 python tests/mcp_client.py --verbose
+
+# Using bearer token for authentication
+python tests/mcp_client.py --transport http --host localhost --port 8000 --bearer-token "your-token"
 ```
 
 The test client will run through all available tools and resources, demonstrating how to interact with the MCP solution server.

@@ -83,13 +83,13 @@ class SSLMonkeyPatch:
             self.original_httpx_client_init = httpx.Client.__init__
             self.original_httpx_async_client_init = httpx.AsyncClient.__init__
 
-            def patched_client_init(self, *args, **kwargs):
+            def patched_client_init(client_self, *args, **kwargs):
                 kwargs["verify"] = False
-                self.original_httpx_client_init(self, *args, **kwargs)
+                self.original_httpx_client_init(client_self, *args, **kwargs)
 
-            def patched_async_client_init(self, *args, **kwargs):
+            def patched_async_client_init(client_self, *args, **kwargs):
                 kwargs["verify"] = False
-                self.original_httpx_async_client_init(self, *args, **kwargs)
+                self.original_httpx_async_client_init(client_self, *args, **kwargs)
 
             httpx.Client.__init__ = patched_client_init
             httpx.AsyncClient.__init__ = patched_async_client_init

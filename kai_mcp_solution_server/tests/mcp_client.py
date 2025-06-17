@@ -254,6 +254,7 @@ class MCPClientArgs(BaseModel):
     full_output: bool = False
     verbose: bool = False
     insecure: bool = False
+    bearer_token: str | None = None
 
 
 async def run_tests(args: MCPClientArgs) -> bool:
@@ -291,7 +292,13 @@ async def run_tests(args: MCPClientArgs) -> bool:
                 ssl_patch = apply_ssl_bypass()
                 print("⚠️ Warning: SSL certificate verification is disabled")
 
+            # Setup client kwargs with transport and optional auth
             client_kwargs = {"transport": server_url}
+
+            if args.bearer_token:
+                client_kwargs["auth"] = args.bearer_token
+                logger.debug("Added bearer token authentication")
+                print("🔐 Bearer token authentication enabled")
 
         else:  # stdio transport
             print(f"Using server path: {args.server_path}")
@@ -471,6 +478,11 @@ def main() -> None:
         action="store_true",
         help="Allow insecure connections (skip SSL verification for http transport)",
     )
+    parser.add_argument(
+        "--bearer-token",
+        type=str,
+        help="Bearer token for authentication (for http transport)",
+    )
 
     args = parser.parse_args()
 
@@ -504,6 +516,7 @@ def test_mcp_solution_client() -> None:
         full_output=False,
         verbose=False,
         insecure=False,
+        bearer_token=None,
     )
 
     print(f"Using server script path: {args.server_path}")
