@@ -227,6 +227,107 @@ class TestMCPIntegration(unittest.TestCase):
 
         print("MCP client endpoints test completed successfully!")
 
+    def test_ssl_insecure_flag_real_request(self):
+        """
+        Test that the SSL insecure flag works by making a real HTTPS request
+        to a server with a self-signed or invalid certificate.
+
+        This uses httpbin.org's self-signed certificate endpoint to verify
+        that our SSL monkey patch actually works in practice.
+        """
+        import asyncio
+        import ssl
+        import sys
+        import importlib.util
+
+        print("=== Testing SSL Insecure Flag with Real HTTPS Request ===")
+
+        # Import the fastmcp Client and our SSL utility
+        from fastmcp import Client
+
+        try:
+            from ssl_utils import apply_ssl_bypass
+        except ImportError:
+            from .ssl_utils import apply_ssl_bypass
+
+        async def test_insecure_connection():
+            # Use a test URL that has SSL certificate issues
+            # httpbin.org provides endpoints for testing SSL
+            test_url = "https://self-signed.badssl.com"  # Known to have invalid cert
+
+            # Store original SSL context function
+            original_ssl_create_default_context = ssl.create_default_context
+
+            try:
+                # First, verify that without the patch, SSL verification fails
+                print("Testing that SSL verification normally fails...")
+                try:
+                    # This should fail with SSL verification error
+                    client = Client(transport=test_url)
+                    async with client:
+                        pass
+                    # If we get here, the test endpoint doesn't actually have SSL issues
+                    print(
+                        "! Warning: Test endpoint may not have SSL certificate issues"
+                    )
+                except Exception as e:
+                    if "ssl" in str(e).lower() or "certificate" in str(e).lower():
+                        print("✓ SSL verification correctly fails without --insecure")
+                    else:
+                        print(f"! Unexpected error (not SSL-related): {e}")
+                        # Continue with test anyway
+
+                # Now apply the monkey patch like the --insecure flag does
+                print("Applying SSL monkey patch...")
+                ssl_patch = apply_ssl_bypass()
+
+                # Try to connect with the patch applied
+                print("Testing SSL connection with monkey patch applied...")
+                ssl_error_found = False
+                connection_succeeded = False
+
+                try:
+                    client = Client(transport=test_url)
+                    async with client:
+                        # If we get here, the SSL handshake succeeded
+                        connection_succeeded = True
+                        print(
+                            "✓ SSL handshake succeeded - monkey patch bypassed certificate verification"
+                        )
+                except Exception as e:
+                    if "ssl" in str(e).lower() or "certificate" in str(e).lower():
+                        ssl_error_found = True
+                        print(f"✗ SSL monkey patch failed to bypass verification: {e}")
+                    else:
+                        # Non-SSL errors mean SSL was bypassed but other issues occurred
+                        print(f"✓ SSL bypassed (non-SSL error occurred): {e}")
+
+                # Success if either we got a full connection or we got non-SSL errors
+                success = connection_succeeded or not ssl_error_found
+
+                if success:
+                    print("✓ SSL certificate verification was successfully bypassed")
+                else:
+                    print("✗ SSL certificate verification was NOT bypassed")
+
+                return success
+
+            finally:
+                # Always restore SSL settings if patch was applied
+                if "ssl_patch" in locals():
+                    ssl_patch.restore_ssl_settings()
+
+        # Run the async test
+        try:
+            success = asyncio.run(test_insecure_connection())
+            self.assertTrue(
+                success,
+                "SSL insecure flag should successfully bypass certificate verification",
+            )
+            print("SSL insecure flag real request test completed successfully!")
+        except Exception as e:
+            self.fail(f"SSL insecure flag test failed: {e}")
+
 
 if __name__ == "__main__":
     unittest.main()

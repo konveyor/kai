@@ -10,24 +10,18 @@ import argparse
 import asyncio
 import logging
 import os
-import ssl
 import sys
 import uuid
-import warnings
 from pathlib import Path
 
 from fastmcp import Client
 from fastmcp.client.transports import PythonStdioTransport
 from pydantic import BaseModel
 
-# Store the original SSL context creator to patch it properly
-original_create_default_context = ssl.create_default_context
-
-# Import httpx for direct inspection
 try:
-    import httpx
+    from ssl_utils import apply_ssl_bypass
 except ImportError:
-    httpx = None
+    from .ssl_utils import apply_ssl_bypass
 
 from kai_mcp_solution_server.analyzer_types import ExtendedIncident
 from kai_mcp_solution_server.dao import SolutionChangeSet, SolutionFile, ViolationID
@@ -277,6 +271,8 @@ async def run_tests(args: MCPClientArgs) -> bool:
 
     logger.debug("Starting test run with arguments: %s", vars(args))
 
+    ssl_patch = None
+
     try:
         # Build client kwargs based on transport type
         if args.transport == "http":
@@ -290,54 +286,9 @@ async def run_tests(args: MCPClientArgs) -> bool:
 
             if args.insecure:
                 logger.debug(
-                    "Disabling SSL certificate verification by patching SSL module"
+                    "Applying SSL monkey patch to bypass certificate verification"
                 )
-                # Disable SSL verification warnings
-                warnings.filterwarnings("ignore", message="Unverified HTTPS request")
-                warnings.filterwarnings("ignore", category=Warning)
-
-                # Patch SSL module's default context creator to disable verification
-                def unverified_context(*args, **kwargs):
-                    context = original_create_default_context(*args, **kwargs)
-                    context.check_hostname = False
-                    context.verify_mode = ssl.CERT_NONE
-                    return context
-
-                # Apply the patch
-                ssl.create_default_context = unverified_context
-                logger.debug("Successfully patched ssl.create_default_context")
-
-                # For httpx - try to patch its SSL defaults too if available
-                if httpx:
-                    try:
-                        # Try to patch httpx client classes
-                        old_client_init = httpx.Client.__init__
-
-                        def patched_client_init(self, *args, **kwargs):
-                            kwargs["verify"] = False
-                            old_client_init(self, *args, **kwargs)
-
-                        httpx.Client.__init__ = patched_client_init
-
-                        # Same for AsyncClient
-                        old_async_client_init = httpx.AsyncClient.__init__
-
-                        def patched_async_client_init(self, *args, **kwargs):
-                            kwargs["verify"] = False
-                            old_async_client_init(self, *args, **kwargs)
-
-                        httpx.AsyncClient.__init__ = patched_async_client_init
-                        logger.debug("Patched httpx Client classes")
-
-                    except Exception as patch_err:
-                        logger.warning("Failed to patch httpx: %s", patch_err)
-
-                # Also set environment variables as backup
-                os.environ["SSL_CERT_VERIFY"] = "false"
-                os.environ["HTTPX_SSL_VERIFY"] = "false"
-                os.environ["HTTPX_NO_VERIFY"] = "true"
-                os.environ["PYTHONHTTPSVERIFY"] = "0"
-
+                ssl_patch = apply_ssl_bypass()
                 print("⚠️ Warning: SSL certificate verification is disabled")
 
             client_kwargs = {"transport": server_url}
@@ -421,38 +372,9 @@ async def run_tests(args: MCPClientArgs) -> bool:
             return False
 
         finally:
-            # Clean up SSL patches if insecure mode was used
-            if args.transport == "http" and args.insecure:
-                # Restore original SSL context creator
-                ssl.create_default_context = original_create_default_context
-                logger.debug("Restored original ssl.create_default_context")
-
-                # Restore httpx patches if applied
-                if httpx:
-                    try:
-                        # We need to store the original methods as module-level variables
-                        # to properly restore them. For now, just log that we attempted cleanup.
-                        logger.debug(
-                            "Note: httpx patches not restored (would require module-level storage)"
-                        )
-                    except Exception as restore_err:
-                        logger.warning(
-                            "Failed to restore httpx patches: %s", restore_err
-                        )
-
-                # Clean up environment variables
-                ssl_env_vars = [
-                    "SSL_CERT_VERIFY",
-                    "HTTPX_SSL_VERIFY",
-                    "HTTPX_NO_VERIFY",
-                    "PYTHONHTTPSVERIFY",
-                ]
-
-                for env_var in ssl_env_vars:
-                    if env_var in os.environ:
-                        del os.environ[env_var]
-
-                logger.debug("Cleaned up SSL verification environment variables")
+            # Clean up SSL patches if they were applied
+            if ssl_patch is not None:
+                ssl_patch.restore_ssl_settings()
 
     except Exception as e:
         logger.error("Unexpected error: %s", str(e), exc_info=True)
