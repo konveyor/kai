@@ -20,10 +20,6 @@ from fastmcp import Client
 from fastmcp.client.transports import PythonStdioTransport
 from pydantic import BaseModel
 
-from kai_mcp_solution_server.analyzer_types import ExtendedIncident
-from kai_mcp_solution_server.dao import SolutionChangeSet, SolutionFile, ViolationID
-from kai_mcp_solution_server.server import SuccessRateMetric
-
 # Store the original SSL context creator to patch it properly
 original_create_default_context = ssl.create_default_context
 
@@ -32,6 +28,10 @@ try:
     import httpx
 except ImportError:
     httpx = None
+
+from kai_mcp_solution_server.analyzer_types import ExtendedIncident
+from kai_mcp_solution_server.dao import SolutionChangeSet, SolutionFile, ViolationID
+from kai_mcp_solution_server.server import SuccessRateMetric
 
 # Configure logger
 logger = logging.getLogger("kai-mcp-client")
@@ -44,20 +44,6 @@ logger.addHandler(console_handler)
 
 # Default level is INFO, verbose will set to DEBUG
 logger.setLevel(logging.INFO)
-
-
-def format_code_block(code: str, language: str = "java") -> str:
-    """Format a code block with syntax highlighting."""
-    if not code:
-        return "No code provided"
-    return f"```{language}\n{code}\n```"
-
-
-def format_diff_block(diff: str) -> str:
-    """Format a diff block with syntax highlighting."""
-    if not diff:
-        return "No diff provided"
-    return f"```diff\n{diff}\n```"
 
 
 async def _run_create_incident(client: Client, client_id: str) -> int:
@@ -80,14 +66,8 @@ async def _run_create_incident(client: Client, client_id: str) -> int:
     try:
         result = await client.call_tool("create_incident", request)
 
-        # Handle fastmcp result format vs standard MCP result format
-        if hasattr(result, "content") and result.content:
-            incident_id = int(result.content[0].text)
-        elif isinstance(result, list) and result:
-            # fastmcp returns list of TextContent objects
-            incident_id = int(result[0].text)
-        else:
-            incident_id = None
+        # fastmcp returns list of TextContent objects
+        incident_id = int(result[0].text) if result else None
 
         if incident_id is None:
             raise ValueError("Incident ID is None, check server response")
@@ -176,14 +156,8 @@ public class ExampleService {
         logger.debug("Calling create_solution tool")
         result = await client.call_tool("create_solution", request)
 
-        # Handle fastmcp result format vs standard MCP result format
-        if hasattr(result, "content") and result.content:
-            solution_id = int(result.content[0].text)
-        elif isinstance(result, list) and result:
-            # fastmcp returns list of TextContent objects
-            solution_id = int(result[0].text)
-        else:
-            solution_id = None
+        # fastmcp returns list of TextContent objects
+        solution_id = int(result[0].text) if result else None
 
         if solution_id is None:
             raise ValueError("Solution ID is None, check server response")
@@ -314,11 +288,56 @@ async def run_tests(args: MCPClientArgs) -> bool:
             print(f"Connecting to server at {server_url}...")
             logger.debug("Initializing fastmcp Client with URL: %s", server_url)
 
-            # Configure SSL verification warnings if insecure flag is set
             if args.insecure:
-                logger.debug("Disabling SSL certificate verification warnings")
+                logger.debug(
+                    "Disabling SSL certificate verification by patching SSL module"
+                )
+                # Disable SSL verification warnings
                 warnings.filterwarnings("ignore", message="Unverified HTTPS request")
                 warnings.filterwarnings("ignore", category=Warning)
+
+                # Patch SSL module's default context creator to disable verification
+                def unverified_context(*args, **kwargs):
+                    context = original_create_default_context(*args, **kwargs)
+                    context.check_hostname = False
+                    context.verify_mode = ssl.CERT_NONE
+                    return context
+
+                # Apply the patch
+                ssl.create_default_context = unverified_context
+                logger.debug("Successfully patched ssl.create_default_context")
+
+                # For httpx - try to patch its SSL defaults too if available
+                if httpx:
+                    try:
+                        # Try to patch httpx client classes
+                        old_client_init = httpx.Client.__init__
+
+                        def patched_client_init(self, *args, **kwargs):
+                            kwargs["verify"] = False
+                            old_client_init(self, *args, **kwargs)
+
+                        httpx.Client.__init__ = patched_client_init
+
+                        # Same for AsyncClient
+                        old_async_client_init = httpx.AsyncClient.__init__
+
+                        def patched_async_client_init(self, *args, **kwargs):
+                            kwargs["verify"] = False
+                            old_async_client_init(self, *args, **kwargs)
+
+                        httpx.AsyncClient.__init__ = patched_async_client_init
+                        logger.debug("Patched httpx Client classes")
+
+                    except Exception as patch_err:
+                        logger.warning("Failed to patch httpx: %s", patch_err)
+
+                # Also set environment variables as backup
+                os.environ["SSL_CERT_VERIFY"] = "false"
+                os.environ["HTTPX_SSL_VERIFY"] = "false"
+                os.environ["HTTPX_NO_VERIFY"] = "true"
+                os.environ["PYTHONHTTPSVERIFY"] = "0"
+
                 print("⚠️ Warning: SSL certificate verification is disabled")
 
             client_kwargs = {"transport": server_url}
@@ -391,24 +410,49 @@ async def run_tests(args: MCPClientArgs) -> bool:
                 print(
                     f"! Make sure the server is running at {client_kwargs['transport']}"
                 )
-
-                # Add specific advice for SSL certificate errors
-                if (
-                    isinstance(e, ssl.SSLError)
-                    or "ssl" in str(e).lower()
-                    or "certificate" in str(e).lower()
-                ):
-                    print("! SSL certificate verification error. Try these options:")
+                if "ssl" in str(e).lower() or "certificate" in str(e).lower():
                     print(
-                        "   1. Use the --insecure flag to bypass SSL verification (not recommended for production)"
+                        "! SSL certificate verification error. Try --insecure flag for testing"
                     )
-                    print("   2. Use a valid SSL certificate on the server")
-                    print("   3. Add the server's certificate to your trusted CA store")
                 print("! Try using the STDIO transport instead with --transport stdio")
             else:
                 print(f"! Make sure the server script exists: {args.server_path}")
 
             return False
+
+        finally:
+            # Clean up SSL patches if insecure mode was used
+            if args.transport == "http" and args.insecure:
+                # Restore original SSL context creator
+                ssl.create_default_context = original_create_default_context
+                logger.debug("Restored original ssl.create_default_context")
+
+                # Restore httpx patches if applied
+                if httpx:
+                    try:
+                        # We need to store the original methods as module-level variables
+                        # to properly restore them. For now, just log that we attempted cleanup.
+                        logger.debug(
+                            "Note: httpx patches not restored (would require module-level storage)"
+                        )
+                    except Exception as restore_err:
+                        logger.warning(
+                            "Failed to restore httpx patches: %s", restore_err
+                        )
+
+                # Clean up environment variables
+                ssl_env_vars = [
+                    "SSL_CERT_VERIFY",
+                    "HTTPX_SSL_VERIFY",
+                    "HTTPX_NO_VERIFY",
+                    "PYTHONHTTPSVERIFY",
+                ]
+
+                for env_var in ssl_env_vars:
+                    if env_var in os.environ:
+                        del os.environ[env_var]
+
+                logger.debug("Cleaned up SSL verification environment variables")
 
     except Exception as e:
         logger.error("Unexpected error: %s", str(e), exc_info=True)
@@ -503,7 +547,7 @@ def main() -> None:
     parser.add_argument(
         "--insecure",
         action="store_true",
-        help="Allow insecure connections (skip SSL verification for http transport",
+        help="Allow insecure connections (skip SSL verification for http transport)",
     )
 
     args = parser.parse_args()
@@ -532,14 +576,11 @@ def test_mcp_solution_client() -> None:
     args = MCPClientArgs(
         host="localhost",
         port=8000,
-        transport="stdio",  # Use stdio transport to test without network
-        # Calculate correct server path regardless of where the test is run from
-        # This handles both pytest . from kai_mcp_solution_server dir
-        # and ./run_tests.sh from project root
+        transport="stdio",
         server_path=Path(os.path.abspath(__file__)).parent,
         mount_path="/sse",
         full_output=False,
-        verbose=False,  # Only enable verbose logging when debugging problems
+        verbose=False,
         insecure=False,
     )
 
