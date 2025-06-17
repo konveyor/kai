@@ -627,7 +627,7 @@ def test_mcp_solution_client() -> None:
         # This handles both pytest . from kai_mcp_solution_server dir
         # and ./run_tests.sh from project root
         server_path=Path(os.path.abspath(__file__)).parent
-        / "src/kai_mcp_solution_server/__main__.py",
+        / "src/kai_mcp_solution_server",
         # If running from project root via run_tests.sh, the relative path
         # will be different, so check if we need to adjust
         # if not os.path.exists(os.path.join(server_path, "main.py")):
