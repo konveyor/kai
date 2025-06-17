@@ -14,7 +14,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import mcp_client
+try:
+    import mcp_client
+except ImportError:
+    from . import mcp_client
 
 
 class TestMCPIntegration(unittest.TestCase):
@@ -31,9 +34,7 @@ class TestMCPIntegration(unittest.TestCase):
 
         self.tests_path = Path(__file__).parent
         self.client_path = self.tests_path / "mcp_client.py"
-        self.server_path = (
-            self.tests_path.parent / "src/kai_mcp_solution_server/__main__.py"
-        )
+        self.server_path = self.tests_path.parent / "src/kai_mcp_solution_server"
 
         # Log details for debugging
         print("=== Test Setup ===")
@@ -66,7 +67,7 @@ class TestMCPIntegration(unittest.TestCase):
         if not os.path.isfile(python_executable):
             self.fail(f"Invalid Python executable path: {python_executable}")
 
-        if not os.path.isfile(self.server_path):
+        if not os.path.exists(self.server_path):
             self.fail(f"Invalid main script path: {self.server_path}")
 
         # Use secure paths and arguments
