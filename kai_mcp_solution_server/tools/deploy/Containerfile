@@ -8,18 +8,13 @@ RUN dnf --refresh -y update \
  && dnf -y install python3.12-devel python3.12-pip libpq-devel \
  && dnf -y clean all
 
-# Install uv for dependency management
-RUN pip3.12 install --no-cache-dir uv
-
 # Copy project files
 COPY src/ src/
 COPY pyproject.toml .
 COPY README.md .
 
-ENV UV_WORKSPACE=src
-
-# Install Python dependencies using uv
-RUN uv pip install --python /bin/python3.12 --system --no-cache-dir .
+# Install Python dependencies
+RUN pip3.12 install --no-cache-dir .
 
 # Create a non-root user
 RUN useradd -m mcp
