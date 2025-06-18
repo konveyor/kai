@@ -24,10 +24,12 @@ RUN uv pip install --python /bin/python3.12 --system --no-cache-dir .
 # Create a non-root user
 RUN useradd -m mcp
 # Set permissions for the data directory
-RUN chown -R mcp:mcp /data
+RUN chown -R mcp:0 /data
 
 #allow access to write logs (this is a hack)
-RUN chown -R mcp:mcp /app
+RUN chown -R mcp:0 /app
+RUN chmod g+rwX /app
+
 USER mcp
 
 # Default to SSE transport on port 8000
