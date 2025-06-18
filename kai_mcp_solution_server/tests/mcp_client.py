@@ -250,7 +250,7 @@ class MCPClientArgs(BaseModel):
     port: int = 8000
     transport: str = "stdio"  # Use stdio transport to test without network
     server_path: Path
-    mount_path: str = "/sse"
+    mount_path: str = "/"
     full_output: bool = False
     verbose: bool = False
     insecure: bool = False
@@ -450,7 +450,7 @@ def main() -> None:
     parser.add_argument(
         "--mount-path",
         type=str,
-        default="/sse",
+        default="/",
         help="Path the MCP server is mounted behind (ie, /hub/services/kai) (for http transport)",
     )
     # Calculate default server path relative to this script
@@ -512,7 +512,7 @@ def test_mcp_solution_client() -> None:
         port=8000,
         transport="stdio",
         server_path=Path(os.path.abspath(__file__)).parent,
-        mount_path="/sse",
+        mount_path="/",
         full_output=False,
         verbose=False,
         insecure=False,
