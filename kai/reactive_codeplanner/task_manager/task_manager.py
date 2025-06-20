@@ -374,7 +374,7 @@ class TaskManager:
         # TODO(fabianvf): Give tasks the ability to provide a specific fuzzy equals function?
         similar: bool = False
         if hasattr(task1, "fuzzy_equals"):
-            similar = task1.fuzzy_equals(task2, offset=2)
+            similar = cast(bool, task1.fuzzy_equals(task2, offset=2))
             if similar:
                 logger.log(
                     logging.TRACE,
