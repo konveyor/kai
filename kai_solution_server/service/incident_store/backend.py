@@ -88,10 +88,8 @@ def incident_store_backend_factory(
 ) -> IncidentStoreBackend:
     match args.provider:
         case KaiConfigIncidentStoreProvider.POSTGRESQL:
-            args = cast(KaiConfigIncidentStorePostgreSQLArgs, args)
             return PSQLBackend(args)
         case KaiConfigIncidentStoreProvider.SQLITE:
-            args = cast(KaiConfigIncidentStoreSQLiteArgs, args)
             return SQLiteBackend(args)
         case _:
             raise ValueError(f"Unknown incident store provider: {args.provider}")
