@@ -451,7 +451,11 @@ async function runTests(config: MCPClientConfig): Promise<boolean> {
       if (!config.host.startsWith("http")) {
         serverUrl = "http://";
       }
-      serverUrl += `${config.host}:${config.port}${config.mountPath}`;
+      let host = config.host;
+      if (host.endsWith(config.mountPath)) {
+        host = host.slice(0, -config.mountPath.length);
+      }
+      serverUrl += `${host}:${config.port}${config.mountPath}`;
 
       console.log(`Connecting to server at ${serverUrl}...`);
       logger.debug(`Initializing HTTP transport with URL: ${serverUrl}`);

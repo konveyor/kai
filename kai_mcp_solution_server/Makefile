@@ -110,7 +110,7 @@ test-http:
 test-http-ts:
 	@echo "Running TypeScript MCP test client against HTTP server..."
 	@echo "Make sure the server is running with 'make run-local' or 'make run-podman'"
-	cd $(PROJECT_ROOT)/ts-mcp-client && npm run build && node --es-module-specifier-resolution=node dist/client.js --transport http --host $(HOST) --port $(PORT) --insecure --mount-path / $(if $(BEARER_TOKEN),--bearer-token $(BEARER_TOKEN),)
+	cd $(PROJECT_ROOT)/ts-mcp-client && npm run build && node --es-module-specifier-resolution=node dist/client.js --transport http --host $(HOST) --port $(PORT) --insecure --mount-path $(MOUNT_PATH) $(if $(BEARER_TOKEN),--bearer-token $(BEARER_TOKEN),)
 
 # Test using stdio transport
 .PHONY: test-stdio

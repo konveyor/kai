@@ -175,6 +175,7 @@ async def _run_update_solution_status(client: Client, client_id: str) -> None:
     try:
         logger.debug("Calling update_solution_status tool with request: %s", request)
         result = await client.call_tool("update_solution_status", request)
+        print(f"o update_solution_status tool call completed")
         logger.debug("update_solution_status tool call completed, result: %s", result)
 
     except Exception as e:
@@ -198,8 +199,7 @@ async def _run_get_best_hint(client: Client) -> str | None:
         print("get_best_hint tool call completed, result: %s", result)
 
         if not result:
-            print("! No related solutions found")
-            return None
+            raise ValueError("! No related solutions found")
 
         return result
 
@@ -281,7 +281,10 @@ async def run_tests(args: MCPClientArgs) -> bool:
             transport = ""
             if not args.host.startswith("http"):
                 transport = "http://"
-            server_url = f"{transport}{args.host}:{args.port}"
+            host = args.host
+            if host.endswith(args.mount_path):
+                host = host[: -len(args.mount_path)]
+            server_url = f"{transport}{host}:{args.port}{args.mount_path}"
             print(f"Connecting to server at {server_url}...")
             logger.debug("Initializing fastmcp Client with URL: %s", server_url)
 
@@ -391,8 +394,14 @@ async def run_tests(args: MCPClientArgs) -> bool:
 
 async def run_test_suite(client: Client, args) -> None:
     """Run the full test suite against an initialized MCP client."""
-    print("Connected to MCP server successfully!")
-    logger.debug("FastMCP client connection established")
+    try:
+        await client.ping()
+        print("Connected to MCP server successfully!")
+        logger.debug("FastMCP client connection established")
+    except RuntimeError as e:
+        print("Connection to MCP server was not established")
+        logger.debug("Connection to MCP server was not established")
+        raise
 
     # generate a uuid
     client_id = uuid.uuid4().hex
