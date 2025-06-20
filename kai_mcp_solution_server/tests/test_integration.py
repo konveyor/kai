@@ -227,6 +227,214 @@ class TestMCPIntegration(unittest.TestCase):
 
         print("MCP client endpoints test completed successfully!")
 
+    def test_ssl_insecure_flag_real_request(self):
+        """
+        Test that the SSL insecure flag works by making a real HTTPS request
+        to a server with a self-signed or invalid certificate.
+
+        This uses httpbin.org's self-signed certificate endpoint to verify
+        that our SSL monkey patch actually works in practice.
+        """
+        import asyncio
+        import ssl
+
+        print("=== Testing SSL Insecure Flag with Real HTTPS Request ===")
+
+        # Import the fastmcp Client and our SSL utility
+        from fastmcp import Client
+
+        try:
+            from ssl_utils import apply_ssl_bypass
+        except ImportError:
+            from .ssl_utils import apply_ssl_bypass
+
+        async def test_insecure_connection():
+            # Use a test URL that has SSL certificate issues
+            # httpbin.org provides endpoints for testing SSL
+            test_url = "https://self-signed.badssl.com"  # Known to have invalid cert
+
+            # Store original SSL context function
+            original_ssl_create_default_context = ssl.create_default_context
+
+            try:
+                # First, verify that without the patch, SSL verification fails
+                print("Testing that SSL verification normally fails...")
+                try:
+                    # This should fail with SSL verification error
+                    client = Client(transport=test_url)
+                    async with client:
+                        pass
+                    # If we get here, the test endpoint doesn't actually have SSL issues
+                    print(
+                        "! Warning: Test endpoint may not have SSL certificate issues"
+                    )
+                except Exception as e:
+                    if "ssl" in str(e).lower() or "certificate" in str(e).lower():
+                        print("✓ SSL verification correctly fails without --insecure")
+                    else:
+                        print(f"! Unexpected error (not SSL-related): {e}")
+                        # Continue with test anyway
+
+                # Now apply the monkey patch like the --insecure flag does
+                print("Applying SSL monkey patch...")
+                ssl_patch = apply_ssl_bypass()
+
+                # Try to connect with the patch applied
+                print("Testing SSL connection with monkey patch applied...")
+                ssl_error_found = False
+                connection_succeeded = False
+
+                try:
+                    client = Client(transport=test_url)
+                    async with client:
+                        # If we get here, the SSL handshake succeeded
+                        connection_succeeded = True
+                        print(
+                            "✓ SSL handshake succeeded - monkey patch bypassed certificate verification"
+                        )
+                except Exception as e:
+                    if "ssl" in str(e).lower() or "certificate" in str(e).lower():
+                        ssl_error_found = True
+                        print(f"✗ SSL monkey patch failed to bypass verification: {e}")
+                    else:
+                        # Non-SSL errors mean SSL was bypassed but other issues occurred
+                        print(f"✓ SSL bypassed (non-SSL error occurred): {e}")
+
+                # Success if either we got a full connection or we got non-SSL errors
+                success = connection_succeeded or not ssl_error_found
+
+                if success:
+                    print("✓ SSL certificate verification was successfully bypassed")
+                else:
+                    print("✗ SSL certificate verification was NOT bypassed")
+
+                return success
+
+            finally:
+                # Always restore SSL settings if patch was applied
+                if "ssl_patch" in locals():
+                    ssl_patch.restore_ssl_settings()
+
+        # Run the async test
+        try:
+            success = asyncio.run(test_insecure_connection())
+            self.assertTrue(
+                success,
+                "SSL insecure flag should successfully bypass certificate verification",
+            )
+            print("SSL insecure flag real request test completed successfully!")
+        except Exception as e:
+            self.fail(f"SSL insecure flag test failed: {e}")
+
+    def test_bearer_token_in_mcp_client_requests(self):
+        """
+        Test that bearer tokens are properly sent by mcp_client to HTTP servers.
+
+        This test starts a simple HTTP server that captures the Authorization header,
+        then uses the actual mcp_client.run_tests() function to make requests with
+        a bearer token and verifies the token was received.
+        """
+        import asyncio
+        import threading
+        import time
+        from http.server import BaseHTTPRequestHandler, HTTPServer
+
+        print("=== Testing Bearer Token in MCP Client Requests ===")
+
+        test_bearer_token = "test-mcp-bearer-token-67890"  # trunk-ignore(bandit/B105)
+        captured_headers = {}
+        server_port = 18123  # Use a high port to avoid conflicts
+
+        class AuthCapturingHandler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                # Capture all headers
+                captured_headers.update(dict(self.headers))
+
+                # Send a simple response
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"status": "test"}')
+
+            def do_POST(self):
+                # Also capture POST requests
+                captured_headers.update(dict(self.headers))
+
+                # Send a simple response
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"status": "test"}')
+
+            def log_message(self, format, *args):
+                # Suppress server logs to keep test output clean
+                pass
+
+        # Start HTTP server in a thread
+        server = HTTPServer(("localhost", server_port), AuthCapturingHandler)
+        server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+        server_thread.start()
+
+        try:
+            # Give server time to start
+            time.sleep(0.5)
+
+            # Create args for HTTP transport with bearer token
+            args = mcp_client.MCPClientArgs(
+                host="localhost",
+                port=server_port,
+                transport="http",
+                server_path=self.server_path,
+                bearer_token=test_bearer_token,
+                insecure=True,  # Use insecure since our test server doesn't have proper SSL
+            )
+
+            print(f"Testing with bearer token: {test_bearer_token}")
+            print(f"Test server running on localhost:{server_port}")
+
+            # Run the mcp client (it will fail to connect properly, but should make HTTP requests)
+            try:
+                # Use a short timeout since we expect this to fail
+                asyncio.run(asyncio.wait_for(mcp_client.run_tests(args), timeout=5.0))
+            except (asyncio.TimeoutError, Exception) as e:
+                # Expected to fail since our test server isn't a real MCP server
+                print(f"Expected connection failure: {type(e).__name__}")
+
+            # Check if we captured the Authorization header
+            print(f"\nCaptured headers: {list(captured_headers.keys())}")
+
+            if "Authorization" in captured_headers:
+                auth_header = captured_headers["Authorization"]
+                expected_header = f"Bearer {test_bearer_token}"
+
+                print(f"Authorization header: {auth_header}")
+
+                if auth_header == expected_header:
+                    print("✓ Bearer token correctly sent in Authorization header")
+                    self.assertEqual(
+                        auth_header,
+                        expected_header,
+                        "Bearer token should match expected format",
+                    )
+                else:
+                    print("✗ Authorization header mismatch")
+                    print(f"  Expected: {expected_header}")
+                    print(f"  Got:      {auth_header}")
+                    self.fail(
+                        f"Authorization header mismatch: expected '{expected_header}', got '{auth_header}'"
+                    )
+            else:
+                print("✗ No Authorization header found in captured requests")
+                print("Available headers:", list(captured_headers.keys()))
+                self.fail("Authorization header not found in HTTP requests")
+
+        finally:
+            # Clean up server
+            server.shutdown()
+            server.server_close()
+
+        print("Bearer token MCP client request test completed successfully!")
+
 
 if __name__ == "__main__":
     unittest.main()

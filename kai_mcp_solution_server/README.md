@@ -57,8 +57,8 @@ The server implements the following functionality:
 1. Run the server locally:
 
    ```bash
-   # Using SSE transport (HTTP server)
-   uv run python -m kai_mcp_solution_server --transport sse --host 0.0.0.0 --port 8000
+   # Using HTTP transport (HTTP server)
+   uv run python -m kai_mcp_solution_server --transport streamable-http --host 0.0.0.0 --port 8000
 
    # Using stdio transport (for direct process communication)
    uv run python -m kai_mcp_solution_server --transport stdio
@@ -223,25 +223,42 @@ Calculates the success rate (accepted solutions) for a list of violations.
 
 ### Project Structure
 
-- **main.py**: The main MCP server implementation
-- **kai_solutions_dao.py**: Data access layer for the SQLite database
+- **src/kai_mcp_solution_server/**: Main MCP server implementation
+  - **server.py**: The main MCP server implementation
+  - **dao.py**: Data access layer for the database
+  - **analyzer_types.py**: Type definitions for code analysis
+  - **util.py**: Utility functions
+- **tests/**: Contains test clients and integration tests
+  - **mcp_client.py**: Python test client for MCP server
+  - **test_integration.py**: Pytest integration tests
+  - **ssl_utils.py**: SSL bypass utilities for testing
+- **ts-mcp-client/**: TypeScript test client for Node.js environments
+  - **src/client.ts**: TypeScript MCP client implementation
+  - **package.json**: Node.js dependencies and scripts
 - **deploy/**: Contains the Containerfile and deployment resources
   - **ansible/**: Ansible playbooks and roles for Kubernetes/OpenShift deployment
-- **tests/**: Contains utility tests for testing and deployment
 
 ### Running Tests
 
 - Test with STDIO transport (spawns a new server):
 
   ```bash
-  make test-stdio
+  make test-stdio     # Python client
+  make test-stdio-ts  # TypeScript client
   ```
 
 - Test with HTTP transport (requires a running server):
 
   ```bash
-  make run-local  # In one terminal
-  make test-http  # In another terminal
+  make run-local    # In one terminal
+  make test-http    # Python client in another terminal
+  make test-http-ts # TypeScript client in another terminal
+  ```
+
+- Run pytest integration tests:
+
+  ```bash
+  make pytest
   ```
 
 - Test with a full containerized setup:
@@ -249,9 +266,40 @@ Calculates the success rate (accepted solutions) for a list of violations.
   make run-with-tests
   ```
 
+## Authentication
+
+The KAI MCP Solution Server supports bearer token authentication for HTTP transport connections.
+
+### Bearer Token Authentication
+
+Bearer tokens can be provided through the test client for HTTP connections:
+
+```bash
+# Using bearer token with test client
+python tests/mcp_client.py --transport http --host api.example.com --bearer-token "your-jwt-token"
+
+# Using Makefile with bearer token
+make test-http BEARER_TOKEN="your-jwt-token"
+
+# Combined with other options
+python tests/mcp_client.py --transport http --host secure-server.com --port 443 --bearer-token "token" --insecure
+```
+
+### Authentication Headers
+
+When a bearer token is provided, the client automatically adds the proper Authorization header to all HTTP requests:
+
+```text
+Authorization: Bearer your-jwt-token
+```
+
 ## Test Client Usage
 
-The test client (`tests/mcp_client.py`) is provided to help test and verify the functionality of the MCP solution server. It can connect to the server using either HTTP or stdio transport.
+Two test clients are provided to help test and verify the functionality of the MCP solution server: a Python client and a TypeScript client. Both can connect to the server using either HTTP or stdio transport.
+
+### Python Test Client
+
+The Python test client (`tests/mcp_client.py`) provides comprehensive testing functionality:
 
 ```bash
 # Basic usage with HTTP transport
@@ -268,9 +316,41 @@ python tests/mcp_client.py --full-output
 
 # Show verbose output for debugging
 python tests/mcp_client.py --verbose
+
+# Using bearer token for authentication
+python tests/mcp_client.py --transport http --host localhost --port 8000 --bearer-token "your-token"
+
+# Using Makefile shortcuts
+make test-stdio      # Test with stdio transport
+make test-http       # Test with HTTP transport
 ```
 
-The test client will run through all available tools and resources, demonstrating how to interact with the MCP solution server.
+### TypeScript Test Client
+
+The TypeScript test client (`ts-mcp-client/`) demonstrates MCP integration in Node.js environments:
+
+```bash
+# Build and run with stdio transport
+cd ts-mcp-client
+npm install
+npm run build
+node dist/client.js --transport stdio --server-path ../
+
+# Using HTTP transport
+node dist/client.js --transport http --host localhost --port 8000
+
+# With authentication and SSL options
+node dist/client.js --transport http --host localhost --port 8000 --bearer-token "your-token" --insecure
+
+# Show verbose output for debugging
+node dist/client.js --verbose
+
+# Using Makefile shortcuts
+make test-stdio-ts   # Test with stdio transport (TypeScript)
+make test-http-ts    # Test with HTTP transport (TypeScript)
+```
+
+Both test clients will run through all available tools and resources, demonstrating how to interact with the MCP solution server.
 
 ## Integration with Claude and other LLMs
 

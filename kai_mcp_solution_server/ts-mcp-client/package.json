@@ -9,6 +9,8 @@
     "start": "node --es-module-specifier-resolution=node dist/client.js",
     "dev": "tsc -w",
     "test": "node --es-module-specifier-resolution=node dist/client.js",
+    "test:stdio": "npm run build && node --es-module-specifier-resolution=node dist/client.js --transport stdio",
+    "test:http": "npm run build && node --es-module-specifier-resolution=node dist/client.js --transport http",
     "build:client": "tsc --project tsconfig.json",
     "client": "npm run build:client && node --es-module-specifier-resolution=node dist/client.js"
   },
@@ -23,7 +25,8 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
     "@types/node": "^22.15.21",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "commander": "^12.1.0"
   },
   "devDependencies": {
     "@types/eventsource": "^1.1.15",

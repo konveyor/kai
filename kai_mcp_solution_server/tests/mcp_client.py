@@ -10,29 +10,22 @@ import argparse
 import asyncio
 import logging
 import os
-import ssl
 import sys
 import uuid
-import warnings
 from pathlib import Path
 
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
-from mcp.client.streamable_http import streamablehttp_client
+from fastmcp import Client
+from fastmcp.client.transports import PythonStdioTransport
 from pydantic import BaseModel
+
+try:
+    from ssl_utils import apply_ssl_bypass
+except ImportError:
+    from .ssl_utils import apply_ssl_bypass
 
 from kai_mcp_solution_server.analyzer_types import ExtendedIncident
 from kai_mcp_solution_server.dao import SolutionChangeSet, SolutionFile, ViolationID
 from kai_mcp_solution_server.server import SuccessRateMetric
-
-# Store the original SSL context creator to patch it properly
-original_create_default_context = ssl.create_default_context
-
-# Import httpx for direct inspection
-try:
-    import httpx
-except ImportError:
-    httpx = None
 
 # Configure logger
 logger = logging.getLogger("kai-mcp-client")
@@ -47,21 +40,7 @@ logger.addHandler(console_handler)
 logger.setLevel(logging.INFO)
 
 
-def format_code_block(code: str, language: str = "java") -> str:
-    """Format a code block with syntax highlighting."""
-    if not code:
-        return "No code provided"
-    return f"```{language}\n{code}\n```"
-
-
-def format_diff_block(diff: str) -> str:
-    """Format a diff block with syntax highlighting."""
-    if not diff:
-        return "No diff provided"
-    return f"```diff\n{diff}\n```"
-
-
-async def _run_create_incident(session: ClientSession, client_id: str) -> int:
+async def _run_create_incident(client: Client, client_id: str) -> int:
     print("\n--- Testing create_incident ---")
 
     request = {
@@ -79,12 +58,10 @@ async def _run_create_incident(session: ClientSession, client_id: str) -> int:
     logger.debug(f"Preparing create_incident request: {request}")
 
     try:
-        result = await session.call_tool(
-            "create_incident",
-            arguments=request,
-        )
+        result = await client.call_tool("create_incident", request)
 
-        incident_id = int(result.content[0].text) if result.content else None
+        # fastmcp returns list of TextContent objects
+        incident_id = int(result[0].text) if result else None
 
         if incident_id is None:
             raise ValueError("Incident ID is None, check server response")
@@ -99,7 +76,7 @@ async def _run_create_incident(session: ClientSession, client_id: str) -> int:
 
 
 async def _run_create_solution(
-    session: ClientSession, client_id: str, incident_ids: list[int]
+    client: Client, client_id: str, incident_ids: list[int]
 ) -> int:
     """Test the create_solution tool by creating a new solution."""
     print("\n--- Testing create_solution ---")
@@ -171,12 +148,10 @@ public class ExampleService {
 
     try:
         logger.debug("Calling create_solution tool")
-        result = await session.call_tool(
-            "create_solution",
-            arguments=request,
-        )
+        result = await client.call_tool("create_solution", request)
 
-        solution_id = int(result.content[0].text) if result.content else None
+        # fastmcp returns list of TextContent objects
+        solution_id = int(result[0].text) if result else None
 
         if solution_id is None:
             raise ValueError("Solution ID is None, check server response")
@@ -189,7 +164,7 @@ public class ExampleService {
         raise e
 
 
-async def _run_update_solution_status(session: ClientSession, client_id: str) -> None:
+async def _run_update_solution_status(client: Client, client_id: str) -> None:
     print("\n--- Testing update_solution_status ---")
 
     request = {
@@ -199,10 +174,8 @@ async def _run_update_solution_status(session: ClientSession, client_id: str) ->
 
     try:
         logger.debug("Calling update_solution_status tool with request: %s", request)
-        result = await session.call_tool(
-            "update_solution_status",
-            arguments=request,
-        )
+        result = await client.call_tool("update_solution_status", request)
+        print("o update_solution_status tool call completed")
         logger.debug("update_solution_status tool call completed, result: %s", result)
 
     except Exception as e:
@@ -211,7 +184,7 @@ async def _run_update_solution_status(session: ClientSession, client_id: str) ->
         raise e
 
 
-async def _run_get_best_hint(session: ClientSession) -> str | None:
+async def _run_get_best_hint(client: Client) -> str | None:
     print("\n--- Testing get_best_hint ---")
 
     request = {
@@ -221,16 +194,12 @@ async def _run_get_best_hint(session: ClientSession) -> str | None:
 
     try:
         logger.debug("Preparing get_best_hint request: %s", request)
-        result = await session.call_tool(
-            "get_best_hint",
-            arguments=request,
-        )
+        result = await client.call_tool("get_best_hint", request)
 
         print("get_best_hint tool call completed, result: %s", result)
 
         if not result:
-            print("! No related solutions found")
-            return None
+            raise ValueError("! No related solutions found")
 
         return result
 
@@ -241,7 +210,7 @@ async def _run_get_best_hint(session: ClientSession) -> str | None:
 
 
 async def _run_get_success_rate(
-    session: ClientSession,
+    client: Client,
 ) -> list[SuccessRateMetric] | None:
     print("\n--- Testing get_success_rate ---")
 
@@ -256,10 +225,7 @@ async def _run_get_success_rate(
 
     try:
         logger.debug("Preparing get_success_rate request: %s", request)
-        result = await session.call_tool(
-            "get_success_rate",
-            arguments=request,
-        )
+        result = await client.call_tool("get_success_rate", request)
 
         print("get_success_rate resource call completed, result: %s", result)
 
@@ -284,9 +250,11 @@ class MCPClientArgs(BaseModel):
     port: int = 8000
     transport: str = "stdio"  # Use stdio transport to test without network
     server_path: Path
+    mount_path: str = "/"
     full_output: bool = False
     verbose: bool = False
     insecure: bool = False
+    bearer_token: str | None = None
 
 
 async def run_tests(args: MCPClientArgs) -> bool:
@@ -304,196 +272,119 @@ async def run_tests(args: MCPClientArgs) -> bool:
 
     logger.debug("Starting test run with arguments: %s", vars(args))
 
+    ssl_patch = None
+
     try:
+        # Build client kwargs based on transport type
         if args.transport == "http":
-            # Setup HTTP transport using streamable-http
+            # Setup HTTP transport
             transport = ""
             if not args.host.startswith("http"):
                 transport = "http://"
-            server_url = f"{transport}{args.host}:{args.port}{args.mount_path}"
+            host = args.host
+            if host.endswith(args.mount_path):
+                host = host[: -len(args.mount_path)]
+            server_url = f"{transport}{host}:{args.port}{args.mount_path}"
             print(f"Connecting to server at {server_url}...")
-            logger.debug(
-                "Initializing streamable-http transport with URL: %s", server_url
-            )
+            logger.debug("Initializing fastmcp Client with URL: %s", server_url)
 
-            try:
-                # Configure SSL verification if insecure flag is set
-                if args.insecure:
-                    logger.debug(
-                        "Disabling SSL certificate verification by patching SSL module"
-                    )
-                    # Disable SSL verification warnings
-                    warnings.filterwarnings(
-                        "ignore", message="Unverified HTTPS request"
-                    )
-                    warnings.filterwarnings("ignore", category=Warning)
+            if args.insecure:
+                logger.debug(
+                    "Applying SSL monkey patch to bypass certificate verification"
+                )
+                ssl_patch = apply_ssl_bypass()
+                print("⚠️ Warning: SSL certificate verification is disabled")
 
-                    # Patch SSL module's default context creator to disable verification
-                    def unverified_context(*args, **kwargs):
-                        context = original_create_default_context(*args, **kwargs)
-                        context.check_hostname = False
-                        context.verify_mode = ssl.CERT_NONE
-                        return context
+            # Setup client kwargs with transport and optional auth
+            client_kwargs = {"transport": server_url}
 
-                    # Apply the patch
-                    ssl.create_default_context = unverified_context
-                    logger.debug("Successfully patched ssl.create_default_context")
-
-                    # For httpx - try to patch its SSL defaults too if available
-                    if httpx:
-                        try:
-                            # Try to patch httpx client classes
-                            old_client_init = httpx.Client.__init__
-
-                            def patched_client_init(self, *args, **kwargs):
-                                kwargs["verify"] = False
-                                old_client_init(self, *args, **kwargs)
-
-                            httpx.Client.__init__ = patched_client_init
-
-                            # Same for AsyncClient
-                            old_async_client_init = httpx.AsyncClient.__init__
-
-                            def patched_async_client_init(self, *args, **kwargs):
-                                kwargs["verify"] = False
-                                old_async_client_init(self, *args, **kwargs)
-
-                            httpx.AsyncClient.__init__ = patched_async_client_init
-                            logger.debug("Patched httpx Client classes")
-
-                        except Exception as patch_err:
-                            logger.warning("Failed to patch httpx: %s", patch_err)
-
-                    # Also set environment variables as backup
-                    os.environ["SSL_CERT_VERIFY"] = "false"
-                    os.environ["HTTPX_SSL_VERIFY"] = "false"
-                    os.environ["HTTPX_NO_VERIFY"] = "true"
-                    os.environ["PYTHONHTTPSVERIFY"] = "0"
-
-                    print("⚠️ Warning: SSL certificate verification is disabled")
-
-                try:
-                    # Use streamable-http client for the new transport
-                    async with streamablehttp_client(server_url) as (
-                        read,
-                        write,
-                        get_session_id,
-                    ):
-                        logger.debug("Streamable HTTP client connection established")
-                        async with ClientSession(read, write) as session:
-                            logger.debug("MCP ClientSession initialized")
-                            await run_test_suite(session, args)
-                    logger.debug(
-                        "Test suite completed successfully with HTTP transport"
-                    )
-                    return True
-                finally:
-                    # Clean up patches and environment variables if insecure mode was used
-                    if args.insecure:
-                        # Restore original SSL context creator
-                        ssl.create_default_context = original_create_default_context
-                        logger.debug("Restored original ssl.create_default_context")
-
-                        # Restore httpx patches if applied
-                        if httpx:
-                            try:
-                                if "old_client_init" in locals() and hasattr(
-                                    httpx, "Client"
-                                ):
-                                    httpx.Client.__init__ = old_client_init
-                                    logger.debug(
-                                        "Restored original httpx.Client.__init__"
-                                    )
-
-                                if "old_async_client_init" in locals() and hasattr(
-                                    httpx, "AsyncClient"
-                                ):
-                                    httpx.AsyncClient.__init__ = old_async_client_init
-                                    logger.debug(
-                                        "Restored original httpx.AsyncClient.__init__"
-                                    )
-                            except Exception as restore_err:
-                                logger.warning(
-                                    "Failed to restore httpx patches: %s", restore_err
-                                )
-
-                        # Clean up environment variables
-                        ssl_env_vars = [
-                            "SSL_CERT_VERIFY",
-                            "HTTPX_SSL_VERIFY",
-                            "HTTPX_NO_VERIFY",
-                            "PYTHONHTTPSVERIFY",
-                        ]
-
-                        for env_var in ssl_env_vars:
-                            if env_var in os.environ:
-                                del os.environ[env_var]
-
-                        logger.debug("Cleaned up all SSL verification settings")
-            except Exception as e:
-                logger.error("HTTP transport error: %s", str(e), exc_info=True)
-                print(f"x Error with HTTP transport: {e}")
-                print(f"! Make sure the server is running at {server_url}")
-
-                # Add specific advice for SSL certificate errors
-                if (
-                    isinstance(e, ssl.SSLError)
-                    or "ssl" in str(e).lower()
-                    or "certificate" in str(e).lower()
-                ):
-                    print("! SSL certificate verification error. Try these options:")
-                    print(
-                        "   1. Use the --insecure flag to bypass SSL verification (not recommended for production)"
-                    )
-                    print("   2. Use a valid SSL certificate on the server")
-                    print("   3. Add the server's certificate to your trusted CA store")
-
-                print("! Try using the STDIO transport instead with --transport stdio")
-                return False
+            if args.bearer_token:
+                client_kwargs["auth"] = args.bearer_token
+                logger.debug("Added bearer token authentication")
+                print("🔐 Bearer token authentication enabled")
 
         else:  # stdio transport
-            # Use the server path from args (which already has the correct default)
             print(f"Using server path: {args.server_path}")
             logger.debug(
                 f"Initializing STDIO transport with server path: {args.server_path}"
             )
 
-            # Setup STDIO transport
-            server_params = StdioServerParameters(
-                command="python",
-                args=["-m", "kai_mcp_solution_server", "--transport", "stdio"],
-                cwd=str(args.server_path),
-                env=os.environ.copy(),
+            # For stdio, use PythonStdioTransport with explicit environment variables
+            server_path = Path(args.server_path)
+            if (server_path / "__main__.py").exists():
+                script_path = str(server_path / "__main__.py")
+                working_dir = str(server_path.parent)
+            else:
+                # Fallback for when server_path is the project root
+                script_path = str(
+                    server_path / "src" / "kai_mcp_solution_server" / "__main__.py"
+                )
+                working_dir = str(server_path)
+
+            # Create transport with explicit environment variables
+            transport = PythonStdioTransport(
+                script_path=script_path,
+                args=["--transport", "stdio"],
+                env=dict(os.environ),  # Explicitly pass all environment variables
+                cwd=working_dir,
             )
-            logger.debug("STDIO server parameters: %s", server_params)
 
-            try:
-                # Create a timeout to prevent hanging in case of issues
-                async def run_with_timeout():
+            client_kwargs = {"transport": transport}
 
-                    async with stdio_client(server_params) as (read, write):
-                        logger.debug("STDIO client connection established")
-                        async with ClientSession(read, write) as session:
-                            logger.debug("MCP ClientSession initialized")
-                            await run_test_suite(session, args)
+        logger.debug(f"Client kwargs: {client_kwargs}")
+
+        try:
+            # Create fastmcp client with the appropriate kwargs
+            client = Client(**client_kwargs)
+
+            async def run_with_timeout():
+                async with client:
                     logger.debug(
-                        "Test suite completed successfully with STDIO transport"
+                        f"FastMCP {args.transport.upper()} client connection established"
                     )
-                    return True
+                    await run_test_suite(client, args)
+                logger.debug(
+                    f"Test suite completed successfully with {args.transport.upper()} transport"
+                )
+                return True
 
-                # Run with timeout to prevent hanging indefinitely
-                try:
-                    await asyncio.wait_for(run_with_timeout(), timeout=15.0)
-                    return True
-                except asyncio.TimeoutError:
-                    logger.error("STDIO transport timed out after 15 seconds")
-                    print("x STDIO transport timed out after 15 seconds")
-                    return False
-            except Exception as e:
-                logger.error("STDIO transport error: %s", str(e), exc_info=True)
-                print(f"x Error with STDIO transport: {e}")
-                print(f"! Make sure the server script exists: {args.server_path}")
+            # Run with timeout to prevent hanging indefinitely
+            try:
+                await asyncio.wait_for(run_with_timeout(), timeout=15.0)
+                return True
+            except asyncio.TimeoutError:
+                logger.error(
+                    f"{args.transport.upper()} transport timed out after 15 seconds"
+                )
+                print(
+                    f"x {args.transport.upper()} transport timed out after 15 seconds"
+                )
                 return False
+
+        except Exception as e:
+            logger.error(
+                f"{args.transport.upper()} transport error: %s", str(e), exc_info=True
+            )
+            print(f"x Error with {args.transport.upper()} transport: {e}")
+
+            if args.transport == "http":
+                print(
+                    f"! Make sure the server is running at {client_kwargs['transport']}"
+                )
+                if "ssl" in str(e).lower() or "certificate" in str(e).lower():
+                    print(
+                        "! SSL certificate verification error. Try --insecure flag for testing"
+                    )
+                print("! Try using the STDIO transport instead with --transport stdio")
+            else:
+                print(f"! Make sure the server script exists: {args.server_path}")
+
+            return False
+
+        finally:
+            # Clean up SSL patches if they were applied
+            if ssl_patch is not None:
+                ssl_patch.restore_ssl_settings()
 
     except Exception as e:
         logger.error("Unexpected error: %s", str(e), exc_info=True)
@@ -501,40 +392,41 @@ async def run_tests(args: MCPClientArgs) -> bool:
         return False
 
 
-async def run_test_suite(session: ClientSession, args) -> None:
-    """Run the full test suite against an initialized MCP session."""
-    # Initialize the connection
-    print("Initializing MCP connection...")
-    logger.debug("Calling session.initialize()")
-    await session.initialize()
-
-    print("Connected to MCP server successfully!")
-    logger.debug("MCP connection initialized successfully")
+async def run_test_suite(client: Client, args) -> None:
+    """Run the full test suite against an initialized MCP client."""
+    try:
+        await client.ping()
+        print("Connected to MCP server successfully!")
+        logger.debug("FastMCP client connection established")
+    except RuntimeError:
+        print("Connection to MCP server was not established")
+        logger.debug("Connection to MCP server was not established")
+        raise
 
     # generate a uuid
     client_id = uuid.uuid4().hex
     print(f"Using client ID: {client_id}")
 
     # Run tests
-    incident_id = await _run_create_incident(session, client_id)
+    incident_id = await _run_create_incident(client, client_id)
     logger.debug(f"create_incident test completed with incident_id: {incident_id}")
     await asyncio.sleep(0.1)
 
-    solution_id = await _run_create_solution(session, client_id, [incident_id])
+    solution_id = await _run_create_solution(client, client_id, [incident_id])
     logger.debug(f"create_solution test completed with solution_id: {solution_id}")
     await asyncio.sleep(0.1)
 
-    await _run_update_solution_status(session, client_id)
+    await _run_update_solution_status(client, client_id)
     logger.debug("update_solution_status test completed")
     await asyncio.sleep(0.1)
 
-    best_hint = await _run_get_best_hint(session)
+    best_hint = await _run_get_best_hint(client)
     logger.debug(
         f"get_best_hint test completed with result: {best_hint}"
     )  # (len: {len(best_hint) if best_hint else 0})")
     await asyncio.sleep(0.1)
 
-    success_rates = await _run_get_success_rate(session)
+    success_rates = await _run_get_success_rate(client)
     logger.debug(
         f"success_rate test completed with result: {success_rates}"
     )  # (len: {len(success_rates) if success_rates else 0})")
@@ -567,7 +459,7 @@ def main() -> None:
     parser.add_argument(
         "--mount-path",
         type=str,
-        default="/sse",
+        default="/",
         help="Path the MCP server is mounted behind (ie, /hub/services/kai) (for http transport)",
     )
     # Calculate default server path relative to this script
@@ -593,7 +485,12 @@ def main() -> None:
     parser.add_argument(
         "--insecure",
         action="store_true",
-        help="Allow insecure connections (skip SSL verification for http transport",
+        help="Allow insecure connections (skip SSL verification for http transport)",
+    )
+    parser.add_argument(
+        "--bearer-token",
+        type=str,
+        help="Bearer token for authentication (for http transport)",
     )
 
     args = parser.parse_args()
@@ -622,27 +519,13 @@ def test_mcp_solution_client() -> None:
     args = MCPClientArgs(
         host="localhost",
         port=8000,
-        transport="stdio",  # Use stdio transport to test without network
-        # Calculate correct server path regardless of where the test is run from
-        # This handles both pytest . from kai_mcp_solution_server dir
-        # and ./run_tests.sh from project root
-        server_path=Path(os.path.abspath(__file__)).parent
-        / "src/kai_mcp_solution_server",
-        # If running from project root via run_tests.sh, the relative path
-        # will be different, so check if we need to adjust
-        # if not os.path.exists(os.path.join(server_path, "main.py")):
-        #     # Try looking for the correct directory
-        #     possible_server_path = os.path.join(os.getcwd(), "kai_mcp_solution_server")
-        #     if os.path.exists(os.path.join(possible_server_path, "main.py")):
-        #         server_path = possible_server_path
-        #         print(f"Adjusted server path to: {server_path}")
-        #     else:
-        #         print(
-        #             f"WARNING: Could not find main.py in {server_path} or {possible_server_path}"
-        #         )
+        transport="stdio",
+        server_path=Path(os.path.abspath(__file__)).parent,
+        mount_path="/",
         full_output=False,
-        verbose=False,  # Only enable verbose logging when debugging problems
+        verbose=False,
         insecure=False,
+        bearer_token=None,
     )
 
     print(f"Using server script path: {args.server_path}")
