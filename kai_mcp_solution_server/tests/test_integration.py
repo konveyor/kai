@@ -236,9 +236,7 @@ class TestMCPIntegration(unittest.TestCase):
         that our SSL monkey patch actually works in practice.
         """
         import asyncio
-        import importlib.util
         import ssl
-        import sys
 
         print("=== Testing SSL Insecure Flag with Real HTTPS Request ===")
 
@@ -343,7 +341,7 @@ class TestMCPIntegration(unittest.TestCase):
 
         print("=== Testing Bearer Token in MCP Client Requests ===")
 
-        test_bearer_token = "test-mcp-bearer-token-67890"
+        test_bearer_token = "test-mcp-bearer-token-67890"  # trunk-ignore(bandit/B105)
         captured_headers = {}
         server_port = 18123  # Use a high port to avoid conflicts
 
@@ -397,9 +395,7 @@ class TestMCPIntegration(unittest.TestCase):
             # Run the mcp client (it will fail to connect properly, but should make HTTP requests)
             try:
                 # Use a short timeout since we expect this to fail
-                success = asyncio.run(
-                    asyncio.wait_for(mcp_client.run_tests(args), timeout=5.0)
-                )
+                asyncio.run(asyncio.wait_for(mcp_client.run_tests(args), timeout=5.0))
             except (asyncio.TimeoutError, Exception) as e:
                 # Expected to fail since our test server isn't a real MCP server
                 print(f"Expected connection failure: {type(e).__name__}")
@@ -421,7 +417,7 @@ class TestMCPIntegration(unittest.TestCase):
                         "Bearer token should match expected format",
                     )
                 else:
-                    print(f"✗ Authorization header mismatch")
+                    print("✗ Authorization header mismatch")
                     print(f"  Expected: {expected_header}")
                     print(f"  Got:      {auth_header}")
                     self.fail(

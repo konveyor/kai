@@ -289,7 +289,7 @@ python tests/mcp_client.py --transport http --host secure-server.com --port 443 
 
 When a bearer token is provided, the client automatically adds the proper Authorization header to all HTTP requests:
 
-```
+```text
 Authorization: Bearer your-jwt-token
 ```
 

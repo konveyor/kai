@@ -175,7 +175,7 @@ async def _run_update_solution_status(client: Client, client_id: str) -> None:
     try:
         logger.debug("Calling update_solution_status tool with request: %s", request)
         result = await client.call_tool("update_solution_status", request)
-        print(f"o update_solution_status tool call completed")
+        print("o update_solution_status tool call completed")
         logger.debug("update_solution_status tool call completed, result: %s", result)
 
     except Exception as e:
@@ -398,7 +398,7 @@ async def run_test_suite(client: Client, args) -> None:
         await client.ping()
         print("Connected to MCP server successfully!")
         logger.debug("FastMCP client connection established")
-    except RuntimeError as e:
+    except RuntimeError:
         print("Connection to MCP server was not established")
         logger.debug("Connection to MCP server was not established")
         raise
