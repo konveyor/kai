@@ -15,6 +15,7 @@ TESTS_DIR = $(PROJECT_ROOT)/tests
 
 HOST ?= localhost
 PORT ?= 8000
+BEARER_TOKEN ?=
 
 # Default target
 .PHONY: all
@@ -102,13 +103,26 @@ run-podman: build
 test-http:
 	@echo "Running MCP test client against HTTP server..."
 	@echo "Make sure the server is running with 'make run-local' or 'make run-podman'"
-	cd $(PROJECT_ROOT)/.. && python $(TESTS_DIR)/mcp_client.py --transport http --host $(HOST) --port $(PORT) --insecure --mount-path $(MOUNT_PATH)
+	cd $(PROJECT_ROOT)/.. && python $(TESTS_DIR)/mcp_client.py --transport http --host $(HOST) --port $(PORT) --insecure --mount-path $(MOUNT_PATH) $(if $(BEARER_TOKEN),--bearer-token $(BEARER_TOKEN),)
+
+# Test against HTTP server with TypeScript client
+.PHONY: test-http-ts
+test-http-ts:
+	@echo "Running TypeScript MCP test client against HTTP server..."
+	@echo "Make sure the server is running with 'make run-local' or 'make run-podman'"
+	cd $(PROJECT_ROOT)/ts-mcp-client && npm run build && node --es-module-specifier-resolution=node dist/client.js --transport http --host $(HOST) --port $(PORT) --insecure --mount-path $(MOUNT_PATH) $(if $(BEARER_TOKEN),--bearer-token $(BEARER_TOKEN),)
 
 # Test using stdio transport
 .PHONY: test-stdio
 test-stdio:
 	@echo "Running MCP test client using stdio transport..."
 	cd $(PROJECT_ROOT)/.. && python $(TESTS_DIR)/mcp_client.py --transport stdio --server-path $(PROJECT_ROOT)
+
+# Test using stdio transport with TypeScript client
+.PHONY: test-stdio-ts
+test-stdio-ts:
+	@echo "Running TypeScript MCP test client using stdio transport..."
+	cd $(PROJECT_ROOT)/ts-mcp-client && npm run build && node --es-module-specifier-resolution=node dist/client.js --transport stdio --server-path $(PROJECT_ROOT)
 
 # Run pytest integration tests
 .PHONY: pytest
@@ -165,8 +179,10 @@ help:
 	@echo "  port-forward   : Forward port to local machine for testing"
 	@echo "  run-local      : Run server locally for testing"
 	@echo "  run-podman     : Run server in Podman container for testing"
-	@echo "  test-http      : Test server using HTTP transport"
-	@echo "  test-stdio     : Test server using STDIO transport"
+	@echo "  test-http      : Test server using HTTP transport (Python client)"
+	@echo "  test-http-ts   : Test server using HTTP transport (TypeScript client)"
+	@echo "  test-stdio     : Test server using STDIO transport (Python client)"
+	@echo "  test-stdio-ts  : Test server using STDIO transport (TypeScript client)"
 	@echo "  pytest         : Run pytest integration tests"
 	@echo "  run-with-tests : Run server and test client together"
 	@echo "  help           : Show this help message"
@@ -174,6 +190,9 @@ help:
 	@echo "Configuration options (can be set via environment or command line):"
 	@echo "  IMAGE          : Container image (default: quay.io/konveyor/kai-mcp-solution-server:latest)"
 	@echo "  NAMESPACE      : Kubernetes namespace (default: konveyor-kai)"
+	@echo "  HOST           : Server hostname for HTTP tests (default: localhost)"
+	@echo "  PORT           : Server port for HTTP tests (default: 8000)"
+	@echo "  BEARER_TOKEN   : Bearer token for HTTP authentication (optional)"
 	@echo "  EXTRA_VARS     : Any additional variables to pass to Ansible"
 	@echo ""
 	@echo "Example usage:"
@@ -185,3 +204,6 @@ help:
 	@echo "  make deploy EXTRA_VARS='route_tls_enabled=true route_tls_termination=edge route_tls_insecure_policy=Allow'"
 	@echo "  make run-local"
 	@echo "  make test-stdio"
+	@echo "  make test-http"
+	@echo "  make test-http BEARER_TOKEN='your-jwt-token-here'"
+	@echo "  make test-http HOST=api.example.com PORT=443 BEARER_TOKEN='token'"
