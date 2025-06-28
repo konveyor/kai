@@ -4,6 +4,7 @@ import os
 from abc import abstractmethod
 from typing import Any, Iterator, Optional, Sequence, assert_never, cast, override
 
+from langchain_anthropic import ChatAnthropic
 from langchain_aws import ChatBedrock
 from langchain_community.chat_models.fake import FakeListChatModel
 from langchain_core.language_models.base import LanguageModelInput
@@ -13,6 +14,7 @@ from langchain_core.prompt_values import PromptValue
 from langchain_core.runnables import ConfigurableField, Runnable, RunnableConfig
 from langchain_deepseek import ChatDeepSeek
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from openai import BadRequestError
@@ -50,6 +52,10 @@ class ModelProvider:
                 return ModelProviderAzureChatOpenAI(config, demo_mode, cache)
             case SupportedModelProviders.CHAT_DEEP_SEEK:
                 return ModelProviderChatDeepSeek(config, demo_mode, cache)
+            case SupportedModelProviders.CHAT_ANTHROPIC:
+                return ModelProviderChatAnthropic(config, demo_mode, cache)
+            case SupportedModelProviders.CHAT_GROQ:
+                return ModelProviderChatGroq(config, demo_mode, cache)
             case _:
                 assert_never(config.provider)
 
@@ -519,6 +525,59 @@ class ModelProviderChatDeepSeek(ModelProvider):
 
     async def validate_environment(self) -> None:
         await self.default_challenge("max_tokens")
+
+    def prepare_model_args(
+        self,
+        defaults: dict[str, Any],
+        config_args: dict[str, Any],
+    ) -> tuple[dict[str, Any], str]:
+        return deep_update(defaults, config_args), config_args["model"]
+
+
+class ModelProviderChatAnthropic(ModelProvider):
+    def __init__(self, config: KaiConfigModels, demo_mode: bool, cache: Cache | None):
+        super().__init__(
+            config=config,
+            demo_mode=demo_mode,
+            cache=cache,
+            model_class=ChatAnthropic,
+            defaults={
+                "model": "claude-3-7-sonnet-20250219",
+                "temperature": 0,
+                "timeout": None,
+                "max_retries": 2,
+            },
+        )
+
+    def validate_environment(self) -> None:
+        self.default_challenge("max_tokens")
+
+    def prepare_model_args(
+        self,
+        defaults: dict[str, Any],
+        config_args: dict[str, Any],
+    ) -> tuple[dict[str, Any], str]:
+        return deep_update(defaults, config_args), config_args["model"]
+
+
+class ModelProviderChatGroq(ModelProvider):
+    def __init__(self, config: KaiConfigModels, demo_mode: bool, cache: Cache | None):
+        super().__init__(
+            config=config,
+            demo_mode=demo_mode,
+            cache=cache,
+            model_class=ChatGroq,
+            defaults={
+                "model": "llama-3.3-70b-versatile",
+                "temperature": 0,
+                "max_tokens": None,
+                "timeout": None,
+                "max_retries": 2,
+            },
+        )
+
+    def validate_environment(self) -> None:
+        self.default_challenge("max_tokens")
 
     def prepare_model_args(
         self,
