@@ -91,8 +91,8 @@ models.
   KAI](https://shaaf.dev/post/2024-07-23-embracing-the-future-of-app-mod-with-konveyor-ai/)
 - 2024 May 07: [Apply generative AI to app modernization with Konveyor
   AI](https://developers.redhat.com/articles/2024/05/07/modernize-apps-konveyor-ai)
-- 2024 May 07: [Kai - Generative AI Applied to Application
-  Modernization](https://www.konveyor.io/blog/kai-deep-dive-2024/)
+- 2024 May 07: [Deep Dive: Kai - Generative AI Applied to Application
+  Modernization](https://konveyor.io/blog/2024/kai-deep-dive-2024/)
 
 ### 📽️ Demo Video
 
