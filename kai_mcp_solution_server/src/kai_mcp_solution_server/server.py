@@ -17,16 +17,19 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from kai_mcp_solution_server.analyzer_types import ExtendedIncident
 from kai_mcp_solution_server.constants import log
-from kai_mcp_solution_server.dao import (
+from kai_mcp_solution_server.db.dao import (
+    DBFile,
     DBHint,
     DBIncident,
     DBSolution,
     DBViolation,
-    SolutionChangeSet,
+    get_async_engine,
+)
+from kai_mcp_solution_server.db.python_objects import (
     SolutionFile,
     SolutionStatus,
     ViolationID,
-    get_async_engine,
+    get_diff,
 )
 
 
@@ -249,7 +252,8 @@ async def create_solution(
     kai_ctx: KaiSolutionServerContext,
     client_id: str,
     incident_ids: list[int],
-    change_set: SolutionChangeSet,
+    before: list[SolutionFile],
+    after: list[SolutionFile],
     reasoning: str | None = None,
     used_hint_ids: list[int] | None = None,
 ) -> int:
@@ -275,14 +279,80 @@ async def create_solution(
                 f"Some hint IDs {missing_ids} do not exist in the database."
             )
 
+        # Try to match the before files. If you can't, create them.
+        # Create the after files. Associate them with the before files.
+        # Create the solution.
+        db_before_files: set[DBFile] = set()
+        for file in before:
+            stmt = select(DBFile).where(
+                DBFile.client_id == client_id,
+                DBFile.uri == file.uri,
+            )
+            prev_before = (await session.execute(stmt)).scalar_one_or_none()
+
+            if prev_before is None:
+                next_before = DBFile(
+                    client_id=client_id,
+                    uri=file.uri,
+                    content=file.content,
+                    status=SolutionStatus.PENDING,
+                    solution_before=set(),
+                    solution_after=set(),
+                    next=None,
+                )
+                session.add(next_before)
+                db_before_files.add(next_before)
+            elif prev_before.content != file.content:
+                next_before = DBFile(
+                    client_id=client_id,
+                    uri=file.uri,
+                    content=file.content,
+                    status=SolutionStatus.PENDING,
+                    solution_before=set(),
+                    solution_after=set(),
+                    next=None,
+                )
+
+                prev_before.status = SolutionStatus.PENDING
+                prev_before.next = next_before
+
+                session.add(next_before)
+                db_before_files.add(next_before)
+            else:
+                db_before_files.add(prev_before)
+
+        db_after_files: set[DBFile] = set()
+        for file in after:
+            next_after = DBFile(
+                client_id=client_id,
+                uri=file.uri,
+                content=file.content,
+                status=SolutionStatus.PENDING,
+                solution_before=set(),
+                solution_after=set(),
+                next=None,
+            )
+
+            stmt = select(DBFile).where(
+                DBFile.client_id == client_id,
+                DBFile.uri == file.uri,
+            )
+
+            previous_after = (await session.execute(stmt)).scalar_one_or_none()
+            if previous_after is not None:
+                previous_after.next = next_after
+
+            db_after_files.add(next_after)
+            session.add(next_after)
+
         solution = DBSolution(
             client_id=client_id,
-            change_set=change_set,
+            before=db_before_files,
+            after=db_after_files,
             reasoning=reasoning,
-            solution_status=SolutionStatus.PENDING,
+            solution_status=SolutionStatus.UNKNOWN,
             incidents=set(incidents),
             hints=set(hints),
-            final_files=[],
         )
 
         session.add(solution)
@@ -296,7 +366,8 @@ async def tool_create_solution(
     ctx: Context,
     client_id: str,
     incident_ids: list[int],
-    change_set: SolutionChangeSet,
+    before: list[SolutionFile],
+    after: list[SolutionFile],
     reasoning: str | None = None,
     used_hint_ids: list[int] | None = None,
 ) -> int:
@@ -311,7 +382,8 @@ async def tool_create_solution(
         cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
         client_id,
         incident_ids,
-        change_set,
+        before,
+        after,
         reasoning,
         used_hint_ids,
     )
@@ -351,14 +423,12 @@ async def generate_hint(
                     f"  {incident.violation.violation_name}\n\n"
                 )
 
-            # TODO: Make this more robust wrt to change sets and final files.
-            new_change_set = solution.change_set
-            for final in solution.final_files:
-                for i, after in enumerate(new_change_set.after):
-                    if final.uri == after.uri:
-                        new_change_set.after[i].content = final.content
+            diff = get_diff(
+                [SolutionFile(uri=f.uri, content=f.content) for f in solution.before],
+                [SolutionFile(uri=f.uri, content=f.content) for f in solution.after],
+            )
 
-            prompt += "Solution:\n" f"{new_change_set.diff}\n\n"
+            prompt += "Solution:\n" f"{diff}\n\n"
 
             log(f"Generating hint for client {client_id} with prompt:\n{prompt}")
 
@@ -380,8 +450,6 @@ async def generate_hint(
             await session.flush()
 
         await session.commit()
-
-    return
 
 
 async def delete_solution(
@@ -510,6 +578,9 @@ async def get_success_rate(
                 if incident.solution is None:
                     continue
 
+                # FIXME: This should be automatic, but its not
+                incident.solution.update_solution_status()
+
                 # TODO: Make this cleaner
                 metric.counted_solutions += 1
                 metric.accepted_solutions += int(
@@ -569,26 +640,37 @@ async def accept_file(
         solutions_stmt = select(DBSolution).where(DBSolution.client_id == client_id)
         solutions = (await session.execute(solutions_stmt)).scalars().all()
 
+        files_to_add: set[DBFile] = set()
+
+        for solution in solutions:
+            for file in solution.after:
+                if file.uri != solution_file.uri:
+                    continue
+
+                if file.content == solution_file.content:
+                    file.status = SolutionStatus.ACCEPTED
+                    continue
+
+                db_file = DBFile(
+                    client_id=client_id,
+                    uri=solution_file.uri,
+                    content=solution_file.content,
+                    status=SolutionStatus.MODIFIED,
+                    solution_before=set(),
+                    solution_after=set(),
+                    next=None,
+                )
+                files_to_add.add(db_file)
+
+        # NOTE: Doing it this way to avoid modifying solutions.after while iterating
+        for file in files_to_add:
+            file.solution_after.add(solution)
+            session.add(file)
+
+        await session.flush()
+
         all_solutions_accepted_or_modified = True
         for solution in solutions:
-
-            # NOTE: Need to do this rigamarole because something something caching
-            # and sqlalchemy. If you try to append to the list directly, it will not
-            # work as expected.
-            cpy = solution.final_files.copy()
-            add_file = True
-            for file in cpy:
-                if file.uri == solution_file.uri:
-                    file.content = solution_file.content
-                    add_file = False
-            if add_file:
-                cpy.append(solution_file)
-            solution.final_files = cpy
-
-            log(solution.final_files)
-
-            await session.flush()
-
             if not (
                 solution.solution_status == SolutionStatus.ACCEPTED
                 or solution.solution_status == SolutionStatus.MODIFIED
@@ -598,7 +680,7 @@ async def accept_file(
         await session.commit()
 
     if all_solutions_accepted_or_modified:
-        asyncio.create_task(generate_hint(kai_ctx, client_id))  # type: ignore[unused-awaitable]
+        asyncio.create_task(generate_hint(kai_ctx, client_id))  # type: ignore[unused-awaitable, unused-ignore]
 
 
 @mcp.tool(name="accept_file")
@@ -611,4 +693,36 @@ async def tool_accept_file(
         cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
         client_id,
         solution_file,
+    )
+
+
+async def reject_file(
+    kai_ctx: KaiSolutionServerContext,
+    client_id: str,
+    file_uri: str,
+) -> None:
+    async with kai_ctx.session_maker.begin() as session:
+        solutions_stmt = select(DBSolution).where(DBSolution.client_id == client_id)
+        solutions = (await session.execute(solutions_stmt)).scalars().all()
+
+        for solution in solutions:
+            for file in solution.after:
+                if file.uri != file_uri:
+                    continue
+
+                file.status = SolutionStatus.REJECTED
+
+        await session.commit()
+
+
+@mcp.tool(name="reject_file")
+async def tool_reject_file(
+    ctx: Context,
+    client_id: str,
+    file_uri: str,
+) -> None:
+    return await reject_file(
+        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
+        client_id,
+        file_uri,
     )

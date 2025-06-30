@@ -151,7 +151,10 @@ async def interact_with_server(session: ClientSession) -> None:
     console.print("Available tools:")
     console.print(yaml.dump(print_result))
 
-    console.print("Enter actions as <name> <args as JSON or file path>")
+    console.print("Enter actions as:")
+    console.print("  - `<name> <args as JSON>`")
+    console.print("  - `<name> <filepath to JSON file>`")
+    console.print("  - <filepath to JSON file> (sequential tool call)")
     console.print("Type 'exit' to quit")
 
     while True:
@@ -161,26 +164,44 @@ async def interact_with_server(session: ClientSession) -> None:
                 break
 
             parts = user_input.split(maxsplit=1)
-            if len(parts) != 2:
-                console.print("Invalid input format. Use '<name> <args>'")
+            if len(parts) > 2 or len(parts) < 1:
+                console.print("Invalid input format.")
                 continue
 
             name = parts[0]
             try:
-                # try to parse as a JSON object
-                arguments = json.loads(parts[1].strip())
-            except json.JSONDecodeError:
-                try:
-                    # if that fails, treat it as a file path
-                    file_path = parts[1].strip()
-                    with open(file_path, "r") as f:
-                        arguments = json.load(f)
-                except Exception as e:
-                    console.print(f"Error reading arguments: {e}")
-                    continue
+                with open(name, "r") as f:
+                    # If the first part is a file path, read the content
+                    content = f.read()
+                    sequence: list[dict] = json.loads(content)
 
-            result = await session.call_tool(name, arguments)
-            console.print(result.model_dump())
+                for item in sequence:
+                    args_str = str(item["args"])
+                    if len(args_str) > 100:
+                        args_str = args_str[:100] + "..."
+                    console.log("Calling tool:")
+                    console.log(f"  name: {item['name']}")
+                    console.log(f"  args: {args_str}")
+                    result = await session.call_tool(item["name"], item["args"])
+                    console.log(f"Result: {result.model_dump()}")
+                    input("Press Enter to continue to the next tool call...")
+
+            except FileNotFoundError:
+                try:
+                    # if that fails, try to parse 2nd arg as a JSON object
+                    arguments = json.loads(parts[1].strip())
+                except json.JSONDecodeError:
+                    try:
+                        # if that fails, treat it as a file path
+                        file_path = parts[1].strip()
+                        with open(file_path, "r") as f:
+                            arguments = json.load(f)
+                    except Exception as e:
+                        console.print(f"Error reading arguments: {e}")
+                        continue
+
+                result = await session.call_tool(name, arguments)
+                console.print(result.model_dump())
 
         except Exception as e:
             logger.error("Error during tool call: %s", str(e), exc_info=True)

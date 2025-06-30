@@ -1,13 +1,9 @@
 from __future__ import annotations
 
-import json
 import sys
 from datetime import datetime
-from difflib import unified_diff
-from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, computed_field
 from sqlalchemy import (
     ARRAY,
     JSON,
@@ -15,11 +11,9 @@ from sqlalchemy import (
     Column,
     Connection,
     DateTime,
-    Dialect,
     ForeignKey,
     Integer,
     String,
-    TypeDecorator,
     event,
     func,
 )
@@ -43,6 +37,15 @@ from sqlalchemy.schema import (
 )
 
 import kai_mcp_solution_server.analyzer_types as analyzer_types
+from kai_mcp_solution_server.db.python_objects import (
+    SolutionChangeSet,
+    SolutionFile,
+    SolutionStatus,
+)
+from kai_mcp_solution_server.db.type_decorators import (
+    ListSolutionFileJSON,
+    SolutionChangeSetJSON,
+)
 
 
 # https://github.com/pallets-eco/flask-sqlalchemy/issues/722#issuecomment-705672929
@@ -84,132 +87,6 @@ def drop_everything(con: Connection) -> None:
     # trans.commit()
 
 
-class SolutionFile(BaseModel):
-    uri: str
-    content: str
-
-
-class SolutionChangeSet(BaseModel):
-    before: list[SolutionFile]
-    after: list[SolutionFile]
-
-    @computed_field
-    def diff(self) -> str:
-        # use difflib to create a multiline diff
-
-        # if the file names are the same, we assume they are the same file
-        # if the file names are different, we create a similarity matrix. If two files have a similarity of 0.8 or more, we assume they are the same file
-        # Any files not matched afterwards are considered new/deleted files
-
-        # (before_uri, after_uri) -> (before_file, after_file)
-        diff_dict: dict[tuple[str, str], tuple[SolutionFile, SolutionFile]] = {}
-
-        before_files = {f.uri: f for f in self.before}
-        after_files = {f.uri: f for f in self.after}
-
-        matched_files = set(before_files.keys()) & set(after_files.keys())
-        unmatched_before_files = set(before_files.keys()) - set(after_files.keys())
-        unmatched_after_files = set(after_files.keys()) - set(before_files.keys())
-
-        for uri in matched_files:
-            before_file = before_files[uri]
-            after_file = after_files[uri]
-            diff_dict[(before_file.uri, after_file.uri)] = (before_file, after_file)
-
-        # TODO: Implement similarity score
-        for uri in unmatched_before_files:
-            before_file = before_files[uri]
-            diff_dict[(before_file.uri, "")] = (
-                before_file,
-                SolutionFile(uri="", content=""),
-            )
-
-        for uri in unmatched_after_files:
-            after_file = after_files[uri]
-            diff_dict[("", after_file.uri)] = (
-                SolutionFile(uri="", content=""),
-                after_file,
-            )
-
-        diffs = []
-        for (before_uri, after_uri), (before_file, after_file) in diff_dict.items():
-            if before_file.content == after_file.content:
-                continue
-
-            diff = unified_diff(
-                before_file.content.splitlines(keepends=True),
-                after_file.content.splitlines(keepends=True),
-                fromfile=before_uri,
-                tofile=after_uri,
-            )
-
-            diffs.append("".join(diff))
-
-        return "\n".join(diffs) if diffs else ""
-
-
-class SolutionStatus(StrEnum):
-    ACCEPTED = "accepted"
-    REJECTED = "rejected"
-    MODIFIED = "modified"
-    PENDING = "pending"
-    UNKNOWN = "unknown"
-
-
-class SolutionChangeSetJSON(TypeDecorator):  # type: ignore[type-arg]
-    """Adapter that bridges Pydantic SolutionChangeSet to Postgres JSON."""
-
-    impl = JSON
-    cache_ok = True
-
-    def process_bind_param(
-        self, value: SolutionChangeSet | None, dialect: Dialect
-    ) -> dict[str, Any] | None:
-        if value is None:
-            return None
-        return value.model_dump(mode="json")
-
-    def process_result_value(
-        self, value: Any | None, dialect: Dialect
-    ) -> SolutionChangeSet | None:
-        if value is None:
-            return None
-        if isinstance(value, str):
-            return SolutionChangeSet.model_validate_json(value)
-
-        return SolutionChangeSet.model_validate(value)
-
-
-class ListSolutionFileJSON(TypeDecorator):  # type: ignore[type-arg]
-    """Adapter that bridges Pydantic list[SolutionFile] to Postgres JSON."""
-
-    impl = JSON
-    cache_ok = True
-
-    def process_bind_param(
-        self, value: list[SolutionFile] | None, dialect: Dialect
-    ) -> list[dict[str, Any]] | None:
-        if value is None:
-            return None
-        return [file.model_dump(mode="json") for file in value]
-
-    def process_result_value(
-        self, value: Any | None, dialect: Dialect
-    ) -> list[SolutionFile] | None:
-        if value is None:
-            return None
-        if isinstance(value, str):
-            load = json.loads(value)
-            if isinstance(load, dict):
-                load = [load]
-            elif not isinstance(load, list):
-                raise ValueError(f"Expected a list or dict, got {type(load)}: {load}")
-
-            return [SolutionFile.model_validate(file) for file in load]
-
-        return [SolutionFile.model_validate(file) for file in value]
-
-
 class Base(MappedAsDataclass, DeclarativeBase):
     type_annotation_map = {
         dict[str, Any]: JSON,
@@ -231,11 +108,6 @@ async def get_async_engine(url: URL | str, drop_all: bool = False) -> AsyncEngin
         await conn.run_sync(Base.metadata.create_all)
 
     return engine
-
-
-class ViolationID(BaseModel):
-    ruleset_name: str
-    violation_name: str
 
 
 violation_hint_association_table = Table(
@@ -353,17 +225,6 @@ class DBIncident(Base):
         return not self.__eq__(other)
 
 
-class Solution(BaseModel):
-    # TODO: Turn this into a more general "Trajectory" thing?
-    change_set: SolutionChangeSet
-
-    reasoning: str | None = None
-
-    solution_status: SolutionStatus
-
-    hint_id: int | None = None
-
-
 solution_hint_association_table = Table(
     "kai_solution_hint_association",
     Base.metadata,
@@ -373,6 +234,31 @@ solution_hint_association_table = Table(
     ),
     Column(
         "hint_id", ForeignKey("kai_hints.id", ondelete="CASCADE", onupdate="CASCADE")
+    ),
+)
+
+
+solution_before_file_association_table = Table(
+    "solution_before_file_association",
+    Base.metadata,
+    Column(
+        "solution_id",
+        ForeignKey("kai_solutions.id", ondelete="CASCADE", onupdate="CASCADE"),
+    ),
+    Column(
+        "file_id", ForeignKey("kai_files.id", ondelete="CASCADE", onupdate="CASCADE")
+    ),
+)
+
+solution_after_file_association_table = Table(
+    "solution_after_file_association",
+    Base.metadata,
+    Column(
+        "solution_id",
+        ForeignKey("kai_solutions.id", ondelete="CASCADE", onupdate="CASCADE"),
+    ),
+    Column(
+        "file_id", ForeignKey("kai_files.id", ondelete="CASCADE", onupdate="CASCADE")
     ),
 )
 
@@ -389,41 +275,20 @@ class DBSolution(Base):
         nullable=False,
     )
 
-    change_set: Mapped[SolutionChangeSet]
-
-    # TODO: Make this more robust wrt to change sets and final files.
-    final_files: Mapped[list[SolutionFile]]
+    before: Mapped[set["DBFile"]] = relationship(
+        secondary=solution_before_file_association_table,
+        back_populates="solution_before",
+        lazy="selectin",
+    )
+    after: Mapped[set["DBFile"]] = relationship(
+        secondary=solution_after_file_association_table,
+        back_populates="solution_after",
+        lazy="selectin",
+    )
 
     reasoning: Mapped[str | None]
 
     solution_status: Mapped[SolutionStatus]
-
-    def update_solution_status(self) -> None:
-        if len(self.final_files) == 0:
-            if len(self.change_set.after) == 0:
-                self.solution_status = SolutionStatus.ACCEPTED
-                return
-
-            self.solution_status = SolutionStatus.PENDING
-            return
-
-        after_uris = {file.uri for file in self.change_set.after}
-        final_uris = {file.uri for file in self.final_files}
-
-        if len(after_uris) > len(final_uris):
-            self.solution_status = SolutionStatus.MODIFIED
-            return
-
-        for after_file in self.change_set.after:
-            for final_file in self.final_files:
-                if after_file.uri != final_file.uri:
-                    continue
-                if after_file.content != final_file.content:
-                    self.solution_status = SolutionStatus.MODIFIED
-                    return
-
-        self.solution_status = SolutionStatus.ACCEPTED
-        return
 
     incidents: Mapped[set["DBIncident"]] = relationship(
         back_populates="solution",
@@ -442,6 +307,23 @@ class DBSolution(Base):
         lazy="selectin",
     )
 
+    def update_solution_status(self) -> None:
+        for file in self.after:
+            if file.status == SolutionStatus.REJECTED:
+                self.solution_status = SolutionStatus.REJECTED
+                return
+            elif file.status == SolutionStatus.UNKNOWN:
+                self.solution_status = SolutionStatus.UNKNOWN
+                return
+            elif file.status == SolutionStatus.MODIFIED:
+                self.solution_status = SolutionStatus.MODIFIED
+                return
+            elif file.status == SolutionStatus.PENDING:
+                self.solution_status = SolutionStatus.PENDING
+                return
+
+        self.solution_status = SolutionStatus.ACCEPTED
+
     def __hash__(self) -> int:
         return hash(self.id)
 
@@ -455,27 +337,61 @@ class DBSolution(Base):
         return not self.__eq__(other)
 
 
+class DBFile(Base):
+    __tablename__ = "kai_files"
+
+    id: Mapped[int] = mapped_column(init=False, primary_key=True, autoincrement=True)
+    uri: Mapped[str]
+    client_id: Mapped[str]
+    content: Mapped[str]
+    next_id: Mapped[int | None] = mapped_column(
+        ForeignKey("kai_files.id", ondelete="SET NULL", onupdate="CASCADE"),
+        init=False,
+    )
+    next: Mapped[DBFile | None] = relationship(
+        "DBFile",
+        uselist=False,
+        lazy="selectin",
+    )
+    status: Mapped[SolutionStatus]
+
+    solution_before: Mapped[set[DBSolution]] = relationship(
+        secondary=solution_before_file_association_table,
+        back_populates="before",
+        lazy="selectin",
+    )
+    solution_after: Mapped[set[DBSolution]] = relationship(
+        secondary=solution_after_file_association_table,
+        back_populates="after",
+        lazy="selectin",
+    )
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+
+@event.listens_for(DBFile, "after_insert")
+@event.listens_for(DBFile, "after_update")
+@event.listens_for(DBFile, "after_delete")
 @event.listens_for(DBSolution, "before_insert")
 @event.listens_for(DBSolution, "before_update")
 def auto_update_solution_status(
     mapper: Any,
     connection: Connection,
-    target: DBSolution,
+    target: DBSolution | DBFile,
 ) -> None:
-    target.update_solution_status()
+    if isinstance(target, DBSolution):
+        target.update_solution_status()
+        return
+
+    if target.solution_before or target.solution_after:
+        # If the file is part of a solution, we need to update the solution status
+        for solution in target.solution_before.union(target.solution_after):
+            solution.update_solution_status()
 
 
 class DBHint(Base):
     __tablename__ = "kai_hints"
-
-    # __table_args__ = (
-    #     ForeignKeyConstraint(
-    #         ["ruleset_name", "violation_name"],
-    #         ["kai_violations.ruleset_name", "kai_violations.violation_name"],
-    #         ondelete="CASCADE",
-    #         onupdate="CASCADE",
-    #     ),
-    # )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, init=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -487,8 +403,6 @@ class DBHint(Base):
 
     text: Mapped[str | None]
 
-    # ruleset_name: Mapped[str] = mapped_column()
-    # violation_name: Mapped[str] = mapped_column()
     violations: Mapped[set["DBViolation"]] = relationship(
         secondary=violation_hint_association_table,
         back_populates="hints",

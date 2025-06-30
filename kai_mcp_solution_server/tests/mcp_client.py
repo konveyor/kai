@@ -24,7 +24,7 @@ except ImportError:
     from .ssl_utils import apply_ssl_bypass
 
 from kai_mcp_solution_server.analyzer_types import ExtendedIncident
-from kai_mcp_solution_server.dao import SolutionChangeSet, SolutionFile, ViolationID
+from kai_mcp_solution_server.db.python_objects import SolutionFile, ViolationID
 from kai_mcp_solution_server.server import SuccessRateMetric
 
 # Configure logger
@@ -129,21 +129,18 @@ public class ExampleService {
     request = {
         "client_id": client_id,
         "incident_ids": incident_ids,
-        "change_set": SolutionChangeSet(
-            diff=diff,
-            before=[
-                SolutionFile(
-                    uri="file://ExampleService.java",
-                    content=before_code,
-                )
-            ],
-            after=[
-                SolutionFile(
-                    uri="file://ExampleService.java",
-                    content=after_code,
-                )
-            ],
-        ).model_dump(),
+        "before": [
+            SolutionFile(
+                uri="file://ExampleService.java",
+                content=before_code,
+            ).model_dump()
+        ],
+        "after": [
+            SolutionFile(
+                uri="file://ExampleService.java",
+                content=after_code,
+            ).model_dump(),
+        ],
     }
 
     try:
