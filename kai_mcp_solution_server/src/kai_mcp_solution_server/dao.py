@@ -19,6 +19,7 @@ from sqlalchemy import (
     Integer,
     String,
     TypeDecorator,
+    event,
     func,
 )
 from sqlalchemy.engine.reflection import Inspector
@@ -155,7 +156,7 @@ class SolutionStatus(StrEnum):
 
 
 class SolutionChangeSetJSON(TypeDecorator):  # type: ignore[type-arg]
-    """Adapter that bridges Pydantic SolutionChangeSet to Postgres JSONB."""
+    """Adapter that bridges Pydantic SolutionChangeSet to Postgres JSON."""
 
     impl = JSON
     cache_ok = True
@@ -178,11 +179,36 @@ class SolutionChangeSetJSON(TypeDecorator):  # type: ignore[type-arg]
         return SolutionChangeSet.model_validate(value)
 
 
+class ListSolutionFileJSON(TypeDecorator):  # type: ignore[type-arg]
+    """Adapter that bridges Pydantic list[SolutionFile] to Postgres JSON."""
+
+    impl = JSON
+    cache_ok = True
+
+    def process_bind_param(
+        self, value: list[SolutionFile] | None, dialect: Dialect
+    ) -> list[dict[str, Any]] | None:
+        if value is None:
+            return None
+        return [file.model_dump(mode="json") for file in value]
+
+    def process_result_value(
+        self, value: Any | None, dialect: Dialect
+    ) -> list[SolutionFile] | None:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return [SolutionFile.model_validate_json(file) for file in value]
+
+        return [SolutionFile.model_validate(file) for file in value]
+
+
 class Base(MappedAsDataclass, DeclarativeBase):
     type_annotation_map = {
         dict[str, Any]: JSON,
         list[str]: ARRAY(String),
         SolutionChangeSet: SolutionChangeSetJSON,
+        list[SolutionFile]: ListSolutionFileJSON,
     }
 
 
@@ -358,9 +384,39 @@ class DBSolution(Base):
 
     change_set: Mapped[SolutionChangeSet]
 
+    # TODO: Make this more robust wrt to change sets and final files.
+    final_files: Mapped[list[SolutionFile]]
+
     reasoning: Mapped[str | None]
 
     solution_status: Mapped[SolutionStatus]
+
+    def update_solution_status(self) -> None:
+        if len(self.final_files) == 0:
+            if len(self.change_set.after) == 0:
+                self.solution_status = SolutionStatus.ACCEPTED
+                return
+
+            self.solution_status = SolutionStatus.PENDING
+            return
+
+        after_uris = {file.uri for file in self.change_set.after}
+        final_uris = {file.uri for file in self.final_files}
+
+        if len(after_uris) > len(final_uris):
+            self.solution_status = SolutionStatus.MODIFIED
+            return
+
+        for after_file in self.change_set.after:
+            for final_file in self.final_files:
+                if after_file.uri != final_file.uri:
+                    continue
+                if after_file.content != final_file.content:
+                    self.solution_status = SolutionStatus.MODIFIED
+                    return
+
+        self.solution_status = SolutionStatus.ACCEPTED
+        return
 
     incidents: Mapped[set["DBIncident"]] = relationship(
         back_populates="solution",
@@ -390,6 +446,16 @@ class DBSolution(Base):
 
     def __neq__(self, other: object) -> bool:
         return not self.__eq__(other)
+
+
+@event.listens_for(DBSolution, "before_insert")
+@event.listens_for(DBSolution, "before_update")
+def auto_update_solution_status(
+    mapper: Any,
+    connection: Connection,
+    target: DBSolution,
+) -> None:
+    target.update_solution_status()
 
 
 class DBHint(Base):

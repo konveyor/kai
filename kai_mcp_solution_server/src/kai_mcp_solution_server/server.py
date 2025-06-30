@@ -23,6 +23,7 @@ from kai_mcp_solution_server.dao import (
     DBSolution,
     DBViolation,
     SolutionChangeSet,
+    SolutionFile,
     SolutionStatus,
     ViolationID,
     get_async_engine,
@@ -281,6 +282,7 @@ async def create_solution(
             solution_status=SolutionStatus.PENDING,
             incidents=set(incidents),
             hints=set(hints),
+            final_files=[],
         )
 
         session.add(solution)
@@ -312,53 +314,6 @@ async def tool_create_solution(
         change_set,
         reasoning,
         used_hint_ids,
-    )
-
-
-async def update_solution_status(
-    kai_ctx: KaiSolutionServerContext,
-    client_id: str,
-    solution_status: SolutionStatus = SolutionStatus.ACCEPTED,
-) -> None:
-    """
-    Update the status of the solution with the given client ID in the database.
-
-    All solutions associated with the client ID will be updated to the specified
-    solution status. If the solution status is "accepted", a hint will be generated for
-    the client.
-    """
-    async with kai_ctx.session_maker.begin() as session:
-        solutions_stmt = select(DBSolution).where(
-            DBSolution.client_id == client_id,
-        )
-        solutions = (await session.execute(solutions_stmt)).scalars().all()
-
-        for solution in solutions:
-            solution.solution_status = solution_status
-
-        await session.commit()
-
-    if solution_status == SolutionStatus.ACCEPTED:
-        asyncio.create_task(generate_hint(kai_ctx, client_id))
-
-
-@mcp.tool(name="update_solution_status")
-async def tool_update_solution_status(
-    ctx: Context,
-    client_id: str,
-    solution_status: SolutionStatus = SolutionStatus.ACCEPTED,
-) -> None:
-    """
-    Update the status of the solution with the given client ID in the database.
-
-    All solutions associated with the client ID will be updated to the specified
-    solution status. If the solution status is "accepted", a hint will be generated for
-    the client.
-    """
-    return await update_solution_status(
-        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
-        client_id,
-        solution_status,
     )
 
 
@@ -396,7 +351,14 @@ async def generate_hint(
                     f"  {incident.violation.violation_name}\n\n"
                 )
 
-            prompt += "Solution:\n" f"{solution.change_set.diff}\n\n"
+            # TODO: Make this more robust wrt to change sets and final files.
+            new_change_set = solution.change_set
+            for final in solution.final_files:
+                for i, after in enumerate(new_change_set.after):
+                    if final.uri == after.uri:
+                        new_change_set.after[i].content = final.content
+
+            prompt += "Solution:\n" f"{new_change_set.diff}\n\n"
 
             log(f"Generating hint for client {client_id} with prompt:\n{prompt}")
 
@@ -577,4 +539,40 @@ async def tool_get_success_rate(
     return await get_success_rate(
         cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
         violation_ids,
+    )
+
+
+async def accept_file(
+    kai_ctx: KaiSolutionServerContext,
+    client_id: str,
+    solution_file: SolutionFile,
+) -> None:
+    async with kai_ctx.session_maker.begin() as session:
+        solutions_stmt = select(DBSolution).where(DBSolution.client_id == client_id)
+        solutions = (await session.execute(solutions_stmt)).scalars().all()
+
+        all_solutions_accepted_or_modified = True
+        for solution in solutions:
+            solution.final_files.append(solution_file)
+
+            if not (
+                solution.solution_status == SolutionStatus.ACCEPTED
+                or solution.solution_status == SolutionStatus.MODIFIED
+            ):
+                all_solutions_accepted_or_modified = False
+
+        if all_solutions_accepted_or_modified:
+            asyncio.create_task(generate_hint(kai_ctx, client_id))
+
+
+@mcp.tool(name="accept_file")
+async def tool_accept_file(
+    ctx: Context,
+    client_id: str,
+    solution_file: SolutionFile,
+) -> None:
+    return await accept_file(
+        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
+        client_id,
+        solution_file,
     )
