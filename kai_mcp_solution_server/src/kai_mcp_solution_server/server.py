@@ -32,10 +32,12 @@ from kai_mcp_solution_server.dao import (
 class SolutionServerSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="kai_")
 
-    # "postgresql+asyncpg://postgres:mysecretpassword@localhost:5432/postgres"
-    # "sqlite+aiosqlite:////home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/kai_mcp_solution_server/kai_mcp_solution_server.db"
-
     db_dsn: Annotated[URL, NoDecode]
+    """
+    Example DSNs:
+    - PostgreSQL: `postgresql+asyncpg://username:password@host:port/database`
+    - SQLite: `sqlite+aiosqlite:///path/to/database.db`
+    """
 
     llm_params: dict[str, Any] | None
 
@@ -533,22 +535,9 @@ async def get_success_rate(
             )
             for violation_id in violation_ids
         )
-        # Hack using text() to avoid strange tuple error with SQLAlchemy
+
         violations_stmt = select(DBViolation).where(violations_where)
-        # violations_values = {}
-        # for i, violation_id in enumerate(violation_ids, 1):
-        #     violations_values[f"ruleset_name_{i}"] = violation_id.ruleset_name
-        #     violations_values[f"violation_name_{i}"] = violation_id.violation_name
-
-        # print(f"Violations values: {violations_values}", file=sys.stderr)
-
-        # violations_stmt = violations_stmt.bindparams(**violations_values)
-
-        # print(f"SQL Statement: {str(violations_stmt)}", file=sys.stderr)
-        # return None
-
         violations = (await session.execute(violations_stmt)).scalars().all()
-        # violations = cast(Sequence[DBViolation], violations)
 
         for violation in violations:
             metric = SuccessRateMetric(
