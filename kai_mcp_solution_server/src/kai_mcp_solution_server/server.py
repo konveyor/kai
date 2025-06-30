@@ -155,22 +155,11 @@ class CreateIncidentResult(BaseModel):
     solution_id: int
 
 
-@mcp.tool()
 async def create_incident(
-    ctx: Context,
+    kai_ctx: KaiSolutionServerContext,
     client_id: str,
     extended_incident: ExtendedIncident,
-    # proposed_solution: Solution,
 ) -> int:
-    """
-    Create an incident in the database.
-    This function will create a new incident in the database, associating it with
-    the provided client ID and the extended incident data. If the violation
-    associated with the incident does not exist in the database, it will be created
-    as well.
-    """
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
-
     async with kai_ctx.session_maker.begin() as session:
         violation_stmt = select(DBViolation).where(
             DBViolation.ruleset_name == extended_incident.ruleset_name,
@@ -210,24 +199,57 @@ async def create_incident(
     return incident.id
 
 
-@mcp.tool()
-async def create_solution(
+@mcp.tool(name="create_incident")
+async def tool_create_incident(
     ctx: Context,
+    client_id: str,
+    extended_incident: ExtendedIncident,
+) -> int:
+    """
+    Create an incident in the database.
+    This function will create a new incident in the database, associating it with
+    the provided client ID and the extended incident data. If the violation
+    associated with the incident does not exist in the database, it will be created
+    as well.
+    """
+    return create_incident(
+        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
+        client_id,
+        extended_incident,
+    )
+
+
+@mcp.tool(name="tool_create_incidents")
+async def tool_create_multiple_incidents(
+    ctx: Context,
+    client_id: str,
+    extended_incidents: list[ExtendedIncident],
+) -> list[CreateIncidentResult]:
+    """
+    Create multiple incidents in the database.
+    This function will create multiple new incidents in the database, associating
+    them with the provided client ID and the list of extended incident data.
+    If any of the violations associated with the incidents do not exist in the
+    database, they will be created as well.
+    """
+    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    results: list[CreateIncidentResult] = []
+
+    for extended_incident in extended_incidents:
+        incident_id = await create_incident(kai_ctx, client_id, extended_incident)
+        results.append(CreateIncidentResult(incident_id=incident_id, solution_id=0))
+
+    return results
+
+
+async def create_solution(
+    kai_ctx: KaiSolutionServerContext,
     client_id: str,
     incident_ids: list[int],
     change_set: SolutionChangeSet,
     reasoning: str | None = None,
     used_hint_ids: list[int] | None = None,
 ) -> int:
-    """
-    Create a solution in the database.
-    This function will create a new solution in the database, associating it with
-    the provided client ID, incident IDs, change set, reasoning, and used hint IDs.
-    If the incident IDs do not exist in the database, a ValueError will be raised.
-    If the used hint IDs do not exist in the database, a ValueError will be raised
-    """
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
-
     if len(incident_ids) == 0:
         raise ValueError("At least one incident ID must be provided.")
 
@@ -265,9 +287,34 @@ async def create_solution(
     return solution.id
 
 
-@mcp.tool()
-async def update_solution_status(
+@mcp.tool(name="create_solution")
+async def tool_create_solution(
     ctx: Context,
+    client_id: str,
+    incident_ids: list[int],
+    change_set: SolutionChangeSet,
+    reasoning: str | None = None,
+    used_hint_ids: list[int] | None = None,
+) -> int:
+    """
+    Create a solution in the database.
+    This function will create a new solution in the database, associating it with
+    the provided client ID, incident IDs, change set, reasoning, and used hint IDs.
+    If the incident IDs do not exist in the database, a ValueError will be raised.
+    If the used hint IDs do not exist in the database, a ValueError will be raised
+    """
+    return await create_solution(
+        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
+        client_id,
+        incident_ids,
+        change_set,
+        reasoning,
+        used_hint_ids,
+    )
+
+
+async def update_solution_status(
+    kai_ctx: KaiSolutionServerContext,
     client_id: str,
     solution_status: SolutionStatus = SolutionStatus.ACCEPTED,
 ) -> None:
@@ -278,8 +325,6 @@ async def update_solution_status(
     solution status. If the solution status is "accepted", a hint will be generated for
     the client.
     """
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
-
     async with kai_ctx.session_maker.begin() as session:
         solutions_stmt = select(DBSolution).where(
             DBSolution.client_id == client_id,
@@ -293,6 +338,26 @@ async def update_solution_status(
 
     if solution_status == SolutionStatus.ACCEPTED:
         asyncio.create_task(generate_hint(kai_ctx, client_id))  # type: ignore[unused-awaitable]
+
+
+@mcp.tool(name="update_solution_status")
+async def tool_update_solution_status(
+    ctx: Context,
+    client_id: str,
+    solution_status: SolutionStatus = SolutionStatus.ACCEPTED,
+) -> None:
+    """
+    Update the status of the solution with the given client ID in the database.
+
+    All solutions associated with the client ID will be updated to the specified
+    solution status. If the solution status is "accepted", a hint will be generated for
+    the client.
+    """
+    return await update_solution_status(
+        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
+        client_id,
+        solution_status,
+    )
 
 
 async def generate_hint(
@@ -355,16 +420,11 @@ async def generate_hint(
     return
 
 
-@mcp.tool()
 async def delete_solution(
-    ctx: Context,
+    kai_ctx: KaiSolutionServerContext,
     client_id: str,
     solution_id: int,
 ) -> bool:
-    """
-    Delete the solution with the given ID from the database.
-    """
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     async with kai_ctx.session_maker.begin() as session:
         sln = await session.get(DBSolution, solution_id)
         if sln is None:
@@ -372,6 +432,22 @@ async def delete_solution(
         await session.delete(sln)
         await session.commit()
     return True
+
+
+@mcp.tool(name="delete_solution")
+async def tool_delete_solution(
+    ctx: Context,
+    client_id: str,
+    solution_id: int,
+) -> bool:
+    """
+    Delete the solution with the given ID from the database.
+    """
+    return await delete_solution(
+        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
+        client_id,
+        solution_id,
+    )
 
 
 # TODO: Make this a resource instead of a tool. Need to figure out how to handle
@@ -385,20 +461,10 @@ class GetBestHintResult(BaseModel):
 
 @mcp.tool()
 async def get_best_hint(
-    ctx: Context,
+    kai_ctx: KaiSolutionServerContext,
     ruleset_name: str,
     violation_name: str,
 ) -> GetBestHintResult | None:
-    """
-    Get the best hint for a given ruleset and violation name.
-    This function retrieves the most recent hint for the specified ruleset and
-    violation name from the database. If no hint is found, it returns None.
-    If a hint is found, it returns a GetBestHintResult object containing the hint text
-    and the hint ID. The hint is considered the best if it has at least one solution
-    with the status "accepted".
-    """
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
-
     async with kai_ctx.session_maker.begin() as session:
         violation_name_stmt = select(DBViolation).where(
             DBViolation.ruleset_name == ruleset_name,
@@ -423,28 +489,37 @@ async def get_best_hint(
     return None
 
 
+@mcp.tool(name="get_best_hint")
+async def tool_get_best_hint(
+    ctx: Context,
+    ruleset_name: str,
+    violation_name: str,
+) -> GetBestHintResult | None:
+    """
+    Get the best hint for a given ruleset and violation name.
+    This function retrieves the most recent hint for the specified ruleset and
+    violation name from the database. If no hint is found, it returns None.
+    If a hint is found, it returns a GetBestHintResult object containing the hint text
+    and the hint ID. The hint is considered the best if it has at least one solution
+    with the status "accepted".
+    """
+    return await get_best_hint(
+        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
+        ruleset_name,
+        violation_name,
+    )
+
+
 class SuccessRateMetric(BaseModel):
     counted_solutions: int
     accepted_solutions: int
 
 
-# TODO: Make this a resource instead of a tool. Need to figure out how to handle
-# lists in a resource.
 @mcp.tool()
 async def get_success_rate(
-    ctx: Context,
+    kai_ctx: KaiSolutionServerContext,
     violation_ids: list[ViolationID],
 ) -> list[SuccessRateMetric] | None:
-    """
-    Get the success rate for a list of violations.
-
-    This function retrieves the success rate for the given list of violations from the
-    database. The success rate is calculated as the number of accepted solutions divided
-    by the total number of solutions for each violation. If no violations are provided,
-    an empty list is returned. If any of the violations do not exist in the database,
-    they are ignored.
-    """
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     result: list[SuccessRateMetric] = []
 
     if len(violation_ids) == 0:
@@ -494,3 +569,25 @@ async def get_success_rate(
             result.append(metric)
 
     return result
+
+
+# TODO: Make this a resource instead of a tool. Need to figure out how to handle
+# lists in a resource.
+@mcp.tool(name="get_success_rate")
+async def tool_get_success_rate(
+    ctx: Context,
+    violation_ids: list[ViolationID],
+) -> list[SuccessRateMetric] | None:
+    """
+    Get the success rate for a list of violations.
+
+    This function retrieves the success rate for the given list of violations from the
+    database. The success rate is calculated as the number of accepted solutions divided
+    by the total number of solutions for each violation. If no violations are provided,
+    an empty list is returned. If any of the violations do not exist in the database,
+    they are ignored.
+    """
+    return await get_success_rate(
+        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
+        violation_ids,
+    )
