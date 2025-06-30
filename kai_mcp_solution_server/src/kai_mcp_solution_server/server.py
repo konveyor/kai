@@ -222,7 +222,7 @@ async def tool_create_incident(
     )
 
 
-@mcp.tool(name="tool_create_incidents")
+@mcp.tool(name="create_multiple_incidents")
 async def tool_create_multiple_incidents(
     ctx: Context,
     client_id: str,
@@ -474,8 +474,12 @@ async def tool_get_best_hint(
 
 
 class SuccessRateMetric(BaseModel):
-    counted_solutions: int
-    accepted_solutions: int
+    counted_solutions: int = 0
+    accepted_solutions: int = 0
+    rejected_solutions: int = 0
+    modified_solutions: int = 0
+    pending_solutions: int = 0
+    unknown_solutions: int = 0
 
 
 async def get_success_rate(
@@ -500,19 +504,33 @@ async def get_success_rate(
         violations = (await session.execute(violations_stmt)).scalars().all()
 
         for violation in violations:
-            metric = SuccessRateMetric(
-                counted_solutions=0,
-                accepted_solutions=0,
-            )
+            metric = SuccessRateMetric()
 
             for incident in violation.incidents:
                 if incident.solution is None:
                     continue
 
+                # TODO: Make this cleaner
                 metric.counted_solutions += 1
                 metric.accepted_solutions += int(
                     incident.solution is not None
                     and incident.solution.solution_status == SolutionStatus.ACCEPTED
+                )
+                metric.rejected_solutions += int(
+                    incident.solution is not None
+                    and incident.solution.solution_status == SolutionStatus.REJECTED
+                )
+                metric.modified_solutions += int(
+                    incident.solution is not None
+                    and incident.solution.solution_status == SolutionStatus.MODIFIED
+                )
+                metric.pending_solutions += int(
+                    incident.solution is not None
+                    and incident.solution.solution_status == SolutionStatus.PENDING
+                )
+                metric.unknown_solutions += int(
+                    incident.solution is not None
+                    and incident.solution.solution_status == SolutionStatus.UNKNOWN
                 )
 
             result.append(metric)
@@ -553,13 +571,29 @@ async def accept_file(
 
         all_solutions_accepted_or_modified = True
         for solution in solutions:
-            solution.final_files.append(solution_file)
+
+            # NOTE: Need to do this rigamarole because something something caching
+            # and sqlalchemy. If you try to append to the list directly, it will not
+            # work as expected.
+            cpy = solution.final_files.copy()
+            add_file = True
+            for file in cpy:
+                if file.uri == solution_file.uri:
+                    file.content = solution_file.content
+                    add_file = False
+            if add_file:
+                cpy.append(solution_file)
+            solution.final_files = cpy
+
+            log(solution.final_files)
 
             if not (
                 solution.solution_status == SolutionStatus.ACCEPTED
                 or solution.solution_status == SolutionStatus.MODIFIED
             ):
                 all_solutions_accepted_or_modified = False
+
+        await session.commit()
 
         if all_solutions_accepted_or_modified:
             asyncio.create_task(generate_hint(kai_ctx, client_id))
