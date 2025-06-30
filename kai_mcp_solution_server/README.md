@@ -49,7 +49,8 @@ The server implements the following functionality:
 
    ```bash
    # Postgres
-   KAI_DB_DSN='postgresql+asyncpg://postgres:mysecretpassword@localhost:5432/postgres'
+   KAI_DB_DSN='postgresql+asyncpg://postgres@localhost:5432/postgres'
+   KAI_DB_PASSWORD="mysecretpassword"
    # SQLite (Yes, quadruple slashes are required)
    KAI_DB_DSN='sqlite+aiosqlite:////path/to/a/file.db'
    ```

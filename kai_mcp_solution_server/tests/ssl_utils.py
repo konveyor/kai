@@ -11,7 +11,8 @@ import logging
 import os
 import ssl
 import warnings
-from typing import Callable, Optional
+from types import TracebackType
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -25,18 +26,23 @@ class SSLMonkeyPatch:
     for bypassing certificate verification.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.original_ssl_create_default_context = ssl.create_default_context
         self.original_httpx_client_init = None
         self.original_httpx_async_client_init = None
-        self.env_vars_to_cleanup = []
+        self.env_vars_to_cleanup: list[str] = []
         self.httpx_patched = False
 
-    def __enter__(self):
+    def __enter__(self) -> "SSLMonkeyPatch":
         """Apply SSL monkey patches."""
         return self.apply_ssl_bypass()
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Clean up SSL monkey patches."""
         self.restore_ssl_settings()
 
@@ -56,7 +62,7 @@ class SSLMonkeyPatch:
         warnings.filterwarnings("ignore", category=Warning)
 
         # Patch SSL module's default context creator to disable verification
-        def unverified_context(*args, **kwargs):
+        def unverified_context(*args: Any, **kwargs: Any) -> ssl.SSLContext:
             context = self.original_ssl_create_default_context(*args, **kwargs)
             context.check_hostname = False
             context.verify_mode = ssl.CERT_NONE
@@ -74,14 +80,14 @@ class SSLMonkeyPatch:
 
         return self
 
-    def _patch_httpx(self):
+    def _patch_httpx(self) -> None:
         """Patch httpx Client classes if httpx is available."""
         try:
             import httpx
 
             # Store original methods
-            self.original_httpx_client_init = httpx.Client.__init__
-            self.original_httpx_async_client_init = httpx.AsyncClient.__init__
+            self.original_httpx_client_init: Callable = httpx.Client.__init__
+            self.original_httpx_async_client_init: Callable = httpx.AsyncClient.__init__
 
             def patched_client_init(client_self, *args, **kwargs):
                 kwargs["verify"] = False
@@ -102,7 +108,7 @@ class SSLMonkeyPatch:
         except Exception as e:
             logger.warning("Failed to patch httpx: %s", e)
 
-    def _set_ssl_env_vars(self):
+    def _set_ssl_env_vars(self) -> None:
         """Set environment variables to disable SSL verification."""
         ssl_env_vars = {
             "SSL_CERT_VERIFY": "false",
@@ -118,7 +124,7 @@ class SSLMonkeyPatch:
 
         logger.debug("Set SSL environment variables: %s", list(ssl_env_vars.keys()))
 
-    def restore_ssl_settings(self):
+    def restore_ssl_settings(self) -> None:
         """Restore original SSL settings and clean up patches."""
         logger.debug("Restoring original SSL settings")
 

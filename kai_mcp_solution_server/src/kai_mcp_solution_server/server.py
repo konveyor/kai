@@ -162,6 +162,13 @@ async def create_incident(
     extended_incident: ExtendedIncident,
     # proposed_solution: Solution,
 ) -> int:
+    """
+    Create an incident in the database.
+    This function will create a new incident in the database, associating it with
+    the provided client ID and the extended incident data. If the violation
+    associated with the incident does not exist in the database, it will be created
+    as well.
+    """
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
 
     async with kai_ctx.session_maker.begin() as session:
@@ -212,6 +219,13 @@ async def create_solution(
     reasoning: str | None = None,
     used_hint_ids: list[int] | None = None,
 ) -> int:
+    """
+    Create a solution in the database.
+    This function will create a new solution in the database, associating it with
+    the provided client ID, incident IDs, change set, reasoning, and used hint IDs.
+    If the incident IDs do not exist in the database, a ValueError will be raised.
+    If the used hint IDs do not exist in the database, a ValueError will be raised
+    """
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
 
     if len(incident_ids) == 0:
@@ -258,7 +272,11 @@ async def update_solution_status(
     solution_status: SolutionStatus = SolutionStatus.ACCEPTED,
 ) -> None:
     """
-    Update the status of the solution with the given ID in the database.
+    Update the status of the solution with the given client ID in the database.
+
+    All solutions associated with the client ID will be updated to the specified
+    solution status. If the solution status is "accepted", a hint will be generated for
+    the client.
     """
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
 
@@ -371,6 +389,14 @@ async def get_best_hint(
     ruleset_name: str,
     violation_name: str,
 ) -> GetBestHintResult | None:
+    """
+    Get the best hint for a given ruleset and violation name.
+    This function retrieves the most recent hint for the specified ruleset and
+    violation name from the database. If no hint is found, it returns None.
+    If a hint is found, it returns a GetBestHintResult object containing the hint text
+    and the hint ID. The hint is considered the best if it has at least one solution
+    with the status "accepted".
+    """
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
 
     async with kai_ctx.session_maker.begin() as session:
@@ -409,6 +435,15 @@ async def get_success_rate(
     ctx: Context,
     violation_ids: list[ViolationID],
 ) -> list[SuccessRateMetric] | None:
+    """
+    Get the success rate for a list of violations.
+
+    This function retrieves the success rate for the given list of violations from the
+    database. The success rate is calculated as the number of accepted solutions divided
+    by the total number of solutions for each violation. If no violations are provided,
+    an empty list is returned. If any of the violations do not exist in the database,
+    they are ignored.
+    """
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     result: list[SuccessRateMetric] = []
 
