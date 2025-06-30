@@ -2,17 +2,17 @@ import asyncio
 import json
 import os
 import ssl
-import warnings
 from asyncio.log import logger
-from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
-from typing import Any, AsyncIterator, Iterator
+from contextlib import AsyncExitStack, asynccontextmanager
+from typing import AsyncIterator
 
-from httpx import AsyncClient, Client
+import yaml
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamablehttp_client
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from rich.console import Console
+from ssl_utils import apply_ssl_bypass
 
 # Import httpx for direct inspection
 try:
@@ -38,99 +38,6 @@ class MCPClientArgs(BaseSettings):
     insecure: bool = False
 
 
-@contextmanager
-def disable_ssl_certificate_verification() -> Iterator[None]:
-    original_ssl_create_default_context = ssl.create_default_context
-
-    logger.debug("Disabling SSL certificate verification by patching SSL module")
-    # Disable SSL verification warnings
-    warnings.filterwarnings("ignore", message="Unverified HTTPS request")
-    warnings.filterwarnings("ignore", category=Warning)
-
-    # Patch SSL module's default context creator to disable verification
-    def unverified_context(*args: Any, **kwargs: Any) -> ssl.SSLContext:
-        context = original_ssl_create_default_context(*args, **kwargs)
-        context.check_hostname = False
-        context.verify_mode = ssl.CERT_NONE
-        return context
-
-    # Apply the patch
-    ssl.create_default_context = unverified_context
-    logger.debug("Successfully patched ssl.create_default_context")
-
-    # For httpx - try to patch its SSL defaults too if available
-    if httpx:
-        try:
-            # Try to patch httpx client classes
-            old_client_init = httpx.Client.__init__
-
-            def patched_client_init(self: Client, *args: Any, **kwargs: Any) -> None:
-                kwargs["verify"] = False
-                old_client_init(self, *args, **kwargs)
-
-            httpx.Client.__init__ = patched_client_init  # type:ignore[method-assign]
-
-            # Same for AsyncClient
-            old_async_client_init = httpx.AsyncClient.__init__
-
-            def patched_async_client_init(
-                self: AsyncClient, *args: Any, **kwargs: Any
-            ) -> None:
-                kwargs["verify"] = False
-                old_async_client_init(self, *args, **kwargs)
-
-            httpx.AsyncClient.__init__ = (
-                patched_async_client_init
-            )  # type:ignore[method-assign]
-            logger.debug("Patched httpx Client classes")
-
-        except Exception as patch_err:
-            logger.warning("Failed to patch httpx: %s", patch_err)
-
-    # Also set environment variables as backup
-    os.environ["SSL_CERT_VERIFY"] = "false"
-    os.environ["HTTPX_SSL_VERIFY"] = "false"
-    os.environ["HTTPX_NO_VERIFY"] = "true"
-    os.environ["PYTHONHTTPSVERIFY"] = "0"
-
-    print("⚠️ Warning: SSL certificate verification is disabled")
-
-    yield
-
-    # Restore original SSL context creator
-    ssl.create_default_context = original_ssl_create_default_context
-    logger.debug("Restored original ssl.create_default_context")
-
-    # Restore httpx patches if applied
-    if httpx:
-        try:
-            if "old_client_init" in locals() and hasattr(httpx, "Client"):
-                httpx.Client.__init__ = old_client_init  # type:ignore[method-assign]
-                logger.debug("Restored original httpx.Client.__init__")
-
-            if "old_async_client_init" in locals() and hasattr(httpx, "AsyncClient"):
-                httpx.AsyncClient.__init__ = (
-                    old_async_client_init
-                )  # type:ignore[method-assign]
-                logger.debug("Restored original httpx.AsyncClient.__init__")
-        except Exception as restore_err:
-            logger.warning("Failed to restore httpx patches: %s", restore_err)
-
-    # Clean up environment variables
-    ssl_env_vars = [
-        "SSL_CERT_VERIFY",
-        "HTTPX_SSL_VERIFY",
-        "HTTPX_NO_VERIFY",
-        "PYTHONHTTPSVERIFY",
-    ]
-
-    for env_var in ssl_env_vars:
-        if env_var in os.environ:
-            del os.environ[env_var]
-
-    logger.debug("Cleaned up all SSL verification settings")
-
-
 @asynccontextmanager
 async def create_http_client(args: MCPClientArgs) -> AsyncIterator[ClientSession]:
     if args.host is None:
@@ -147,7 +54,7 @@ async def create_http_client(args: MCPClientArgs) -> AsyncIterator[ClientSession
     try:
         async with AsyncExitStack() as stack:
             if args.insecure:
-                stack.enter_context(disable_ssl_certificate_verification())
+                stack.enter_context(apply_ssl_bypass())
 
             read, write, get_session_id = await stack.enter_async_context(
                 streamablehttp_client(server_url, insecure=args.insecure)
@@ -234,10 +141,15 @@ async def interact_with_server(session: ClientSession) -> None:
     console.print("MCP Client initialized successfully")
 
     tools = await session.list_tools()
-
+    print_result = [
+        {
+            "name": tool.name,
+            # "inputSchema": tool.inputSchema if tool.inputSchema else "No schema defined",
+        }
+        for tool in tools.tools
+    ]
     console.print("Available tools:")
-    for tool in tools.tools:
-        console.print(f" - {tool.name}")
+    console.print(yaml.dump(print_result))
 
     console.print("Enter actions as <name> <args as JSON or file path>")
     console.print("Type 'exit' to quit")
