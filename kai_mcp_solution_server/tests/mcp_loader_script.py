@@ -233,6 +233,12 @@ async def interact_with_server(session: ClientSession) -> None:
     await session.initialize()
     console.print("MCP Client initialized successfully")
 
+    tools = await session.list_tools()
+
+    console.print("Available tools:")
+    for tool in tools.tools:
+        console.print(f" - {tool.name}")
+
     console.print("Enter actions as <name> <args as JSON or file path>")
     console.print("Type 'exit' to quit")
 
