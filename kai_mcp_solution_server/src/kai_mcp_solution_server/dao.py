@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 from datetime import datetime
 from difflib import unified_diff
@@ -198,7 +199,13 @@ class ListSolutionFileJSON(TypeDecorator):  # type: ignore[type-arg]
         if value is None:
             return None
         if isinstance(value, str):
-            return [SolutionFile.model_validate_json(file) for file in value]
+            load = json.loads(value)
+            if isinstance(load, dict):
+                load = [load]
+            elif not isinstance(load, list):
+                raise ValueError(f"Expected a list or dict, got {type(load)}: {load}")
+
+            return [SolutionFile.model_validate(file) for file in load]
 
         return [SolutionFile.model_validate(file) for file in value]
 
