@@ -598,7 +598,7 @@ async def accept_file(
         await session.commit()
 
     if all_solutions_accepted_or_modified:
-        asyncio.create_task(generate_hint(kai_ctx, client_id))
+        asyncio.create_task(generate_hint(kai_ctx, client_id))  # type: ignore[unused-awaitable]
 
 
 @mcp.tool(name="accept_file")
