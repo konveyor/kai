@@ -214,7 +214,7 @@ async def tool_create_incident(
     associated with the incident does not exist in the database, it will be created
     as well.
     """
-    return create_incident(
+    return await create_incident(
         cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
         client_id,
         extended_incident,
@@ -339,7 +339,7 @@ async def update_solution_status(
         await session.commit()
 
     if solution_status == SolutionStatus.ACCEPTED:
-        asyncio.create_task(generate_hint(kai_ctx, client_id))  # type: ignore[unused-awaitable]
+        asyncio.create_task(generate_hint(kai_ctx, client_id))
 
 
 @mcp.tool(name="update_solution_status")
@@ -461,7 +461,6 @@ class GetBestHintResult(BaseModel):
     hint_id: int
 
 
-@mcp.tool()
 async def get_best_hint(
     kai_ctx: KaiSolutionServerContext,
     ruleset_name: str,
@@ -517,7 +516,6 @@ class SuccessRateMetric(BaseModel):
     accepted_solutions: int
 
 
-@mcp.tool()
 async def get_success_rate(
     kai_ctx: KaiSolutionServerContext,
     violation_ids: list[ViolationID],
