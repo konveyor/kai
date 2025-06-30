@@ -587,6 +587,8 @@ async def accept_file(
 
             log(solution.final_files)
 
+            await session.flush()
+
             if not (
                 solution.solution_status == SolutionStatus.ACCEPTED
                 or solution.solution_status == SolutionStatus.MODIFIED
@@ -595,8 +597,8 @@ async def accept_file(
 
         await session.commit()
 
-        if all_solutions_accepted_or_modified:
-            asyncio.create_task(generate_hint(kai_ctx, client_id))
+    if all_solutions_accepted_or_modified:
+        asyncio.create_task(generate_hint(kai_ctx, client_id))
 
 
 @mcp.tool(name="accept_file")

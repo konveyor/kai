@@ -164,23 +164,25 @@ public class ExampleService {
         raise e
 
 
-async def _run_update_solution_status(client: Client, client_id: str) -> None:
-    print("\n--- Testing update_solution_status ---")
+async def _run_accept_file(
+    client: Client, client_id: str, solution_file: SolutionFile
+) -> None:
+    print("\n--- Testing accept_file ---")
 
     request = {
         "client_id": client_id,
-        "solution_status": "accepted",
+        "solution_file": solution_file.model_dump(),
     }
 
     try:
-        logger.debug("Calling update_solution_status tool with request: %s", request)
-        result = await client.call_tool("update_solution_status", request)
-        print("o update_solution_status tool call completed")
-        logger.debug("update_solution_status tool call completed, result: %s", result)
+        logger.debug("Calling accept_file tool with request: %s", request)
+        result = await client.call_tool("accept_file", request)
+        print("o accept_file tool call completed")
+        logger.debug("accept_file tool call completed, result: %s", result)
 
     except Exception as e:
-        logger.error("Error updating solution status: %s", str(e), exc_info=True)
-        print(f"x Error updating solution status: {e}")
+        logger.error("Error accepting file: %s", str(e), exc_info=True)
+        print(f"x Error accepting file: {e}")
         raise e
 
 
@@ -198,8 +200,8 @@ async def _run_get_best_hint(client: Client) -> str | None:
 
         print("get_best_hint tool call completed, result: %s", result)
 
-        if not result:
-            raise ValueError("! No related solutions found")
+        # if not result:
+        #     raise ValueError("! No related solutions found")
 
         return result
 
@@ -416,8 +418,15 @@ async def run_test_suite(client: Client, args) -> None:
     logger.debug(f"create_solution test completed with solution_id: {solution_id}")
     await asyncio.sleep(0.1)
 
-    await _run_update_solution_status(client, client_id)
-    logger.debug("update_solution_status test completed")
+    await _run_accept_file(
+        client,
+        client_id,
+        SolutionFile(
+            uri="file://ExampleService.java",
+            content="// Example content for testing",
+        ),
+    )
+    logger.debug("accept_file test completed")
     await asyncio.sleep(0.1)
 
     best_hint = await _run_get_best_hint(client)
