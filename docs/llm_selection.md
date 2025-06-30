@@ -113,6 +113,8 @@ models:
     provider: "AzureChatOpenAI"
     args:
       azure_deployment: "gpt-35-turbo"
+      azure_endpoint: "https://<azure-oai-name>.openai.azure.com/"
+      api_version: "2025-04-01-preview"
 
 active: *active
 ```
