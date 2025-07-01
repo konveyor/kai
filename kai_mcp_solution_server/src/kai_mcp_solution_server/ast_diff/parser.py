@@ -8,7 +8,7 @@ from kai_mcp_solution_server.ast_diff.java import _extract_java_info
 
 
 class Language(StrEnum):
-    Java = "java"
+    JAVA = "java"
     # TODO (pgaikwad): add a parser for xml
     XML = "xml"
 
@@ -19,7 +19,7 @@ def extract_ast_info(content: str, language: Language) -> DiffableSummary:
     a file)
     """
     match language:
-        case Language.Java:
+        case Language.JAVA:
             return _extract_java_info(
                 ts.Parser(ts.Language(ts_java.language())).parse(
                     content.encode("utf-8")

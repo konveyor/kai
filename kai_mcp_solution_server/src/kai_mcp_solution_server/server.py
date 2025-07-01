@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import sys
 import traceback
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -16,6 +17,7 @@ from sqlalchemy import URL, and_, make_url, or_, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from kai_mcp_solution_server.analyzer_types import ExtendedIncident
+from kai_mcp_solution_server.ast_diff.parser import Language, extract_ast_info
 from kai_mcp_solution_server.constants import log
 from kai_mcp_solution_server.db.dao import (
     DBFile,
@@ -29,6 +31,7 @@ from kai_mcp_solution_server.db.python_objects import (
     SolutionFile,
     SolutionStatus,
     ViolationID,
+    associate_files,
     get_diff,
 )
 
@@ -323,6 +326,7 @@ async def create_solution(
 
         db_after_files: set[DBFile] = set()
         for file in after:
+            # FIXME: Something is fishy here...
             next_after = DBFile(
                 client_id=client_id,
                 uri=file.uri,
@@ -389,7 +393,7 @@ async def tool_create_solution(
     )
 
 
-async def generate_hint(
+async def generate_hint_v1(
     kai_ctx: KaiSolutionServerContext,
     client_id: str,
 ) -> None:
@@ -435,6 +439,83 @@ async def generate_hint(
             response = await kai_ctx.model.ainvoke(prompt)
 
             log(f"Generated hint: {response.content}")
+
+            hint = DBHint(
+                text=str(response.content),
+                violations=set(
+                    incident.violation
+                    for incident in solution.incidents
+                    if incident.violation is not None
+                ),
+                solutions=set([solution]),
+            )
+            session.add(hint)
+
+            await session.flush()
+
+        await session.commit()
+
+
+async def generate_hint_v2(
+    kai_ctx: KaiSolutionServerContext,
+    client_id: str,
+) -> None:
+    # print(f"Generating hint for client {client_id}", file=sys.stderr)
+    async with kai_ctx.session_maker.begin() as session:
+        solutions_stmt = select(DBSolution).where(
+            DBSolution.client_id == client_id,
+            DBSolution.solution_status == SolutionStatus.ACCEPTED,
+        )
+        solutions = (await session.execute(solutions_stmt)).scalars().all()
+        if len(solutions) == 0:
+            print(
+                f"No accepted solutions found for client {client_id}. No hint generated.",
+                file=sys.stderr,
+            )
+            return
+
+        for solution in solutions:
+            prompt = (
+                "The following incidents had this accepted solution. "
+                "Generate a hint for the user so that they can create the same solution:\n"
+            )
+
+            for i, incident in enumerate(solution.incidents):
+                prompt += (
+                    f"Incident {i + 1}:\n"
+                    f"  URI: {incident.uri}\n"
+                    f"  Message: {incident.message}\n"
+                    f"  Code Snippet: {incident.code_snip}\n"
+                    f"  Line Number: {incident.line_number}\n"
+                    f"  Variables: {incident.variables}\n"
+                    f"  Violation: {incident.violation.ruleset_name} - "
+                    f"  {incident.violation.violation_name}\n\n"
+                )
+
+            diff = associate_files(
+                [SolutionFile(uri=f.uri, content=f.content) for f in solution.before],
+                [SolutionFile(uri=f.uri, content=f.content) for f in solution.after],
+            )
+
+            ast_diffs: list[dict[str, Any]] = []
+            for (_before_uri, _after_uri), (before_file, after_file) in diff.items():
+                if before_file.content == after_file.content:
+                    continue
+
+                ast_diffs.append(
+                    extract_ast_info(before_file.content, language=Language.JAVA).diff(
+                        extract_ast_info(after_file.content, language=Language.JAVA)
+                    )
+                )
+
+            ast_diff_str = "\n\n".join(str(a) for a in ast_diffs if a is not None)
+            prompt += f"AST Diff:\n{ast_diff_str}\n\n"
+
+            # print(f"Generating hint for client {client_id} with prompt:\n{prompt}", file=sys.stderr)
+
+            response = await kai_ctx.model.ainvoke(prompt)
+
+            # print(f"Generated hint: {response.content}", file=sys.stderr)
 
             hint = DBHint(
                 text=str(response.content),
@@ -671,6 +752,21 @@ async def accept_file(
 
         all_solutions_accepted_or_modified = True
         for solution in solutions:
+            # FIXME: There is some extreme weirdness going on here. The data in the
+            # database does not update when the object updates, so we have to invalidate
+            # it and refresh it. Also, sometimes the solution status is not updated
+            # automatically?
+            session.expire(solution)
+            await session.refresh(solution)
+            solution.update_solution_status()
+            session.add(solution)
+            await session.flush()
+
+            # print(
+            #     f"Solution {solution.id} status: {solution.solution_status}",
+            #     file=sys.stderr,
+            # )
+
             if not (
                 solution.solution_status == SolutionStatus.ACCEPTED
                 or solution.solution_status == SolutionStatus.MODIFIED
@@ -680,7 +776,7 @@ async def accept_file(
         await session.commit()
 
     if all_solutions_accepted_or_modified:
-        asyncio.create_task(generate_hint(kai_ctx, client_id))  # type: ignore[unused-awaitable, unused-ignore]
+        asyncio.create_task(generate_hint_v2(kai_ctx, client_id))  # type: ignore[unused-awaitable, unused-ignore]
 
 
 @mcp.tool(name="accept_file")

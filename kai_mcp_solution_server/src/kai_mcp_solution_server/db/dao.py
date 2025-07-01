@@ -309,17 +309,8 @@ class DBSolution(Base):
 
     def update_solution_status(self) -> None:
         for file in self.after:
-            if file.status == SolutionStatus.REJECTED:
-                self.solution_status = SolutionStatus.REJECTED
-                return
-            elif file.status == SolutionStatus.UNKNOWN:
-                self.solution_status = SolutionStatus.UNKNOWN
-                return
-            elif file.status == SolutionStatus.MODIFIED:
-                self.solution_status = SolutionStatus.MODIFIED
-                return
-            elif file.status == SolutionStatus.PENDING:
-                self.solution_status = SolutionStatus.PENDING
+            if file.status != SolutionStatus.ACCEPTED:
+                self.solution_status = file.status
                 return
 
         self.solution_status = SolutionStatus.ACCEPTED
@@ -380,14 +371,23 @@ def auto_update_solution_status(
     connection: Connection,
     target: DBSolution | DBFile,
 ) -> None:
+
     if isinstance(target, DBSolution):
+        # print(f"DBSolution target", file=sys.stderr)
+        # print(f"  Solution {target.id}", file=sys.stderr)
+        # print(f"    Before status: {target.solution_status}", file=sys.stderr)
         target.update_solution_status()
+        # print(f"    After status: {target.solution_status}", file=sys.stderr)
         return
 
     if target.solution_before or target.solution_after:
+        # print(f"DBFile target: {target.uri}", file=sys.stderr)
         # If the file is part of a solution, we need to update the solution status
         for solution in target.solution_before.union(target.solution_after):
+            # print(f"  Solution {solution.id}", file=sys.stderr)
+            # print(f"    Before status: {solution.solution_status}", file=sys.stderr)
             solution.update_solution_status()
+            # print(f"    After status: {solution.solution_status}", file=sys.stderr)
 
 
 class DBHint(Base):
