@@ -6,8 +6,8 @@ require (
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/cenkalti/rpc2 v1.0.4
 	github.com/go-logr/logr v1.4.2
-	github.com/konveyor/analyzer-lsp v0.7.0-alpha.2.0.20250616135656-f22905672c1a
-	github.com/konveyor/analyzer-lsp/external-providers/java-external-provider v0.0.0-20250616135656-f22905672c1a
+	github.com/konveyor/analyzer-lsp v0.7.0-alpha.2.0.20250701125529-3f487798629f
+	github.com/konveyor/analyzer-lsp/external-providers/java-external-provider v0.0.0-20250701125529-3f487798629f
 	go.opentelemetry.io/otel v1.35.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.34.0
 	go.opentelemetry.io/otel/sdk v1.35.0
@@ -21,11 +21,11 @@ require (
 	github.com/antchfx/jsonquery v1.3.0 // indirect
 	github.com/antchfx/xmlquery v1.3.12 // indirect
 	github.com/antchfx/xpath v1.2.4 // indirect
-	github.com/bombsimon/logrusr/v3 v3.1.0 // indirect
 	github.com/bufbuild/protocompile v0.10.0 // indirect
 	github.com/cbroglie/mustache v1.4.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cenkalti/hub v1.0.2 // indirect
+	github.com/dlclark/regexp2 v1.11.4 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
@@ -50,6 +50,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
 	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/oauth2 v0.26.0 // indirect
+	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250115164207-1a7da9e5054f // indirect
