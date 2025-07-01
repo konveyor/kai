@@ -238,34 +238,34 @@ public class ExampleService {
 }
 
 /**
- * Test the update_solution_status tool.
+ * Test the accept_file tool.
  */
-async function runUpdateSolutionStatus(
-  client: Client,
-  clientId: string,
-): Promise<void> {
-  console.log("\n--- Testing update_solution_status ---");
+async function runAcceptFile(client: Client, clientId: string): Promise<void> {
+  console.log("\n--- Testing accept_file ---");
 
   const request = {
     client_id: clientId,
-    solution_status: "accepted",
+    solution_file: {
+      uri: "file://ExampleService.java",
+      content: "//example content",
+    },
   };
 
   try {
     logger.debug(
-      `Calling update_solution_status tool with request: ${JSON.stringify(request)}`,
+      `Calling accept_file tool with request: ${JSON.stringify(request)}`,
     );
     const result = await client.callTool({
-      name: "update_solution_status",
+      name: "accept_file",
       arguments: request,
     });
     logger.debug(
-      `update_solution_status tool call completed, result: ${JSON.stringify(result)}`,
+      `accept_file tool call completed, result: ${JSON.stringify(result)}`,
     );
-    console.log("✅ Solution status updated successfully");
+    console.log("✅ File accepted successfully");
   } catch (e) {
-    logger.error(`Error updating solution status: ${e}`);
-    console.log(`❌ Error updating solution status: ${e}`);
+    logger.error(`Error accepting file: ${e}`);
+    console.log(`❌ Error accepting file: ${e}`);
     throw e;
   }
 }
@@ -403,8 +403,8 @@ async function runTestSuite(client: Client): Promise<void> {
     `create_solution test completed with solution_id: ${solutionId}`,
   );
 
-  await runUpdateSolutionStatus(client, clientId);
-  logger.debug("update_solution_status test completed");
+  await runAcceptFile(client, clientId);
+  logger.debug("accept_file test completed");
 
   const bestHint = await runGetBestHint(client);
   logger.debug(

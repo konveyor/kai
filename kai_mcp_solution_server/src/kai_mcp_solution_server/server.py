@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import sys
 import traceback
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -16,26 +17,34 @@ from sqlalchemy import URL, and_, make_url, or_, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from kai_mcp_solution_server.analyzer_types import ExtendedIncident
+from kai_mcp_solution_server.ast_diff.parser import Language, extract_ast_info
 from kai_mcp_solution_server.constants import log
-from kai_mcp_solution_server.dao import (
+from kai_mcp_solution_server.db.dao import (
+    DBFile,
     DBHint,
     DBIncident,
     DBSolution,
     DBViolation,
-    SolutionChangeSet,
+    get_async_engine,
+)
+from kai_mcp_solution_server.db.python_objects import (
+    SolutionFile,
     SolutionStatus,
     ViolationID,
-    get_async_engine,
+    associate_files,
+    get_diff,
 )
 
 
 class SolutionServerSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="kai_")
 
-    # "postgresql+asyncpg://postgres:mysecretpassword@localhost:5432/postgres"
-    # "sqlite+aiosqlite:////home/jonah/Projects/github.com/konveyor-ecosystem/kai-jonah/kai_mcp_solution_server/kai_mcp_solution_server.db"
-
     db_dsn: Annotated[URL, NoDecode]
+    """
+    Example DSNs:
+    - PostgreSQL: `postgresql+asyncpg://username:password@host:port/database`
+    - SQLite: `sqlite+aiosqlite:///path/to/database.db`
+    """
 
     llm_params: dict[str, Any] | None
 
@@ -155,22 +164,11 @@ class CreateIncidentResult(BaseModel):
     solution_id: int
 
 
-@mcp.tool()
 async def create_incident(
-    ctx: Context,
+    kai_ctx: KaiSolutionServerContext,
     client_id: str,
     extended_incident: ExtendedIncident,
-    # proposed_solution: Solution,
 ) -> int:
-    """
-    Create an incident in the database.
-    This function will create a new incident in the database, associating it with
-    the provided client ID and the extended incident data. If the violation
-    associated with the incident does not exist in the database, it will be created
-    as well.
-    """
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
-
     async with kai_ctx.session_maker.begin() as session:
         violation_stmt = select(DBViolation).where(
             DBViolation.ruleset_name == extended_incident.ruleset_name,
@@ -210,24 +208,58 @@ async def create_incident(
     return incident.id
 
 
-@mcp.tool()
-async def create_solution(
+@mcp.tool(name="create_incident")
+async def tool_create_incident(
     ctx: Context,
     client_id: str,
+    extended_incident: ExtendedIncident,
+) -> int:
+    """
+    Create an incident in the database.
+    This function will create a new incident in the database, associating it with
+    the provided client ID and the extended incident data. If the violation
+    associated with the incident does not exist in the database, it will be created
+    as well.
+    """
+    return await create_incident(
+        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
+        client_id,
+        extended_incident,
+    )
+
+
+@mcp.tool(name="create_multiple_incidents")
+async def tool_create_multiple_incidents(
+    ctx: Context,
+    client_id: str,
+    extended_incidents: list[ExtendedIncident],
+) -> list[CreateIncidentResult]:
+    """
+    Create multiple incidents in the database.
+    This function will create multiple new incidents in the database, associating
+    them with the provided client ID and the list of extended incident data.
+    If any of the violations associated with the incidents do not exist in the
+    database, they will be created as well.
+    """
+    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    results: list[CreateIncidentResult] = []
+
+    for extended_incident in extended_incidents:
+        incident_id = await create_incident(kai_ctx, client_id, extended_incident)
+        results.append(CreateIncidentResult(incident_id=incident_id, solution_id=0))
+
+    return results
+
+
+async def create_solution(
+    kai_ctx: KaiSolutionServerContext,
+    client_id: str,
     incident_ids: list[int],
-    change_set: SolutionChangeSet,
+    before: list[SolutionFile],
+    after: list[SolutionFile],
     reasoning: str | None = None,
     used_hint_ids: list[int] | None = None,
 ) -> int:
-    """
-    Create a solution in the database.
-    This function will create a new solution in the database, associating it with
-    the provided client ID, incident IDs, change set, reasoning, and used hint IDs.
-    If the incident IDs do not exist in the database, a ValueError will be raised.
-    If the used hint IDs do not exist in the database, a ValueError will be raised
-    """
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
-
     if len(incident_ids) == 0:
         raise ValueError("At least one incident ID must be provided.")
 
@@ -250,11 +282,79 @@ async def create_solution(
                 f"Some hint IDs {missing_ids} do not exist in the database."
             )
 
+        # Try to match the before files. If you can't, create them.
+        # Create the after files. Associate them with the before files.
+        # Create the solution.
+        db_before_files: set[DBFile] = set()
+        for file in before:
+            stmt = select(DBFile).where(
+                DBFile.client_id == client_id,
+                DBFile.uri == file.uri,
+            )
+            prev_before = (await session.execute(stmt)).scalar_one_or_none()
+
+            if prev_before is None:
+                next_before = DBFile(
+                    client_id=client_id,
+                    uri=file.uri,
+                    content=file.content,
+                    status=SolutionStatus.PENDING,
+                    solution_before=set(),
+                    solution_after=set(),
+                    next=None,
+                )
+                session.add(next_before)
+                db_before_files.add(next_before)
+            elif prev_before.content != file.content:
+                next_before = DBFile(
+                    client_id=client_id,
+                    uri=file.uri,
+                    content=file.content,
+                    status=SolutionStatus.PENDING,
+                    solution_before=set(),
+                    solution_after=set(),
+                    next=None,
+                )
+
+                prev_before.status = SolutionStatus.PENDING
+                prev_before.next = next_before
+
+                session.add(next_before)
+                db_before_files.add(next_before)
+            else:
+                db_before_files.add(prev_before)
+
+        db_after_files: set[DBFile] = set()
+        for file in after:
+            # FIXME: Something is fishy here...
+            next_after = DBFile(
+                client_id=client_id,
+                uri=file.uri,
+                content=file.content,
+                status=SolutionStatus.PENDING,
+                solution_before=set(),
+                solution_after=set(),
+                next=None,
+            )
+
+            stmt = select(DBFile).where(
+                DBFile.client_id == client_id,
+                DBFile.uri == file.uri,
+            )
+
+            previous_after = (await session.execute(stmt)).scalar_one_or_none()
+            if previous_after is not None:
+                previous_after.next = next_after
+
+            db_after_files.add(next_after)
+            session.add(next_after)
+
         solution = DBSolution(
             client_id=client_id,
-            change_set=change_set,
+            before=db_before_files,
+            after=db_after_files,
             reasoning=reasoning,
-            solution_status=SolutionStatus.PENDING,
+            solution_status=SolutionStatus.UNKNOWN,
             incidents=set(incidents),
             hints=set(hints),
         )
@@ -265,37 +365,35 @@ async def create_solution(
     return solution.id
 
 
-@mcp.tool()
-async def update_solution_status(
+@mcp.tool(name="create_solution")
+async def tool_create_solution(
     ctx: Context,
     client_id: str,
-    solution_status: SolutionStatus = SolutionStatus.ACCEPTED,
-) -> None:
+    incident_ids: list[int],
+    before: list[SolutionFile],
+    after: list[SolutionFile],
+    reasoning: str | None = None,
+    used_hint_ids: list[int] | None = None,
+) -> int:
     """
-    Update the status of the solution with the given client ID in the database.
-
-    All solutions associated with the client ID will be updated to the specified
-    solution status. If the solution status is "accepted", a hint will be generated for
-    the client.
+    Create a solution in the database.
+    This function will create a new solution in the database, associating it with
+    the provided client ID, incident IDs, change set, reasoning, and used hint IDs.
+    If the incident IDs do not exist in the database, a ValueError will be raised.
+    If the used hint IDs do not exist in the database, a ValueError will be raised
     """
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
-
-    async with kai_ctx.session_maker.begin() as session:
-        solutions_stmt = select(DBSolution).where(
-            DBSolution.client_id == client_id,
-        )
-        solutions = (await session.execute(solutions_stmt)).scalars().all()
-
-        for solution in solutions:
-            solution.solution_status = solution_status
-
-        await session.commit()
-
-    if solution_status == SolutionStatus.ACCEPTED:
-        asyncio.create_task(generate_hint(kai_ctx, client_id))  # type: ignore[unused-awaitable]
+    return await create_solution(
+        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
+        client_id,
+        incident_ids,
+        before,
+        after,
+        reasoning,
+        used_hint_ids,
+    )
 
 
-async def generate_hint(
+async def generate_hint_v1(
     kai_ctx: KaiSolutionServerContext,
     client_id: str,
 ) -> None:
@@ -329,7 +427,12 @@ async def generate_hint(
                     f"  {incident.violation.violation_name}\n\n"
                 )
 
-            prompt += "Solution:\n" f"{solution.change_set.diff}\n\n"
+            diff = get_diff(
+                [SolutionFile(uri=f.uri, content=f.content) for f in solution.before],
+                [SolutionFile(uri=f.uri, content=f.content) for f in solution.after],
+            )
+
+            prompt += "Solution:\n" f"{diff}\n\n"
 
             log(f"Generating hint for client {client_id} with prompt:\n{prompt}")
 
@@ -352,19 +455,89 @@ async def generate_hint(
 
         await session.commit()
 
-    return
+
+async def generate_hint_v2(
+    kai_ctx: KaiSolutionServerContext,
+    client_id: str,
+) -> None:
+    # print(f"Generating hint for client {client_id}", file=sys.stderr)
+    async with kai_ctx.session_maker.begin() as session:
+        solutions_stmt = select(DBSolution).where(
+            DBSolution.client_id == client_id,
+            DBSolution.solution_status == SolutionStatus.ACCEPTED,
+        )
+        solutions = (await session.execute(solutions_stmt)).scalars().all()
+        if len(solutions) == 0:
+            print(
+                f"No accepted solutions found for client {client_id}. No hint generated.",
+                file=sys.stderr,
+            )
+            return
+
+        for solution in solutions:
+            prompt = (
+                "The following incidents had this accepted solution. "
+                "Generate a hint for the user so that they can create the same solution:\n"
+            )
+
+            for i, incident in enumerate(solution.incidents):
+                prompt += (
+                    f"Incident {i + 1}:\n"
+                    f"  URI: {incident.uri}\n"
+                    f"  Message: {incident.message}\n"
+                    f"  Code Snippet: {incident.code_snip}\n"
+                    f"  Line Number: {incident.line_number}\n"
+                    f"  Variables: {incident.variables}\n"
+                    f"  Violation: {incident.violation.ruleset_name} - "
+                    f"  {incident.violation.violation_name}\n\n"
+                )
+
+            diff = associate_files(
+                [SolutionFile(uri=f.uri, content=f.content) for f in solution.before],
+                [SolutionFile(uri=f.uri, content=f.content) for f in solution.after],
+            )
+
+            ast_diffs: list[dict[str, Any]] = []
+            for (_before_uri, _after_uri), (before_file, after_file) in diff.items():
+                if before_file.content == after_file.content:
+                    continue
+
+                ast_diffs.append(
+                    extract_ast_info(before_file.content, language=Language.JAVA).diff(
+                        extract_ast_info(after_file.content, language=Language.JAVA)
+                    )
+                )
+
+            ast_diff_str = "\n\n".join(str(a) for a in ast_diffs if a is not None)
+            prompt += f"AST Diff:\n{ast_diff_str}\n\n"
+
+            # print(f"Generating hint for client {client_id} with prompt:\n{prompt}", file=sys.stderr)
+
+            response = await kai_ctx.model.ainvoke(prompt)
+
+            # print(f"Generated hint: {response.content}", file=sys.stderr)
+
+            hint = DBHint(
+                text=str(response.content),
+                violations=set(
+                    incident.violation
+                    for incident in solution.incidents
+                    if incident.violation is not None
+                ),
+                solutions=set([solution]),
+            )
+            session.add(hint)
+
+            await session.flush()
+
+        await session.commit()
 
 
-@mcp.tool()
 async def delete_solution(
-    ctx: Context,
+    kai_ctx: KaiSolutionServerContext,
     client_id: str,
     solution_id: int,
 ) -> bool:
-    """
-    Delete the solution with the given ID from the database.
-    """
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     async with kai_ctx.session_maker.begin() as session:
         sln = await session.get(DBSolution, solution_id)
         if sln is None:
@@ -372,6 +545,22 @@ async def delete_solution(
         await session.delete(sln)
         await session.commit()
     return True
+
+
+@mcp.tool(name="delete_solution")
+async def tool_delete_solution(
+    ctx: Context,
+    client_id: str,
+    solution_id: int,
+) -> bool:
+    """
+    Delete the solution with the given ID from the database.
+    """
+    return await delete_solution(
+        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
+        client_id,
+        solution_id,
+    )
 
 
 # TODO: Make this a resource instead of a tool. Need to figure out how to handle
@@ -383,22 +572,11 @@ class GetBestHintResult(BaseModel):
     hint_id: int
 
 
-@mcp.tool()
 async def get_best_hint(
-    ctx: Context,
+    kai_ctx: KaiSolutionServerContext,
     ruleset_name: str,
     violation_name: str,
 ) -> GetBestHintResult | None:
-    """
-    Get the best hint for a given ruleset and violation name.
-    This function retrieves the most recent hint for the specified ruleset and
-    violation name from the database. If no hint is found, it returns None.
-    If a hint is found, it returns a GetBestHintResult object containing the hint text
-    and the hint ID. The hint is considered the best if it has at least one solution
-    with the status "accepted".
-    """
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
-
     async with kai_ctx.session_maker.begin() as session:
         violation_name_stmt = select(DBViolation).where(
             DBViolation.ruleset_name == ruleset_name,
@@ -423,28 +601,40 @@ async def get_best_hint(
     return None
 
 
-class SuccessRateMetric(BaseModel):
-    counted_solutions: int
-    accepted_solutions: int
-
-
-# TODO: Make this a resource instead of a tool. Need to figure out how to handle
-# lists in a resource.
-@mcp.tool()
-async def get_success_rate(
+@mcp.tool(name="get_best_hint")
+async def tool_get_best_hint(
     ctx: Context,
+    ruleset_name: str,
+    violation_name: str,
+) -> GetBestHintResult | None:
+    """
+    Get the best hint for a given ruleset and violation name.
+    This function retrieves the most recent hint for the specified ruleset and
+    violation name from the database. If no hint is found, it returns None.
+    If a hint is found, it returns a GetBestHintResult object containing the hint text
+    and the hint ID. The hint is considered the best if it has at least one solution
+    with the status "accepted".
+    """
+    return await get_best_hint(
+        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
+        ruleset_name,
+        violation_name,
+    )
+
+
+class SuccessRateMetric(BaseModel):
+    counted_solutions: int = 0
+    accepted_solutions: int = 0
+    rejected_solutions: int = 0
+    modified_solutions: int = 0
+    pending_solutions: int = 0
+    unknown_solutions: int = 0
+
+
+async def get_success_rate(
+    kai_ctx: KaiSolutionServerContext,
     violation_ids: list[ViolationID],
 ) -> list[SuccessRateMetric] | None:
-    """
-    Get the success rate for a list of violations.
-
-    This function retrieves the success rate for the given list of violations from the
-    database. The success rate is calculated as the number of accepted solutions divided
-    by the total number of solutions for each violation. If no violations are provided,
-    an empty list is returned. If any of the violations do not exist in the database,
-    they are ignored.
-    """
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     result: list[SuccessRateMetric] = []
 
     if len(violation_ids) == 0:
@@ -458,39 +648,177 @@ async def get_success_rate(
             )
             for violation_id in violation_ids
         )
-        # Hack using text() to avoid strange tuple error with SQLAlchemy
+
         violations_stmt = select(DBViolation).where(violations_where)
-        # violations_values = {}
-        # for i, violation_id in enumerate(violation_ids, 1):
-        #     violations_values[f"ruleset_name_{i}"] = violation_id.ruleset_name
-        #     violations_values[f"violation_name_{i}"] = violation_id.violation_name
-
-        # print(f"Violations values: {violations_values}", file=sys.stderr)
-
-        # violations_stmt = violations_stmt.bindparams(**violations_values)
-
-        # print(f"SQL Statement: {str(violations_stmt)}", file=sys.stderr)
-        # return None
-
         violations = (await session.execute(violations_stmt)).scalars().all()
-        # violations = cast(Sequence[DBViolation], violations)
 
         for violation in violations:
-            metric = SuccessRateMetric(
-                counted_solutions=0,
-                accepted_solutions=0,
-            )
+            metric = SuccessRateMetric()
 
             for incident in violation.incidents:
                 if incident.solution is None:
                     continue
 
+                # FIXME: This should be automatic, but its not
+                incident.solution.update_solution_status()
+
+                # TODO: Make this cleaner
                 metric.counted_solutions += 1
                 metric.accepted_solutions += int(
                     incident.solution is not None
                     and incident.solution.solution_status == SolutionStatus.ACCEPTED
                 )
+                metric.rejected_solutions += int(
+                    incident.solution is not None
+                    and incident.solution.solution_status == SolutionStatus.REJECTED
+                )
+                metric.modified_solutions += int(
+                    incident.solution is not None
+                    and incident.solution.solution_status == SolutionStatus.MODIFIED
+                )
+                metric.pending_solutions += int(
+                    incident.solution is not None
+                    and incident.solution.solution_status == SolutionStatus.PENDING
+                )
+                metric.unknown_solutions += int(
+                    incident.solution is not None
+                    and incident.solution.solution_status == SolutionStatus.UNKNOWN
+                )
 
             result.append(metric)
 
     return result
+
+
+# TODO: Make this a resource instead of a tool. Need to figure out how to handle
+# lists in a resource.
+@mcp.tool(name="get_success_rate")
+async def tool_get_success_rate(
+    ctx: Context,
+    violation_ids: list[ViolationID],
+) -> list[SuccessRateMetric] | None:
+    """
+    Get the success rate for a list of violations.
+
+    This function retrieves the success rate for the given list of violations from the
+    database. The success rate is calculated as the number of accepted solutions divided
+    by the total number of solutions for each violation. If no violations are provided,
+    an empty list is returned. If any of the violations do not exist in the database,
+    they are ignored.
+    """
+    return await get_success_rate(
+        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
+        violation_ids,
+    )
+
+
+async def accept_file(
+    kai_ctx: KaiSolutionServerContext,
+    client_id: str,
+    solution_file: SolutionFile,
+) -> None:
+    async with kai_ctx.session_maker.begin() as session:
+        solutions_stmt = select(DBSolution).where(DBSolution.client_id == client_id)
+        solutions = (await session.execute(solutions_stmt)).scalars().all()
+
+        files_to_add: set[DBFile] = set()
+
+        for solution in solutions:
+            for file in solution.after:
+                if file.uri != solution_file.uri:
+                    continue
+
+                if file.content == solution_file.content:
+                    file.status = SolutionStatus.ACCEPTED
+                    continue
+
+                db_file = DBFile(
+                    client_id=client_id,
+                    uri=solution_file.uri,
+                    content=solution_file.content,
+                    status=SolutionStatus.MODIFIED,
+                    solution_before=set(),
+                    solution_after=set(),
+                    next=None,
+                )
+                files_to_add.add(db_file)
+
+        # NOTE: Doing it this way to avoid modifying solutions.after while iterating
+        for file in files_to_add:
+            file.solution_after.add(solution)
+            session.add(file)
+
+        await session.flush()
+
+        all_solutions_accepted_or_modified = True
+        for solution in solutions:
+            # FIXME: There is some extreme weirdness going on here. The data in the
+            # database does not update when the object updates, so we have to invalidate
+            # it and refresh it. Also, sometimes the solution status is not updated
+            # automatically?
+            session.expire(solution)
+            await session.refresh(solution)
+            solution.update_solution_status()
+            session.add(solution)
+            await session.flush()
+
+            # print(
+            #     f"Solution {solution.id} status: {solution.solution_status}",
+            #     file=sys.stderr,
+            # )
+
+            if not (
+                solution.solution_status == SolutionStatus.ACCEPTED
+                or solution.solution_status == SolutionStatus.MODIFIED
+            ):
+                all_solutions_accepted_or_modified = False
+
+        await session.commit()
+
+    if all_solutions_accepted_or_modified:
+        asyncio.create_task(generate_hint_v2(kai_ctx, client_id))  # type: ignore[unused-awaitable, unused-ignore]
+
+
+@mcp.tool(name="accept_file")
+async def tool_accept_file(
+    ctx: Context,
+    client_id: str,
+    solution_file: SolutionFile,
+) -> None:
+    return await accept_file(
+        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
+        client_id,
+        solution_file,
+    )
+
+
+async def reject_file(
+    kai_ctx: KaiSolutionServerContext,
+    client_id: str,
+    file_uri: str,
+) -> None:
+    async with kai_ctx.session_maker.begin() as session:
+        solutions_stmt = select(DBSolution).where(DBSolution.client_id == client_id)
+        solutions = (await session.execute(solutions_stmt)).scalars().all()
+
+        for solution in solutions:
+            for file in solution.after:
+                if file.uri != file_uri:
+                    continue
+
+                file.status = SolutionStatus.REJECTED
+
+        await session.commit()
+
+
+@mcp.tool(name="reject_file")
+async def tool_reject_file(
+    ctx: Context,
+    client_id: str,
+    file_uri: str,
+) -> None:
+    return await reject_file(
+        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
+        client_id,
+        file_uri,
+    )
