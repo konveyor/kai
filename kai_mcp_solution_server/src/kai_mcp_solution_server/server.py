@@ -533,6 +533,95 @@ async def generate_hint_v2(
         await session.commit()
 
 
+async def generate_hint_v3(
+    kai_ctx: KaiSolutionServerContext,
+    client_id: str,
+) -> None:
+    """
+    Generate hints for accepted solutions using improved prompt format with better structure.
+    """
+    async with kai_ctx.session_maker.begin() as session:
+        solutions_stmt = select(DBSolution).where(
+            DBSolution.client_id == client_id,
+            DBSolution.solution_status == SolutionStatus.ACCEPTED,
+        )
+        solutions = (await session.execute(solutions_stmt)).scalars().all()
+        if len(solutions) == 0:
+            print(
+                f"No accepted solutions found for client {client_id}. No hint generated.",
+                file=sys.stderr,
+            )
+            return
+
+        for solution in solutions:
+            prompt = (
+                "The following incidents had this accepted solution. "
+                "Use the AST diffs below as a guiding pattern for migration.\n\n"
+                "Generate a hint for the user so that they can migrate the code.\n\n"
+                "IMPORTANT: Follow this EXACT output format:\n"
+                "---\n"
+                "SUMMARY:\n"
+                "[concise summary of necessary changes]\n\n"
+                "HINT:\n"
+                "[numbered steps with generic, reusable code examples]\n"
+                "---\n\n"
+                "Guidelines for high-quality response:\n"
+                "1. Keep SUMMARY concise and focused\n"
+                "2. Use numbered steps (1, 2, 3) in HINT section\n"
+                "3. Provide generic before/after code examples that can be reused and mark them as examples (e.g. 'Example 1: Before: ... After: ...')\n"
+                "4. Write in direct, actionable tone\n"
+                "Incidents:\n"
+            )
+
+            for i, incident in enumerate(solution.incidents):
+                prompt += (
+                    f"Incident {i + 1}:\n"
+                    f"  URI: {incident.uri}\n"
+                    f"  Message: {incident.message}\n"
+                    f"  Code Snippet: {incident.code_snip}\n"
+                    f"  Line Number: {incident.line_number}\n"
+                    f"  Variables: {incident.variables}\n"
+                    f"  Violation: {incident.violation.ruleset_name} - "
+                    f"  {incident.violation.violation_name}\n\n"
+                )
+
+            diff = associate_files(
+                [SolutionFile(uri=f.uri, content=f.content) for f in solution.before],
+                [SolutionFile(uri=f.uri, content=f.content) for f in solution.after],
+            )
+
+            ast_diffs: list[dict[str, Any]] = []
+            for (_before_uri, _after_uri), (before_file, after_file) in diff.items():
+                if before_file.content == after_file.content:
+                    continue
+
+                ast_diffs.append(
+                    extract_ast_info(before_file.content, language=Language.JAVA).diff(
+                        extract_ast_info(after_file.content, language=Language.JAVA)
+                    )
+                )
+
+            ast_diff_str = "\n\n".join(str(a) for a in ast_diffs if a is not None)
+            prompt += f"AST Diff:\n{ast_diff_str}\n\n"
+
+            response = await kai_ctx.model.ainvoke(prompt)
+
+            hint = DBHint(
+                text=str(response.content),
+                violations=set(
+                    incident.violation
+                    for incident in solution.incidents
+                    if incident.violation is not None
+                ),
+                solutions=set([solution]),
+            )
+            session.add(hint)
+
+            await session.flush()
+
+        await session.commit()
+
+
 async def delete_solution(
     kai_ctx: KaiSolutionServerContext,
     client_id: str,
@@ -776,7 +865,7 @@ async def accept_file(
         await session.commit()
 
     if all_solutions_accepted_or_modified:
-        asyncio.create_task(generate_hint_v2(kai_ctx, client_id))  # type: ignore[unused-awaitable, unused-ignore]
+        asyncio.create_task(generate_hint_v3(kai_ctx, client_id))  # type: ignore[unused-awaitable, unused-ignore]
 
 
 @mcp.tool(name="accept_file")
