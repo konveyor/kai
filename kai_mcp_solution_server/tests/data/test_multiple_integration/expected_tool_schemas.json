@@ -1,0 +1,401 @@
+{
+  "create_incident": {
+    "$defs": {
+      "Category": {
+        "enum": ["potential", "optional", "mandatory"],
+        "title": "Category",
+        "type": "string"
+      },
+      "ExtendedIncident": {
+        "description": "An Incident with extra metadata.",
+        "properties": {
+          "uri": {
+            "title": "Uri",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "code_snip": {
+            "default": "",
+            "title": "Code Snip",
+            "type": "string"
+          },
+          "line_number": {
+            "default": -1,
+            "title": "Line Number",
+            "type": "integer"
+          },
+          "variables": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Variables",
+            "type": "object"
+          },
+          "incident_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Incident Id"
+          },
+          "ruleset_name": {
+            "title": "Ruleset Name",
+            "type": "string"
+          },
+          "ruleset_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Ruleset Description"
+          },
+          "violation_name": {
+            "title": "Violation Name",
+            "type": "string"
+          },
+          "violation_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Violation Description"
+          },
+          "violation_category": {
+            "$ref": "#/$defs/Category",
+            "default": "potential"
+          },
+          "violation_labels": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Violation Labels",
+            "type": "array"
+          }
+        },
+        "required": ["uri", "message", "ruleset_name", "violation_name"],
+        "title": "ExtendedIncident",
+        "type": "object"
+      }
+    },
+    "properties": {
+      "client_id": {
+        "title": "Client Id",
+        "type": "string"
+      },
+      "extended_incident": {
+        "$ref": "#/$defs/ExtendedIncident",
+        "title": "Extended Incident"
+      }
+    },
+    "required": ["client_id", "extended_incident"],
+    "type": "object"
+  },
+  "create_multiple_incidents": {
+    "$defs": {
+      "Category": {
+        "enum": ["potential", "optional", "mandatory"],
+        "title": "Category",
+        "type": "string"
+      },
+      "ExtendedIncident": {
+        "description": "An Incident with extra metadata.",
+        "properties": {
+          "uri": {
+            "title": "Uri",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "code_snip": {
+            "default": "",
+            "title": "Code Snip",
+            "type": "string"
+          },
+          "line_number": {
+            "default": -1,
+            "title": "Line Number",
+            "type": "integer"
+          },
+          "variables": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Variables",
+            "type": "object"
+          },
+          "incident_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Incident Id"
+          },
+          "ruleset_name": {
+            "title": "Ruleset Name",
+            "type": "string"
+          },
+          "ruleset_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Ruleset Description"
+          },
+          "violation_name": {
+            "title": "Violation Name",
+            "type": "string"
+          },
+          "violation_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Violation Description"
+          },
+          "violation_category": {
+            "$ref": "#/$defs/Category",
+            "default": "potential"
+          },
+          "violation_labels": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Violation Labels",
+            "type": "array"
+          }
+        },
+        "required": ["uri", "message", "ruleset_name", "violation_name"],
+        "title": "ExtendedIncident",
+        "type": "object"
+      }
+    },
+    "properties": {
+      "client_id": {
+        "title": "Client Id",
+        "type": "string"
+      },
+      "extended_incidents": {
+        "items": {
+          "$ref": "#/$defs/ExtendedIncident"
+        },
+        "title": "Extended Incidents",
+        "type": "array"
+      }
+    },
+    "required": ["client_id", "extended_incidents"],
+    "type": "object"
+  },
+  "create_solution": {
+    "$defs": {
+      "SolutionFile": {
+        "properties": {
+          "uri": {
+            "title": "Uri",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": ["uri", "content"],
+        "title": "SolutionFile",
+        "type": "object"
+      }
+    },
+    "properties": {
+      "client_id": {
+        "title": "Client Id",
+        "type": "string"
+      },
+      "incident_ids": {
+        "items": {
+          "type": "integer"
+        },
+        "title": "Incident Ids",
+        "type": "array"
+      },
+      "before": {
+        "items": {
+          "$ref": "#/$defs/SolutionFile"
+        },
+        "title": "Before",
+        "type": "array"
+      },
+      "after": {
+        "items": {
+          "$ref": "#/$defs/SolutionFile"
+        },
+        "title": "After",
+        "type": "array"
+      },
+      "reasoning": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Reasoning"
+      },
+      "used_hint_ids": {
+        "anyOf": [
+          {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Used Hint Ids"
+      }
+    },
+    "required": ["client_id", "incident_ids", "before", "after"],
+    "type": "object"
+  },
+  "delete_solution": {
+    "properties": {
+      "client_id": {
+        "title": "Client Id",
+        "type": "string"
+      },
+      "solution_id": {
+        "title": "Solution Id",
+        "type": "integer"
+      }
+    },
+    "required": ["client_id", "solution_id"],
+    "type": "object"
+  },
+  "get_best_hint": {
+    "properties": {
+      "ruleset_name": {
+        "title": "Ruleset Name",
+        "type": "string"
+      },
+      "violation_name": {
+        "title": "Violation Name",
+        "type": "string"
+      }
+    },
+    "required": ["ruleset_name", "violation_name"],
+    "type": "object"
+  },
+  "get_success_rate": {
+    "$defs": {
+      "ViolationID": {
+        "properties": {
+          "ruleset_name": {
+            "title": "Ruleset Name",
+            "type": "string"
+          },
+          "violation_name": {
+            "title": "Violation Name",
+            "type": "string"
+          }
+        },
+        "required": ["ruleset_name", "violation_name"],
+        "title": "ViolationID",
+        "type": "object"
+      }
+    },
+    "properties": {
+      "violation_ids": {
+        "items": {
+          "$ref": "#/$defs/ViolationID"
+        },
+        "title": "Violation Ids",
+        "type": "array"
+      }
+    },
+    "required": ["violation_ids"],
+    "type": "object"
+  },
+  "accept_file": {
+    "$defs": {
+      "SolutionFile": {
+        "properties": {
+          "uri": {
+            "title": "Uri",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": ["uri", "content"],
+        "title": "SolutionFile",
+        "type": "object"
+      }
+    },
+    "properties": {
+      "client_id": {
+        "title": "Client Id",
+        "type": "string"
+      },
+      "solution_file": {
+        "$ref": "#/$defs/SolutionFile",
+        "title": "Solution File"
+      }
+    },
+    "required": ["client_id", "solution_file"],
+    "type": "object"
+  },
+  "reject_file": {
+    "properties": {
+      "client_id": {
+        "title": "Client Id",
+        "type": "string"
+      },
+      "file_uri": {
+        "title": "File Uri",
+        "type": "string"
+      }
+    },
+    "required": ["client_id", "file_uri"],
+    "type": "object"
+  }
+}

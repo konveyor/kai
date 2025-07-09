@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import ssl
+import sys
 from asyncio.log import logger
 from contextlib import AsyncExitStack, asynccontextmanager
 from typing import AsyncIterator
@@ -12,7 +13,8 @@ from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamablehttp_client
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from rich.console import Console
-from ssl_utils import apply_ssl_bypass
+
+from .ssl_utils import apply_ssl_bypass
 
 # Import httpx for direct inspection
 try:
@@ -21,7 +23,7 @@ except ImportError:
     httpx = None  # type:ignore[assignment]
 
 
-console = Console()
+console = Console(file=sys.stderr)
 logger.setLevel("DEBUG")  # Set logger to debug level for detailed output
 
 
@@ -115,6 +117,8 @@ async def create_stdio_client(args: MCPClientArgs) -> AsyncIterator[ClientSessio
         logger.error("STDIO transport error: %s", str(e), exc_info=True)
         print(f"x Error with STDIO transport: {e}")
         print(f"! Make sure the server script exists: {args.server_path}")
+
+        raise Exception("Error encountered during MCP STDIO session") from e
 
 
 @asynccontextmanager
