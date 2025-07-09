@@ -10,7 +10,7 @@ from typing import Annotated, Any, cast
 from fastmcp import Context, FastMCP
 from langchain.chat_models import init_chat_model
 from langchain.chat_models.base import BaseChatModel
-from langchain_core.language_models.fake_chat_models import FakeChatModel
+from langchain_community.chat_models.fake import FakeListChatModel
 from pydantic import BaseModel, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from sqlalchemy import URL, and_, make_url, or_, select
@@ -126,7 +126,13 @@ class KaiSolutionServerContext:
         if self.settings.llm_params is None:
             raise ValueError("LLM parameters must be provided in the settings.")
         elif self.settings.llm_params.get("model") == "fake":
-            self.model = FakeChatModel()
+            llm_params = self.settings.llm_params.copy()
+            llm_params.pop("model", None)
+            if "responses" not in llm_params:
+                llm_params["responses"] = [
+                    "fake response",
+                ]
+            self.model = FakeListChatModel(**llm_params)
         else:
             self.model = init_chat_model(**self.settings.llm_params)
 
@@ -285,15 +291,20 @@ async def create_solution(
         # Try to match the before files. If you can't, create them.
         # Create the after files. Associate them with the before files.
         # Create the solution.
+
         db_before_files: set[DBFile] = set()
         for file in before:
-            stmt = select(DBFile).where(
-                DBFile.client_id == client_id,
-                DBFile.uri == file.uri,
+            stmt = (
+                select(DBFile)
+                .where(
+                    DBFile.client_id == client_id,
+                    DBFile.uri == file.uri,
+                )
+                .order_by(DBFile.created_at.desc())
             )
-            prev_before = (await session.execute(stmt)).scalar_one_or_none()
+            prev_before = (await session.execute(stmt)).scalars().first()
 
-            if prev_before is None:
+            if prev_before is None or prev_before.content != file.content:
                 next_before = DBFile(
                     client_id=client_id,
                     uri=file.uri,
@@ -301,24 +312,7 @@ async def create_solution(
                     status=SolutionStatus.PENDING,
                     solution_before=set(),
                     solution_after=set(),
-                    next=None,
                 )
-                session.add(next_before)
-                db_before_files.add(next_before)
-            elif prev_before.content != file.content:
-                next_before = DBFile(
-                    client_id=client_id,
-                    uri=file.uri,
-                    content=file.content,
-                    status=SolutionStatus.PENDING,
-                    solution_before=set(),
-                    solution_after=set(),
-                    next=None,
-                )
-
-                prev_before.status = SolutionStatus.PENDING
-                prev_before.next = next_before
-
                 session.add(next_before)
                 db_before_files.add(next_before)
             else:
@@ -334,17 +328,16 @@ async def create_solution(
                 status=SolutionStatus.PENDING,
                 solution_before=set(),
                 solution_after=set(),
-                next=None,
             )
 
-            stmt = select(DBFile).where(
-                DBFile.client_id == client_id,
-                DBFile.uri == file.uri,
+            stmt = (
+                select(DBFile)
+                .where(
+                    DBFile.client_id == client_id,
+                    DBFile.uri == file.uri,
+                )
+                .order_by(DBFile.created_at.desc())
             )
-
-            previous_after = (await session.execute(stmt)).scalar_one_or_none()
-            if previous_after is not None:
-                previous_after.next = next_after
 
             db_after_files.add(next_after)
             session.add(next_after)
@@ -400,12 +393,15 @@ async def generate_hint_v1(
     async with kai_ctx.session_maker.begin() as session:
         solutions_stmt = select(DBSolution).where(
             DBSolution.client_id == client_id,
-            DBSolution.solution_status == SolutionStatus.ACCEPTED,
+            or_(
+                DBSolution.solution_status == SolutionStatus.ACCEPTED,
+                DBSolution.solution_status == SolutionStatus.MODIFIED,
+            ),
         )
         solutions = (await session.execute(solutions_stmt)).scalars().all()
         if len(solutions) == 0:
             log(
-                f"No accepted solutions found for client {client_id}. No hint generated."
+                f"No accepted or modified solutions found for client {client_id}. No hint generated."
             )
             return
 
@@ -464,7 +460,10 @@ async def generate_hint_v2(
     async with kai_ctx.session_maker.begin() as session:
         solutions_stmt = select(DBSolution).where(
             DBSolution.client_id == client_id,
-            DBSolution.solution_status == SolutionStatus.ACCEPTED,
+            or_(
+                DBSolution.solution_status == SolutionStatus.ACCEPTED,
+                DBSolution.solution_status == SolutionStatus.MODIFIED,
+            ),
         )
         solutions = (await session.execute(solutions_stmt)).scalars().all()
         if len(solutions) == 0:
@@ -543,12 +542,15 @@ async def generate_hint_v3(
     async with kai_ctx.session_maker.begin() as session:
         solutions_stmt = select(DBSolution).where(
             DBSolution.client_id == client_id,
-            DBSolution.solution_status == SolutionStatus.ACCEPTED,
+            or_(
+                DBSolution.solution_status == SolutionStatus.ACCEPTED,
+                DBSolution.solution_status == SolutionStatus.MODIFIED,
+            ),
         )
         solutions = (await session.execute(solutions_stmt)).scalars().all()
         if len(solutions) == 0:
             print(
-                f"No accepted solutions found for client {client_id}. No hint generated.",
+                f"No accepted or modified solutions found for client {client_id}. No hint generated.",
                 file=sys.stderr,
             )
             return
@@ -680,7 +682,9 @@ async def get_best_hint(
 
         for hint in sorted(violation.hints, key=lambda h: h.created_at, reverse=True):
             if any(
-                s.solution_status == SolutionStatus.ACCEPTED for s in hint.solutions
+                s.solution_status == SolutionStatus.ACCEPTED
+                or s.solution_status == SolutionStatus.MODIFIED
+                for s in hint.solutions
             ):
                 return GetBestHintResult(
                     hint=hint.text or "",
@@ -810,7 +814,8 @@ async def accept_file(
         solutions_stmt = select(DBSolution).where(DBSolution.client_id == client_id)
         solutions = (await session.execute(solutions_stmt)).scalars().all()
 
-        files_to_add: set[DBFile] = set()
+        # Files to add or remove from the solution
+        files_to_update: set[tuple[DBSolution, DBFile]] = set()
 
         for solution in solutions:
             for file in solution.after:
@@ -821,21 +826,28 @@ async def accept_file(
                     file.status = SolutionStatus.ACCEPTED
                     continue
 
-                db_file = DBFile(
-                    client_id=client_id,
-                    uri=solution_file.uri,
-                    content=solution_file.content,
-                    status=SolutionStatus.MODIFIED,
-                    solution_before=set(),
-                    solution_after=set(),
-                    next=None,
-                )
-                files_to_add.add(db_file)
+                files_to_update.add((solution, file))
 
-        # NOTE: Doing it this way to avoid modifying solutions.after while iterating
-        for file in files_to_add:
-            file.solution_after.add(solution)
-            session.add(file)
+        if len(files_to_update) != 0:
+            log(
+                f"Updating {len(files_to_update)} files for client {client_id} with URI {solution_file.uri}",
+            )
+            new_file = DBFile(
+                client_id=client_id,
+                uri=solution_file.uri,
+                content=solution_file.content,
+                status=SolutionStatus.MODIFIED,
+                solution_before=set(),
+                solution_after=set(),
+            )
+            session.add(new_file)
+            for solution, old_file in files_to_update:
+                # Remove the old file from the solution
+                solution.after.remove(old_file)
+                solution.after.add(new_file)
+
+                session.add(new_file)
+                session.add(solution)
 
         await session.flush()
 
@@ -851,16 +863,17 @@ async def accept_file(
             session.add(solution)
             await session.flush()
 
-            # print(
-            #     f"Solution {solution.id} status: {solution.solution_status}",
-            #     file=sys.stderr,
-            # )
+            print(
+                f"Solution {solution.id} status: {solution.solution_status}",
+                file=sys.stderr,
+            )
 
             if not (
                 solution.solution_status == SolutionStatus.ACCEPTED
                 or solution.solution_status == SolutionStatus.MODIFIED
             ):
                 all_solutions_accepted_or_modified = False
+                break
 
         await session.commit()
 

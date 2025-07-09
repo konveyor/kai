@@ -332,18 +332,15 @@ class DBFile(Base):
     __tablename__ = "kai_files"
 
     id: Mapped[int] = mapped_column(init=False, primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        init=False,
+    )
     uri: Mapped[str]
     client_id: Mapped[str]
     content: Mapped[str]
-    next_id: Mapped[int | None] = mapped_column(
-        ForeignKey("kai_files.id", ondelete="SET NULL", onupdate="CASCADE"),
-        init=False,
-    )
-    next: Mapped[DBFile | None] = relationship(
-        "DBFile",
-        uselist=False,
-        lazy="selectin",
-    )
     status: Mapped[SolutionStatus]
 
     solution_before: Mapped[set[DBSolution]] = relationship(
