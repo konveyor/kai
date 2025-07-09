@@ -124,15 +124,9 @@ Follow this [installation guide](https://github.com/konveyor/kai/blob/main/docs/
 
 ### 1.3 Configure Kai in VS Code
 
-1.3.1. When you launch the extension, you will land on the Welcome Page, as shown below. If the Welcome Page does not appear, proceed to the step 1.3.2.
+1.3.1. When you launch the Konveyor AI (kai) Extension for VSCode extension, you will land on the Welcome Page, as shown below. ![start_png](images/start_page.png)
 
-![walkthrough-1](../../images/walkthrough-1.png)
-
-1.3.2. If "Set up Konveyor" is not available in the list, click the More button for additional options.
-![walkthrough-2](images/start_page.png)
-
-1.3.3 If the welcome page does not appear, open the command palette by pressing Command + Shift + P. This will bring up a list of commands.
-From the command palette, locate and select the "Set up Konveyor" option. This will guide you through the configuration process.
+1.3.2 If the welcome page does not appear, open the command palette by pressing Command + Shift + P. This will bring up a list of commands.
 
 #### Configure Kai for your project
 
