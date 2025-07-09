@@ -129,7 +129,7 @@ Follow this [installation guide](https://github.com/konveyor/kai/blob/main/docs/
 ![walkthrough-1](../../images/walkthrough-1.png)
 
 1.3.2. If "Set up Konveyor" is not available in the list, click the More button for additional options.
-![walkthrough-2](../../images/start_page.png)
+![walkthrough-2](images/start_page.png)
 
 1.3.3 If the welcome page does not appear, open the command palette by pressing Command + Shift + P. This will bring up a list of commands.
 From the command palette, locate and select the "Set up Konveyor" option. This will guide you through the configuration process.
