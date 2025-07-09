@@ -350,10 +350,6 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                     "violation_name": VIOLATION_NAME_B,
                 },
             )
-            print(f"Best hint for {RULESET_NAME_B}/{VIOLATION_NAME_B}: {get_best_hint}")
-            # best_hint = GetBestHintResult(**json.loads(get_best_hint.content[0].text))
-            # print(f"Best hint for {RULESET_NAME_A}/{VIOLATION_NAME_A}: {best_hint}")
-            # self.assertEqual(
-            #     best_hint.hint,
-            #     llm_params["responses"][0]
-            # )
+            best_hint = GetBestHintResult(**json.loads(get_best_hint.content[0].text))
+            print(f"Best hint for {RULESET_NAME_A}/{VIOLATION_NAME_A}: {best_hint}")
+            self.assertEqual(best_hint.hint, llm_params["responses"][0])

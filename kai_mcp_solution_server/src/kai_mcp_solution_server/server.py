@@ -538,12 +538,15 @@ async def generate_hint_v3(
     async with kai_ctx.session_maker.begin() as session:
         solutions_stmt = select(DBSolution).where(
             DBSolution.client_id == client_id,
-            DBSolution.solution_status == SolutionStatus.ACCEPTED,
+            or_(
+                DBSolution.solution_status == SolutionStatus.ACCEPTED,
+                DBSolution.solution_status == SolutionStatus.MODIFIED,
+            ),
         )
         solutions = (await session.execute(solutions_stmt)).scalars().all()
         if len(solutions) == 0:
             print(
-                f"No accepted solutions found for client {client_id}. No hint generated.",
+                f"No accepted or modified solutions found for client {client_id}. No hint generated.",
                 file=sys.stderr,
             )
             return
