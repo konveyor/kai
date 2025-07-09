@@ -129,12 +129,17 @@ Follow this [installation guide](https://github.com/konveyor/kai/blob/main/docs/
 ![walkthrough-1](../../images/walkthrough-1.png)
 
 1.3.2. If "Set up Konveyor" is not available in the list, click the More button for additional options.
-![walkthrough-2](../../images/walkthrough-2.png)
+![walkthrough-2](../../images/start_page.png)
 
 1.3.3 If the welcome page does not appear, open the command palette by pressing Command + Shift + P. This will bring up a list of commands.
 From the command palette, locate and select the "Set up Konveyor" option. This will guide you through the configuration process.
 
 #### Configure Kai for your project
+
+Before proceeding git branch
+with any analysis, you must configure your GenAI key. Run Konveyor: Open the GenAI model provider configuration file.
+![configure-genAI](images/update_genAI_key.png)
+
 
 User has an option to override binaries and custom rules, however it comes with the default packaged binaries and custom rules.
 
