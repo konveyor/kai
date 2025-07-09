@@ -128,6 +128,10 @@ class KaiSolutionServerContext:
         elif self.settings.llm_params.get("model") == "fake":
             llm_params = self.settings.llm_params.copy()
             llm_params.pop("model", None)
+            if "responses" not in llm_params:
+                llm_params["responses"] = [
+                    "fake response",
+                ]
             self.model = FakeListChatModel(**llm_params)
         else:
             self.model = init_chat_model(**self.settings.llm_params)
