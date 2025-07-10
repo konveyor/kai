@@ -135,6 +135,30 @@ with any analysis, you must configure your GenAI key. Run Konveyor: Open the Gen
 ![configure-genAI](images/update_genAI_key.png)
 
 
+Start the server by searching the command *Konveyor: Start Server*. 
+![analysis-view](images/analysis_view.png)
+
+Before running an analysis, you must create or select a profile.
+
+In the Konveyor Analysis View, look for the gear icon in the top-right corner of the screen.
+
+Click the gear icon to open the configuration menu.
+
+In the menu, choose “Manage Profiles”.
+
+Either:
+
+Select an existing profile, or
+
+Click “Create Profile” to define a new one (you can set rulesets, targets, etc.).
+
+Once a profile is active, the warning will disappear and you can start the analysis.
+
+This step is required. Without an active profile, the analysis won't run.
+
+![analysis-view](images/analysis_view.png)
+
+
 User has an option to override binaries and custom rules, however it comes with the default packaged binaries and custom rules.
 
 - Let's select the custom rule we have
