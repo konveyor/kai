@@ -140,14 +140,14 @@ Start the server by searching the command *Konveyor: Start Server*.
 
 Before running an analysis, you must create or select a profile.
 
--In the Konveyor Analysis View, look for the gear icon in the top-right corner of the screen.
--Click the gear icon to open the configuration menu.
--In the menu, choose “Manage Profiles”.
+- In the Konveyor Analysis View, look for the gear icon in the top-right corner of the screen.
+- Click the gear icon to open the configuration menu.
+- In the menu, choose “Manage Profiles”.
 
 Either:
--Select an existing profile, or
--Click “Create Profile” to define a new one (you can set rulesets, targets, etc.).
--Once a profile is active, the warning will disappear and you can start the analysis.
+- Select an existing profile, or
+- Click “Create Profile” to define a new one (you can set rulesets, targets, etc.).
+- Once a profile is active, the warning will disappear and you can start the analysis.
 
 *This step is required. Without an active profile, the analysis won't run.*
 
