@@ -290,7 +290,7 @@ Expand the incidents for `Library.java` and you will see three incidents
 | **`javax.servlet` → `jakarta.servlet`** | Line 8       | Update import              |
 | **Deprecated `BASE64Encoder`**          | Line 7       | Use `Base64.getEncoder()`  |
 
-![incidents_files.png](images/incidents_files.png)
+![library-issues.png](images/library_java_issues.png)
 
 #### MD5 is outdated
 
@@ -302,13 +302,15 @@ Expand the incidents for `Library.java` and you will see three incidents
 
 - This opens the resolution details panel
   ![incident_1.png](images/incident_1.png)
+  ![kai-results-1.png](images/kai_results_1.png)
 
 #### Requesting a Fix
 
 - The **resolution process starts**, where Kai interacts with the **LLM**.
 - Once Kai completes processing, it suggests modifications for **Library.java**.
-  ![requesting_fix_1.png](images/requesting_fix_1.png)
-  ![requesting_fix_2.png](images/requesting_fix_2.png)
+  ![kai-results-1.png](images/kai_results_1.png)
+  ![kai-results-2.png](images/kai_results_2.png)
+  ![kai-results-3.png](images/kai_results_3.png)
 
 #### Reviewing Suggested Changes
 
