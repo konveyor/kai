@@ -136,14 +136,14 @@ with any analysis, you must configure your GenAI key. Run Konveyor: Open the Gen
 
 
 Start the server by searching the command *Konveyor: Start Server*. 
-![analysis-view](images/analysis_view.png)
 
 Before running an analysis, you must create or select a profile.
 
 - In the Konveyor Analysis View, look for the gear icon in the top-right corner of the screen.
 - Click the gear icon to open the configuration menu.
 - In the menu, choose “Manage Profiles”.
-
+![analysis-view](images/analysis_view.png)
+![analysis-view](images/analysis_view_2.png)
 Either:
 - Select an existing profile, or
 - Click “Create Profile” to define a new one (you can set rulesets, targets, etc.).
@@ -151,8 +151,19 @@ Either:
 
 *This step is required. Without an active profile, the analysis won't run.*
 
-![analysis-view](images/analysis_view.png)
+![analysis-view](images/active_profile.png)
 
+To create a new profile: 
+- Click “+ New Profile”
+- A new profile will appear in the list on the left.
+- Fill in the Profile Details:
+  - *Profile Name*: Enter a name for your profile 
+  - *Target Technologies*: Select or type the technologies you want to migrate to (e.g., Spring Boot, Quarkus).
+  - *Source Technologies*: Select or type the technologies you are migrating from (e.g., Java EE, WebLogic).
+  - (Optional) *Select Custom Rules*: If you have your own rules, click “Select Custom Rules...” and add them.
+  - Active Profile Status: 
+    - When you create your first profile, it is automatically set as the active profile.
+    - If you create multiple profiles, make sure to click “Active Profile” at the bottom of the one you want to use for analysis.
 
 User has an option to override binaries and custom rules, however it comes with the default packaged binaries and custom rules.
 
