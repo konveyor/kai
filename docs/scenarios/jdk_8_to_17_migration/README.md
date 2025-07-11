@@ -174,28 +174,24 @@ We will analyze the application using the following migration targets to identif
 
 _We need OpenJDK 11 as a target when migrating from Java 8 to 17 because some deprecations and migration rules from Java 9 and 11 are not present in OpenJDK 17. OpenJDK 11 captures changes deprecated in earlier versions, while OpenJDK 17 focuses on 11+ deprecations. Using both ensures we catch all necessary migration warnings and avoid missing intermediate changes._
 
-![select_target.png](images/select_target_technologies.png)
+![select-target.png](images/select_target_technologies.png)
 
 Skip selecting source platform. 
 
 - Let's select the custom rule we have
-  ![custom rule-1](images/customrule-1.png)
-  ![custom rule-2](images/customrule-2.png)
-  Make sure to select `Yes` to use the default rulesets
-  ![custom rule-3](images/customrule-3.png)
+  ![custom rule-1](images/custom_rules_1.png)
   You will see a notification that custom rules updated
-  ![custom rule-4](images/customrule-4.png)
+  ![custom rule-2](images/custom_rules_2.png)
 
+Profiles are saved automatically — no need to click “Save.”
+![updated-profile](images/updated_profile.png)
 
+Click on `Start` button to initialize the RPC server
 
+![start_analyzer.png](images/start_server_button.png)
 
-
-- Next, set up the Generative AI key for your project. 
-  ![Provider settings](images/provider_settings.png)
-
-- Click on `Start Analyzer` to initialize the RPC server
-
-![start_analyzer.png](images/start_analyzer.png)
+Once the server is running successfully, the Server Status label will turn green and display `Running`. 
+![start_analyzer.png](images/start_server_green.png)
 
 ## Step 2: Understanding the Custom Rule
 
