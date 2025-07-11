@@ -416,9 +416,9 @@ Konveyor analysis detected multiple import statements that require updates from 
 Clicking on the **tool icon** next to the issue name initiates the resolution process.
 ![jakarta_fix.png](images/jakarta_fix.png)
 
-Kai processes the request in **Library.java** and **LibraryServlet.java**.![jakarta_requesting_solution.png](images/jakarta_requesting_solution.png)
+Kai processes the request in **Library.java** and **LibraryServlet.java**.![javax_fix_results.png](images/javax_fix_results.png)
 
-![jakarta_get_solution_complete.png](images/jakarta_get_solution_complete.png)
+![jakarta_solution.png](images/jakarta_solution.png)
 
 #### Reviewing Suggested Changes
 
