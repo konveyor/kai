@@ -333,6 +333,7 @@ final output:
 ```java
 import java.util.Base64; // Updated import for Base64
 MessageDigest sha256Digest = MessageDigest.getInstance("SHA-256"); // Updated to SHA-256
+byte[] hash = shaDigest.digest(input.getBytes());
 return Base64.getEncoder().encodeToString(hash); // Updated to use Base64 from java.util
 ```
 
@@ -356,8 +357,8 @@ Konveyor analysis detected two dependency-related issues in `pom.xml`:
 #### Requesting a Fix
 
 We will solve both the issues together this time. Clicking on the **tool icon** next to the file name initiates the resolution process for both the issues.
-![pom_issues.png](images/pom_issues.png)
-![pom_fixes.png](images/pom_fixes.png)
+![pom_files_fixes.png](images/pom_files_fixes.png)
+![pom_results.png](images/pom_results.png)
 
 - Once complete, click on the `pom.xml` on the left pane to view the changes.
 
