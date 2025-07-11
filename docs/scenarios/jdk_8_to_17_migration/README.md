@@ -144,6 +144,7 @@ Before running an analysis, you must create or select a profile.
 - In the menu, choose “Manage Profiles”.
 ![analysis-view](images/analysis_view.png)
 ![analysis-view](images/analysis_view_2.png)
+
 Either:
 - Select an existing profile, or
 - Click “Create Profile” to define a new one (you can set rulesets, targets, etc.).
