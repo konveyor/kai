@@ -272,11 +272,11 @@ You can learn more about writing your own custom rules [here](https://github.com
 Let's run our initial analysis:
 
 1. Once you have RPC server initialized, navigate to "Konveyor Analysis View" and click Run Analysis. Open the command palette by pressing `Command + Shift + P` to find it.
-   ![start-analyzer.png](images/start_server_green.png)
+   ![start-running-analysis.png](images/start_running_analysis.png)
 
 2. The Konveyor Analysis View lists issues, allowing you to filter them by file issues. On the left side, the Konveyor Issue Panel groups files based on similar issues for easier navigation.
 
-![analysis-results.png](images/analysis_results_by_files.png)
+![incidents-files.png](images/incidents_files.png)
 
 ### 3.1 Incidents in Library.java
 
@@ -290,7 +290,7 @@ Expand the incidents for `Library.java` and you will see three incidents
 | **`javax.servlet` → `jakarta.servlet`** | Line 8       | Update import              |
 | **Deprecated `BASE64Encoder`**          | Line 7       | Use `Base64.getEncoder()`  |
 
-![incidents_library.png](images/incidents_library.png)
+![incidents_files.png](images/incidents_files.png)
 
 #### MD5 is outdated
 
@@ -298,7 +298,7 @@ Expand the incidents for `Library.java` and you will see three incidents
 
 - Click on the **tool icon** next to the first issue (MD5 hashing).
 
-![first_incident.png](images/first_incident.png.png)
+![first-incident.png](images/first_incident.png)
 
 - This opens the resolution details panel
   ![incident_1.png](images/incident_1.png)
