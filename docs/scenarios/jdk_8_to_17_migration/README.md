@@ -397,7 +397,7 @@ Click the `check icon` on the file in the left pane to apply the changes.
 
 Once the changes to pom.xml are applied, Kai automatically retriggers analysis and updates the analysis view
 
-![javax_jakarta_issues.png](images/javax_jakarta_issues.png)
+![javax_analysis.png](images/javax_analysis.png)
 
 #### Identifying Issues
 
