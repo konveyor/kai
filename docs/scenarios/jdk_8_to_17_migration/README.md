@@ -160,22 +160,11 @@ To create a new profile:
   - *Profile Name*: Enter a name for your profile 
   - *Target Technologies*: Select or type the technologies you want to migrate to (e.g., Spring Boot, Quarkus).
   - *Source Technologies*: Select or type the technologies you are migrating from (e.g., Java EE, WebLogic).
-  - (Optional) *Select Custom Rules*: If you have your own rules, click “Select Custom Rules...” and add them.
-  - Active Profile Status: 
+  - (Optional) *Select Custom Rules*: User has an option to override binaries and custom rules, however it comes with the default packaged binaries and custom rules.
+  - *Active Profile Status*: 
     - When you create your first profile, it is automatically set as the active profile.
     - If you create multiple profiles, make sure to click “Active Profile” at the bottom of the one you want to use for analysis.
-
-User has an option to override binaries and custom rules, however it comes with the default packaged binaries and custom rules.
-
-- Let's select the custom rule we have
-  ![custom rule-1](images/customrule-1.png)
-  ![custom rule-2](images/customrule-2.png)
-  Make sure to select `Yes` to use the default rulesets
-  ![custom rule-3](images/customrule-3.png)
-  You will see a notification that custom rules updated
-  ![custom rule-4](images/customrule-4.png)
-
-- Configuring analysis arguments is necessary to determine which rules apply to the project during analysis. Set up analysis arguments specific to your project by selecting the appropriate options and pressing "OK" to save the changes.
+Configuring these arguments is necessary to determine which rules apply to the project during analysis. 
 
 We will analyze the application using the following migration targets to identify potential areas for improvement:
 
@@ -185,9 +174,21 @@ We will analyze the application using the following migration targets to identif
 
 _We need OpenJDK 11 as a target when migrating from Java 8 to 17 because some deprecations and migration rules from Java 9 and 11 are not present in OpenJDK 17. OpenJDK 11 captures changes deprecated in earlier versions, while OpenJDK 17 focuses on 11+ deprecations. Using both ensures we catch all necessary migration warnings and avoid missing intermediate changes._
 
-![select_target.png](images/select_target.png)
+![select_target.png](images/select_target_technologies.png)
 
-Skip selecting source platform. Make sure to select 'OK' once you are done.
+Skip selecting source platform. 
+
+- Let's select the custom rule we have
+  ![custom rule-1](images/customrule-1.png)
+  ![custom rule-2](images/customrule-2.png)
+  Make sure to select `Yes` to use the default rulesets
+  ![custom rule-3](images/customrule-3.png)
+  You will see a notification that custom rules updated
+  ![custom rule-4](images/customrule-4.png)
+
+
+
+
 
 - Next, set up the Generative AI key for your project. 
   ![Provider settings](images/provider_settings.png)
