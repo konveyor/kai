@@ -323,6 +323,7 @@ Expand the incidents for `Library.java` and you will see three incidents
 #### Applying Fixes
 
 Click the `check icon` on the file in the left pane to apply the updates.
+
 ![accept-changes.png](images/accept_changes.png)
 
 Kai correctly identified and resolved the issue:
