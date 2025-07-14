@@ -276,7 +276,7 @@ Let's run our initial analysis:
 
 2. The Konveyor Analysis View lists issues, allowing you to filter them by file issues. On the left side, the Konveyor Issue Panel groups files based on similar issues for easier navigation.
 
-![incidents-files.png](images/incidents_files.png)
+![incidents-files.png](images/analysis_view_issues.png)
 
 ### 3.1 Incidents in Library.java
 
