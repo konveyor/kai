@@ -318,13 +318,13 @@ Expand the incidents for `Library.java` and you will see three incidents
 - The **right panel** displays:
   - **MD5 is replaced with SHA-256** for secure hashing.
   - **`BASE64Encoder` is replaced with `Base64.getEncoder()`** from `java.util.Base64`, which is the standard modern API.
-    ![suggested-changes.png](images/suggested_changes.png)
+    ![suggested-changes.png](images/3.1_changes.png.png)
 
 #### Applying Fixes
 
 Click the `check icon` on the file in the left pane to apply the updates.
 
-![accept-changes.png](images/accept_changes.png)
+![accept-changes.png](images/konveyor_resolutions.png)
 
 Kai correctly identified and resolved the issue:
 
