@@ -415,17 +415,11 @@ Clicking on the **tool icon** next to the issue name initiates the resolution pr
 
 Kai processes the request in **LibraryServlet.java**.![javax_fix_results.png](images/javax_fix_results.png)
 
-![jakarta_solution.png](images/jakarta_solution.png)
+![jakarta_solution.png](images/konveyor_results.png)
 
 #### Reviewing Suggested Changes
 
 ![jakarta_accept_fixes.png](images/jakarta_accept_fixes.png)
-
-- **Library.java**
-
-  The **left panel** contains the `javax.servlet.http.HttpServletResponse` import.
-  The **right panel** updates it to `jakarta.servlet.http.HttpServletResponse`.
-  ![library_jakarta_changes.png](images/library_jakarta_changes.png)
 
 - **LibraryServlet.java**
   The **left panel** shows the current code with `javax.servlet` imports.
