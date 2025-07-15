@@ -432,7 +432,7 @@ Click the `check icon` next to the filenames in tje left pane to finalize the up
 
 After applying all the changes, Kai retriggers analysis, and no further incidents were found, confirming a successful migration.
 
-![resolved-changes.png](images/resolved-changes.png)
+![resolved-changes.png](images/resolved_changes.png)
 
 ## Step 4: Build the app
 
