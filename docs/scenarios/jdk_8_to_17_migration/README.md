@@ -402,9 +402,6 @@ Once the changes to pom.xml are applied, Kai automatically retriggers analysis a
 #### Identifying Issues
 
 Konveyor analysis detected multiple import statements that require updates from **javax** to **jakarta**:
-
-- **Library.java**
-  - Line **8**: Replace `javax.servlet.http.HttpServletResponse` with `jakarta.servlet.http.HttpServletResponse`
 - **LibraryServlet.java**
   - Line **6**: Replace `javax.servlet.ServletException` with `jakarta.servlet.ServletException`
   - Line **7**: Replace `javax.servlet.http.HttpServlet` with `jakarta.servlet.http.HttpServlet`
@@ -416,7 +413,7 @@ Konveyor analysis detected multiple import statements that require updates from 
 Clicking on the **tool icon** next to the issue name initiates the resolution process.
 ![jakarta_fix.png](images/jakarta_fix.png)
 
-Kai processes the request in **Library.java** and **LibraryServlet.java**.![javax_fix_results.png](images/javax_fix_results.png)
+Kai processes the request in **LibraryServlet.java**.![javax_fix_results.png](images/javax_fix_results.png)
 
 ![jakarta_solution.png](images/jakarta_solution.png)
 
