@@ -1,0 +1,30 @@
+name: 'Build and Push Multi-Arch Image for Solution Server'
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'main'
+      - 'release-*'
+    tags:
+      - 'v*'
+
+concurrency:
+  group: march-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  push-quay:
+    uses: konveyor/release-tools/.github/workflows/build-push-images.yaml@main
+    with:
+      registry: "quay.io/konveyor"
+      image_name: "kai-solution-server"
+      containerfile: "./tools/deploy/Containerfile"
+      context: "./kai_mcp_solution_server"
+      architectures: '[ "amd64", "arm64" ]'
+      extra-args: |
+        --build-arg
+        VERSION=${{ github.tag}}-${{ github.ref }}
+    secrets:
+      registry_username: ${{ secrets.QUAY_PUBLISH_ROBOT }}
+      registry_password: ${{ secrets.QUAY_PUBLISH_TOKEN }}
