@@ -415,11 +415,11 @@ Clicking on the **tool icon** next to the issue name initiates the resolution pr
 
 Kai processes the request in **LibraryServlet.java**.![javax_fix_results.png](images/javax_fix_results.png)
 
-![jakarta_solution.png](images/konveyor_results.png)
+![konveyor-results.png](images/konveyor_results.png)
 
 #### Reviewing Suggested Changes
 
-![jakarta_accept_fixes.png](images/jakarta_accept_fixes.png)
+![jakarta_accept_fixes.png](images/reviewing_resolutions.png)
 
 - **LibraryServlet.java**
   The **left panel** shows the current code with `javax.servlet` imports.
@@ -432,7 +432,7 @@ Click the `check icon` next to the filenames in tje left pane to finalize the up
 
 After applying all the changes, Kai retriggers analysis, and no further incidents were found, confirming a successful migration.
 
-![no-new-incidents.png](images/no-new-incidents.png)
+![resolved-changes.png](images/resolved-changes.png)
 
 ## Step 4: Build the app
 
