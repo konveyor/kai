@@ -333,7 +333,6 @@ final output:
 ```java
 import java.util.Base64; // Updated import for Base64
 MessageDigest sha256Digest = MessageDigest.getInstance("SHA-256"); // Updated to SHA-256
-byte[] hash = shaDigest.digest(input.getBytes());
 return Base64.getEncoder().encodeToString(hash); // Updated to use Base64 from java.util
 ```
 
