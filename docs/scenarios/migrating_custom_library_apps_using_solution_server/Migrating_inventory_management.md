@@ -236,22 +236,22 @@ labels:
 
 Configure Kai analysis with the custom audit library migration rules. This step involves creating a new analysis profile specifically for the audit library migration.
 
-**Step 1: Create New Profile**
+#### Step 1: Create New Profile
 
 Click on "Edit in Profile Manager" to start configuring a custom analysis profile for the audit library migration. This allows us to specify the exact rules and targets for our migration.
 
 ![Setup Profile 1](images/0_setup_profile_1.png)
 
-**Step 2: Configure Profile Settings**
+#### Step 2: Configure Profile Settings
 
 Set the profile name to `openjdk_custom_library` and configure the source and target environments. specify `openjdk21` as the target
 
-**Step 3: Select Custom Rules**
+#### Step 3: Select Custom Rules
 
 Navigate to the rules directory in your app path (inventory management) and select the rules folder. These rules are specifically designed to detect v1 patterns and suggest v2 equivalents of the audit library.
 ![Setup Profile 3](images/0_setup_profile_3.png)
 
-**Step 4: Finalize Configuration**
+#### Step 4: Finalize Configuration
 
 Review the final configuration showing the selected rules, source/target environments, and analysis scope. This profile is auto saved and will be marked as 'active' by default.
 ![Setup Profile 2](images/0_setup_profile_2.png)
@@ -263,7 +263,7 @@ Run the analysis to detect migration issues. This step initiates the automated a
 Select the profile we just created from the dropdown menu. This ensures Kai uses our custom rules to analyze the codebase for v1 to v2 migration patterns.
 ![Setup Profile 4](images/0_setup_profile_4.png)
 
-**Step 1: Select Analysis Profile**
+#### Step 1: Select Analysis Profile
 
 Start the Analyzer by clicking on start button
 ![Start Analysis](images/0_start_analysis.png)
@@ -271,7 +271,7 @@ Start the Analyzer by clicking on start button
 click `ctrl+shift+p` or `cmd+shift+p` and enter and select 'Restart solution server` to restart the solution server
 ![Solution Server Restart](images/0_solution_server_restart.png)
 
-**Step 2: Execute Analysis**
+#### Step 2: Execute Analysis
 
 Click "Start Analysis". Kai will analyze the entire codebase, looking for patterns that match our custom rules for audit library migration issues.
 ![Run Analysis](images/0_run_analysis.png)
@@ -298,7 +298,8 @@ The analysis results panel shows all detected migration issues organized by cate
 
 Kai detects the outdated audit library dependency and suggests the solution.
 
-**Step 1: Identify Dependency Issue**
+##### Step 1: Identify Dependency Issue
+
 ![Fix Maven Dependency](images/1_fix_maven_dep.png)
 Kai highlights the outdated audit library dependency in the pom.xml file. The analysis shows that version 1.0.0 needs to be upgraded to 2.0.0, and the Java version needs to be updated from 8 to 21.
 
@@ -308,7 +309,7 @@ Kai provides specific guidance on updating the dependency version, including the
 ![Solution Maven Dependency 1](images/1_solution_mvn_dep_1.png)
 ![Solution Maven Dependency 2](images/1_solution_mvn_dep_2.png)
 
-**Step 2: Review and Apply Changes**
+##### Step 2: Review and Apply Changes
 
 ![Maven Dependency Solution View Changes](images/1_mvn_dep_solution_view_changes.png)
 Review the applied changes to ensure the dependency has been correctly updated to version 2.0.0 and Java version has been set to 21.
@@ -319,7 +320,8 @@ The diff view shows the before and after state of the pom.xml file, highlighting
 ![POM Compare 2](images/1_pom_compare_2.png)
 Detailed comparison view showing the exact line changes, including the dependency version update and the Java compiler source/target version changes.
 
-**Step 3: Apply the Changes**
+##### Step 3: Apply the Changes
+
 ![POM Apply Changes](images/1_pom_apply_changes.png)
 Click "Apply Changes" to automatically update the pom.xml file with the new dependency version and Java settings.
 
@@ -330,10 +332,11 @@ The analysis will re run and update the analysis results.
 ![Analysis for Logger](images/2_analysis.png)
 Kai identifies the FileSystemAuditLogger usage and suggests replacement. This step involves updating the logger implementation from file-based to TCP streaming.
 
-**Step 1: Identify Logger Usage**
+##### Step 1: Identify Logger Usage
+
 Click on the tool button next to the incident to request a solution for `Replace FileSystemAuditLogger instantiation with StreamableAuditLogger over TCP` issue
 
-**Step 2: LLM Provides Generic Suggestion**
+##### Step 2: LLM Provides Generic Suggestion
 
 The LLM suggests a basic replacement but lacks specific knowledge of the audit library's v2 API patterns and configuration requirements. The suggestion is generic and doesn't include the proper configuration setup
 ![Suggested Fix for Logger](images/2_suggested_fix.png)
@@ -359,11 +362,12 @@ Save the changes and accept the file in the resolutions panel.
 
 Convert builder pattern to record instantiation. This step involves updating the way audit events are created, moving from the deprecated builder pattern to the new record-based constructor.
 
-**Step 1: Identify Builder Pattern Usage**
+##### Step 1: Identify Builder Pattern Usage
+
 ![Analysis for Event Creation](images/3_analysis.png)
 Click on the tool button next to the incident to request a solution for `Replace deprecated AuditEvent.builder() with direct Java 21 record instantiation` issue
 
-**Step 2: LLM Suggestion vs Accepted Solution**
+##### Step 2: LLM Suggestion vs Accepted Solution
 
 **LLM Suggestion (Incomplete):**
 The LLM attempts to suggest a fix but provides an incomplete constructor call. It lacks knowledge of the exact parameter order and required fields for the v2 AuditEvent record.
@@ -444,7 +448,8 @@ Save the changes and accept the file in the resolutions panel. This solution wil
 
 Replace synchronous logEvent() calls with asynchronous logEventAsync(). This step improves application performance by eliminating blocking audit operations.
 
-**Step 1: Identify Synchronous Logging Calls**
+##### Step 1: Identify Synchronous Logging Calls
+
 ![Analysis for Logging Methods](images/4_analysis.png)
 Click on the tool button next to the incident to request a solution for `Use non-blocking logEventAsync(event) instead of synchronous logEvent(event)` issue
 
@@ -460,14 +465,15 @@ Save the changes and accept the file in the resolutions panel. This solution wil
 
 Convert logSuccess/logFailure methods to full AuditEvent construction. This is the most complex migration step, requiring complete reconstruction of audit events.
 
-**Step 1: Identify Legacy Method Usage**
+##### Step 1: Identify Legacy Method Usage
+
 ![Analysis for Convenience Methods](images/5_analysis.png)
 Click on the tool button next to the incident to request a solution for `Replace legacy logSuccess or logFailure methods with a full AuditEvent record` issue
 
 View the solution by clicking on the `eye` icon
 ![View Solution](images/5_view_solution.png)
 
-**Step 2: LLM Suggestion vs Accepted Solution**
+##### Step 2: LLM Suggestion vs Accepted Solution
 
 **LLM Suggestions:**
 The LLM provides the output learned from solving issue 2, but removes the comments from the parameters. This is important for the solution server to generatlize solutions but understand the structyre of the method. So, we will be readding the comments to the following 6 issues.
@@ -631,7 +637,8 @@ Save the changes and accept the file in the resolutions panel. This solution wil
 
 Update Java annotations from javax to jakarta namespace. This step involves updating import statements and annotations to use the new Jakarta EE namespace.
 
-**Step 1: Identify Jakarta Annotation Issues**
+##### Step 1: Identify Jakarta Annotation Issues
+
 ![Analysis](images/6_analysis.png)
 Click on the tool button next to the incident to request a solution for `java.annotation (Common Annotations) module removed in OpenJDK 11` issue
 
@@ -684,14 +691,14 @@ Update the Spring Boot dependencies and version updates in pom.xml to ensure com
 
 Set up Logstash for centralized audit logging to demonstrate the new TCP streaming capabilities of the v2 audit library.
 
-**Step 1: Download Configuration Files**
+#### Step 1: Download Configuration Files
 
 Copy these two configuration files to your project root:
 
 - [logstash.conf](https://github.com/savitharaghunathan/inventory_management/blob/java21/logstash.conf) - configuration for processing audit events
 - [logstash.yml](https://github.com/savitharaghunathan/inventory_management/blob/java21/logstash.yml) - Logstash server configuration
 
-**Step 2: Run Logstash Container**
+#### Step 2: Run Logstash Container
 
 Execute this command from your project directory to start Logstash in a Podman container:
 
@@ -702,7 +709,8 @@ podman run -d --name logstash -p 5000:5000 \
   docker.elastic.co/logstash/logstash:8.11.0
 ```
 
-**Step 3: Verify Logstash Setup**
+#### Step 3: Verify Logstash Setup
+
 ![Logstash Podman](images/8_logstash-podman.png)
 
 The Logstash container is now running and listening on port 5000, ready to receive audit events from the v2 audit library via TCP streaming. This enables enterprise-wide audit log aggregation and centralized monitoring.
