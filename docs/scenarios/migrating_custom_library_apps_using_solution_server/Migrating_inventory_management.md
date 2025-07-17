@@ -338,7 +338,7 @@ Click on the tool button next to the incident to request a solution for `Replace
 The LLM suggests a basic replacement but lacks specific knowledge of the audit library's v2 API patterns and configuration requirements. The suggestion is generic and doesn't include the proper configuration setup
 ![Suggested Fix for Logger](images/2_suggested_fix.png)
 
-_Note: The LLM suggests a basic replacement but lacks specific knowledge of the audit library's v2 API patterns and configuration requirements._
+> **Note:** The LLM suggests a basic replacement but lacks specific knowledge of the audit library's v2 API patterns and configuration requirements.
 
 Update the config manaully with the following details
 
@@ -717,7 +717,7 @@ Run `mvn clean compile`
 
 ![Maven Compile](images/9_mvn_compile.png)
 
-_The Maven build completes successfully, showing that all migration changes are syntactically correct and the application compiles without errors. The build output confirms that the Java 21 compilation and new dependencies are working properly._
+> The Maven build completes successfully, showing that all migration changes are syntactically correct and the application compiles without errors. The build output confirms that the Java 21 compilation and new dependencies are working properly.
 
 ### 4.4 Run the Application
 
@@ -726,7 +726,8 @@ Start the Spring Boot application to verify that the migration changes work corr
 Run `mvn spring-boot:run` to start the application
 
 ![Spring Boot Run](images/9_spring_boot_run.png)
-_The Spring Boot application starts successfully, indicating that all migration changes are working correctly. The startup logs show the application is running on port 8080 with the new audit library configuration._
+
+> The Spring Boot application starts successfully, indicating that all migration changes are working correctly. The startup logs show the application is running on port 8080 with the new audit library configuration.
 
 ### 4.4 Test the Application
 
@@ -740,7 +741,8 @@ curl -X GET "http://localhost:8080/api/medical-devices?userId=user123"
 ```
 
 ![Sample GET Request](images/10_sample_get.png)
-_Testing the medical device inventory API endpoint shows that the application is responding correctly. The request retrieves the list of medical devices, demonstrating that the core functionality is working after the migration._
+
+> Testing the medical device inventory API endpoint shows that the application is responding correctly. The request retrieves the list of medical devices, demonstrating that the core functionality is working after the migration.
 
 **Verify Audit Logging**
 run
@@ -750,7 +752,8 @@ podman logs logstash | grep "audit-events.log"
 ```
 
 ![Sample Log Output](images/10_sample_log.png)
-_The audit log output shows that the new v2 audit library is working correctly, generating proper audit events with all required fields._
+
+> The audit log output shows that the new v2 audit library is working correctly, generating proper audit events with all required fields.
 
 ## Conclusion
 
