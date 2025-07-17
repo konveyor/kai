@@ -656,7 +656,7 @@ The analysis completion screen shows that all 12 migration incidents have been s
 
 Update the Maven configuration for Java 21. This step ensures the application builds correctly with the new Java version and dependencies.
 
-**Update Build Configuration**
+#### Update Build Configuration
 
 Update the Spring Boot dependencies and version updates in pom.xml to ensure compatibility with Java 21 and the new audit library:
 
