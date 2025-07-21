@@ -65,7 +65,7 @@ Now let's apply the fixes one by one, using the solution server
 
 #### Fix 1: Update Dependencies (`audit-logging-0001`)
 
-**Step 1: Analysis**
+##### Step 1: Analysis
 
 ![Dependency Analysis](images/2_2_analysis.png)
 The analysis shows that version 1.0.0 needs to be upgraded to 2.0.0.
@@ -89,19 +89,19 @@ Apply the changes to update the Maven dependency in pom.xml.
 
 #### Fix 2: Update Logger Implementation (`audit-logging-0003`)
 
-**Step 1: Analysis**
+#####Step 1: Analysis
 
 ![Logger Analysis](images/2_3_analysis.png)
 The analysis identifies FileSystemAuditLogger usage that needs to be replaced with StreamableAuditLogger for TCP streaming.
 
 Click on the 'tool' icon to request a fix.
 
-**Step 2: Get Solution with Hints**
+##### Step 2: Get Solution with Hints
 
 ![Get Logger Solution](images/2_3_get_solutiom.png)
 Kai uses Solution Server hints to provide the exact code changes needed to replace FileSystemAuditLogger with StreamableAuditLogger.
 
-**Step 3: Review and Apply Changes**
+##### \*Step 3: Review and Apply Changes
 
 ![Logger Solution](images/2_3_solution.png)
 
@@ -131,19 +131,21 @@ Apply the changes to update the logger implementation in the service classes.
 
 #### Fix 3: Update Audit Event Creation (`audit-logging-0002`)
 
-**Step 1: Analysis**
+##### Step 1: Analysis
 
 ![Event Creation Analysis](images/2_4_analysis.png)
 The analysis identifies deprecated AuditEvent.builder() usage that needs to be replaced with direct record instantiation.
 
 Click on the 'tool' icon to request a fix.
 
-**Step 2: Get RAG Solution**
+##### Step 2: Get RAG Solution
+
 Kai uses Solution Server hints to provide the exact code changes needed to replace the builder pattern with direct record instantiation.
 click on view chnages to see the code suggestion from Kai
 ![View Changes](images/2_4_view_changes.png)
 
-**Step 3: Review and Apply Changes**
+##### Step 3: Review and Apply Changes
+
 ![ Solution](images/2_4_1_solution.png)
 ![Event Creation Results](images/2_4_2_solution.png)
 
@@ -159,19 +161,19 @@ Apply the changes to update audit event creation patterns in the service classes
 
 #### Fix 4: Convert Synchronous to Asynchronous Logging (`audit-logging-0004`)
 
-**Step 1: Analysis**
+##### Step 1: Analysis
 
 ![Synchronous Logging Analysis](images/2_5_analysis.png)
 The analysis identifies synchronous logEvent() calls in the EHR application that need to be converted to asynchronous logEventAsync() for non-blocking operations.
 
 Click on the 'tool' icon to request a fix.
 
-**Step 2: Get Solution with Hints**
+##### Step 2: Get Solution with Hints
 
 ![Synchronous Logging Solution](images/2_5_solution.png)
 Kai uses Solution Server hints to provide the exact code changes needed to convert synchronous logging to asynchronous.
 
-**Step 3: Review and Apply Changes**
+##### Step 3: Review and Apply Changes
 
 ![Synchronous Logging Results](images/2_5_view_solution.png)
 Review the proposed changes to replace `logEvent()` with `logEventAsync()` for improved performance.
@@ -180,19 +182,19 @@ Apply the changes to convert synchronous logging calls to asynchronous in the EH
 
 #### Fix 5: Update Jakarta Annotations (`removed-javaee-modules-00020`)
 
-**Step 1: Analysis**
+##### Step 1: Analysis
 
 ![Jakarta Analysis](images/2_6_analysis.png)
 The analysis identifies javax annotations in the app that need to be updated to jakarta for Java 21 compatibility.
 
 Click on the 'tool' icon to request a fix.
 
-**Step 2: Get Solution with Hints**
+##### Step 2: Get Solution with Hints
 
 ![Jakarta Solution](images/2_6_solution.png)
 Kai provides the exact import and annotation changes needed for Jakarta EE compatibility.
 
-**Step 3: Review and Apply Changes**
+##### Step 3: Review and Apply Changes
 
 ![Jakarta Results](images/2_6_view_solution.png)
 Review the proposed changes to update javax imports to jakarta.
@@ -202,19 +204,19 @@ Apply the changes to update Java annotations for Java 21 compatibility in the EH
 
 #### Fix 6: Replace Legacy Convenience Methods (`audit-logging-0005`)
 
-**Step 1: Analysis**
+##### Step 1: Analysis
 
 ![Convenience Methods Analysis](images/2_7_analysis.png)
 The analysis identifies legacy logSuccess() and logFailure() convenience methods in the EHR application that need to be replaced with full AuditEvent construction.
 
 Click on the 'tool' icon to request a fix.
 
-**Step 2: IDE Reaches Out to Solution Server**
+##### Step 2: IDE Reaches Out to Solution Server
 
 ![Fetching Hints](images/2_7_fetching_hint.png)
 The IDE reaches out to the Solution Server to fetch contextual hints based on successful patterns from the inventory management migration.
 
-**Step 3: Solution Server Provides Hints**
+##### Step 3: Solution Server Provides Hints
 
 ![Solution Server Hints](images/2_7_hints.png)
 The Solution Server provides detailed hints showing how convenience methods were successfully replaced in previous migrations.
@@ -222,12 +224,12 @@ The Solution Server provides detailed hints showing how convenience methods were
 ![Hints Being Used](images/2_7_hints_used.png)
 The IDE displays the hints to the user, showing the specific patterns and code examples from successful migrations.
 
-**Step 4: LLM Reasoning Process**
+##### Step 4: LLM Reasoning Process
 
 ![LLM Reasoning](images/2_7_reasoning.png)
 The LLM demonstrates its reasoning process, showing how it learned from the hints provided by Kai's Solution Server to provide accurate convenience method replacement.
 
-**Step 5: Get Solution with Hints**
+##### Step 5: Get Solution with Hints
 
 ![Convenience Methods Solution 1](images/2_7_solution_1.png)
 Kai uses Solution Server hints to provide the exact code changes needed to replace convenience methods with full AuditEvent construction.
