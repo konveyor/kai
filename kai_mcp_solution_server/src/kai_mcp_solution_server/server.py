@@ -113,6 +113,7 @@ class SolutionServerSettings(BaseSettings):
 class KaiSolutionServerContext:
     def __init__(self, settings: SolutionServerSettings) -> None:
         self.settings = settings
+        self.lock = asyncio.Lock()
 
     async def create(self) -> None:
         self.engine = await get_async_engine(
@@ -227,11 +228,13 @@ async def tool_create_incident(
     associated with the incident does not exist in the database, it will be created
     as well.
     """
-    return await create_incident(
-        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
-        client_id,
-        extended_incident,
-    )
+    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    async with kai_ctx.lock:
+        return await create_incident(
+            kai_ctx,
+            client_id,
+            extended_incident,
+        )
 
 
 @mcp.tool(name="create_multiple_incidents")
@@ -250,9 +253,10 @@ async def tool_create_multiple_incidents(
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     results: list[CreateIncidentResult] = []
 
-    for extended_incident in extended_incidents:
-        incident_id = await create_incident(kai_ctx, client_id, extended_incident)
-        results.append(CreateIncidentResult(incident_id=incident_id, solution_id=0))
+    async with kai_ctx.lock:
+        for extended_incident in extended_incidents:
+            incident_id = await create_incident(kai_ctx, client_id, extended_incident)
+            results.append(CreateIncidentResult(incident_id=incident_id, solution_id=0))
 
     return results
 
@@ -375,15 +379,17 @@ async def tool_create_solution(
     If the incident IDs do not exist in the database, a ValueError will be raised.
     If the used hint IDs do not exist in the database, a ValueError will be raised
     """
-    return await create_solution(
-        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
-        client_id,
-        incident_ids,
-        before,
-        after,
-        reasoning,
-        used_hint_ids,
-    )
+    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    async with kai_ctx.lock:
+        return await create_solution(
+            kai_ctx,
+            client_id,
+            incident_ids,
+            before,
+            after,
+            reasoning,
+            used_hint_ids,
+        )
 
 
 async def generate_hint_v1(
@@ -647,11 +653,13 @@ async def tool_delete_solution(
     """
     Delete the solution with the given ID from the database.
     """
-    return await delete_solution(
-        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
-        client_id,
-        solution_id,
-    )
+    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    async with kai_ctx.lock:
+        return await delete_solution(
+            kai_ctx,
+            client_id,
+            solution_id,
+        )
 
 
 # TODO: Make this a resource instead of a tool. Need to figure out how to handle
@@ -708,11 +716,13 @@ async def tool_get_best_hint(
     and the hint ID. The hint is considered the best if it has at least one solution
     with the status "accepted".
     """
-    return await get_best_hint(
-        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
-        ruleset_name,
-        violation_name,
-    )
+    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    async with kai_ctx.lock:
+        return await get_best_hint(
+            kai_ctx,
+            ruleset_name,
+            violation_name,
+        )
 
 
 class SuccessRateMetric(BaseModel):
@@ -799,10 +809,12 @@ async def tool_get_success_rate(
     an empty list is returned. If any of the violations do not exist in the database,
     they are ignored.
     """
-    return await get_success_rate(
-        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
-        violation_ids,
-    )
+    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    async with kai_ctx.lock:
+        return await get_success_rate(
+            kai_ctx,
+            violation_ids,
+        )
 
 
 async def accept_file(
@@ -887,11 +899,13 @@ async def tool_accept_file(
     client_id: str,
     solution_file: SolutionFile,
 ) -> None:
-    return await accept_file(
-        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
-        client_id,
-        solution_file,
-    )
+    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    async with kai_ctx.lock:
+        return await accept_file(
+            kai_ctx,
+            client_id,
+            solution_file,
+        )
 
 
 async def reject_file(
@@ -919,8 +933,10 @@ async def tool_reject_file(
     client_id: str,
     file_uri: str,
 ) -> None:
-    return await reject_file(
-        cast(KaiSolutionServerContext, ctx.request_context.lifespan_context),
-        client_id,
-        file_uri,
-    )
+    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    async with kai_ctx.lock:
+        return await reject_file(
+            kai_ctx,
+            client_id,
+            file_uri,
+        )
