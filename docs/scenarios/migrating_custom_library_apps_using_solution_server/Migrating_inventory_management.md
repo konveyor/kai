@@ -2,7 +2,7 @@
 
 ## Goal
 
-This scenario demonstrates how **Konveyor AI (Kai)** can assist in modernizing **two healthcare applications** by migrating from an outdated audit logging library (v1) to a modern streaming-based audit library (v2). We will use custom rules with Kai to analyze both applications and generate refactoring recommendations, then leverage the **Solution Server** to demonstrate how migration patterns learned from the first application can be automatically applied to the second application.
+Migrate an outdated audit logging library (v1) to a modern streaming-based audit library (v2). We will use custom rules with Kai to analyze both applications and generate refactoring recommendations. Furthermore we will use the **Solution Server**, through which we demonstrate how migration patterns learnt from the first application can be automatically applied to the second application.
 
 ## Applications to Modernize
 
