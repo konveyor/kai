@@ -124,29 +124,48 @@ Follow this [installation guide](https://github.com/konveyor/kai/blob/main/docs/
 
 ### 1.3 Configure Kai in VS Code
 
-1.3.1. When you launch the extension, you will land on the Welcome Page, as shown below. If the Welcome Page does not appear, proceed to the step 1.3.2.
+1.3.1. When you launch the Konveyor AI (kai) Extension for VSCode extension, you will land on the Welcome Page, as shown below. ![start_png](images/start_page.png)
 
-![walkthrough-1](../../images/walkthrough-1.png)
-
-1.3.2. If "Set up Konveyor" is not available in the list, click the More button for additional options.
-![walkthrough-2](../../images/walkthrough-2.png)
-
-1.3.3 If the welcome page does not appear, open the command palette by pressing Command + Shift + P. This will bring up a list of commands.
-From the command palette, locate and select the "Set up Konveyor" option. This will guide you through the configuration process.
+1.3.2 If the welcome page does not appear, open the command palette by pressing Command + Shift + P. This will bring up a list of commands.
 
 #### Configure Kai for your project
 
-User has an option to override binaries and custom rules, however it comes with the default packaged binaries and custom rules.
+Before proceeding git branch
+with any analysis, you must configure your GenAI key. Run Konveyor: Open the GenAI model provider configuration file. This step will open the `provider-settings.yaml` file. By default, it is configured to use OpenAI. To change the model, update the anchor `&active` to the desired block. Modify this file with the required arguments, such as the model and API key, to complete the setup. Sample of the provider-settings.yaml can be found [here](https://github.com/konveyor/editor-extensions/blob/main/vscode/resources/sample-provider-settings.yaml).
+![configure-genAI](images/update_genAI_key.png)
 
-- Let's select the custom rule we have
-  ![custom rule-1](images/customrule-1.png)
-  ![custom rule-2](images/customrule-2.png)
-  Make sure to select `Yes` to use the default rulesets
-  ![custom rule-3](images/customrule-3.png)
-  You will see a notification that custom rules updated
-  ![custom rule-4](images/customrule-4.png)
 
-- Configuring analysis arguments is necessary to determine which rules apply to the project during analysis. Set up analysis arguments specific to your project by selecting the appropriate options and pressing "OK" to save the changes.
+Start the server by searching the command *Konveyor: Start Server*. 
+
+Before running an analysis, you must create or select a profile.
+
+- In the Konveyor Analysis View, look for the gear icon in the top-right corner of the screen.
+- Click the gear icon to open the configuration menu.
+- In the menu, choose “Manage Profiles”.
+![analysis-view](images/analysis_view.png)
+![analysis-view](images/analysis_view_2.png)
+
+Either:
+- Select an existing profile, or
+- Click “Create Profile” to define a new one (you can set rulesets, targets, etc.).
+- Once a profile is active, the warning will disappear and you can start the analysis.
+
+*This step is required. Without an active profile, the analysis won't run.*
+
+![analysis-view](images/active_profile.png)
+
+To create a new profile: 
+- Click “+ New Profile”
+- A new profile will appear in the list on the left.
+- Fill in the Profile Details:
+  - *Profile Name*: Enter a name for your profile 
+  - *Target Technologies*: Select or type the technologies you want to migrate to (e.g., Spring Boot, Quarkus).
+  - *Source Technologies*: Select or type the technologies you are migrating from (e.g., Java EE, WebLogic).
+  - (Optional) *Select Custom Rules*: User has an option to override binaries and custom rules, however it comes with the default packaged binaries and custom rules.
+  - *Active Profile Status*: 
+    - When you create your first profile, it is automatically set as the active profile.
+    - If you create multiple profiles, make sure to click “Active Profile” at the bottom of the one you want to use for analysis.
+Configuring these arguments is necessary to determine which rules apply to the project during analysis. 
 
 We will analyze the application using the following migration targets to identify potential areas for improvement:
 
@@ -156,16 +175,24 @@ We will analyze the application using the following migration targets to identif
 
 _We need OpenJDK 11 as a target when migrating from Java 8 to 17 because some deprecations and migration rules from Java 9 and 11 are not present in OpenJDK 17. OpenJDK 11 captures changes deprecated in earlier versions, while OpenJDK 17 focuses on 11+ deprecations. Using both ensures we catch all necessary migration warnings and avoid missing intermediate changes._
 
-![select_target.png](images/select_target.png)
+![select-target.png](images/select_target_technologies.png)
 
-Skip selecting source platform. Make sure to select 'OK' once you are done.
+Skip selecting source platform. 
 
-- Next, set up the Generative AI key for your project. This step will open the `provider-settings.yaml` file. By default, it is configured to use OpenAI. To change the model, update the anchor `&active` to the desired block. Modify this file with the required arguments, such as the model and API key, to complete the setup. Sample of the provider-settings.yaml can be found [here](https://github.com/konveyor/editor-extensions/blob/main/vscode/resources/sample-provider-settings.yaml).
-  ![Provider settings](images/provider_settings.png)
+- Let's select the custom rule we have
+  ![custom rule-1](images/custom_rules_1.png)
+  You will see a notification that custom rules updated
+  ![custom rule-2](images/custom_rules_2.png)
 
-- Click on `Start Analyzer` to initialize the RPC server
+Profiles are saved automatically — no need to click “Save.”
+![updated-profile](images/updated_profile.png)
 
-![start_analyzer.png](images/start_analyzer.png)
+Click on `Start` button to initialize the RPC server
+
+![start_analyzer.png](images/start_server_button.png)
+
+Once the server is running successfully, the Server Status label will turn green and display `Running`. 
+![start_analyzer.png](images/start_server_green.png)
 
 ## Step 2: Understanding the Custom Rule
 
@@ -245,11 +272,11 @@ You can learn more about writing your own custom rules [here](https://github.com
 Let's run our initial analysis:
 
 1. Once you have RPC server initialized, navigate to "Konveyor Analysis View" and click Run Analysis. Open the command palette by pressing `Command + Shift + P` to find it.
-   ![run_analysis.png](images/run_analysis.png)
+   ![start-running-analysis.png](images/start_running_analysis.png)
 
 2. The Konveyor Analysis View lists issues, allowing you to filter them by file issues. On the left side, the Konveyor Issue Panel groups files based on similar issues for easier navigation.
 
-![list_issues.png](images/list_issues.png)
+![incidents-files.png](images/analysis_view_issues.png)
 
 ### 3.1 Incidents in Library.java
 
@@ -263,7 +290,7 @@ Expand the incidents for `Library.java` and you will see three incidents
 | **`javax.servlet` → `jakarta.servlet`** | Line 8       | Update import              |
 | **Deprecated `BASE64Encoder`**          | Line 7       | Use `Base64.getEncoder()`  |
 
-![incidents_library.png](images/incidents_library.png)
+![library-issues.png](images/library_java_issues.png)
 
 #### MD5 is outdated
 
@@ -271,17 +298,19 @@ Expand the incidents for `Library.java` and you will see three incidents
 
 - Click on the **tool icon** next to the first issue (MD5 hashing).
 
-![get_solution.png](images/get_solution.png)
+![first-incident.png](images/first_incident.png)
 
 - This opens the resolution details panel
-  ![solution_details.png](images/solution_details.png)
+  ![incident_1.png](images/incident_1.png)
+  ![kai-results-1.png](images/kai_results_1.png)
 
 #### Requesting a Fix
 
 - The **resolution process starts**, where Kai interacts with the **LLM**.
 - Once Kai completes processing, it suggests modifications for **Library.java**.
-  ![requesting_fix_1.png](images/requesting_fix_1.png)
-  ![requesting_fix_2.png](images/requesting_fix_2.png)
+  ![kai-results-1.png](images/kai_results_1.png)
+  ![kai-results-2.png](images/kai_results_2.png)
+  ![kai-results-3.png](images/kai_results_3.png)
 
 #### Reviewing Suggested Changes
 
@@ -289,12 +318,13 @@ Expand the incidents for `Library.java` and you will see three incidents
 - The **right panel** displays:
   - **MD5 is replaced with SHA-256** for secure hashing.
   - **`BASE64Encoder` is replaced with `Base64.getEncoder()`** from `java.util.Base64`, which is the standard modern API.
-    ![file_diff_view.png](images/file_diff_view.png)
+    ![suggested-changes.png](images/3.1_changes.png)
 
 #### Applying Fixes
 
 Click the `check icon` on the file in the left pane to apply the updates.
-![accept_solution.png](images/accept_solution.png)
+
+![accept-changes.png](images/konveyor_resolutions.png)
 
 Kai correctly identified and resolved the issue:
 
@@ -326,8 +356,8 @@ Konveyor analysis detected two dependency-related issues in `pom.xml`:
 #### Requesting a Fix
 
 We will solve both the issues together this time. Clicking on the **tool icon** next to the file name initiates the resolution process for both the issues.
-![pom_issues.png](images/pom_issues.png)
-![pom_fixes.png](images/pom_fixes.png)
+![pom_files_fixes.png](images/pom_files_fixes.png)
+![pom_results.png](images/pom_results.png)
 
 - Once complete, click on the `pom.xml` on the left pane to view the changes.
 
@@ -366,12 +396,11 @@ Click the `check icon` on the file in the left pane to apply the changes.
 
 Once the changes to pom.xml are applied, Kai automatically retriggers analysis and updates the analysis view
 
-![javax_jakarta_issues.png](images/javax_jakarta_issues.png)
+![javax_analysis.png](images/javax_analysis.png)
 
 #### Identifying Issues
 
 Konveyor analysis detected multiple import statements that require updates from **javax** to **jakarta**:
-
 - **Library.java**
   - Line **8**: Replace `javax.servlet.http.HttpServletResponse` with `jakarta.servlet.http.HttpServletResponse`
 - **LibraryServlet.java**
@@ -385,19 +414,17 @@ Konveyor analysis detected multiple import statements that require updates from 
 Clicking on the **tool icon** next to the issue name initiates the resolution process.
 ![jakarta_fix.png](images/jakarta_fix.png)
 
-Kai processes the request in **Library.java** and **LibraryServlet.java**.![jakarta_requesting_solution.png](images/jakarta_requesting_solution.png)
+Kai processes the request in **Library.java** and **LibraryServlet.java**.![javax-fix-results.png](images/javax_fix_results.png)
 
-![jakarta_get_solution_complete.png](images/jakarta_get_solution_complete.png)
+![konveyor-results.png](images/konveyor_results.png)
 
 #### Reviewing Suggested Changes
 
-![jakarta_accept_fixes.png](images/jakarta_accept_fixes.png)
+![jakarta_accept_fixes.png](images/reviewing_resolutions.png)
 
 - **Library.java**
-
-  The **left panel** contains the `javax.servlet.http.HttpServletResponse` import.
-  The **right panel** updates it to `jakarta.servlet.http.HttpServletResponse`.
-  ![library_jakarta_changes.png](images/library_jakarta_changes.png)
+  The **left panel** contains the `javax.servlet.http.HttpServletResponse` import. The **right panel** updates it to `jakarta.servlet.http.HttpServletResponse`
+  ![servlet_jakarta_changes.png](images/library_jakarta_changes.png)
 
 - **LibraryServlet.java**
   The **left panel** shows the current code with `javax.servlet` imports.
@@ -410,7 +437,7 @@ Click the `check icon` next to the filenames in tje left pane to finalize the up
 
 After applying all the changes, Kai retriggers analysis, and no further incidents were found, confirming a successful migration.
 
-![no-new-incidents.png](images/no-new-incidents.png)
+![resolved-changes.png](images/resolved_changes.png)
 
 ## Step 4: Build the app
 
