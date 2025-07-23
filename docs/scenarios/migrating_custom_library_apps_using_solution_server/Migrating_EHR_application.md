@@ -2,7 +2,7 @@
 
 ## Overview
 
-In Part 1, we successfully migrated Inventory Management app using custom enterprise audit library v1 to v2, using Konveyor AI. The Solution Server learned from this migration and stored the patterns, solutions, and success metrics. Now, we'll demonstrate how theKai's solution server accelerates the migration of the EHR application by providing contextual hints and confidence levels based on the learned patterns.
+In Part 1, we successfully migrated Inventory Management app using custom enterprise audit library v1 to v2, using Konveyor AI. The Solution Server learned from this migration and stored the patterns, solutions, and success metrics. Now, we'll demonstrate how Kai's solution server accelerates the migration of the EHR application by providing contextual hints and confidence levels based on the learned patterns.
 
 ## Prerequisites
 
@@ -59,7 +59,7 @@ The analysis identified several migration incidents in the EHR application that 
 | Convenience Methods   | logSuccess/logFailure  | `audit-logging-0005`           | Replace legacy convenience methods with full AuditEvent construction    |
 | Jakarta Annotations   | javax to jakarta       | `removed-javaee-modules-00020` | Update Java annotations for Java 21 compatibility                       |
 
-### 3.2 Applying migration fixed
+### 3.2 Applying migration fixes
 
 Now let's apply the fixes one by one, using the solution server
 
@@ -89,7 +89,7 @@ Apply the changes to update the Maven dependency in pom.xml.
 
 #### Fix 2: Update Logger Implementation (`audit-logging-0003`)
 
-#####Step 1: Analysis
+##### Step 1: Analysis
 
 ![Logger Analysis](images/2_3_analysis.png)
 The analysis identifies FileSystemAuditLogger usage that needs to be replaced with StreamableAuditLogger for TCP streaming.
@@ -101,7 +101,7 @@ Click on the 'tool' icon to request a fix.
 ![Get Logger Solution](images/2_3_get_solutiom.png)
 Kai uses Solution Server hints to provide the exact code changes needed to replace FileSystemAuditLogger with StreamableAuditLogger.
 
-##### \*Step 3: Review and Apply Changes
+##### Step 3: Review and Apply Changes
 
 ![Logger Solution](images/2_3_solution.png)
 
@@ -123,7 +123,7 @@ This configuration includes:
 - **TCP streaming protocol** for centralized audit logging
 - **Proper instantiation** of StreamableAuditLogger with the learned configuration
 
-The Solution Server's hintensured that the same successful configuration for the auidt library was learnt from the from the inventory management system and applied applied to the EHR application, eliminating the need for manual configuration discovery.
+The Solution Server's hints ensured that the same successful configuration for the audit library was learned from the inventory management system and applied to the EHR application, eliminating the need for manual configuration discovery.
 
 Review the proposed changes to replace FileSystemAuditLogger with StreamableAuditLogger for TCP streaming capabilities.
 
@@ -141,7 +141,7 @@ Click on the 'tool' icon to request a fix.
 ##### Step 2: Get RAG Solution
 
 Kai uses Solution Server hints to provide the exact code changes needed to replace the builder pattern with direct record instantiation.
-click on view chnages to see the code suggestion from Kai
+Click on view changes to see the code suggestion from Kai
 ![View Changes](images/2_4_view_changes.png)
 
 ##### Step 3: Review and Apply Changes
@@ -316,7 +316,7 @@ podman run -d --name logstash -p 5000:5000 \
 
 ![Maven Compile](images/2_10_mvn_compile.png)
 Build the application using Maven to ensure all dependencies are resolved and the code compiles successfully with Java 21.
-switch to `Java21` and run `mvn run compile`
+switch to `Java21` and run `mvn clean compile`
 
 #### Step 2: Start the Application
 
@@ -327,7 +327,7 @@ run `mvn spring-boot:run`
 #### Step 3: Test the Application
 
 ![Testing Application](images/2_10_testing_app.png)
-Test the application functionality to ensure it works correctly with the new audit logging patterns. Follow the steps here - https://github.com/hhpatel14/ehr_viewer/tree/java21?tab=readme-ov-file#1-login
+Test the application functionality to ensure it works correctly with the new audit logging patterns. Follow the steps [here](https://github.com/hhpatel14/ehr_viewer/tree/java21?tab=readme-ov-file#1-login)
 
 Verify that audit events are being generated and sent to Logstash.
 
@@ -335,7 +335,7 @@ Verify that audit events are being generated and sent to Logstash.
 
 ![Audit Logs](images/2_10_logs.png)
 Check the audit logs to verify that the new v2 format is working correctly. The logs should show asynchronous logging with enhanced event details and proper TCP streaming to Logstash.
-Run `podman logs logstash |grep UserService` to check thw logs.
+Run `podman logs logstash | grep UserService` to check the logs.
 
 ## Conclusion
 

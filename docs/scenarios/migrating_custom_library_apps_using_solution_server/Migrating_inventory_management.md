@@ -377,7 +377,7 @@ The LLM suggests a basic replacement but lacks specific knowledge of the audit l
 
 > **Note:** The LLM suggests a basic replacement but lacks specific knowledge of the audit library's v2 API patterns and configuration requirements.
 
-Update the config manaully with the following details
+Update the config manually with the following details
 
 ```java
             AuditConfiguration config = new AuditConfiguration();
@@ -441,7 +441,7 @@ This provides the complete AuditEvent constructor with all required parameters i
 Scroll down to the next incident and repeat the above steps with the manual chnages below
 ![Suggested Fix 2](images/3_guggested_fix_2.png)
 
-** Manual changes**
+**Manual changes:**
 
 ```java
 
@@ -510,7 +510,7 @@ View the solution by clicking on the `eye` icon
 ##### Step 2: LLM Suggestion vs Accepted Solution
 
 **LLM Suggestions:**
-The LLM provides the output learned from solving issue 2, but removes the comments from the parameters. This is important for the solution server to generatlize solutions but understand the structyre of the method. So, we will be readding the comments to the following 6 issues.
+The LLM provides the output learned from solving issue 2, but removes the comments from the parameters. This is important for the solution server to generalize solutions but understand the structure of the method. So, we will be reading the comments to the following 6 issues.
 ![Suggested Fix 1](images/5_suggested_fix_1.png)
 update with the following manual fix
 
