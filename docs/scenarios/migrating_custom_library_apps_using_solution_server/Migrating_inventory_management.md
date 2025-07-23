@@ -34,7 +34,13 @@ graph TD
 
 2. **[Electronic Health Record (EHR) System](https://github.com/hhpatel14/ehr_viewer/tree/java8)** - Patient data management system that also uses the same audit logging library for compliance tracking. Built with Spring Boot 2 (Java 8), featuring audit logging for all user actions including login, logout, and patient record access.
 
-This approach showcases the power of Kai's Solution Server in learning from one migration and applying those patterns to similar applications, significantly reducing migration effort and ensuring consistency across healthcare systems. The Solution Server delivers two primary benefits: **Contextual Hints** that surface examples of past migration solutions—including successful user modifications and accepted fixes—enabling Kai to offer actionable hints for difficult or previously unsolved migration problems; and **Migration Success Metrics** that expose detailed success metrics for each migration rule, derived from real-world usage data, enabling IDEs and automation tools to present users with confidence levels for successful migration of given code segments.
+## What is a Solution Server?
+
+Kai's Solution Server systematically reduces migration effort and ensures code consistency by applying learned transformation patterns across similar applications. The server provides two primary functions derived from historical migration data:
+
+1.  **Contextual Hints:** For complex or previously unsolved migration issues, the server provides actionable solutions by surfacing proven examples from past migrations, including user-modified and accepted code transformations.
+
+2.  **Migration Success Metrics:** The server calculates and exposes success metrics for each migration rule based on aggregated usage data. This enables IDEs and automation tools to present a quantitative confidence level for the successful transformation of any given code segment.
 
 ## Background
 
