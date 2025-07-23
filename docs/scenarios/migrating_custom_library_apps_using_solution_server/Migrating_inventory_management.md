@@ -5,6 +5,7 @@
 Migrate an outdated audit logging library (v1) to a modern streaming-based audit library (v2). We will use custom rules with Kai to analyze both applications and generate refactoring recommendations. Furthermore we will use the **Solution Server**, through which we demonstrate how migration patterns learnt from the first application can be automatically applied to the second application.
 
 ## Applications to Modernize
+
 ```mermaid
 graph TD
     subgraph "Core Systems"
@@ -30,6 +31,9 @@ graph TD
 
     Inventory -- "Has Features" --> InventoryFeatures
     EHR -- "Has Features" --> EHRFeatures
+
+```
+
 1. **[Medical Device Inventory Management System](https://github.com/savitharaghunathan/inventory_management)** - Manages medical device inventory with comprehensive audit logging. Built with Spring Boot 2 (Java 8) and features REST API endpoints for medical device operations, in-memory storage with sample inventory data, and audit logging using the v1 audit library.
 
 2. **[Electronic Health Record (EHR) System](https://github.com/hhpatel14/ehr_viewer/tree/java8)** - Patient data management system that also uses the same audit logging library for compliance tracking. Built with Spring Boot 2 (Java 8), featuring audit logging for all user actions including login, logout, and patient record access.
