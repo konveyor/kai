@@ -33,7 +33,7 @@ IDE extension.
 
 ## Configuration
 
-<video src="https://youtube.com/IBa8B_RluGs" width="320" height="240" controls></video>
+<video src="https://www.youtube.com/watch?v=IBa8B_RluGs" width="320" height="240" controls></video>
 
 Click the Kai VSCode extension to perform the following tasks:
 1. [Configure Kai settings](#configure-kai-settings)
