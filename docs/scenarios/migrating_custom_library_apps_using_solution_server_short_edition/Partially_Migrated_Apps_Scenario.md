@@ -261,7 +261,7 @@ Start the analysis on the EHR viewer project:
 
 ![Start EHR Analysis](images/6_start_analysis.png)
 
-## Analysis Results
+#### Analysis Results
 
 **Total Issues:** 2 _(3 incidents found)_
 
