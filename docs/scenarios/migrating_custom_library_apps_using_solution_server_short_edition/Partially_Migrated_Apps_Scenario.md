@@ -47,8 +47,12 @@ when:
 message: Direct instantiation of `FileSystemAuditLogger` is deprecated. Use `StreamableAuditLogger` configured for TCP streaming.
 ```
 
-**What it detects**: Usage of deprecated `FileSystemAuditLogger`
-**Solution Server learning**: Captures configuration patterns for `StreamableAuditLogger` including host, port, and protocol settings
+**Migration Point:**
+
+- **Pattern**: Replace `FileSystemAuditLogger` with `StreamableAuditLogger`
+- **Before**: `new FileSystemAuditLogger(config)`
+- **After**: `new StreamableAuditLogger(config)`
+- **Impact**: Enables TCP streaming to centralized logging infrastructure
 
 ## Prerequisites
 
