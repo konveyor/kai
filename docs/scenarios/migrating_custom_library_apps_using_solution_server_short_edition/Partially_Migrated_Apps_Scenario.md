@@ -33,25 +33,7 @@ The Solution Server delivers two primary benefits to users of Kai:
 
 This scenario uses custom migration rules specifically designed for the audit logging library migration:
 
-#### Rule 1: Dependency Version Upgrade (`audit-logging-0001`)
-
-```yaml
-ruleID: audit-logging-0001
-description: Detects Maven dependency on v1.x of audit-logging-library and suggests upgrading to 2.x.x (Java 21+)
-category: mandatory
-effort: 1
-when:
-  java.dependency:
-    name: com.enterprise.audit-logging-library
-    lowerbound: "1.0.0"
-    upperbound: "1.9.0"
-message: The `audit-logging-library` version {{dependency.version}} is outdated. Please upgrade to 2.0.0.
-```
-
-**What it detects**: Maven dependencies using audit library v1.x
-**Solution Server learning**: Captures successful dependency upgrade patterns and version compatibility configurations
-
-#### Rule 2: Logger Implementation (`audit-logging-0003`)
+#### Rule 3: Logger Implementation (`audit-logging-0003`)
 
 ```yaml
 ruleID: audit-logging-0003
