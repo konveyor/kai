@@ -1,6 +1,8 @@
 # Migrating healthcare apps using Kai solution server
 
-Konveyor AI (kai) is Konveyor's approach to easing modernization of application source code to a new target by leveraging LLMs with guidance from static code analysis augmented with data in Konveyor that helps to learn how an Organization solved a similar problem in the past.
+## Goal
+
+Migrate an outdated audit logging library (v1) to a modern streaming-based audit library (v2). We will use custom rules with Kai to analyze both applications and generate refactoring recommendations. Furthermore, we will use the **Solution Server**, through which we demonstrate how migration patterns learned from the first application can be automatically applied to the second application.
 
 - [Migrating healthcare apps using Kai solution server](#migrating-healthcare-apps-using-kai-solution-server)
   - [Overview](#overview)
@@ -329,27 +331,23 @@ The Solution Server provides enhanced suggestions for the Jakarta annotation upd
 
 ![Jakarta Solution View](images/8_view.png)
 
-The Solution Server automatically applies the same successful patterns from the inventory management migration, ensuring consistency across both healthcare applications.
-
 What makes this remarkable is that the Solution Server doesn't just copy patterns - it adapts them. The learned configuration patterns are applied to the EHR context while maintaining the technical correctness that was manually validated in the inventory management migration.
 
 The migration that previously would have required the same manual research and domain expertise now flows smoothly, with high-confidence suggestions based on proven patterns.
 
-## Step 3: Verify Solution Server Benefits
+## Step 3: Solution server benefits
 
-### Compare Migration Experiences
+### Compare migration experiences
 
-| First Migration (Inventory Management) | Second Migration (EHR Viewer)             |
+| First migration (Inventory Management) | Second migration (EHR Viewer)             |
 | -------------------------------------- | ----------------------------------------- |
 | Manual pattern discovery               | Contextual hints from Solution Server     |
 | Trial and error with configurations    | Pre-validated patterns and configurations |
 | Time-intensive troubleshooting         | Significantly faster resolution           |
 
-### Measure the Acceleration
+Throughout this migration process, you would have noticed:
 
-Track the differences:
-
-- **Time to completion**: EHR migration is comparitvely faster
+- **Time to completion**: EHR migration is comparatively faster
 - **Error rate**: Reduced failed attempts on similar violations
 - **Consistency**: Both applications use identical audit patterns
 
