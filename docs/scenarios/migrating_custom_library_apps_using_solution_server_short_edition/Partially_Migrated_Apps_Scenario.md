@@ -1,10 +1,7 @@
 # Migrating healthcare apps using Kai solution server
 
-## Goal
-
-Migrate an outdated audit logging library (v1) to a modern streaming-based audit library (v2). We will use custom rules with Kai to analyze both applications and generate refactoring recommendations. Furthermore, we will use the **Solution Server**, through which we demonstrate how migration patterns learned from the first application can be automatically applied to the second application.
-
 - [Migrating healthcare apps using Kai solution server](#migrating-healthcare-apps-using-kai-solution-server)
+  - [Goal](#goal)
   - [Overview](#overview)
   - [Prerequisites](#prerequisites)
   - [Step 1: Setup](#step-1-setup)
@@ -13,9 +10,13 @@ Migrate an outdated audit logging library (v1) to a modern streaming-based audit
   - [Step 2: Migration using solution server](#step-2-migration-using-solution-server)
     - [2.1 Migrate Inventory Management](#21-migrate-inventory-management)
     - [2.2 Migrate EHR Viewer](#22-migrate-ehr-viewer)
-  - [Step 3: Verify Solution Server Benefits](#step-3-verify-solution-server-benefits)
+  - [Step 3: Solution Server Benefits](#step-3-solution-server-benefits)
   - [Step 4: Deploy and Run the Applications](#step-4-deploy-and-run-the-applications)
   - [Conclusion](#conclusion)
+
+## Goal
+
+Migrate an outdated audit logging library (v1) to a modern streaming-based audit library (v2). We will use custom rules with Kai to analyze both applications and generate refactoring recommendations. Furthermore, we will use the **Solution Server**, through which we demonstrate how migration patterns learned from the first application can be automatically applied to the second application.
 
 ## Overview
 
