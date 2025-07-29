@@ -115,36 +115,85 @@ TODO: setup Kai
 ### 2.1 Migrate Inventory Management
 
 1. **Run Analysis**: Start Kai analysis on the inventory management project
-   - Select migration targets: `openjdk21`
-   - Custom rules: Select `rules` folder for the cutom rules
 
-Start the analyzer and Run analysis. the vilation will include `audit-logging-0001` and `audit-logging-0003`
+#### Configure Analysis Profile
+
+Configure the analysis profile by selecting the settings icon as shown in the image:
+
+![Configure Profile](images/1_configure_profile.png)
+
+In the configuration dialog, set up the profile with the following values:
+
+![Configure Profile Settings](images/1_configure_profile_1.png)
+
+**Configuration Values:**
+
+- **Profile Name**: `openjdk-custom-library` (or any descriptive name)
+- **Migration Targets**: Select `openjdk21` from the available targets
+
+#### Select Custom Rules
+
+Select the `rules` folder for the custom rules. Navigate to the rules directory and ensure the custom audit logging rules are included:
+
+![Select Custom Rules](images/1_select_custom_rules.png)
+
+#### Start the Server and Run Analysis
+
+Start the Kai server with the configured profile:
+
+![Start Server with Profile](images/2_start_server_with_profile.png)
+
+Run the analysis on the inventory management project:
+
+![Run Analysis](images/2_run_analysis.png)
 
 #### The Analysis Results
 
 Kai quickly identifies several migration issues in the codebase. The analysis shows violations related to the outdated audit library dependency and deprecated logger implementation patterns.
 
-#### Fix 1: Dependency Upgrade Challenge
+| #   | Issue Title (Rule)                                                                      | Incidents | Explanation shown                                                                                                                                                          | File & Line(s)                                                                                                                                                         |
+| --- | --------------------------------------------------------------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Replace `FileSystemAuditLogger` instantiation with `StreamableAuditLogger` over TCP** | 1         | “Direct instantiation of `FileSystemAuditLogger` is deprecated. Use `StreamableAuditLogger` configured for TCP streaming.”                                                 | `/src/main/java/com/example/inventorymanagement/service/InventoryService.java:7`                                                                                       |
+| 2   | **The `java.annotation` (Common Annotations) module has been removed from OpenJDK 11**  | 2         | “Add the `jakarta.annotation` dependency to your application’s `pom.xml`.”<br>`<groupId>jakarta.annotation</groupId>`<br>`<artifactId>jakarta.annotation-api</artifactId>` | `/src/main/java/com/example/inventorymanagement/service/InventoryService.java:12`<br>`/src/main/java/com/example/inventorymanagement/service/InventoryService.java:13` |
 
-The first violation appears straightforward - the `pom.xml` file contains audit library v1.0.0 which needs upgrading to v2.0.0. When you click the tool icon to request a fix, Kai's LLM handles this well since Maven dependency patterns are common in its training data. The fix is applied successfully, updating both the library version and Java compiler settings to version 21.
+#### Fix 1: The Logger Implementation
 
-Behind the scenes, the Solution Server captures this successful upgrade pattern, noting the specific version combination and compatibility requirements.
+The FileSystemAuditLogger violation requires replacement with StreamableAuditLogger. Let's work through this fix step by step.
 
-#### Fix 2: The Logger Implementation Dilemma
+##### Step 1: Request a Solution
 
-The second violation proves more challenging. Kai detects the deprecated `FileSystemAuditLogger` and suggests replacing it with `StreamableAuditLogger`. However, when you request a fix, the LLM's suggestion is incomplete:
+Click on the tool icon to request a solution from Kai:
+
+![Solve Issue](images/3_solve_issue.png)
+
+##### Step 2: Review Kai's Initial Solution
+
+Kai provides an initial solution for the logger replacement:
+
+![Initial Solution](images/3_solution.png)
+
+The LLM suggests a basic replacement but lacks specific knowledge of the custom `AuditConfiguration` class. This enterprise-specific library isn't part of the LLM's public training data.
+
+##### Step 3: View Kai's Reasoning
+
+Kai shows its reasoning process for the suggested fix:
+
+![Reasoning](images/3_reasoning.png)
+
+##### Step 4: Review the Complete Solution
+
+View the detailed solution with the complete configuration:
+
+![View Solution](images/3_view_solution.png)
+
+##### Step 5: Manual Intervention Required
+
+The LLM's initial suggestion is incomplete because it lacks knowledge of the custom `AuditConfiguration` class and its required parameters. This enterprise-specific audit library isn't part of the LLM's public training data, so it cannot generate the complete configuration pattern.
+
+Update the migration suggestion with the following complete configuration:
 
 ```java
-// LLM's generic suggestion - incomplete
-auditLogger = new StreamableAuditLogger(config);
-```
-
-The problem becomes clear: the LLM doesn't know how to properly configure the custom `AuditConfiguration` class. This enterprise-specific library isn't part of the LLM's public training data.
-
-Update the migration susstestion witj the following configuration:
-
-```java
-// Manual intervention required
+// Complete configuration required
 AuditConfiguration config = new AuditConfiguration();
 config.setStreamHost(System.getenv().getOrDefault("AUDIT_STREAM_HOST", "localhost"));
 config.setStreamPort(Integer.parseInt(System.getenv().getOrDefault("AUDIT_STREAM_PORT", "5000")));
@@ -152,24 +201,101 @@ config.setStreamProtocol(System.getenv().getOrDefault("AUDIT_STREAM_PROTOCOL", "
 auditLogger = new StreamableAuditLogger(config);
 ```
 
-#### Solution Server Learning
+![Updated Solution](images/3_updated_solution.png)
 
-As you accept each fix from Kai, either as-is or modiefied, the Solution Server captures every pattern. This learning process transforms your manual work into reusable knowledge for future migrations.
+**Solution Server Learning:** Once this manually-crafted solution is accepted, the Solution Server captures the complete configuration pattern, including the custom class usage, environment variable conventions, and TCP streaming setup. This knowledge becomes available for future similar migrations, eliminating the need for manual intervention in subsequent projects.
+
+##### Step 6: Apply the Changes
+
+Apply the changes to complete the fix:
+
+![Apply Changes](images/3_apply-changes.png)
+
+#### Fix 2: Jakarta Annotations Migration
+
+The second violation involves updating Java annotations from `javax` to `jakarta` for Java 21 compatibility.
+
+##### Step 1: Analyze the Jakarta Annotation Issue
+
+Review the analysis results for the Jakarta annotation violations:
+
+![Jakarta Analysis](images/4_analysis.png)
+
+##### Step 2: Review Kai's Solution
+
+Kai provides a solution for updating the annotations:
+
+![Jakarta Solution](images/4_solution.png)
+
+##### Step 3: Review the Complete Solution
+
+Review the detailed solution with all necessary changes:
+
+![Review Solution](images/4_review_solution.png)
+
+##### Step 4: Apply the Jakarta Changes
+
+Apply the changes to update the annotations:
+
+![Apply Jakarta Changes](images/4_apply_changes.png)
+
+#### Migration Complete - All Issues Resolved
+
+Once all fixes are applied, the analysis shows zero remaining issues:
+
+![Analysis Complete](images/5_analysis_complete.png)
+
+All violations have been successfully resolved, and the inventory management application is now fully migrated.
 
 ### 2.2 Migrate EHR Viewer
 
 Open the EHR viewer project in a separate VSCode window and run the same Kai analysis with identical migration targets and custom rules.
 
-#### Fix 1: Dependency Upgrade
+#### Start EHR Analysis with Same Profile
 
-The dependency upgrade violation appears again, but this time Kai displays a confidence level next to the suggested fix. The LLM still handles this well, but now you have validation that this specific version combination has been proven to work in a similar healthcare application.
+Use the same analysis profile that was configured for the inventory management system:
 
-#### Fix 2: Logger Implementation
+![EHR Start Server with Same Profile](images/6_ehr_start_server_with_same_profile.png)
 
-Here's where the Solution Server truly shines. The same `FileSystemAuditLogger` violation appears, but instead of the incomplete suggestion you saw before, Kai now provides the complete, working configuration:
+Start the analysis on the EHR viewer project:
+
+![Start EHR Analysis](images/6_start_analysis.png)
+
+## Analysis Results
+
+**Total Issues:** 2 _(3 incidents found)_
+
+| #   | Issue                                                                                                                                                                                                                     | Incidents | Files                                                                                                                                    |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Replace **`FileSystemAuditLogger`** instantiation with **`StreamableAuditLogger`** over TCP<br>_Direct instantiation of `FileSystemAuditLogger` is deprecated. Use `StreamableAuditLogger` configured for TCP streaming._ | 1         | `/src/main/java/com/example/ehrviewer/service/UserService.java:7`                                                                        |
+| 2   | **`java.annotation`** module removed in OpenJDK 11<br>_Add the `jakarta.annotation` dependency to `pom.xml`._                                                                                                             | 2         | `/src/main/java/com/example/ehrviewer/service/UserService.java:13`<br>`/src/main/java/com/example/ehrviewer/service/UserService.java:14` |
+
+![EHR Analysis Results](images/7_analysis_results.png)
+
+#### Fix 1: Logger Implementation
+
+Here's where the Solution Server truly shines. The same `FileSystemAuditLogger` violation appears, but instead of the incomplete suggestion you saw before, Kai now provides the complete, working configuration.
+
+##### Step 1: Review EHR Analysis Results
+
+The analysis results show the same logger implementation violation:
+
+![EHR Analysis Results](images/7_analysis_results.png)
+
+##### Step 2: Request Fix with Solution Server Enhancement
+
+Click on the tool icon to request a fix - notice how the Solution Server now provides enhanced suggestions:
+
+![Request Fix](images/7_request_fix.png)
+
+##### Step 3: Review Enhanced Solution
+
+Kai now provides the complete, working configuration based on the learned patterns from the inventory management migration:
+
+![Enhanced Solution](images/7_solution.png)
 
 ```java
-// Previously required manual work, now auto-generated
+// Previously required manual work, now auto-generated by Solution Server
 AuditConfiguration config = new AuditConfiguration();
 config.setStreamHost(System.getenv().getOrDefault("AUDIT_STREAM_HOST", "localhost"));
 config.setStreamPort(Integer.parseInt(System.getenv().getOrDefault("AUDIT_STREAM_PORT", "5000")));
@@ -177,13 +303,47 @@ config.setStreamProtocol(System.getenv().getOrDefault("AUDIT_STREAM_PROTOCOL", "
 auditLogger = new StreamableAuditLogger(config);
 ```
 
-What previously required manual research and implementation is now automatically suggested.
+##### Step 4: View Solution Server Reasoning
 
-#### Additional Accelerated Fixes
+The Solution Server shows its reasoning based on the previously learned patterns:
 
-As you continue through the EHR migration, the acceleration becomes even more apparent:
+![Solution Server Reasoning](images/7_reasoning.png)
 
-#### The Power of Cross-Application Learning
+##### Step 5: Review Changes
+
+Review the complete changes that will be applied:
+
+![View Changes](images/7_view_changes.png)
+
+##### Step 6: Accept the Solution
+
+Accept the enhanced solution that was automatically generated:
+
+![Accept Changes](images/7_accept_changes.png)
+
+What previously required manual research and implementation is now automatically suggested based on the Solution Server's learned knowledge.
+
+#### Fix 2: Jakarta Annotations Migration
+
+The second violation involves updating Java annotations from `javax` to `jakarta` for Java 21 compatibility.
+
+##### Step 1: Analyze the Jakarta Annotation Issue
+
+Review the analysis results for the Jakarta annotation violations in the EHR application:
+
+![Jakarta Analysis](images/8_analysis.png)
+
+Notice how the analysis now includes success metrics derived from the previous inventory management migration.
+
+These confidence levels indicate the likelihood of successful migration based on learned patterns and real-world usage data from the Solution Server.
+
+##### Step 2: Apply Jakarta Changes with Solution Server Enhancement
+
+The Solution Server provides enhanced suggestions for the Jakarta annotation updates based on the patterns learned from the inventory management migration:
+
+![Jakarta Solution View](images/8_view.png)
+
+The Solution Server automatically applies the same successful patterns from the inventory management migration, ensuring consistency across both healthcare applications.
 
 What makes this remarkable is that the Solution Server doesn't just copy patterns - it adapts them. The learned configuration patterns are applied to the EHR context while maintaining the technical correctness that was manually validated in the inventory management migration.
 
