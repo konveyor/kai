@@ -130,9 +130,17 @@ Follow this [installation guide](https://github.com/konveyor/kai/blob/main/docs/
 
 #### Configure Kai for your project
 
-Before proceeding git branch
-with any analysis, you must configure your GenAI key. Run Konveyor: Open the GenAI model provider configuration file. This step will open the `provider-settings.yaml` file. By default, it is configured to use OpenAI. To change the model, update the anchor `&active` to the desired block. Modify this file with the required arguments, such as the model and API key, to complete the setup. Sample of the provider-settings.yaml can be found [here](https://github.com/konveyor/editor-extensions/blob/main/vscode/resources/sample-provider-settings.yaml).
-![configure-genAI](images/update_genAI_key.png)
+Before proceeding with any analysis, you must configure your GenAI key. 
+
+![missing-genAI](images/configure_genAI.png) 
+
+Run Konveyor: Open the GenAI model provider configuration file. This step will open the `provider-settings.yaml` file. 
+
+![configure-genAI](images/provider_settings.png) 
+
+By default, it is configured to use OpenAI. To change the model, update the anchor `&active` to the desired block. 
+
+Modify this file with the required arguments, such as the model and API key, to complete the setup. Sample of the provider-settings.yaml can be found [here](https://github.com/konveyor/editor-extensions/blob/main/vscode/resources/sample-provider-settings.yaml).
 
 
 Start the server by searching the command *Konveyor: Start Server*. 
