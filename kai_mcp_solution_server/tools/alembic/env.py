@@ -18,7 +18,7 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 
 
-from kai_mcp_solution_server.dao import Base  # trunk-ignore(ruff/E402)
+from kai_mcp_solution_server.db.dao import Base  # trunk-ignore(ruff/E402)
 
 target_metadata = Base.metadata
 
