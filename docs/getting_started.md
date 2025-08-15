@@ -4,10 +4,23 @@
   - [Overview](#overview)
   - [Installation](#installation)
   - [Configuration](#configuration)
-  - [Start](#starting-the-server)
-  - [Usage](#usage)
+  - [Starting the RPC Server](#starting-the-rpc-server)
+  - [Using Kai for analysis and fixes](#using-kai-for-analysis-and-fixes)
+  - [Guided scenario](#guided-scenario)
 
 ## Overview
+
+Before you install Kai, you must:
+
+- Create an API key for an LLM model.
+  - Supported LLM providers: **OpenAI**, Amazon Bedrock, **Azure OpenAI**, DeepSeek, Google Gemini, Ollama
+  - OpenAI-API-compatible endpoints such as OpenShift AI
+
+- Install Language Support for Java(TM) by Red Hat extension
+- Install Java v17 and later 
+- Install Maven v3.9+
+- Install Git and add it to the `$PATH` variable
+- Configure an application in Visual Studio Code 
 
 Running Kai consists of:
 
@@ -22,103 +35,126 @@ IDE extension.
 
 ## Configuration
 
-Once the VSCode extension is installed, you are presented with the "Set up
-Konveyor" page. This page is where you as a user can configure Kai to suit your
-needs. This page can also be accessed by clicking "Help"->"Welcome" and finding
-"Set up Konveyor" in the "Walkthroughs" section.
+[![Kai first screen](https://i.ytimg.com/vi/IBa8B_RluGs/hqdefault.jpg)](https://youtu.be/IBa8B_RluGs)
 
-![image](images/walkthroughs_welcome.png)
+<!-- <iframe width="560" height="315" src="https://www.youtube.com/embed/IBa8B_RluGs" title="Kai configuration walkthrough" frameborder="0" allowfullscreen></iframe> -->
 
-### Options
-
-All of the following settings can be configured via the setup page or via
-modifying `settings.json`. For more details; see [configuration](./contrib/configuration.md) for a full list of
-available settings.
-
-#### Override Analyzer Binary
-
-This allows you as a user to configure custom analyzer and Kai binaries as
-opposed to the default packaged ones. This shouldn't be necessary for most
-users. This can be useful for testing changes, please see the [contributing guide](contrib/dev_environment.md) for more information.
-
-#### Configure Custom Rules
-
-This allows you as a user to configure custom rules for the Konveyor analyzer
-to use when running static code analysis. This can be done by selecting a
-directory where these rules exist.
-
-For information on creating custom rules you can see the [documentation](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md#rules)
-
-#### Configure Analysis Arguments
-
-This allows you as a user to define the sources and targets for static code
-analysis.
-
-These are mutually exclusive options, you should select one or the other.
-
-Sources and Targets are special [labels](https://github.com/konveyor/analyzer-lsp/blob/main/docs/labels.md#labels). Selecting the sources and targets will generate the label selector for you.
+Click the Kai VSCode extension to perform the following tasks:
+1. [Configure Kai settings](#configure-kai-settings)
+1. [Configure settings for analysis](#configure-settings-for-analysis)
+1. [Starting the RPC server](#starting-the-rpc-server)
+1. [Using Kai for analysis and fixes](#using-kai-for-analysis-and-fixes)
 
 > [!NOTE]
-> These source and target labels are only coming from the [default rulesets](https://github.com/konveyor/analyzer-lsp/blob/main/docs/labels.md#labels). If you want to use custom labels you must create the label selector manually.
+> You must open an application in your VSCode workspace to use the Kai extension.
 
-To use this option click
+### Configure Kai settings
 
-![image](images/walkthroughs_configure_analysis_source_and_targets.png)
+[![Kai configuration settings](https://i.ytimg.com/vi/BgWZcFT7XjQ/hqdefault.jpg)](https://youtu.be/BgWZcFT7XjQ)
 
-If you need/want to specify the label selector manually, you as a user can define a specific label selector to
-use when querying the rulesets.
+<!-- <iframe width="560" height="315" src="https://www.youtube.com/embed/BgWZcFT7XjQ" title="Kai configuration settings" frameborder="0" allowfullscreen></iframe> -->
 
-To understand the label selector syntax see the [documentation](https://github.com/konveyor/analyzer-lsp/blob/main/docs/labels.md#rule-label-selector)
+Access the Kai settings from `Extensions > Konveyor AI Extension for VS Code settings icon > Settings`.
 
-To use this option click
+You can configure basic settings such as:
+- Configure the solution server endpoint 
+- Select the editor view for analysis: diff or merge
+- (Optional) Choose the agent mode for automated analysis with manual review
+- (Optional) Choose the demo mode to use cached responses from the LLM 
 
-![image](images/walkthroughs_configure_analysis_label_selector.png)
+### Configure settings for analysis 
 
-#### Configure Generative AI
+You can configure the initial profile and other settings on the `Get Ready to Analyze` page or by modifying `settings.json`. For more details; see [configuration](./contrib/configuration.md) for a full list of available settings.
 
-This is where you set up the model configuration for kai to use. To see more information about this see the [llm selection](./llm_selection.md) documentation.
+[![Kai profile settings](https://i.ytimg.com/vi/6YN_pGGMSW4/hqdefault.jpg)](https://youtu.be/6YN_pGGMSW4)
 
-## Starting the server
+<!-- <iframe width="560" height="315" src="https://www.youtube.com/embed/6YN_pGGMSW4" title="Kai profile settings" frameborder="0" allowfullscreen></iframe> -->
 
-Click "Start Analyzer" to launch the RPC server. You can then click "Mark Done"
-to close the setup page.
+To go to the `Get Ready to Analyze` page,  
+  - Click `Konveyor extension > Open Konveyor Analysis View (icon) > Settings (icon)`.
+  - Type `Ctrl + Shift + P` to open the Command Palette and type "Konveyor:Manage Analysis Profile".
 
-![image](images/walkthroughs_start_server.png)
+You can access the following configurations on the `Get Ready to Analyze` page: 
 
-## Usage
+- Select Profile
+- Configure a Label selector (source and target technologies)
+- Set rules (default and custom)
+- Configure the generative AI API key
 
-Now that Kai is installed and started, using the extension consists of running
-static code analysis and generating code fixes. Once analysis is performed, you
-are presented with a list of violations and their associated incidents. Kai
-currently allows the user to generate code fixes based on incidents.
+Edit these settings by using the `Profile Manager` page to reuse the configuration for multiple analyses.
+
+#### Override analyzer binary
+
+You can configure custom analyzer and Kai binaries as opposed to the default packaged ones. This provision can be useful for testing changes though it shouldn't be necessary for most users. See the [contributing guide](contrib/dev_environment.md) for more information.
+
+#### Configure custom rules
+
+You can configure custom rules for the Konveyor analyzer to use when running static code analysis. To do so, edit `Set Rules` on the `Get Ready to Analyze` page to open the `Profile Manager`. You can select the directory that contains the custom rules.
+
+For information about creating custom rules, see the [rules documentation](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md#rules).
+
+#### Configure analysis arguments
+
+On the `Profile Manager` page, you can select or create the sources and target technologies for the static code analysis. They are _**mutually exclusive**_ options: you should select one or the other.
+
+Sources and Targets are special [labels](https://github.com/konveyor/analyzer-lsp/blob/main/docs/labels.md#labels) recognized by the analyzer. Selecting the sources or targets will generate the label selector that filters rules for the analysis.
+
+> [!NOTE]
+> These source and target labels are configured in the [default rulesets](https://github.com/konveyor/analyzer-lsp/blob/main/docs/labels.md#labels). If you want to use custom labels for Kai analysis, you must create the label selector in the profile.
+
+To use this option, type the name of the custom source or target technology:
+
+![image](images/edit-custom-target.png)
+
+If you need/want to specify the label selector manually, you can define a specific label selector to use when querying the rulesets.
+
+To understand the label selector syntax see the [rule label selector documentation](https://github.com/konveyor/analyzer-lsp/blob/main/docs/labels.md#rule-label-selector)
+
+<!-- To use this option click
+
+![image](images/walkthroughs_configure_analysis_label_selector.png) No longer found in the profile settings--> 
+
+#### Configure the generative AI API key
+
+On the `Get Ready to Analyze` page, you can configure the LLM API key needed for Kai analysis. 
+
+[![Kai generative AI API key configuration](https://i.ytimg.com/vi/F4Va8KFqYV4/hqdefault.jpg)](https://youtu.be/F4Va8KFqYV4)
+
+<!-- <iframe width="560" height="315" src="https://www.youtube.com/embed/F4Va8KFqYV4" title="Kai generative AI API key configuration" frameborder="0" allowfullscreen></iframe> -->
+
+To see more information about LLM provider configuration, see the [LLM selection](./llm_selection.md) documentation.
+
+## Starting the RPC server
+
+Click `Start` to start the RPC server on the `Konveyor Analysis View` page. This action activates the `Run Analysis` button. 
+
+![image](images/start-rpc-server.png)
+
+## Using Kai for analysis and fixes
+
+Now that you installed and started Kai, you can use the Kai extension to run static code analysis and generate code fixes. Once analysis is performed, you can review a list of violations and their associated incidents. Currently, you can generate code fixes based on incidents.
 
 ### Running analysis
 
-To start, the analysis view allows you to run a full analysis of the codebase
-based on the prior configured analysis arguments. After analysis completes, you
-will see violations and incidents generated as a result. On the left side of
-the extension, you will see a tree view of these incidents and the files where
-those incidents are present.
+After starting the RPC server on the `Konveyor Analysis View` page, you can run a full analysis of the codebase based on the prior configured analysis arguments by clicking `Run Analysis`. 
+
+> [!NOTE]
+> You must select a profile with necessary configurations such as source and target technologies before you run an analysis.
+
+After analysis completes, you will see violations and incidents generated as a result. In the `Konveyor Issues` pane, you will see a tree view of these incidents and the files that contain these incidents.
 
 ### Generating fixes
 
 Now that you have violations from analysis, you will want to begin generating
-code fixes based on these incidents. This can be done by selecting the `Resolve Incident` button. You can choose to resolve any number of incidents at a time by clicking the button associated with the number.
+code fixes based on these incidents. You can generate fix suggestions by selecting the spanner button associated with a specific issue or all issues.
 
-![image](images/resolve_1_incident_button.png)
+![image](images/resolve-issues.png)
 
-You can see more details if there are more than one incident by expanding the row. Here you will have more options for resolving incidents.
+You can see more details if there are more than one incident by expanding the issues row. Here, you will have more options for resolving incidents.
 
-Once the fix is generated, you will be presented with a list of files that
-would be changed, and you are given the option to view, accept, or reject those
-changes. You can view this from an in-view diff editor via the analysis view,
-or from the _Konveyor Resolutions_ tab. When these changes are accepted, the changes will be reflected in the source code
-directly. Anytime a change is accepted, Kai will automatically rerun a partial
-analysis of the codebase that has changed to update whether an incident was
-resolved.
+Once the fix is generated, you can see a list of files that will be changed, and you are given the option to view, accept, or reject those changes. You can view this from an in-view diff editor via the analysis view, or in the `Konveyor Resolutions` pane. When you accept these changes, the changes are updated in the source code directly. Anytime you accept a change, Kai will automatically rerun a partial analysis of the updated codebase with the fix for an incident that was resolved.
 
-## Guided Scenario
+## Guided scenario
 
-Now that you understand how to get started with Kai, we suggest running through
-a [guided scenario](./scenarios/README.md) to get a better idea of how Kai can assist
-with the migration of an application.
+Now that you understand how to get started with Kai, we suggest that you go through
+a [guided scenario](./scenarios/README.md) to get a better idea of how Kai can assist with the migration of an application.
