@@ -5,8 +5,6 @@ import sys
 from datetime import datetime
 from typing import Any
 
-logger = logging.getLogger("kai_mcp_solution_server.db")
-
 from sqlalchemy import (
     ARRAY,
     JSON,
@@ -49,6 +47,8 @@ from kai_mcp_solution_server.db.type_decorators import (
     ListSolutionFileJSON,
     SolutionChangeSetJSON,
 )
+
+logger = logging.getLogger("kai_mcp_solution_server.db")
 
 
 # https://github.com/pallets-eco/flask-sqlalchemy/issues/722#issuecomment-705672929

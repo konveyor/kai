@@ -819,7 +819,7 @@ async def tool_get_best_hint(
         if result:
             logger.info(f"[RESPONSE] get_best_hint - Found hint ID: {result.hint_id}")
         else:
-            logger.info(f"[RESPONSE] get_best_hint - No hint found")
+            logger.info("[RESPONSE] get_best_hint - No hint found")
         return result
 
 
@@ -1042,13 +1042,12 @@ async def tool_accept_file(
     )
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     async with kai_ctx.lock:
-        result = await accept_file(
+        await accept_file(
             kai_ctx,
             client_id,
             solution_file,
         )
         logger.info(f"[RESPONSE] accept_file - Completed for {solution_file.uri}")
-        return result
 
 
 async def reject_file(
@@ -1094,10 +1093,9 @@ async def tool_reject_file(
     logger.info(f"[REQUEST] reject_file - client_id: {client_id}, uri: {file_uri}")
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     async with kai_ctx.lock:
-        result = await reject_file(
+        await reject_file(
             kai_ctx,
             client_id,
             file_uri,
         )
         logger.info(f"[RESPONSE] reject_file - Completed for {file_uri}")
-        return result
