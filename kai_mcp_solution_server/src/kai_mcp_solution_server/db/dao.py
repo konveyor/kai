@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 import sys
 from datetime import datetime
 from typing import Any
+
+logger = logging.getLogger("kai_mcp_solution_server.db")
 
 from sqlalchemy import (
     ARRAY,
@@ -308,12 +311,21 @@ class DBSolution(Base):
     )
 
     def update_solution_status(self) -> None:
+        previous_status = self.solution_status
         for file in self.after:
             if file.status != SolutionStatus.ACCEPTED:
                 self.solution_status = file.status
+                if previous_status != self.solution_status:
+                    logger.info(
+                        f"[DB_STATE_CHANGE] Solution {self.id} status auto-updated: {previous_status} -> {self.solution_status} (due to file {file.uri} with status {file.status})"
+                    )
                 return
 
         self.solution_status = SolutionStatus.ACCEPTED
+        if previous_status != self.solution_status:
+            logger.info(
+                f"[DB_STATE_CHANGE] Solution {self.id} status auto-updated: {previous_status} -> ACCEPTED (all files accepted)"
+            )
 
     def __hash__(self) -> int:
         return hash(self.id)
