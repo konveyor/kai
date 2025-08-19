@@ -899,12 +899,24 @@ async def tool_get_best_hint(
 
 
 class SuccessRateMetric(BaseModel):
+    violation_id: ViolationID
+
     counted_solutions: int = 0
+
     accepted_solutions: int = 0
+    accepted_incidents: list[int] = []
+
     rejected_solutions: int = 0
+    rejected_incidents: list[int] = []
+
     modified_solutions: int = 0
+    modified_incidents: list[int] = []
+
     pending_solutions: int = 0
+    pending_incidents: list[int] = []
+
     unknown_solutions: int = 0
+    unknown_incidents: list[int] = []
 
 
 @with_db_recovery
@@ -933,6 +945,10 @@ async def get_success_rate(
 
         for violation in violations:
             metric = SuccessRateMetric()
+            metric.violation_id = ViolationID(
+                ruleset_name=violation.ruleset_name,
+                violation_name=violation.violation_name,
+            )
 
             for incident in violation.incidents:
                 if incident.solution is None:
@@ -943,26 +959,26 @@ async def get_success_rate(
 
                 # TODO: Make this cleaner
                 metric.counted_solutions += 1
-                metric.accepted_solutions += int(
-                    incident.solution is not None
-                    and incident.solution.solution_status == SolutionStatus.ACCEPTED
-                )
-                metric.rejected_solutions += int(
-                    incident.solution is not None
-                    and incident.solution.solution_status == SolutionStatus.REJECTED
-                )
-                metric.modified_solutions += int(
-                    incident.solution is not None
-                    and incident.solution.solution_status == SolutionStatus.MODIFIED
-                )
-                metric.pending_solutions += int(
-                    incident.solution is not None
-                    and incident.solution.solution_status == SolutionStatus.PENDING
-                )
-                metric.unknown_solutions += int(
-                    incident.solution is not None
-                    and incident.solution.solution_status == SolutionStatus.UNKNOWN
-                )
+
+                if incident.solution.solution_status == SolutionStatus.ACCEPTED:
+                    metric.accepted_solutions += 1
+                    metric.accepted_incidents.append(incident.id)
+
+                elif incident.solution.solution_status == SolutionStatus.REJECTED:
+                    metric.rejected_solutions += 1
+                    metric.rejected_incidents.append(incident.id)
+
+                elif incident.solution.solution_status == SolutionStatus.MODIFIED:
+                    metric.modified_solutions += 1
+                    metric.modified_incidents.append(incident.id)
+
+                elif incident.solution.solution_status == SolutionStatus.PENDING:
+                    metric.pending_solutions += 1
+                    metric.pending_incidents.append(incident.id)
+
+                elif incident.solution.solution_status == SolutionStatus.UNKNOWN:
+                    metric.unknown_solutions += 1
+                    metric.unknown_incidents.append(incident.id)
 
             result.append(metric)
 
