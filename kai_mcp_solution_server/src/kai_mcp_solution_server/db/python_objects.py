@@ -113,6 +113,17 @@ class ViolationID(BaseModel):
     ruleset_name: str
     violation_name: str
 
+    def __hash__(self):
+        return hash((self.ruleset_name, self.violation_name))
+
+    def __eq__(self, other):
+        if not isinstance(other, ViolationID):
+            return NotImplemented
+        return (
+            self.ruleset_name == other.ruleset_name
+            and self.violation_name == other.violation_name
+        )
+
 
 class Solution(BaseModel):
     # TODO: Turn this into a more general "Trajectory" thing?
