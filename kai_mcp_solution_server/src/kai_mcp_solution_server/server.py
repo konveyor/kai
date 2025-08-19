@@ -12,7 +12,7 @@ from fastmcp import Context, FastMCP
 from langchain.chat_models import init_chat_model
 from langchain.chat_models.base import BaseChatModel
 from langchain_community.chat_models.fake import FakeListChatModel
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from sqlalchemy import URL, and_, make_url, or_, select
 from sqlalchemy.exc import DBAPIError, IntegrityError, OperationalError
@@ -904,19 +904,19 @@ class SuccessRateMetric(BaseModel):
     counted_solutions: int = 0
 
     accepted_solutions: int = 0
-    accepted_incidents: list[int] = []
+    accepted_incidents: list[int] = Field(default_factory=list)
 
     rejected_solutions: int = 0
-    rejected_incidents: list[int] = []
+    rejected_incidents: list[int] = Field(default_factory=list)
 
     modified_solutions: int = 0
-    modified_incidents: list[int] = []
+    modified_incidents: list[int] = Field(default_factory=list)
 
     pending_solutions: int = 0
-    pending_incidents: list[int] = []
+    pending_incidents: list[int] = Field(default_factory=list)
 
     unknown_solutions: int = 0
-    unknown_incidents: list[int] = []
+    unknown_incidents: list[int] = Field(default_factory=list)
 
 
 @with_db_recovery
@@ -944,10 +944,11 @@ async def get_success_rate(
         violations = (await session.execute(violations_stmt)).scalars().all()
 
         for violation in violations:
-            metric = SuccessRateMetric()
-            metric.violation_id = ViolationID(
-                ruleset_name=violation.ruleset_name,
-                violation_name=violation.violation_name,
+            metric = SuccessRateMetric(
+                violation_id=ViolationID(
+                    ruleset_name=violation.ruleset_name,
+                    violation_name=violation.violation_name,
+                ),
             )
 
             for incident in violation.incidents:
