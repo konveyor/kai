@@ -380,6 +380,9 @@ jobs:
           zip -j kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip kai_analyzer_rpc/kai-analyzer-rpc ./example/analysis/maven.default.index ./example/analysis/bundle.jar 
           zip -r kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip ./example/analysis/jdtls ./example/analysis/rulesets
 
+          # Copy individual binary for potential release upload
+          cp kai_analyzer_rpc/kai-analyzer-rpc kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}
+
       - name: Archive binaries (windows)
         if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
         # run: |
@@ -387,11 +390,17 @@ jobs:
         #   $filesToInclude = "dist\kai-rpc-server.exe", "kai_analyzer_rpc\kai-analyzer-rpc.exe", "java-deps\maven.default.index", "java-deps\rulesets", "java-deps\bundle.jar", "java-deps\jdtls"
         #   Compress-Archive -Path $filesToInclude -Destination kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip
         run: |
+          # Rename to add .exe extension
           mv kai_analyzer_rpc\kai-analyzer-rpc kai_analyzer_rpc\kai-analyzer-rpc.exe
+          
+          # Create the zip package
           $filesToInclude = "kai_analyzer_rpc\kai-analyzer-rpc.exe", "java-deps\maven.default.index", "java-deps\rulesets", "java-deps\bundle.jar", "java-deps\jdtls"
           Compress-Archive -Path $filesToInclude -Destination kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip
+          
+          # Copy individual binary for potential release upload
+          Copy-Item kai_analyzer_rpc\kai-analyzer-rpc.exe kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}.exe
 
-      - name: Upload binary
+      - name: Upload zip package to release
         if: ${{ github.event.inputs.publish_artifacts_to_release || false }}
         uses: actions/upload-release-asset@v1
         env:
@@ -401,6 +410,28 @@ jobs:
           asset_path: kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip
           asset_name: kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip
           asset_content_type: application/zip
+
+      - name: Upload kai-analyzer-rpc binary to release (Linux & Mac)
+        if: ${{ (github.event.inputs.publish_artifacts_to_release || false) && ! startsWith(matrix.runs_on.os, 'windows') }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.release_info.outputs.upload_url }}
+          asset_path: kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}
+          asset_name: kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}
+          asset_content_type: application/octet-stream
+
+      - name: Upload kai-analyzer-rpc binary to release (Windows)
+        if: ${{ (github.event.inputs.publish_artifacts_to_release || false) && startsWith(matrix.runs_on.os, 'windows') }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.release_info.outputs.upload_url }}
+          asset_path: kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}.exe
+          asset_name: kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}.exe
+          asset_content_type: application/octet-stream
 
       - name: Upload binaries as artifact
         if: ${{ !github.event.inputs.publish_artifacts_to_release || true }}
