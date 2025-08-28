@@ -343,6 +343,7 @@ export SSL_CERT_FILE="<Server's SSL_CERT_FILE>"
 export REQUESTS_CA_BUNDLE="<Server's REQUESTS_CA_BUNDLE>"
 export OPENAI_API_KEY="<Server's OPENAI_API_KEY>"
 export KAI_LLM_PARAMS='{"model": "kai-test-generation", "model_provider": "openai", "base_url": "https://kai-test-generation-llms.apps.konveyor-ai.migration.example.com/v1"}'
+```
 
 #### Solution Server MaaS - Models As A Service
 
