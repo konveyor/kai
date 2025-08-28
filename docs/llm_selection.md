@@ -109,10 +109,10 @@ models:
     provider: "ChatBedrock"
     args:
       model_id: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
-      ## May have to use if no global `~/.aws/credentials`
-      aws_access_key_id: <redacted>
-      aws_secret_access_key: <redacted>
-
+      # Prefer using ~/.aws/credentials or environment variables instead of in-file secrets.
+      # Uncomment only if needed for local testing (do not commit real values):
+      # aws_access_key_id: "<your-access-key-id>"
+      # aws_secret_access_key: "<your-secret-access-key>"
 active: *active
 ```
 
