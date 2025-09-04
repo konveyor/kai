@@ -3,6 +3,7 @@ import json
 import os
 import ssl
 import sys
+import traceback
 from asyncio.log import logger
 from contextlib import AsyncExitStack, asynccontextmanager
 from typing import AsyncIterator
@@ -70,9 +71,19 @@ async def create_http_client(args: MCPClientArgs) -> AsyncIterator[ClientSession
             yield session
 
     except Exception as e:
+
+        # def recursive_print_exception(exc: Exception, level: int = 0) -> None:
+        #     indent = "  " * level
+        #     print(f"{indent}- {str(exc)}")
+        #     if isinstance(exc, ExceptionGroup):
+        #         for sub_exc in exc.exceptions:
+        #             recursive_print_exception(sub_exc, level + 1)
+
         logger.error("HTTP transport error: %s", str(e), exc_info=True)
-        print(f"x Error with HTTP transport: {e}")
-        print(f"! Make sure the server is running at {server_url}")
+        print(f"x Error with HTTP transport: {traceback.format_exc()}")
+        # if isinstance(e, ExceptionGroup):
+        # for sub_exc in e.exceptions:
+        # recursive_print_exception(sub_exc)
 
         # Add specific advice for SSL certificate errors
         if (
@@ -87,7 +98,7 @@ async def create_http_client(args: MCPClientArgs) -> AsyncIterator[ClientSession
             print("   2. Use a valid SSL certificate on the server")
             print("   3. Add the server's certificate to your trusted CA store")
 
-        print("! Try using the STDIO transport instead with --transport stdio")
+        print(f"! Make sure the server is running at {server_url}")
 
 
 @asynccontextmanager
