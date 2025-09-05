@@ -507,7 +507,21 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                             },
                         },
                     )
-                    incident_id = int(incident_result.content[0].text)
+
+                    # Check for tool call errors
+                    if incident_result.isError:
+                        error_msg = incident_result.content[0].text
+                        raise Exception(
+                            f"[Client {client_id}] create_incident failed: {error_msg}"
+                        )
+
+                    try:
+                        incident_id = int(incident_result.content[0].text)
+                    except (ValueError, TypeError) as e:
+                        raise Exception(
+                            f"[Client {client_id}] create_incident returned invalid response: {incident_result.content[0].text}"
+                        ) from e
+
                     print(f"[Client {client_id}] created incident {incident_id}")
                     assert incident_id > 0, f"Invalid incident ID: {incident_id}"
 
@@ -533,7 +547,21 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                             "used_hint_ids": None,
                         },
                     )
-                    solution_id = int(solution_result.content[0].text)
+
+                    # Check for tool call errors
+                    if solution_result.isError:
+                        error_msg = solution_result.content[0].text
+                        raise Exception(
+                            f"[Client {client_id}] create_solution failed: {error_msg}"
+                        )
+
+                    try:
+                        solution_id = int(solution_result.content[0].text)
+                    except (ValueError, TypeError) as e:
+                        raise Exception(
+                            f"[Client {client_id}] create_solution returned invalid response: {solution_result.content[0].text}"
+                        ) from e
+
                     print(f"[Client {client_id}] created solution {solution_id}")
                     assert solution_id > 0, f"Invalid solution ID: {solution_id}"
 
@@ -657,7 +685,6 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
         NUM_TASKS = int(os.environ.get("NUM_CONCURRENT_CLIENTS", "30"))
         print(f"Testing with {NUM_TASKS} concurrent clients")
 
-        errors = []  # Track any errors that occur
         with concurrent.futures.ThreadPoolExecutor(max_workers=NUM_TASKS) as executor:
             # Submit each task to the thread pool and store the Future objects.
             # The executor will call run_async_in_thread for each task ID.
@@ -667,7 +694,7 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
             }
 
             # Use as_completed() to process results as they become available.
-            # This is non-blocking to the main thread while tasks are running.
+            # Fail fast - if any task fails, immediately fail the whole test
             for future in concurrent.futures.as_completed(futures):
                 task_id = futures[future]
                 try:
@@ -677,15 +704,10 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                         flush=True,
                     )
                 except Exception as exc:
-                    error_msg = f"Task {task_id} failed: {exc}"
-                    print(f"[Main] {error_msg}")
-                    errors.append(error_msg)
+                    # Fail immediately with detailed error information
+                    self.fail(f"Task {task_id} failed: {exc}")
 
         await asyncio.sleep(10)  # wait a moment for all output to be printed
-
-        # Fail the test if any errors occurred
-        if errors:
-            self.fail(f"\n{len(errors)} clients failed:\n" + "\n".join(errors))
 
         print(
             f"\n✓ All {NUM_TASKS} clients completed successfully with correct results!"
