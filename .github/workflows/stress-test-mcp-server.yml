@@ -1,0 +1,109 @@
+name: MCP Server Stress Test
+
+on:
+  pull_request:
+    paths:
+      - 'kai_mcp_solution_server/**'
+      - '.github/workflows/stress-test-mcp-server.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'kai_mcp_solution_server/**'
+      - '.github/workflows/stress-test-mcp-server.yml'
+  workflow_dispatch:
+    inputs:
+      num_clients:
+        description: 'Number of concurrent clients to test'
+        required: false
+        default: '100'
+
+jobs:
+  stress-test-postgres:
+    name: Stress Test with PostgreSQL
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: kai_user
+          POSTGRES_PASSWORD: kai_password
+          POSTGRES_DB: kai_test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./kai_mcp_solution_server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: |
+          uv sync
+          uv pip install pytest-asyncio psycopg2-binary asyncpg
+
+      - name: Run stress test with PostgreSQL backend
+        env:
+          KAI_DB_DSN: "postgresql+asyncpg://kai_user:kai_password@localhost:5432/kai_test_db"
+          KAI_LLM_PARAMS: '{"model": "fake", "responses": ["Test response"]}'
+          MCP_SERVER_URL: "http://localhost:8000"
+          NUM_CONCURRENT_CLIENTS: ${{ github.event.inputs.num_clients || '100' }}
+        run: |
+          echo "Starting MCP server connected to PostgreSQL..."
+          uv run python -m kai_mcp_solution_server --transport streamable-http --host 0.0.0.0 --port 8000 &
+          SERVER_PID=$!
+
+          # Wait for server to be ready
+          echo "Waiting for server to start..."
+          for i in {1..30}; do
+            if curl -s http://localhost:8000/ > /dev/null 2>&1; then
+              echo "Server is ready!"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "Server failed to start in 30 seconds"
+              kill $SERVER_PID || true
+              exit 1
+            fi
+            echo -n "."
+            sleep 1
+          done
+
+          # Run the stress test
+          echo ""
+          echo "Testing with $NUM_CONCURRENT_CLIENTS concurrent clients against PostgreSQL"
+          make test-stress
+          TEST_RESULT=$?
+
+          # Stop the server
+          echo "Stopping MCP server..."
+          kill $SERVER_PID || true
+
+          exit $TEST_RESULT
+        timeout-minutes: 10
+
+      - name: Check PostgreSQL connection count
+        if: always()
+        run: |
+          PGPASSWORD=kai_password psql -h localhost -U kai_user -d kai_test_db -c \
+            "SELECT count(*), state FROM pg_stat_activity GROUP BY state;"
+
