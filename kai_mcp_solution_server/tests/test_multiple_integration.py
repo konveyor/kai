@@ -39,7 +39,7 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
             os.remove(self.db_path)
 
         os.environ["KAI_DB_DSN"] = f"sqlite+aiosqlite:///{self.db_path}"
-        os.environ["KAI_DROP_ALL"] = "True"
+        # Note: We don't set KAI_DROP_ALL anymore - tables are created automatically
 
         self.mcp_args = MCPClientArgs(
             transport="stdio",
@@ -417,27 +417,62 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                     "used_hint_ids": None,
                 },
             )
-            SOLUTION_FOR_INCIDENT_A_ID = int(
-                create_solution_for_incident_a.model_dump()["content"][0]["text"]
-            )
+            int(create_solution_for_incident_a.model_dump()["content"][0]["text"])
 
     async def test_multiple_users(self) -> None:
-        multiple_user_mcp_args = MCPClientArgs(
-            transport="http",
-            host="localhost",
-            port=8087,
-            insecure=True,
-            server_path=self.mcp_args.server_path,
-        )
+        """
+        Test multiple concurrent users accessing the MCP server.
 
-        os.environ["KAI_LLM_PARAMS"] = json.dumps(
-            {
-                "model": "fake",
-                "responses": [
-                    f"You should add a smiley face to the file.",
-                ],
-            }
-        )
+        This test can be used for stress testing by setting NUM_CONCURRENT_CLIENTS
+        environment variable to a high value (e.g., 100, 200).
+
+        Two modes of operation:
+        1. Self-contained mode (default): Starts its own server with SQLite
+           NUM_CONCURRENT_CLIENTS=100 pytest tests/test_multiple_integration.py::TestMultipleIntegration::test_multiple_users
+
+        2. External server mode: Connect to already-running server
+           MCP_SERVER_URL="http://localhost:8000" NUM_CONCURRENT_CLIENTS=100 pytest tests/test_multiple_integration.py::TestMultipleIntegration::test_multiple_users
+        """
+        # Check if we should use an external server
+        external_server_url = os.environ.get("MCP_SERVER_URL")
+
+        if external_server_url:
+            # External server mode - parse URL to get host and port
+            from urllib.parse import urlparse
+
+            parsed = urlparse(external_server_url)
+            host = parsed.hostname or "localhost"
+            port = parsed.port or 8000
+            print(f"Using external MCP server at {host}:{port}")
+
+            multiple_user_mcp_args = MCPClientArgs(
+                transport="http",
+                host=host,
+                port=port,
+                insecure=True,
+                server_path=None,  # Not needed for external server
+            )
+            # Don't set KAI_LLM_PARAMS for external server - it should already be configured
+            start_own_server = False
+        else:
+            # Self-contained mode - will start own server on port 8087
+            print("Starting self-contained MCP server on port 8087")
+            multiple_user_mcp_args = MCPClientArgs(
+                transport="http",
+                host="localhost",
+                port=8087,
+                insecure=True,
+                server_path=self.mcp_args.server_path,
+            )
+            os.environ["KAI_LLM_PARAMS"] = json.dumps(
+                {
+                    "model": "fake",
+                    "responses": [
+                        "You should add a smiley face to the file.",
+                    ],
+                }
+            )
+            start_own_server = True
 
         def stream_output(process: subprocess.Popen) -> None:
             try:
@@ -472,46 +507,137 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
 
         async def client_task(client_id: str) -> None:
             print(f"[Client {client_id}] starting")
-            ssl_patch = apply_ssl_bypass()
+            apply_ssl_bypass()
 
             client = Client(
-                transport="http://localhost:8087",
+                transport=f"http://{multiple_user_mcp_args.host}:{multiple_user_mcp_args.port}",
             )
 
-            async with client:
-                await client.session.initialize()
-                print(f"[Client {client_id}] initialized")
+            try:
+                async with client:
+                    await client.session.initialize()
+                    print(f"[Client {client_id}] initialized")
 
-                await client.session.list_tools()
-                print(f"[Client {client_id}] listed tools")
+                    # List tools
+                    tools = await client.session.list_tools()
+                    print(f"[Client {client_id}] listed {len(tools.tools)} tools")
 
-            print(f"[Client {client_id}] finished")
+                    # Exercise the API with actual operations
+                    client_uuid = str(uuid4())
 
+                    # Create an incident
+                    incident_result = await client.session.call_tool(
+                        "create_incident",
+                        {
+                            "client_id": f"stress-test-{client_uuid}",
+                            "extended_incident": {
+                                "uri": f"file://test/file_{client_id}.java",
+                                "message": f"Test issue for client {client_id}",
+                                "ruleset_name": f"test-ruleset-{client_id % 10}",  # Share some rulesets
+                                "violation_name": f"test-violation-{client_id % 5}",  # Share some violations
+                                "violation_category": "potential",
+                                "code_snip": "// test code",
+                                "line_number": 42,
+                                "variables": {},
+                            },
+                        },
+                    )
+                    incident_id = int(incident_result.content[0].text)
+                    print(f"[Client {client_id}] created incident {incident_id}")
+
+                    # Create a solution
+                    solution_result = await client.session.call_tool(
+                        "create_solution",
+                        {
+                            "client_id": f"stress-test-{client_uuid}",
+                            "incident_ids": [incident_id],
+                            "before": [
+                                {
+                                    "uri": f"file://test/file_{client_id}.java",
+                                    "content": "// original code",
+                                }
+                            ],
+                            "after": [
+                                {
+                                    "uri": f"file://test/file_{client_id}.java",
+                                    "content": "// fixed code",
+                                }
+                            ],
+                            "reasoning": f"Fix applied by client {client_id}",
+                            "used_hint_ids": None,
+                        },
+                    )
+                    solution_id = int(solution_result.content[0].text)
+                    print(f"[Client {client_id}] created solution {solution_id}")
+
+                    # Get success rate
+                    await client.session.call_tool(
+                        "get_success_rate",
+                        {
+                            "violation_ids": [
+                                {
+                                    "ruleset_name": f"test-ruleset-{client_id % 10}",
+                                    "violation_name": f"test-violation-{client_id % 5}",
+                                }
+                            ]
+                        },
+                    )
+                    print(f"[Client {client_id}] got success rate")
+
+                    # Accept the file
+                    await client.session.call_tool(
+                        "accept_file",
+                        {
+                            "client_id": f"stress-test-{client_uuid}",
+                            "solution_file": {
+                                "uri": f"file://test/file_{client_id}.java",
+                                "content": "// fixed code",
+                            },
+                        },
+                    )
+                    print(f"[Client {client_id}] accepted file")
+
+                    print(f"[Client {client_id}] finished")
+            except Exception as e:
+                print(f"[Client {client_id}] ERROR: {e}")
+                raise  # Re-raise to fail the test
+
+        stream_thread = None
         try:
-            self.http_server_process = subprocess.Popen(
-                [
-                    "python",
-                    "-m",
-                    "kai_mcp_solution_server",
-                    "--transport",
-                    "streamable-http",
-                    "--port",
-                    "8087",
-                ],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            )
+            if start_own_server:
+                self.http_server_process = subprocess.Popen(
+                    [
+                        "python",
+                        "-m",
+                        "kai_mcp_solution_server",
+                        "--transport",
+                        "streamable-http",
+                        "--port",
+                        "8087",
+                    ],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                )
 
-            stream_thread = threading.Thread(
-                target=stream_output, args=(self.http_server_process,)
-            )
-            stream_thread.daemon = True
-            stream_thread.start()
+                stream_thread = threading.Thread(
+                    target=stream_output, args=(self.http_server_process,)
+                )
+                stream_thread.daemon = True
+                stream_thread.start()
 
-            await asyncio.sleep(1)  # give the server a second to start
+                await asyncio.sleep(1)  # give the server a second to start
+            else:
+                # External server should already be running
+                self.http_server_process = None
 
-            NUM_TASKS = 1
-            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            # Allow configuring number of concurrent clients via environment variable
+            NUM_TASKS = int(os.environ.get("NUM_CONCURRENT_CLIENTS", "30"))
+            print(f"Testing with {NUM_TASKS} concurrent clients")
+
+            errors = []  # Track any errors that occur
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=NUM_TASKS
+            ) as executor:
                 # Submit each task to the thread pool and store the Future objects.
                 # The executor will call run_async_in_thread for each task ID.
                 futures = {
@@ -530,12 +656,20 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                             flush=True,
                         )
                     except Exception as exc:
-                        print(f"[Main] Task {task_id} generated an exception: {exc}")
+                        error_msg = f"Task {task_id} failed: {exc}"
+                        print(f"[Main] {error_msg}")
+                        errors.append(error_msg)
 
             await asyncio.sleep(10)  # wait a moment for all output to be printed
 
+            # Fail the test if any errors occurred
+            if errors:
+                self.fail(f"\n{len(errors)} clients failed:\n" + "\n".join(errors))
+
         finally:
-            self.http_server_process.terminate()
-            self.http_server_process.wait()
-            print("Server process terminated.")
-            stream_thread.join()
+            if self.http_server_process:
+                self.http_server_process.terminate()
+                self.http_server_process.wait()
+                print("Server process terminated.")
+                if stream_thread:
+                    stream_thread.join()

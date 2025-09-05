@@ -1,0 +1,114 @@
+name: MCP Server Stress Test
+
+on:
+  pull_request:
+    paths:
+      - 'kai_mcp_solution_server/**'
+      - '.github/workflows/stress-test-mcp-server.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'kai_mcp_solution_server/**'
+      - '.github/workflows/stress-test-mcp-server.yml'
+  workflow_dispatch:
+    inputs:
+      num_clients:
+        description: 'Number of concurrent clients to test'
+        required: false
+        default: '100'
+
+jobs:
+  stress-test-postgres:
+    name: Stress Test with PostgreSQL
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: kai_user
+          POSTGRES_PASSWORD: kai_password
+          POSTGRES_DB: kai_test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./kai_mcp_solution_server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: |
+          uv sync
+          uv pip install pytest-asyncio psycopg2-binary asyncpg
+
+      - name: Run stress test with 100 clients
+        env:
+          KAI_DB_DSN: "postgresql+asyncpg://kai_user:kai_password@localhost:5432/kai_test_db"
+          KAI_LLM_PARAMS: '{"model": "fake", "responses": ["Test response"]}'
+          NUM_CONCURRENT_CLIENTS: ${{ github.event.inputs.num_clients || '100' }}
+        run: |
+          echo "Testing with $NUM_CONCURRENT_CLIENTS concurrent clients against PostgreSQL"
+          uv run python -m pytest tests/test_multiple_integration.py::TestMultipleIntegration::test_multiple_users -xvs
+        timeout-minutes: 10
+
+      - name: Check PostgreSQL connection count
+        if: always()
+        run: |
+          PGPASSWORD=kai_password psql -h localhost -U kai_user -d kai_test_db -c \
+            "SELECT count(*), state FROM pg_stat_activity GROUP BY state;"
+
+  stress-test-sqlite:
+    name: Basic Test with SQLite
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./kai_mcp_solution_server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: |
+          uv sync
+          uv pip install pytest-asyncio
+
+      - name: Run basic test with SQLite (limited concurrency)
+        run: |
+          # SQLite has limitations with concurrent writes, so we test with fewer clients
+          export KAI_LLM_PARAMS='{"model": "fake", "responses": ["Test response"]}'
+          export NUM_CONCURRENT_CLIENTS=5
+          echo "Testing with $NUM_CONCURRENT_CLIENTS concurrent clients against SQLite"
+          uv run python -m pytest tests/test_multiple_integration.py::TestMultipleIntegration::test_multiple_users -xvs
+        timeout-minutes: 5

@@ -86,7 +86,7 @@ run-local:
 	cd $(PROJECT_ROOT) && KAI_DB_DSN='$(KAI_DB_DSN)' KAI_LLM_PARAMS='$(KAI_LLM_PARAMS)' uv run python -m kai_mcp_solution_server --transport streamable-http --host 0.0.0.0 --port 8000 --mount-path=$(MOUNT_PATH)
 
 
-# Run with Podman for testing
+# Run with Podman for testing (flexible - any database via KAI_DB_DSN)
 .PHONY: run-podman
 run-podman: build
 	@echo "Running MCP solution server in Podman..."
@@ -96,7 +96,60 @@ run-podman: build
 		-e KAI_LLM_PARAMS='$(KAI_LLM_PARAMS)' \
 		-e KAI_DB_DSN='$(KAI_DB_DSN)' \
 		$(if $(PODMAN_ARGS),$(PODMAN_ARGS),) \
-		--name kai-mcp-solution-server $(IMAGE) 
+		--name kai-mcp-solution-server $(IMAGE)
+
+# Convenience target: Run with SQLite
+.PHONY: podman-sqlite
+podman-sqlite: build
+	@echo "Running MCP solution server with SQLite..."
+	@if [ -z "$(KAI_LLM_PARAMS)" ]; then echo "Error: KAI_LLM_PARAMS is required"; exit 1; fi
+	podman run --rm -it -p 8000:8000 \
+		-e MOUNT_PATH='$(MOUNT_PATH)' \
+		-e KAI_LLM_PARAMS='$(KAI_LLM_PARAMS)' \
+		-e KAI_DB_DSN='sqlite+aiosqlite:///data/kai.db' \
+		$(if $(OPENAI_API_KEY),-e OPENAI_API_KEY='$(OPENAI_API_KEY)',) \
+		$(if $(ANTHROPIC_API_KEY),-e ANTHROPIC_API_KEY='$(ANTHROPIC_API_KEY)',) \
+		$(if $(AZURE_OPENAI_API_KEY),-e AZURE_OPENAI_API_KEY='$(AZURE_OPENAI_API_KEY)',) \
+		$(if $(AZURE_OPENAI_ENDPOINT),-e AZURE_OPENAI_ENDPOINT='$(AZURE_OPENAI_ENDPOINT)',) \
+		$(if $(GOOGLE_API_KEY),-e GOOGLE_API_KEY='$(GOOGLE_API_KEY)',) \
+		$(if $(AWS_ACCESS_KEY_ID),-e AWS_ACCESS_KEY_ID='$(AWS_ACCESS_KEY_ID)',) \
+		$(if $(AWS_SECRET_ACCESS_KEY),-e AWS_SECRET_ACCESS_KEY='$(AWS_SECRET_ACCESS_KEY)',) \
+		$(if $(AWS_REGION),-e AWS_REGION='$(AWS_REGION)',) \
+		$(if $(OLLAMA_HOST),-e OLLAMA_HOST='$(OLLAMA_HOST)',) \
+		-v kai-sqlite-data:/data:Z \
+		--name kai-mcp-sqlite $(IMAGE)
+
+# Convenience target: Run with PostgreSQL via podman-compose
+.PHONY: podman-postgres
+podman-postgres: build
+	@echo "Starting MCP solution server with PostgreSQL using podman-compose..."
+	@if [ -z "$(KAI_LLM_PARAMS)" ]; then echo "Error: KAI_LLM_PARAMS is required"; exit 1; fi
+	IMAGE=$(IMAGE) KAI_LLM_PARAMS='$(KAI_LLM_PARAMS)' MOUNT_PATH='$(MOUNT_PATH)' \
+		podman-compose up
+
+
+# Run stress test - self-contained mode (starts its own server)
+# This mode starts a test server with SQLite and runs clients against it
+.PHONY: test-stress
+test-stress:
+	@echo "Running self-contained stress test with $${NUM_CONCURRENT_CLIENTS:-30} concurrent clients..."
+	@echo "Database: $${KAI_DB_DSN:-sqlite+aiosqlite:///test.db}"
+	@echo "The test will start its own server on port 8087"
+	NUM_CONCURRENT_CLIENTS=$${NUM_CONCURRENT_CLIENTS:-30} \
+	KAI_DB_DSN=$${KAI_DB_DSN:-sqlite+aiosqlite:///test.db} \
+	uv run python -m pytest tests/test_multiple_integration.py::TestMultipleIntegration::test_multiple_users -xvs
+
+# Run stress test against external server (e.g., one started with run-local or podman-postgres)
+# First start a server: make run-local or make podman-postgres
+# Then run: make test-stress-external
+.PHONY: test-stress-external
+test-stress-external:
+	@echo "Running stress test against external server at $${MCP_SERVER_URL:-http://localhost:8000}"
+	@echo "Testing with $${NUM_CONCURRENT_CLIENTS:-30} concurrent clients..."
+	@echo "Make sure the server is already running!"
+	MCP_SERVER_URL=$${MCP_SERVER_URL:-http://localhost:8000} \
+	NUM_CONCURRENT_CLIENTS=$${NUM_CONCURRENT_CLIENTS:-30} \
+	uv run python -m pytest tests/test_multiple_integration.py::TestMultipleIntegration::test_multiple_users -xvs
 
 # Test against HTTP server
 .PHONY: test-http
@@ -123,12 +176,6 @@ test-stdio:
 test-stdio-ts:
 	@echo "Running TypeScript MCP test client using stdio transport..."
 	cd $(PROJECT_ROOT)/ts-mcp-client && npm run build && node --es-module-specifier-resolution=node dist/client.js --transport stdio --server-path $(PROJECT_ROOT)
-
-# Run pytest integration tests
-.PHONY: pytest
-pytest:
-	@echo "Running MCP integration tests with pytest..."
-	cd $(PROJECT_ROOT) && python -m pytest $(TESTS_DIR)/test_integration.py -v
 
 # Run with test client in separate pod
 .PHONY: run-with-tests
@@ -178,7 +225,11 @@ help:
 	@echo "  clean          : Remove local container images"
 	@echo "  port-forward   : Forward port to local machine for testing"
 	@echo "  run-local      : Run server locally for testing"
-	@echo "  run-podman     : Run server in Podman container for testing"
+	@echo "  run-podman     : Run server in Podman (uses KAI_DB_DSN)"
+	@echo "  podman-sqlite  : Run server with SQLite in Podman"
+	@echo "  podman-postgres: Run server with PostgreSQL via podman-compose"
+	@echo "  test-stress    : Run self-contained stress test (starts own server)"
+	@echo "  test-stress-external: Run stress test against external server"
 	@echo "  test-http      : Test server using HTTP transport (Python client)"
 	@echo "  test-http-ts   : Test server using HTTP transport (TypeScript client)"
 	@echo "  test-stdio     : Test server using STDIO transport (Python client)"
@@ -193,6 +244,10 @@ help:
 	@echo "  HOST           : Server hostname for HTTP tests (default: localhost)"
 	@echo "  PORT           : Server port for HTTP tests (default: 8000)"
 	@echo "  BEARER_TOKEN   : Bearer token for HTTP authentication (optional)"
+	@echo "  KAI_DB_DSN     : Database connection string for server"
+	@echo "  KAI_LLM_PARAMS : LLM configuration as JSON (required)"
+	@echo "  NUM_CONCURRENT_CLIENTS : Number of clients for stress testing (default: 30)"
+	@echo "  MCP_SERVER_URL : URL of external server for test-stress-external (default: http://localhost:8000)"
 	@echo "  EXTRA_VARS     : Any additional variables to pass to Ansible"
 	@echo ""
 	@echo "Example usage:"
@@ -204,6 +259,11 @@ help:
 	@echo "  make deploy EXTRA_VARS='route_tls_enabled=true route_tls_termination=edge route_tls_insecure_policy=Allow'"
 	@echo "  make run-local"
 	@echo "  make test-stdio"
+	@echo "  KAI_LLM_PARAMS='{\"model\":\"gpt-4\"}' make podman-postgres"
+	@echo "  NUM_CONCURRENT_CLIENTS=100 make test-stress  # Self-contained test"
+	@echo "  # Test against running server:"
+	@echo "  make run-local  # In one terminal"
+	@echo "  MCP_SERVER_URL=http://localhost:8000 NUM_CONCURRENT_CLIENTS=100 make test-stress-external  # In another"
 	@echo "  make test-http"
 	@echo "  make test-http BEARER_TOKEN='your-jwt-token-here'"
 	@echo "  make test-http HOST=api.example.com PORT=443 BEARER_TOKEN='token'"
