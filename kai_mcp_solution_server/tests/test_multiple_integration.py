@@ -9,6 +9,7 @@ from mcp import ClientSession
 from mcp.types import CallToolResult
 
 from kai_mcp_solution_server.analyzer_types import ExtendedIncident
+from kai_mcp_solution_server.db.python_objects import ViolationID
 from kai_mcp_solution_server.server import GetBestHintResult, SuccessRateMetric
 from tests.mcp_client import MCPClientArgs
 from tests.mcp_loader_script import create_client
@@ -182,8 +183,13 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 metric,
                 SuccessRateMetric(
+                    violation_id=ViolationID(
+                        ruleset_name=RULESET_NAME_A,
+                        violation_name=VIOLATION_NAME_A,
+                    ),
                     counted_solutions=1,
                     pending_solutions=1,
+                    pending_incidents=[incident_id],
                 ),
             )
 
@@ -218,8 +224,13 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 metric,
                 SuccessRateMetric(
+                    violation_id=ViolationID(
+                        ruleset_name=RULESET_NAME_A,
+                        violation_name=VIOLATION_NAME_A,
+                    ),
                     counted_solutions=1,
                     accepted_solutions=1,
+                    accepted_incidents=[incident_id],
                 ),
             )
 
@@ -300,8 +311,13 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 metric,
                 SuccessRateMetric(
+                    violation_id=ViolationID(
+                        ruleset_name=RULESET_NAME_B,
+                        violation_name=VIOLATION_NAME_B,
+                    ),
                     counted_solutions=1,
                     pending_solutions=1,
+                    pending_incidents=[incident_id],
                 ),
             )
 
@@ -336,8 +352,13 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 metric,
                 SuccessRateMetric(
+                    violation_id=ViolationID(
+                        ruleset_name=RULESET_NAME_B,
+                        violation_name=VIOLATION_NAME_B,
+                    ),
                     counted_solutions=1,
                     modified_solutions=1,
+                    modified_incidents=[incident_id],
                 ),
             )
 

@@ -11,7 +11,7 @@ from fastmcp import Context, FastMCP
 from langchain.chat_models import init_chat_model
 from langchain.chat_models.base import BaseChatModel
 from langchain_community.chat_models.fake import FakeListChatModel
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from sqlalchemy import URL, and_, make_url, or_, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -726,12 +726,24 @@ async def tool_get_best_hint(
 
 
 class SuccessRateMetric(BaseModel):
+    violation_id: ViolationID
+
     counted_solutions: int = 0
+
     accepted_solutions: int = 0
+    accepted_incidents: list[int] = Field(default_factory=list)
+
     rejected_solutions: int = 0
+    rejected_incidents: list[int] = Field(default_factory=list)
+
     modified_solutions: int = 0
+    modified_incidents: list[int] = Field(default_factory=list)
+
     pending_solutions: int = 0
+    pending_incidents: list[int] = Field(default_factory=list)
+
     unknown_solutions: int = 0
+    unknown_incidents: list[int] = Field(default_factory=list)
 
 
 async def get_success_rate(
@@ -756,7 +768,12 @@ async def get_success_rate(
         violations = (await session.execute(violations_stmt)).scalars().all()
 
         for violation in violations:
-            metric = SuccessRateMetric()
+            metric = SuccessRateMetric(
+                violation_id=ViolationID(
+                    ruleset_name=violation.ruleset_name,
+                    violation_name=violation.violation_name,
+                ),
+            )
 
             for incident in violation.incidents:
                 if incident.solution is None:
@@ -767,26 +784,26 @@ async def get_success_rate(
 
                 # TODO: Make this cleaner
                 metric.counted_solutions += 1
-                metric.accepted_solutions += int(
-                    incident.solution is not None
-                    and incident.solution.solution_status == SolutionStatus.ACCEPTED
-                )
-                metric.rejected_solutions += int(
-                    incident.solution is not None
-                    and incident.solution.solution_status == SolutionStatus.REJECTED
-                )
-                metric.modified_solutions += int(
-                    incident.solution is not None
-                    and incident.solution.solution_status == SolutionStatus.MODIFIED
-                )
-                metric.pending_solutions += int(
-                    incident.solution is not None
-                    and incident.solution.solution_status == SolutionStatus.PENDING
-                )
-                metric.unknown_solutions += int(
-                    incident.solution is not None
-                    and incident.solution.solution_status == SolutionStatus.UNKNOWN
-                )
+
+                if incident.solution.solution_status == SolutionStatus.ACCEPTED:
+                    metric.accepted_solutions += 1
+                    metric.accepted_incidents.append(incident.id)
+
+                elif incident.solution.solution_status == SolutionStatus.REJECTED:
+                    metric.rejected_solutions += 1
+                    metric.rejected_incidents.append(incident.id)
+
+                elif incident.solution.solution_status == SolutionStatus.MODIFIED:
+                    metric.modified_solutions += 1
+                    metric.modified_incidents.append(incident.id)
+
+                elif incident.solution.solution_status == SolutionStatus.PENDING:
+                    metric.pending_solutions += 1
+                    metric.pending_incidents.append(incident.id)
+
+                elif incident.solution.solution_status == SolutionStatus.UNKNOWN:
+                    metric.unknown_solutions += 1
+                    metric.unknown_incidents.append(incident.id)
 
             result.append(metric)
 

@@ -113,6 +113,17 @@ class ViolationID(BaseModel):
     ruleset_name: str
     violation_name: str
 
+    def __hash__(self) -> int:
+        return hash((self.ruleset_name, self.violation_name))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ViolationID):
+            raise NotImplementedError(f"Cannot compare ViolationID with {type(other)}")
+        return (
+            self.ruleset_name == other.ruleset_name
+            and self.violation_name == other.violation_name
+        )
+
 
 class Solution(BaseModel):
     # TODO: Turn this into a more general "Trajectory" thing?
