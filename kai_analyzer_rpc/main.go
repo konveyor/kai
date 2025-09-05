@@ -105,10 +105,26 @@ func main() {
 			server.Handle("analysis_engine.Analyze", analyzerService.Analyze)
 			// server.Handle("analysis_engine.Stop", analyzerService.Stop)
 			server.Handle("analysis_engine.NotifyFileChanges", analyzerService.NotifyFileChanges)
+			server.OnConnect(func(c *rpc.Client) {
+				err := c.Notify("started", nil)
+				if err != nil {
+					l.Error(err, "Failed to send server started notification")
+				} else {
+					l.Info("Successfully sent server started notification")
+				}
+			})
 			codec := codec.NewConnectionCodec(codec.Connection{Input: os.Stdin, Output: os.Stdout}, l)
 			server.ServeCodec(codec)
 		} else {
 			s = kairpc.NewServer(ctx, server, l, "notification.Notify", *rules, *sourceDirectory)
+			s.OnConnect(func(c *rpc.Client) {
+				err := c.Notify("started", nil)
+				if err != nil {
+					l.Error(err, "Failed to send server started notification")
+				} else {
+					l.Info("Successfully sent server started notification")
+				}
+			})
 			s.Accept(*pipePath)
 		}
 		l.Info("Stopping Server")
@@ -122,11 +138,6 @@ func main() {
 }
 
 func validateFlags(sourceDirectory, rules, lspServerPath, bundles, depOpenSourceLabelsFile, pipePath *string, l logr.Logger) (bool, error) {
-	// If we are using a named pipe, jdtls is initialized by the caller.
-	if pipePath != nil && *pipePath != "" && rules != nil && len(*rules) > 0 && sourceDirectory != nil && *sourceDirectory != "" {
-		return true, nil
-	}
-
 	if sourceDirectory == nil || *sourceDirectory == "" {
 		return false, fmt.Errorf("source directory must be valid")
 	}
@@ -135,13 +146,6 @@ func validateFlags(sourceDirectory, rules, lspServerPath, bundles, depOpenSource
 		return false, fmt.Errorf("rules must be set")
 	}
 
-	if lspServerPath == nil || *lspServerPath == "" {
-		return false, fmt.Errorf("lspServerPath must be set")
-	}
-
-	if bundles == nil || *bundles == "" {
-		return false, fmt.Errorf("bundles must be set")
-	}
 	// Check if Java exists on the PATH
 	if err := exec.Command("java", "-version").Run(); err != nil {
 		return false, fmt.Errorf("java is not installed or not on the PATH")
@@ -153,6 +157,20 @@ func validateFlags(sourceDirectory, rules, lspServerPath, bundles, depOpenSource
 		return false, fmt.Errorf("maven is not installed or not on the PATH")
 	}
 	l.Info("Maven is installed")
+
+	// If we are using a named pipe, jdtls is initialized by the caller.
+	if pipePath != nil && *pipePath != "" {
+		return true, nil
+	}
+
+	if bundles == nil || *bundles == "" {
+		return false, fmt.Errorf("bundles must be set")
+	}
+
+	if lspServerPath == nil || *lspServerPath == "" {
+		return false, fmt.Errorf("lspServerPath must be set")
+	}
+
 	return false, nil
 
 }
