@@ -4,8 +4,6 @@ import concurrent.futures
 import datetime
 import json
 import os
-import subprocess
-import threading
 import unittest
 from uuid import uuid4
 
@@ -428,69 +426,36 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
 
         Two modes of operation:
         1. Self-contained mode (default): Starts its own server with SQLite
-           NUM_CONCURRENT_CLIENTS=100 pytest tests/test_multiple_integration.py::TestMultipleIntegration::test_multiple_users
+           pytest tests/test_multiple_integration.py::TestMultipleIntegration::test_multiple_users
 
         2. External server mode: Connect to already-running server
            MCP_SERVER_URL="http://localhost:8000" NUM_CONCURRENT_CLIENTS=100 pytest tests/test_multiple_integration.py::TestMultipleIntegration::test_multiple_users
         """
-        # Check if we should use an external server
+        # Require external server URL
         external_server_url = os.environ.get("MCP_SERVER_URL")
-
-        if external_server_url:
-            # External server mode - parse URL to get host and port
-            from urllib.parse import urlparse
-
-            parsed = urlparse(external_server_url)
-            host = parsed.hostname or "localhost"
-            port = parsed.port or 8000
-            print(f"Using external MCP server at {host}:{port}")
-
-            multiple_user_mcp_args = MCPClientArgs(
-                transport="http",
-                host=host,
-                port=port,
-                insecure=True,
-                server_path=None,  # Not needed for external server
+        if not external_server_url:
+            self.skipTest(
+                "MCP_SERVER_URL environment variable is required for stress testing. "
+                "Please start a server (e.g., 'make run-local' or 'make podman-postgres') "
+                "and set MCP_SERVER_URL=http://localhost:8000"
             )
-            # Don't set KAI_LLM_PARAMS for external server - it should already be configured
-            start_own_server = False
-        else:
-            # Self-contained mode - will start own server on port 8087
-            print("Starting self-contained MCP server on port 8087")
-            multiple_user_mcp_args = MCPClientArgs(
-                transport="http",
-                host="localhost",
-                port=8087,
-                insecure=True,
-                server_path=self.mcp_args.server_path,
-            )
-            os.environ["KAI_LLM_PARAMS"] = json.dumps(
-                {
-                    "model": "fake",
-                    "responses": [
-                        "You should add a smiley face to the file.",
-                    ],
-                }
-            )
-            start_own_server = True
 
-        def stream_output(process: subprocess.Popen) -> None:
-            try:
-                assert process.stdout is not None
-                for line in iter(process.stdout.readline, b""):
-                    print(f"[Server] {line.decode().rstrip()}")
-            except Exception as e:
-                print(f"Error while streaming output: {e}")
-            finally:
-                process.stdout.close()
+        # External server mode - parse URL to get host and port
+        from urllib.parse import urlparse
 
-        def poll_process(process: subprocess.Popen) -> None:
-            # Check if the process has exited early
-            if process.poll() is not None:
-                output = process.stdout.read() if process.stdout else b""
-                raise RuntimeError(
-                    f"HTTP server process exited prematurely. Output: {output.decode(errors='replace')}"
-                )
+        parsed = urlparse(external_server_url)
+        host = parsed.hostname or "localhost"
+        port = parsed.port or 8000
+        print(f"Using external MCP server at {host}:{port}")
+
+        multiple_user_mcp_args = MCPClientArgs(
+            transport="http",
+            host=host,
+            port=port,
+            insecure=True,
+            server_path=None,  # Not needed for external server
+        )
+        # Don't set KAI_LLM_PARAMS for external server - it should already be configured
 
         def run_async_in_thread(fn, *args, **kwargs):
             try:
@@ -687,121 +652,84 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                 print(f"[Client {client_id}] ERROR: {e}")
                 raise  # Re-raise to fail the test
 
-        stream_thread = None
-        try:
-            if start_own_server:
-                self.http_server_process = subprocess.Popen(
-                    [
-                        "python",
-                        "-m",
-                        "kai_mcp_solution_server",
-                        "--transport",
-                        "streamable-http",
-                        "--port",
-                        "8087",
-                    ],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                )
+        # External server should already be running
+        # Allow configuring number of concurrent clients via environment variable
+        NUM_TASKS = int(os.environ.get("NUM_CONCURRENT_CLIENTS", "30"))
+        print(f"Testing with {NUM_TASKS} concurrent clients")
 
-                stream_thread = threading.Thread(
-                    target=stream_output, args=(self.http_server_process,)
-                )
-                stream_thread.daemon = True
-                stream_thread.start()
+        errors = []  # Track any errors that occur
+        with concurrent.futures.ThreadPoolExecutor(max_workers=NUM_TASKS) as executor:
+            # Submit each task to the thread pool and store the Future objects.
+            # The executor will call run_async_in_thread for each task ID.
+            futures = {
+                executor.submit(run_async_in_thread, client_task, i): i
+                for i in range(1, NUM_TASKS + 1)
+            }
 
-                await asyncio.sleep(1)  # give the server a second to start
-            else:
-                # External server should already be running
-                self.http_server_process = None
-
-            # Allow configuring number of concurrent clients via environment variable
-            NUM_TASKS = int(os.environ.get("NUM_CONCURRENT_CLIENTS", "30"))
-            print(f"Testing with {NUM_TASKS} concurrent clients")
-
-            errors = []  # Track any errors that occur
-            with concurrent.futures.ThreadPoolExecutor(
-                max_workers=NUM_TASKS
-            ) as executor:
-                # Submit each task to the thread pool and store the Future objects.
-                # The executor will call run_async_in_thread for each task ID.
-                futures = {
-                    executor.submit(run_async_in_thread, client_task, i): i
-                    for i in range(1, NUM_TASKS + 1)
-                }
-
-                # Use as_completed() to process results as they become available.
-                # This is non-blocking to the main thread while tasks are running.
-                for future in concurrent.futures.as_completed(futures):
-                    task_id = futures[future]
-                    try:
-                        result = future.result()
-                        print(
-                            f"[Main] received result for Task {task_id}: {result}",
-                            flush=True,
-                        )
-                    except Exception as exc:
-                        error_msg = f"Task {task_id} failed: {exc}"
-                        print(f"[Main] {error_msg}")
-                        errors.append(error_msg)
-
-            await asyncio.sleep(10)  # wait a moment for all output to be printed
-
-            # Fail the test if any errors occurred
-            if errors:
-                self.fail(f"\n{len(errors)} clients failed:\n" + "\n".join(errors))
-
-            print(
-                f"\n✓ All {NUM_TASKS} clients completed successfully with correct results!"
-            )
-
-            # Wait a bit for async hint generation to complete
-            print("\nWaiting for hint generation to complete...")
-            await asyncio.sleep(5)
-
-            # Verify hints were generated by checking a few violations
-            print("Verifying hints were generated...")
-            async with create_client(multiple_user_mcp_args) as hint_session:
-                await hint_session.initialize()
-
-                # Check hints for a few different violation combinations
-                violations_to_check = [
-                    ("test-ruleset-0", "test-violation-0"),
-                    ("test-ruleset-1", "test-violation-1"),
-                    ("test-ruleset-2", "test-violation-2"),
-                ]
-
-                hints_found = 0
-                for ruleset, violation in violations_to_check:
-                    try:
-                        hint_result = await hint_session.call_tool(
-                            "get_best_hint",
-                            {
-                                "ruleset_name": ruleset,
-                                "violation_name": violation,
-                            },
-                        )
-                        if hint_result and not hint_result.isError:
-                            hints_found += 1
-                            print(f"  ✓ Found hint for {ruleset}/{violation}")
-                        else:
-                            print(f"  ✗ No hint for {ruleset}/{violation}")
-                    except Exception as e:
-                        print(f"  ✗ Error checking hint for {ruleset}/{violation}: {e}")
-
-                if hints_found == 0:
-                    self.fail(
-                        "No hints were generated! Hint generation may not be working correctly."
-                    )
-                else:
+            # Use as_completed() to process results as they become available.
+            # This is non-blocking to the main thread while tasks are running.
+            for future in concurrent.futures.as_completed(futures):
+                task_id = futures[future]
+                try:
+                    result = future.result()
                     print(
-                        f"\n✓ Found {hints_found}/{len(violations_to_check)} hints generated"
+                        f"[Main] received result for Task {task_id}: {result}",
+                        flush=True,
                     )
+                except Exception as exc:
+                    error_msg = f"Task {task_id} failed: {exc}"
+                    print(f"[Main] {error_msg}")
+                    errors.append(error_msg)
 
-        finally:
-            if self.http_server_process:
-                self.http_server_process.terminate()
-                self.http_server_process.wait()
-                print("Server process terminated.")
-                if stream_thread:
-                    stream_thread.join()
+        await asyncio.sleep(10)  # wait a moment for all output to be printed
+
+        # Fail the test if any errors occurred
+        if errors:
+            self.fail(f"\n{len(errors)} clients failed:\n" + "\n".join(errors))
+
+        print(
+            f"\n✓ All {NUM_TASKS} clients completed successfully with correct results!"
+        )
+
+        # Wait a bit for async hint generation to complete
+        print("\nWaiting for hint generation to complete...")
+        await asyncio.sleep(5)
+
+        # Verify hints were generated by checking a few violations
+        print("Verifying hints were generated...")
+        async with create_client(multiple_user_mcp_args) as hint_session:
+            await hint_session.initialize()
+
+            # Check hints for a few different violation combinations
+            violations_to_check = [
+                ("test-ruleset-0", "test-violation-0"),
+                ("test-ruleset-1", "test-violation-1"),
+                ("test-ruleset-2", "test-violation-2"),
+            ]
+
+            hints_found = 0
+            for ruleset, violation in violations_to_check:
+                try:
+                    hint_result = await hint_session.call_tool(
+                        "get_best_hint",
+                        {
+                            "ruleset_name": ruleset,
+                            "violation_name": violation,
+                        },
+                    )
+                    if hint_result and not hint_result.isError:
+                        hints_found += 1
+                        print(f"  ✓ Found hint for {ruleset}/{violation}")
+                    else:
+                        print(f"  ✗ No hint for {ruleset}/{violation}")
+                except Exception as e:
+                    print(f"  ✗ Error checking hint for {ruleset}/{violation}: {e}")
+
+            if hints_found == 0:
+                self.fail(
+                    "No hints were generated! Hint generation may not be working correctly."
+                )
+            else:
+                print(
+                    f"\n✓ Found {hints_found}/{len(violations_to_check)} hints generated"
+                )

@@ -128,26 +128,23 @@ podman-postgres: build
 		podman-compose up --force-recreate
 
 
-# Run stress test - self-contained mode (starts its own server)
-# This mode starts a test server with SQLite and runs clients against it
-.PHONY: test-stress
-test-stress:
-	@echo "Running self-contained stress test with $${NUM_CONCURRENT_CLIENTS:-30} concurrent clients..."
-	@echo "Database: $${KAI_DB_DSN:-sqlite+aiosqlite:///test.db}"
-	@echo "The test will start its own server on port 8087"
-	NUM_CONCURRENT_CLIENTS=$${NUM_CONCURRENT_CLIENTS:-30} \
-	KAI_DB_DSN=$${KAI_DB_DSN:-sqlite+aiosqlite:///test.db} \
-	uv run python -m pytest tests/test_multiple_integration.py::TestMultipleIntegration::test_multiple_users -xvs
-
 # Run stress test against external server (e.g., one started with run-local or podman-postgres)
 # First start a server: make run-local or make podman-postgres
-# Then run: make test-stress-external
-.PHONY: test-stress-external
-test-stress-external:
-	@echo "Running stress test against external server at $${MCP_SERVER_URL:-http://localhost:8000}"
+# Then run: make test-stress
+.PHONY: test-stress
+test-stress:
+	@if [ -z "$${MCP_SERVER_URL}" ]; then \
+		echo "Error: MCP_SERVER_URL is required for stress testing."; \
+		echo "Start a server first:"; \
+		echo "  make run-local"; \
+		echo "  make podman-postgres"; \
+		echo "Then set MCP_SERVER_URL and run the stress test:"; \
+		echo "  MCP_SERVER_URL=http://localhost:8000 make test-stress"; \
+		exit 1; \
+	fi
+	@echo "Running stress test against external server at $${MCP_SERVER_URL}"
 	@echo "Testing with $${NUM_CONCURRENT_CLIENTS:-30} concurrent clients..."
-	@echo "Make sure the server is already running!"
-	MCP_SERVER_URL=$${MCP_SERVER_URL:-http://localhost:8000} \
+	MCP_SERVER_URL=$${MCP_SERVER_URL} \
 	NUM_CONCURRENT_CLIENTS=$${NUM_CONCURRENT_CLIENTS:-30} \
 	uv run python -m pytest tests/test_multiple_integration.py::TestMultipleIntegration::test_multiple_users -xvs
 
@@ -228,8 +225,7 @@ help:
 	@echo "  run-podman     : Run server in Podman (uses KAI_DB_DSN)"
 	@echo "  podman-sqlite  : Run server with SQLite in Podman"
 	@echo "  podman-postgres: Run server with PostgreSQL via podman-compose"
-	@echo "  test-stress    : Run self-contained stress test (starts own server)"
-	@echo "  test-stress-external: Run stress test against external server"
+	@echo "  test-stress    : Run stress test against external server (requires MCP_SERVER_URL)"
 	@echo "  test-http      : Test server using HTTP transport (Python client)"
 	@echo "  test-http-ts   : Test server using HTTP transport (TypeScript client)"
 	@echo "  test-stdio     : Test server using STDIO transport (Python client)"
@@ -260,10 +256,9 @@ help:
 	@echo "  make run-local"
 	@echo "  make test-stdio"
 	@echo "  KAI_LLM_PARAMS='{\"model\":\"gpt-4\"}' make podman-postgres"
-	@echo "  NUM_CONCURRENT_CLIENTS=100 make test-stress  # Self-contained test"
-	@echo "  # Test against running server:"
+	@echo "  # Stress test against running server:"
 	@echo "  make run-local  # In one terminal"
-	@echo "  MCP_SERVER_URL=http://localhost:8000 NUM_CONCURRENT_CLIENTS=100 make test-stress-external  # In another"
+	@echo "  MCP_SERVER_URL=http://localhost:8000 NUM_CONCURRENT_CLIENTS=100 make test-stress  # In another"
 	@echo "  make test-http"
 	@echo "  make test-http BEARER_TOKEN='your-jwt-token-here'"
 	@echo "  make test-http HOST=api.example.com PORT=443 BEARER_TOKEN='token'"

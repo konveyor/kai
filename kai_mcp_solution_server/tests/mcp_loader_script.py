@@ -6,7 +6,6 @@ import sys
 import traceback
 from asyncio.log import logger
 from contextlib import AsyncExitStack, asynccontextmanager
-from datetime import timedelta
 from typing import AsyncIterator
 
 import yaml
