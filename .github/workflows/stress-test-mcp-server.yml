@@ -61,14 +61,44 @@ jobs:
           uv sync
           uv pip install pytest-asyncio psycopg2-binary asyncpg
 
-      - name: Run stress test with 100 clients
+      - name: Run stress test with PostgreSQL backend
         env:
           KAI_DB_DSN: "postgresql+asyncpg://kai_user:kai_password@localhost:5432/kai_test_db"
           KAI_LLM_PARAMS: '{"model": "fake", "responses": ["Test response"]}'
+          MCP_SERVER_URL: "http://localhost:8000"
           NUM_CONCURRENT_CLIENTS: ${{ github.event.inputs.num_clients || '100' }}
         run: |
+          echo "Starting MCP server connected to PostgreSQL..."
+          uv run python -m kai_mcp_solution_server --transport streamable-http --host 0.0.0.0 --port 8000 &
+          SERVER_PID=$!
+          
+          # Wait for server to be ready
+          echo "Waiting for server to start..."
+          for i in {1..30}; do
+            if curl -s http://localhost:8000/ > /dev/null 2>&1; then
+              echo "Server is ready!"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "Server failed to start in 30 seconds"
+              kill $SERVER_PID || true
+              exit 1
+            fi
+            echo -n "."
+            sleep 1
+          done
+          
+          # Run the stress test
+          echo ""
           echo "Testing with $NUM_CONCURRENT_CLIENTS concurrent clients against PostgreSQL"
           uv run python -m pytest tests/test_multiple_integration.py::TestMultipleIntegration::test_multiple_users -xvs
+          TEST_RESULT=$?
+          
+          # Stop the server
+          echo "Stopping MCP server..."
+          kill $SERVER_PID || true
+          
+          exit $TEST_RESULT
         timeout-minutes: 10
 
       - name: Check PostgreSQL connection count

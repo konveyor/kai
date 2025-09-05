@@ -544,6 +544,7 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                     )
                     incident_id = int(incident_result.content[0].text)
                     print(f"[Client {client_id}] created incident {incident_id}")
+                    assert incident_id > 0, f"Invalid incident ID: {incident_id}"
 
                     # Create a solution
                     solution_result = await client.session.call_tool(
@@ -569,9 +570,10 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                     )
                     solution_id = int(solution_result.content[0].text)
                     print(f"[Client {client_id}] created solution {solution_id}")
+                    assert solution_id > 0, f"Invalid solution ID: {solution_id}"
 
-                    # Get success rate
-                    await client.session.call_tool(
+                    # Get success rate (before accepting)
+                    success_rate_result = await client.session.call_tool(
                         "get_success_rate",
                         {
                             "violation_ids": [
@@ -582,7 +584,33 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                             ]
                         },
                     )
-                    print(f"[Client {client_id}] got success rate")
+                    # Parse and verify success rate
+                    success_rate_text = success_rate_result.content[0].text
+                    import json
+
+                    success_rate = json.loads(success_rate_text)
+                    print(f"[Client {client_id}] got success rate: {success_rate}")
+
+                    # Handle both single object and array response
+                    if isinstance(success_rate, list):
+                        # If it's a list, check the first element
+                        assert len(success_rate) > 0, "Success rate list is empty"
+                        rate = success_rate[0]
+                    else:
+                        rate = success_rate
+
+                    # Store initial counts to compare deltas later
+                    initial_counted = rate["counted_solutions"]
+                    initial_accepted = rate["accepted_solutions"]
+                    initial_pending = rate["pending_solutions"]
+
+                    # In a shared database, we should see at least our solution
+                    assert (
+                        rate["counted_solutions"] >= 1
+                    ), f"Expected at least 1 counted solution, got {rate['counted_solutions']}"
+                    assert (
+                        rate["pending_solutions"] >= 1
+                    ), f"Expected at least 1 pending solution, got {rate['pending_solutions']}"
 
                     # Accept the file
                     await client.session.call_tool(
@@ -597,7 +625,64 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                     )
                     print(f"[Client {client_id}] accepted file")
 
-                    print(f"[Client {client_id}] finished")
+                    # Wait a bit for the acceptance to be processed
+                    await asyncio.sleep(0.5)
+
+                    # Get success rate again (after accepting)
+                    success_rate_result2 = await client.session.call_tool(
+                        "get_success_rate",
+                        {
+                            "violation_ids": [
+                                {
+                                    "ruleset_name": f"test-ruleset-{client_id % 10}",
+                                    "violation_name": f"test-violation-{client_id % 5}",
+                                }
+                            ]
+                        },
+                    )
+                    success_rate_text2 = success_rate_result2.content[0].text
+                    success_rate2 = json.loads(success_rate_text2)
+                    print(
+                        f"[Client {client_id}] got success rate after accept: {success_rate2}"
+                    )
+
+                    # Handle both single object and array response
+                    if isinstance(success_rate2, list):
+                        # If it's a list, check the first element
+                        assert len(success_rate2) > 0, "Success rate list is empty"
+                        rate2 = success_rate2[0]
+                    else:
+                        rate2 = success_rate2
+
+                    # Check deltas after accepting the solution
+                    # With multiple clients working on same violations, we need to be flexible
+                    delta_accepted = rate2["accepted_solutions"] - initial_accepted
+                    delta_pending = rate2["pending_solutions"] - initial_pending
+
+                    # Since multiple clients may be working on the same violation types,
+                    # we need to allow for some variance in the counts
+                    assert (
+                        delta_accepted >= 1
+                    ), f"Expected accepted to increase by at least 1, but delta was {delta_accepted} (from {initial_accepted} to {rate2['accepted_solutions']})"
+                    assert (
+                        delta_pending <= 0
+                    ), f"Expected pending to stay same or decrease, but delta was {delta_pending} (from {initial_pending} to {rate2['pending_solutions']})"
+
+                    # The sum of accepted + pending changes should be close to 0
+                    # (one solution moved from pending to accepted)
+                    total_delta = delta_accepted + delta_pending
+                    assert (
+                        -2 <= total_delta <= 2
+                    ), f"Expected net change close to 0, but was {total_delta} (accepted: +{delta_accepted}, pending: {delta_pending})"
+
+                    # Total counted should remain the same (or increase if others added solutions)
+                    assert (
+                        rate2["counted_solutions"] >= initial_counted
+                    ), f"Counted solutions should not decrease (was {initial_counted}, now {rate2['counted_solutions']})"
+
+                    print(
+                        f"[Client {client_id}] ✓ All operations completed successfully"
+                    )
             except Exception as e:
                 print(f"[Client {client_id}] ERROR: {e}")
                 raise  # Re-raise to fail the test
@@ -665,6 +750,53 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
             # Fail the test if any errors occurred
             if errors:
                 self.fail(f"\n{len(errors)} clients failed:\n" + "\n".join(errors))
+
+            print(
+                f"\n✓ All {NUM_TASKS} clients completed successfully with correct results!"
+            )
+
+            # Wait a bit for async hint generation to complete
+            print("\nWaiting for hint generation to complete...")
+            await asyncio.sleep(5)
+
+            # Verify hints were generated by checking a few violations
+            print("Verifying hints were generated...")
+            async with create_client(multiple_user_mcp_args) as hint_session:
+                await hint_session.initialize()
+
+                # Check hints for a few different violation combinations
+                violations_to_check = [
+                    ("test-ruleset-0", "test-violation-0"),
+                    ("test-ruleset-1", "test-violation-1"),
+                    ("test-ruleset-2", "test-violation-2"),
+                ]
+
+                hints_found = 0
+                for ruleset, violation in violations_to_check:
+                    try:
+                        hint_result = await hint_session.call_tool(
+                            "get_best_hint",
+                            {
+                                "ruleset_name": ruleset,
+                                "violation_name": violation,
+                            },
+                        )
+                        if hint_result and not hint_result.isError:
+                            hints_found += 1
+                            print(f"  ✓ Found hint for {ruleset}/{violation}")
+                        else:
+                            print(f"  ✗ No hint for {ruleset}/{violation}")
+                    except Exception as e:
+                        print(f"  ✗ Error checking hint for {ruleset}/{violation}: {e}")
+
+                if hints_found == 0:
+                    self.fail(
+                        "No hints were generated! Hint generation may not be working correctly."
+                    )
+                else:
+                    print(
+                        f"\n✓ Found {hints_found}/{len(violations_to_check)} hints generated"
+                    )
 
         finally:
             if self.http_server_process:

@@ -85,6 +85,12 @@ class SSLMonkeyPatch:
         try:
             import httpx
 
+            # Check if we've already patched httpx (avoid re-patching)
+            if hasattr(httpx.AsyncClient.__init__, "_ssl_bypass_patched"):
+                logger.debug("httpx already patched, skipping")
+                self.httpx_patched = True
+                return
+
             # Store original methods
             self.original_httpx_client_init: Callable = httpx.Client.__init__
             self.original_httpx_async_client_init: Callable = httpx.AsyncClient.__init__
@@ -96,6 +102,10 @@ class SSLMonkeyPatch:
             def patched_async_client_init(client_self, *args, **kwargs):
                 kwargs["verify"] = False
                 self.original_httpx_async_client_init(client_self, *args, **kwargs)
+
+            # Mark the patched functions so we know they're already patched
+            patched_client_init._ssl_bypass_patched = True
+            patched_async_client_init._ssl_bypass_patched = True
 
             httpx.Client.__init__ = patched_client_init
             httpx.AsyncClient.__init__ = patched_async_client_init

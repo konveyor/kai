@@ -125,7 +125,7 @@ podman-postgres: build
 	@echo "Starting MCP solution server with PostgreSQL using podman-compose..."
 	@if [ -z "$(KAI_LLM_PARAMS)" ]; then echo "Error: KAI_LLM_PARAMS is required"; exit 1; fi
 	IMAGE=$(IMAGE) KAI_LLM_PARAMS='$(KAI_LLM_PARAMS)' MOUNT_PATH='$(MOUNT_PATH)' \
-		podman-compose up
+		podman-compose up --force-recreate
 
 
 # Run stress test - self-contained mode (starts its own server)
