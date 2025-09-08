@@ -17,8 +17,16 @@ The below will help to share examples of connecting to various LLM providers.
   - [OpenAI](#openai)
   - [OpenAI Compatible Alternatives](#openai-api-compatible-alternatives)
     - [OpenShift AI](#openshift-ai)
-    - [MaaS](#maas---models-as-a-service)
     - [Podman Desktop](#podman-desktop)
+- [Example Solution Server Env for LLM Provider Settings](#example-solution-server-provider-settings)
+  - [Amazon Bedrock](#solution-server-amazon-bedrock)
+  - [Azure OpenAI](#solution-server-azure-openai)
+  - [Google Gemini](#solution-server-google-gemini)
+  - [Ollama](#solution-server-ollama)
+  - [OpenAI](#solution-server-openai)
+  - [OpenAI Compatible Alternatives](#solution-server-openai-api-compatible-alternatives)
+    - [OpenShift AI](#solution-server-openshift-ai)
+    - [Podman Desktop](#solution-server-podman-desktop)
 
 ## Basic LLM configuration
 
@@ -73,8 +81,9 @@ models:
 active: *active
 ```
 
-- For the above we can see that the `&active` tag is applied to the `ChatOllama` setting and NOT to the AmazonBedrock stanza, therefore the `ChatOllama` configuration is what will be used by Kai.
-- As you change different LLM providers, move the yaml anchor `&active` to the selection you wish to use, then restart the Konveyor AI server.
+> [!NOTE]
+> For the above we can see that the `&active` tag is applied to the `ChatOllama` setting and NOT to the AmazonBedrock stanza, therefore the `ChatOllama` configuration is what will be used by Kai.
+> As you change different LLM providers, move the yaml anchor `&active` to the selection you wish to use, then restart the Konveyor AI server.
 
 ### How do I restart the Konveyor AI server
 
@@ -93,15 +102,22 @@ If you have made a change to `provider-settings.yaml` you will want to ensure th
 ```yaml
 models:
   AmazonBedrock: &active
+    environment:
+      ## May have to use if no global `~/.aws/credentials`
+      AWS_DEFAULT_REGION: us-east-1
     provider: "ChatBedrock"
     args:
       model_id: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
-
+      # Prefer using ~/.aws/credentials or environment variables instead of in-file secrets.
+      # Uncomment only if needed for local testing (do not commit real values):
+      # aws_access_key_id: "<your-access-key-id>"
+      # aws_secret_access_key: "<your-secret-access-key>"
 active: *active
 ```
 
-- Note that authentication to Amazon Bedrock will look for environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` to handle authentication.
-  - While not required, it's recommended to use the [aws cli](https://aws.amazon.com/cli/) and verify you have command line access to AWS services working before proceeding
+> [!NOTE]
+> Authentication to Amazon Bedrock will look for environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` to handle authentication.
+> While not required, it's recommended to use the [aws cli](https://aws.amazon.com/cli/) and verify you have command line access to AWS services working before proceeding
 
 ### Azure OpenAI
 
@@ -109,12 +125,16 @@ active: *active
 models:
   AzureChatOpenAI: &active
     environment:
-      OPENAI_API_KEY: "sk-secret"
+      AZURE_OPENAI_API_KEY: "sk-secret"
     provider: "AzureChatOpenAI"
     args:
       azure_deployment: "gpt-35-turbo"
       azure_endpoint: "https://<azure-oai-name>.openai.azure.com/"
       api_version: "2025-04-01-preview"
+      ## May have to use
+      # azureOpenAIDeploymentName
+      # azureOpenAIApiVersion
+      # azureOpenAIEndpoint
 
 active: *active
 ```
@@ -167,9 +187,9 @@ models:
 active: *active
 ```
 
-- Update your OpenAI API Key
-  - Note if you have `OPENAI_API_KEY` set as an environment variable which VSCode is able to read then you can ignore explicitly setting it in your `provider-settings.yaml`.
-- Update the model you wish to use
+> [!NOTE]
+> Update to your OpenAI API Key. If you have `OPENAI_API_KEY` set as an environment variable which VSCode is able to read then you can ignore explicitly setting it in your `provider-settings.yaml`.
+> You should also Update the model to the one you wish to use.
 
 ### Ollama
 
@@ -179,6 +199,7 @@ models:
     provider: "ChatOllama"
     args:
       model: "granite-code:8b-instruct"
+      baseUrl: "127.0.0.1:11434"
 
 active: *active
 ```
@@ -206,33 +227,21 @@ You may find deeper guidance on deploying this kind of setup at: [github.com/jmo
 models:
   openshift-kai-test-generation: &active
     environment:
-      SSL_CERT_FILE: "<Server's SSL_CERT_FILE>"
-      REQUESTS_CA_BUNDLE: "<Server's REQUESTS_CA_BUNDLE>"
       OPENAI_API_KEY: "<Server's OPENAI_API_KEY>"
-
+      CA_BUNDLE: "<Servers CA Bundle path>"
+      ALLOW_INSECURE: "true"
     provider: "ChatOpenAI"
     args:
       model: "kai-test-generation"
-      base_url: "https://kai-test-generation-llms.apps.konveyor-ai.migration.example.com/v1"
+      configuration:
+        baseURL: "https://kai-test-generation-llms.apps.konveyor-ai.migration.example.com/v1"
 ```
 
-#### MaaS - Models As A Service
+> [!NOTE]
+> Note the `model` AND `base_url` both are related, i.e. for this service a different model also has a different and explicit endpoint, it is NOT sufficient to simply change the `model`
 
-Models As A Service https://github.com/rh-aiservices-bu/models-aas
-
-- Example deployment: https://maas.apps.prod.rhoai.rh-aiservices-bu.com/
-
-```yaml
-parasols-maas-granite:
-  environment:
-    OPENAI_API_KEY: "KEYVALUE"
-  provider: "ChatOpenAI"
-  args:
-    model: "granite-8b-code-instruct-128k"
-    base_url: "https://granite-8b-code-instruct-maas-apicast-production.apps.prod.rhoai.rh-aiservices-bu.com:443/v1"
-```
-
-- Note the `model` AND `base_url` both are related, i.e. for this service a different model also has a different and explicit endpoint, it is NOT sufficient to simply change the `model`
+> [!NOTE]
+> For other services you may or may not have to `ALLOW_INSECURE` or set the `CA_BUNDLE`.
 
 #### Podman Desktop
 
@@ -245,7 +254,97 @@ podman_mistral:
       OPENAI_API_KEY: "unused value"
     args:
       model: "mistral-7b-instruct-v0-2"
-      base_url: "http://localhost:35841/v1"
+      configuration:
+        baseURL: "http://localhost:35841/v1"
 ```
 
-- Note above `base_url` and `model` need to be updated to match what you have deployed in podman
+> [!NOTE]
+> Above `configuration.baseURL` and `model` need to be updated to match what you have deployed in podman
+
+## Example Solution Server Provider Settings
+
+### Solution Server Amazon Bedrock
+
+```bash
+ export KAI_LLM_PARAMS='{"model": "anthropic.claude-v2", "model_provider": "bedrock", "region_name": "<region>", "aws_access_key_id": "<redacted>", "aws_secret_access_key": "<redacted>"}'
+```
+
+> [!NOTE]
+> Authentication to Amazon Bedrock will look for environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` to handle authentication.
+> While not required, it's recommended to use the [aws cli](https://aws.amazon.com/cli/) and verify you have command line access to AWS services working before proceeding
+> You can use the `aws_access_key_id`, `aws_secret_access_key` and `region_name` if you don't have the environment variables or the config/credentials file from aws cli.
+
+### Solution Server Azure OpenAI
+
+```bash
+export KAI_LLM_PARAMS='{"model": "shurley-gpt-4o-mini-deployment", "model_provider": "azure_openai", "api_key": "<redacted>", "api_version": "2024-04-01-preview", "azure_endpoint": "https://shurley.openai.azure.com/"}'
+```
+
+### Solution Server Google Gemini
+
+```bash
+export KAI_LLM_PARAMS='{"model": "gemini-2.5-pro", "model_provider": "google_genai", "google_api_key": "<redacted>"}'
+```
+
+### Solution Server OpenAI
+
+If you have a valid API Key for OpenAI you may use this with Kai.
+
+1. Follow the directions from OpenAI
+   [here](https://help.openai.com/en/articles/4936850-where-do-i-find-my-openai-api-key).
+2. Export the `KAI_LLM_PARAMS` with the values.
+
+```bash
+export KAI_LLM_PARAMS='{"model": "gemini-2.5-pro", "model_provider": "openai", }'
+```
+
+> [!NOTE]
+> Update your OpenAI API Key to your key and the model to the one you wish to use.
+
+### Solution Server Ollama
+
+```bash
+export KAI_LLM_PARAMS='{"model": "llama3", "model_provider": "ollama", "base_url": "127.0.0.1:11434"}'
+```
+
+> [!NOTE]
+> Update `model` to reflect the local ollama model you have running and want to use
+
+### Solution Server OpenAI API Compatible Alternatives
+
+In general Kai will work with OpenAI Compatible API alternatives. The general
+pattern is to specify the `base_url` and environment variable for `OPENAI_API_KEY`
+
+Below are examples of OpenAI API compatible services community members have
+raised questions about in past. We are including a few examples to help share
+information.
+
+#### Solution Server OpenShift AI
+
+OpenShift AI or [OpenDataHub](https://opendatahub.io/) provides a means of running
+models on your own Kubernetes cluster. Kai is able to connect to these models via
+using an OpenAI compatible API.
+
+You may find deeper guidance on deploying this kind of setup at: [github.com/jmontleon/openshift-ai-with-gpu-autoscaling](https://github.com/jmontleon/openshift-ai-with-gpu-autoscaling)
+
+```bash
+export SSL_CERT_FILE="<Server's SSL_CERT_FILE>"
+export REQUESTS_CA_BUNDLE="<Server's REQUESTS_CA_BUNDLE>"
+export OPENAI_API_KEY="<Server's OPENAI_API_KEY>"
+export KAI_LLM_PARAMS='{"model": "kai-test-generation", "model_provider": "openai", "base_url": "https://kai-test-generation-llms.apps.konveyor-ai.migration.example.com/v1"}'
+```
+
+> [!NOTE] > `model` AND `base_url` both are related, i.e. for this service a different model also has a different and explicit endpoint, it is NOT sufficient to simply change the `model`
+
+> [!NOTE]
+> For other services you may or may not have to `ALLOW_INSECURE` or set the `CA_BUNDLE`.
+
+#### Solution Server Podman Desktop
+
+See [podman_with_local_models.md](podman_with_local_models.md) for more into walking through deploying local models with podman
+
+```bash
+export KAI_LLM_PARAMS='{"model": "mistral-7b-instruct-v0-2", "model_provider": "openai", "base_url": "http://localhost:35841/v1"}'
+```
+
+> [!NOTE] > `configuration.baseURL` and `model` need to be updated to match what you have deployed in podman
