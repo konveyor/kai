@@ -98,27 +98,6 @@ run-podman: build
 		$(if $(PODMAN_ARGS),$(PODMAN_ARGS),) \
 		--name kai-mcp-solution-server $(IMAGE)
 
-# Convenience target: Run with SQLite
-.PHONY: podman-sqlite
-podman-sqlite: build
-	@echo "Running MCP solution server with SQLite..."
-	@if [ -z "$(KAI_LLM_PARAMS)" ]; then echo "Error: KAI_LLM_PARAMS is required"; exit 1; fi
-	podman run --rm -it -p 8000:8000 \
-		-e MOUNT_PATH='$(MOUNT_PATH)' \
-		-e KAI_LLM_PARAMS='$(KAI_LLM_PARAMS)' \
-		-e KAI_DB_DSN='sqlite+aiosqlite:///data/kai.db' \
-		$(if $(OPENAI_API_KEY),-e OPENAI_API_KEY='$(OPENAI_API_KEY)',) \
-		$(if $(ANTHROPIC_API_KEY),-e ANTHROPIC_API_KEY='$(ANTHROPIC_API_KEY)',) \
-		$(if $(AZURE_OPENAI_API_KEY),-e AZURE_OPENAI_API_KEY='$(AZURE_OPENAI_API_KEY)',) \
-		$(if $(AZURE_OPENAI_ENDPOINT),-e AZURE_OPENAI_ENDPOINT='$(AZURE_OPENAI_ENDPOINT)',) \
-		$(if $(GOOGLE_API_KEY),-e GOOGLE_API_KEY='$(GOOGLE_API_KEY)',) \
-		$(if $(AWS_ACCESS_KEY_ID),-e AWS_ACCESS_KEY_ID='$(AWS_ACCESS_KEY_ID)',) \
-		$(if $(AWS_SECRET_ACCESS_KEY),-e AWS_SECRET_ACCESS_KEY='$(AWS_SECRET_ACCESS_KEY)',) \
-		$(if $(AWS_REGION),-e AWS_REGION='$(AWS_REGION)',) \
-		$(if $(OLLAMA_HOST),-e OLLAMA_HOST='$(OLLAMA_HOST)',) \
-		-v kai-sqlite-data:/data:Z \
-		--name kai-mcp-sqlite $(IMAGE)
-
 # Convenience target: Run with PostgreSQL via podman-compose
 .PHONY: podman-postgres
 podman-postgres: build
@@ -223,7 +202,6 @@ help:
 	@echo "  port-forward   : Forward port to local machine for testing"
 	@echo "  run-local      : Run server locally for testing"
 	@echo "  run-podman     : Run server in Podman (uses KAI_DB_DSN)"
-	@echo "  podman-sqlite  : Run server with SQLite in Podman"
 	@echo "  podman-postgres: Run server with PostgreSQL via podman-compose"
 	@echo "  test-stress    : Run stress test against external server (requires MCP_SERVER_URL)"
 	@echo "  test-http      : Test server using HTTP transport (Python client)"
@@ -261,4 +239,5 @@ help:
 	@echo "  MCP_SERVER_URL=http://localhost:8000 NUM_CONCURRENT_CLIENTS=100 make test-stress  # In another"
 	@echo "  make test-http"
 	@echo "  make test-http BEARER_TOKEN='your-jwt-token-here'"
-	@echo "  make test-http HOST=api.example.com PORT=443 BEARER_TOKEN='token'"
+	@echo "  make test-http HOST=api.exayeah, there are a lot of little ones that have been filed. I feel pretty comfortable delaying them to a point releasemple.com PORT=443 BEARER_TOKEN='token'"
+	
