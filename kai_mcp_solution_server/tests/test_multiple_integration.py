@@ -358,65 +358,6 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
             print(f"Best hint for {RULESET_NAME_A}/{VIOLATION_NAME_A}: {best_hint}")
             self.assertEqual(best_hint.hint, llm_params["responses"][0])
 
-    @unittest.skip("Skipping test_solution_server_2 for now")
-    async def test_solution_server_2(self) -> None:
-        llm_params = {
-            "model": "fake",
-            "responses": [
-                f"{uuid4()} You should add a smiley face to the file.",
-            ],
-        }
-        os.environ["KAI_LLM_PARAMS"] = json.dumps(llm_params)
-
-        async with create_client(self.mcp_args) as session:
-            await session.initialize()
-
-            RULESET_NAME_A = f"ruleset-{uuid4()}"
-            VIOLATION_NAME_A = f"violation-{uuid4()}"
-            CLIENT_ID_A = str(uuid4())
-
-            print()
-            print("--- Testing modify ---")
-
-            create_incident_a = await self.call_tool(
-                session,
-                "create_incident",
-                {
-                    "client_id": CLIENT_ID_A,
-                    "extended_incident": ExtendedIncident(
-                        uri="file://src/file_to_smile.txt",
-                        message="this file needs to have a smiley face",
-                        ruleset_name=RULESET_NAME_A,
-                        violation_name=VIOLATION_NAME_A,
-                    ).model_dump(),
-                },
-            )
-            INCIDENT_ID_A = int(create_incident_a.model_dump()["content"][0]["text"])
-
-            create_solution_for_incident_a = await self.call_tool(
-                session,
-                "create_solution",
-                {
-                    "client_id": CLIENT_ID_A,
-                    "incident_ids": [INCIDENT_ID_A],
-                    "before": [
-                        {
-                            "uri": "file://src/file_to_smile.txt",
-                            "content": "I am very frowny :(",
-                        }
-                    ],
-                    "after": [
-                        {
-                            "uri": "file://src/file_to_smile.txt",
-                            "content": "I am very smiley :)",
-                        }
-                    ],
-                    "reasoning": None,
-                    "used_hint_ids": None,
-                },
-            )
-            int(create_solution_for_incident_a.model_dump()["content"][0]["text"])
-
     async def test_multiple_users(self) -> None:
         """
         Test multiple concurrent users accessing the MCP server.
