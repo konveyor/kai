@@ -3,6 +3,7 @@ import json
 import os
 import ssl
 import sys
+import traceback
 from asyncio.log import logger
 from contextlib import AsyncExitStack, asynccontextmanager
 from typing import AsyncIterator
@@ -59,20 +60,18 @@ async def create_http_client(args: MCPClientArgs) -> AsyncIterator[ClientSession
                 stack.enter_context(apply_ssl_bypass())
 
             read, write, get_session_id = await stack.enter_async_context(
-                streamablehttp_client(server_url, insecure=args.insecure)
+                streamablehttp_client(server_url)
             )
             logger.debug("Streamable HTTP client connection established")
-            session = await stack.enter_async_context(
-                ClientSession(read, write, get_session_id)
-            )
+            # Note: get_session_id is for session management, not passed to ClientSession
+            session = await stack.enter_async_context(ClientSession(read, write))
             logger.debug("MCP ClientSession initialized")
 
             yield session
 
     except Exception as e:
         logger.error("HTTP transport error: %s", str(e), exc_info=True)
-        print(f"x Error with HTTP transport: {e}")
-        print(f"! Make sure the server is running at {server_url}")
+        print(f"x Error with HTTP transport: {traceback.format_exc()}")
 
         # Add specific advice for SSL certificate errors
         if (
@@ -87,7 +86,8 @@ async def create_http_client(args: MCPClientArgs) -> AsyncIterator[ClientSession
             print("   2. Use a valid SSL certificate on the server")
             print("   3. Add the server's certificate to your trusted CA store")
 
-        print("! Try using the STDIO transport instead with --transport stdio")
+        print(f"! Make sure the server is running at {server_url}")
+        raise  # Re-raise the exception so the test fails properly
 
 
 @asynccontextmanager

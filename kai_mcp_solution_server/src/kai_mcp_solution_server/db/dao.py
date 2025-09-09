@@ -26,6 +26,7 @@ from sqlalchemy.orm import (
     mapped_column,
     relationship,
 )
+from sqlalchemy.pool import StaticPool
 
 # from sqlalchemy.orm import relationship as _relationship
 from sqlalchemy.schema import (
@@ -96,16 +97,47 @@ class Base(MappedAsDataclass, DeclarativeBase):
     }
 
 
-async def get_async_engine(url: URL | str, drop_all: bool = False) -> AsyncEngine:
-    engine = create_async_engine(url)
-
+async def drop_all_tables(engine: AsyncEngine) -> None:
+    """Drop all database tables. Should be called separately from engine creation."""
     async with engine.begin() as conn:
-        # NOTE: Only do this in dev/test environments!
-        if drop_all:
-            print("Dropping all tables", file=sys.stderr)
-            await conn.run_sync(drop_everything)
+        print("Dropping all tables", file=sys.stderr)
+        await conn.run_sync(drop_everything)
 
+
+async def ensure_tables_exist(engine: AsyncEngine) -> None:
+    """Ensure all tables exist in the database."""
+    async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+
+async def get_async_engine(url: URL | str) -> AsyncEngine:
+    # Convert to string if URL object
+    url_str = str(url)
+
+    # Configure connection pool based on database type
+    if "sqlite" in url_str:
+        # SQLite needs special handling due to its file-based nature
+        # and limited write concurrency (even with WAL mode)
+        engine = create_async_engine(
+            url,
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,  # Single shared connection for SQLite
+            echo_pool=False,  # Set to True for debugging connection pool
+        )
+    else:
+        # Most production databases (PostgreSQL, MySQL, MariaDB, etc.)
+        # can handle high concurrency well
+        # NOTE: FastMCP HTTP mode uses a single shared engine for all clients.
+        # These pool settings should handle concurrent requests from all clients.
+        engine = create_async_engine(
+            url,
+            pool_size=20,  # Base connections maintained in pool
+            max_overflow=80,  # Additional connections created as needed (total max = 100)
+            pool_timeout=30,  # Timeout waiting for a connection from pool
+            pool_recycle=3600,  # Recycle connections after 1 hour
+            pool_pre_ping=True,  # Test connections before using
+            echo_pool=False,  # Set to True for debugging connection pool
+        )
 
     return engine
 

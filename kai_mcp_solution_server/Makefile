@@ -86,7 +86,7 @@ run-local:
 	cd $(PROJECT_ROOT) && KAI_DB_DSN='$(KAI_DB_DSN)' KAI_LLM_PARAMS='$(KAI_LLM_PARAMS)' uv run python -m kai_mcp_solution_server --transport streamable-http --host 0.0.0.0 --port 8000 --mount-path=$(MOUNT_PATH)
 
 
-# Run with Podman for testing
+# Run with Podman for testing (flexible - any database via KAI_DB_DSN)
 .PHONY: run-podman
 run-podman: build
 	@echo "Running MCP solution server in Podman..."
@@ -96,7 +96,36 @@ run-podman: build
 		-e KAI_LLM_PARAMS='$(KAI_LLM_PARAMS)' \
 		-e KAI_DB_DSN='$(KAI_DB_DSN)' \
 		$(if $(PODMAN_ARGS),$(PODMAN_ARGS),) \
-		--name kai-mcp-solution-server $(IMAGE) 
+		--name kai-mcp-solution-server $(IMAGE)
+
+# Convenience target: Run with PostgreSQL via podman-compose
+.PHONY: podman-postgres
+podman-postgres: build
+	@echo "Starting MCP solution server with PostgreSQL using podman-compose..."
+	@if [ -z "$(KAI_LLM_PARAMS)" ]; then echo "Error: KAI_LLM_PARAMS is required"; exit 1; fi
+	IMAGE=$(IMAGE) KAI_LLM_PARAMS='$(KAI_LLM_PARAMS)' MOUNT_PATH='$(MOUNT_PATH)' \
+		podman-compose up --force-recreate
+
+
+# Run stress test against external server (e.g., one started with run-local or podman-postgres)
+# First start a server: make run-local or make podman-postgres
+# Then run: make test-stress
+.PHONY: test-stress
+test-stress:
+	@if [ -z "$${MCP_SERVER_URL}" ]; then \
+		echo "Error: MCP_SERVER_URL is required for stress testing."; \
+		echo "Start a server first:"; \
+		echo "  make run-local"; \
+		echo "  make podman-postgres"; \
+		echo "Then set MCP_SERVER_URL and run the stress test:"; \
+		echo "  MCP_SERVER_URL=http://localhost:8000 make test-stress"; \
+		exit 1; \
+	fi
+	@echo "Running stress test against external server at $${MCP_SERVER_URL}"
+	@echo "Testing with $${NUM_CONCURRENT_CLIENTS:-30} concurrent clients..."
+	MCP_SERVER_URL=$${MCP_SERVER_URL} \
+	NUM_CONCURRENT_CLIENTS=$${NUM_CONCURRENT_CLIENTS:-30} \
+	uv run python -m pytest tests/test_multiple_integration.py::TestMultipleIntegration::test_multiple_users -xvs
 
 # Test against HTTP server
 .PHONY: test-http
@@ -123,12 +152,6 @@ test-stdio:
 test-stdio-ts:
 	@echo "Running TypeScript MCP test client using stdio transport..."
 	cd $(PROJECT_ROOT)/ts-mcp-client && npm run build && node --es-module-specifier-resolution=node dist/client.js --transport stdio --server-path $(PROJECT_ROOT)
-
-# Run pytest integration tests
-.PHONY: pytest
-pytest:
-	@echo "Running MCP integration tests with pytest..."
-	cd $(PROJECT_ROOT) && python -m pytest $(TESTS_DIR)/test_integration.py -v
 
 # Run with test client in separate pod
 .PHONY: run-with-tests
@@ -178,7 +201,9 @@ help:
 	@echo "  clean          : Remove local container images"
 	@echo "  port-forward   : Forward port to local machine for testing"
 	@echo "  run-local      : Run server locally for testing"
-	@echo "  run-podman     : Run server in Podman container for testing"
+	@echo "  run-podman     : Run server in Podman (uses KAI_DB_DSN)"
+	@echo "  podman-postgres: Run server with PostgreSQL via podman-compose"
+	@echo "  test-stress    : Run stress test against external server (requires MCP_SERVER_URL)"
 	@echo "  test-http      : Test server using HTTP transport (Python client)"
 	@echo "  test-http-ts   : Test server using HTTP transport (TypeScript client)"
 	@echo "  test-stdio     : Test server using STDIO transport (Python client)"
@@ -193,6 +218,10 @@ help:
 	@echo "  HOST           : Server hostname for HTTP tests (default: localhost)"
 	@echo "  PORT           : Server port for HTTP tests (default: 8000)"
 	@echo "  BEARER_TOKEN   : Bearer token for HTTP authentication (optional)"
+	@echo "  KAI_DB_DSN     : Database connection string for server"
+	@echo "  KAI_LLM_PARAMS : LLM configuration as JSON (required)"
+	@echo "  NUM_CONCURRENT_CLIENTS : Number of clients for stress testing (default: 30)"
+	@echo "  MCP_SERVER_URL : URL of external server for test-stress-external (default: http://localhost:8000)"
 	@echo "  EXTRA_VARS     : Any additional variables to pass to Ansible"
 	@echo ""
 	@echo "Example usage:"
@@ -204,6 +233,11 @@ help:
 	@echo "  make deploy EXTRA_VARS='route_tls_enabled=true route_tls_termination=edge route_tls_insecure_policy=Allow'"
 	@echo "  make run-local"
 	@echo "  make test-stdio"
+	@echo "  KAI_LLM_PARAMS='{\"model\":\"gpt-4\"}' make podman-postgres"
+	@echo "  # Stress test against running server:"
+	@echo "  make run-local  # In one terminal"
+	@echo "  MCP_SERVER_URL=http://localhost:8000 NUM_CONCURRENT_CLIENTS=100 make test-stress  # In another"
 	@echo "  make test-http"
 	@echo "  make test-http BEARER_TOKEN='your-jwt-token-here'"
-	@echo "  make test-http HOST=api.example.com PORT=443 BEARER_TOKEN='token'"
+	@echo "  make test-http HOST=api.exayeah, there are a lot of little ones that have been filed. I feel pretty comfortable delaying them to a point releasemple.com PORT=443 BEARER_TOKEN='token'"
+	

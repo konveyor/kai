@@ -248,7 +248,7 @@ class MCPClientArgs(BaseModel):
     host: str = "localhost"
     port: int = 8000
     transport: str = "stdio"  # Use stdio transport to test without network
-    server_path: Path
+    server_path: Path | None = None  # Optional for external server mode
     mount_path: str = "/"
     full_output: bool = False
     verbose: bool = False
@@ -303,6 +303,8 @@ async def run_tests(args: MCPClientArgs) -> bool:
                 print("🔐 Bearer token authentication enabled")
 
         else:  # stdio transport
+            if args.server_path is None:
+                raise ValueError("server_path is required when using --transport stdio")
             print(f"Using server path: {args.server_path}")
             logger.debug(
                 f"Initializing STDIO transport with server path: {args.server_path}"
