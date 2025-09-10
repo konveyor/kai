@@ -80,5 +80,5 @@ func normalizePath(path string) string {
 	if volumeName != "" {
 		cleanedPath = strings.ToUpper(volumeName) + cleanedPath[len(volumeName):]
 	}
-	return strings.Join(filepath.SplitList(cleanedPath), "_") // prevent forward / backward slashes becoming a problem
+	return filepath.ToSlash(cleanedPath) // prevent forward / backward slashes becoming a problem
 }
