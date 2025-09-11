@@ -18,6 +18,7 @@ import (
 	"github.com/konveyor/analyzer-lsp/provider"
 	"github.com/konveyor/analyzer-lsp/provider/lib"
 	"github.com/konveyor/kai-analyzer/pkg/scope"
+	golang "github.com/konveyor/kai-analyzer/provider/go"
 	"github.com/konveyor/kai-analyzer/provider/java"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -77,7 +78,7 @@ type analyzer struct {
 	updateConditionProvider func(*rpc.Client, map[string]provider.InternalProviderClient, []engine.RuleSet, []engine.RuleSet, logr.Logger, int, string, string) ([]engine.RuleSet, []engine.RuleSet, error)
 }
 
-func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, lspServerPath, bundles, depOpenSourceLabelsFile, rules string, log logr.Logger) (Analyzer, error) {
+func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, language, lspServerPath, bundles, depOpenSourceLabelsFile, goplsPipe, rules string, log logr.Logger) (Analyzer, error) {
 	prefix, err := filepath.Abs(location)
 	if err != nil {
 		return nil, err
@@ -93,13 +94,7 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 		engine.WithLocationPrefixes([]string{prefix}),
 	)
 
-	// this function already init's the java provider
-	jProvider, err := java.NewInternalProviderClient(ctx, log, contextLines, location, lspServerPath, bundles, depOpenSourceLabelsFile)
-	if err != nil {
-		cancelFunc()
-		return nil, err
-	}
-
+	// Initialize builtin provider (always needed)
 	bProvider, err := lib.GetProviderClient(provider.Config{Name: "builtin"}, log)
 	if err != nil {
 		cancelFunc()
@@ -112,8 +107,35 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 	}
 
 	providers := map[string]provider.InternalProviderClient{
-		"java":    jProvider,
 		"builtin": bProvider,
+	}
+
+	// Initialize language-specific provider based on language parameter
+	log.Info("About to initialize provider", "language", language)
+	switch language {
+	case "java":
+		log.Info("Initializing Java provider", "lspServerPath", lspServerPath, "bundles", bundles)
+		jProvider, err := java.NewInternalProviderClient(ctx, log, contextLines, location, lspServerPath, bundles, depOpenSourceLabelsFile)
+		if err != nil {
+			cancelFunc()
+			return nil, err
+		}
+		providers["java"] = jProvider
+		log.Info("Java provider initialized successfully")
+
+	case "go":
+		log.Info("Initializing Go provider", "goplsPipe", goplsPipe)
+		goProvider, err := golang.NewInternalProviderClient(ctx, log, contextLines, location, goplsPipe)
+		if err != nil {
+			cancelFunc()
+			return nil, err
+		}
+		providers["go"] = goProvider
+		log.Info("Go provider initialized successfully")
+
+	default:
+		cancelFunc()
+		return nil, errors.New("unsupported language: " + language + ". Supported languages: java, go")
 	}
 
 	parser := parser.RuleParser{

@@ -27,6 +27,8 @@ func main() {
 	lspServerPath := flag.String("lspServerPath", "", "this will be the path to the lsp")
 	bundles := flag.String("bundles", "", "Comma separated list of path to java analyzer bundles")
 	depOpenSourceLabelsFile := flag.String("depOpenSourceLabelsFile", "", "Path to the dep open source labels file")
+	goplsPipe := flag.String("goplsPipe", "", "Path to the gopls pipe/socket for connecting to existing gopls instance")
+	language := flag.String("language", "", "Target language for analysis (java, go)")
 	pipePath := flag.String("pipePath", "", "Path to the pipe to use for bi-directional communication")
 	logVerbosity := flag.Int("verbosity", -4, "how verbose would you like the logs to be, error logs are 8, warning logs are 4 info logs are 0 and debug logs are -4, going more negative gives more logs.")
 
@@ -57,7 +59,7 @@ func main() {
 	}
 
 	l := logr.FromSlogHandler(logger)
-	usingPipe, err := validateFlags(sourceDirectory, rules, lspServerPath, bundles, depOpenSourceLabelsFile, pipePath, l)
+	usingPipe, err := validateFlags(sourceDirectory, rules, language, lspServerPath, bundles, depOpenSourceLabelsFile, goplsPipe, pipePath, l)
 	if err != nil {
 		panic(err)
 	}
@@ -87,15 +89,17 @@ func main() {
 		l.Info("Starting Server")
 		var s *kairpc.Server
 		if !usingPipe {
-			l.Info("Starting Analyzer", "source-dir", *sourceDirectory, "rules-dir", *rules, "lspServerPath", *lspServerPath, "bundles", *bundles, "depOpenSourceLabelsFile", *depOpenSourceLabelsFile)
+			l.Info("Starting Analyzer", "source-dir", *sourceDirectory, "rules-dir", *rules, "language", *language, "lspServerPath", *lspServerPath, "bundles", *bundles, "depOpenSourceLabelsFile", *depOpenSourceLabelsFile, "goplsPipe", *goplsPipe)
 			// We need to start up the JSON RPC server and start listening for messages
 			analyzerService, err := service.NewAnalyzer(
 				10000, 10, 10,
 				*sourceDirectory,
 				"",
+				*language,
 				*lspServerPath,
 				*bundles,
 				*depOpenSourceLabelsFile,
+				*goplsPipe,
 				*rules,
 				l,
 			)
@@ -116,7 +120,7 @@ func main() {
 			codec := codec.NewConnectionCodec(codec.Connection{Input: os.Stdin, Output: os.Stdout}, l)
 			server.ServeCodec(codec)
 		} else {
-			s = kairpc.NewServer(ctx, server, l, "notification.Notify", *rules, *sourceDirectory)
+			s = kairpc.NewServer(ctx, server, l, "notification.Notify", *rules, *sourceDirectory, *language, *lspServerPath, *bundles, *depOpenSourceLabelsFile, *goplsPipe)
 			s.OnConnect(func(c *rpc.Client) {
 				err := c.Notify("started", nil)
 				if err != nil {
@@ -137,7 +141,7 @@ func main() {
 
 }
 
-func validateFlags(sourceDirectory, rules, lspServerPath, bundles, depOpenSourceLabelsFile, pipePath *string, l logr.Logger) (bool, error) {
+func validateFlags(sourceDirectory, rules, language, lspServerPath, bundles, depOpenSourceLabelsFile, goplsPipe, pipePath *string, l logr.Logger) (bool, error) {
 	if sourceDirectory == nil || *sourceDirectory == "" {
 		return false, fmt.Errorf("source directory must be valid")
 	}
@@ -146,29 +150,55 @@ func validateFlags(sourceDirectory, rules, lspServerPath, bundles, depOpenSource
 		return false, fmt.Errorf("rules must be set")
 	}
 
-	// Check if Java exists on the PATH
-	if err := exec.Command("java", "-version").Run(); err != nil {
-		return false, fmt.Errorf("java is not installed or not on the PATH")
+	if language == nil || *language == "" {
+		return false, fmt.Errorf("language must be specified (java, go)")
 	}
-	l.Info("Java is installed")
 
-	// Check if Maven exists on the PATH
-	if err := exec.Command("mvn", "-version").Run(); err != nil {
-		return false, fmt.Errorf("maven is not installed or not on the PATH")
+	// Validate language-specific requirements
+	switch *language {
+	case "java":
+		// Check if Java exists on the PATH
+		if err := exec.Command("java", "-version").Run(); err != nil {
+			return false, fmt.Errorf("java is not installed or not on the PATH")
+		}
+		l.Info("Java is installed")
+
+		// Check if Maven exists on the PATH
+		if err := exec.Command("mvn", "-version").Run(); err != nil {
+			return false, fmt.Errorf("maven is not installed or not on the PATH")
+		}
+		l.Info("Maven is installed")
+
+		// Java-specific parameter validation
+		if bundles == nil || *bundles == "" {
+			return false, fmt.Errorf("bundles must be set for Java analysis")
+		}
+		if lspServerPath == nil || *lspServerPath == "" {
+			return false, fmt.Errorf("lspServerPath must be set for Java analysis")
+		}
+
+	case "go":
+		// Check if Go exists on the PATH
+		if err := exec.Command("go", "version").Run(); err != nil {
+			return false, fmt.Errorf("go is not installed or not on the PATH")
+		}
+		l.Info("Go is installed")
+
+		// Go-specific parameter validation
+		if goplsPipe == nil || *goplsPipe == "" {
+			return false, fmt.Errorf("goplsPipe must be set for Go analysis")
+		}
+
+		// Note: We don't validate the pipe/socket exists here since it may be created dynamically
+		l.Info("Will connect to existing gopls", "pipe", *goplsPipe)
+
+	default:
+		return false, fmt.Errorf("unsupported language: %s. Supported languages: java, go", *language)
 	}
-	l.Info("Maven is installed")
 
-	// If we are using a named pipe, jdtls is initialized by the caller.
+	// If we are using a named pipe, language server is initialized by the caller.
 	if pipePath != nil && *pipePath != "" {
 		return true, nil
-	}
-
-	if bundles == nil || *bundles == "" {
-		return false, fmt.Errorf("bundles must be set")
-	}
-
-	if lspServerPath == nil || *lspServerPath == "" {
-		return false, fmt.Errorf("lspServerPath must be set")
 	}
 
 	return false, nil

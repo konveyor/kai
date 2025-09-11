@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -14,10 +15,11 @@ import (
 	"github.com/konveyor/analyzer-lsp/parser"
 	"github.com/konveyor/analyzer-lsp/provider"
 	"github.com/konveyor/analyzer-lsp/provider/lib"
+	golang "github.com/konveyor/kai-analyzer/provider/go"
 	"github.com/konveyor/kai-analyzer/provider/java"
 )
 
-func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contextLines int, pipePath, rules, location string, l logr.Logger) (Analyzer, error) {
+func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contextLines int, pipePath, rules, location, language, lspServerPath, bundles, depOpenSourceLabelsFile, goplsPipe string, l logr.Logger) (Analyzer, error) {
 	prefix, err := filepath.Abs(location)
 	if err != nil {
 		return nil, err
@@ -33,13 +35,7 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 		engine.WithLocationPrefixes([]string{prefix}),
 	)
 
-	// this function already init's the java provider
-	jProvider, err := java.NewInternalProviderClientForPipe(ctx, l, contextLines, location, pipePath)
-	if err != nil {
-		cancelFunc()
-		return nil, err
-	}
-
+	// Initialize builtin provider (always needed)
 	bProvider, err := lib.GetProviderClient(provider.Config{Name: "builtin"}, l)
 	if err != nil {
 		cancelFunc()
@@ -52,8 +48,35 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 	}
 
 	providers := map[string]provider.InternalProviderClient{
-		"java":    jProvider,
 		"builtin": bProvider,
+	}
+
+	// Initialize language-specific provider based on language parameter
+	l.Info("About to initialize provider", "language", language)
+	switch language {
+	case "java":
+		l.Info("Initializing Java provider for pipe", "pipePath", pipePath, "lspServerPath", lspServerPath, "bundles", bundles)
+		jProvider, err := java.NewInternalProviderClientForPipe(ctx, l, contextLines, location, pipePath)
+		if err != nil {
+			cancelFunc()
+			return nil, err
+		}
+		providers["java"] = jProvider
+		l.Info("Java provider initialized successfully")
+
+	case "go":
+		l.Info("Initializing Go provider for pipe", "goplsPipe", goplsPipe)
+		goProvider, err := golang.NewInternalProviderClient(ctx, l, contextLines, location, goplsPipe)
+		if err != nil {
+			cancelFunc()
+			return nil, err
+		}
+		providers["go"] = goProvider
+		l.Info("Go provider initialized successfully")
+
+	default:
+		cancelFunc()
+		return nil, errors.New("unsupported language: " + language + ". Supported languages: java, go")
 	}
 
 	parser := parser.RuleParser{

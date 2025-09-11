@@ -26,9 +26,14 @@ type Server struct {
 	connections             []net.Conn
 	rules                   string
 	sourceDirectory         string
+	language                string
+	lspServerPath           string
+	bundles                 string
+	depOpenSourceLabelsFile string
+	goplsPipe               string
 }
 
-func NewServer(ctx context.Context, s *rpc.Server, log logr.Logger, notificationServiceName string, rules string, sourceDirectory string) *Server {
+func NewServer(ctx context.Context, s *rpc.Server, log logr.Logger, notificationServiceName string, rules string, sourceDirectory string, language string, lspServerPath string, bundles string, depOpenSourceLabelsFile string, goplsPipe string) *Server {
 	state := rpc.NewState()
 	state.Set("seq", &atomic.Uint64{})
 	return &Server{ctx: ctx,
@@ -37,7 +42,12 @@ func NewServer(ctx context.Context, s *rpc.Server, log logr.Logger, notification
 		state:                   state,
 		notificationServiceName: notificationServiceName,
 		rules:                   rules,
-		sourceDirectory:         sourceDirectory}
+		sourceDirectory:         sourceDirectory,
+		language:                language,
+		lspServerPath:           lspServerPath,
+		bundles:                 bundles,
+		depOpenSourceLabelsFile: depOpenSourceLabelsFile,
+		goplsPipe:               goplsPipe}
 }
 
 func (s *Server) Accept(pipePath string) {
@@ -53,8 +63,8 @@ func (s *Server) Accept(pipePath string) {
 		s.log.Error(err, "can not listen")
 		panic(err)
 	}
-	// Register pipe analysis handler
-	analyzerService, err := service.NewPipeAnalyzer(s.ctx, 10000, 10, 10, pipePath, s.rules, s.sourceDirectory, s.log.WithName("analyzer-service"))
+	// Register pipe analysis handler with configurable language parameters
+	analyzerService, err := service.NewPipeAnalyzer(s.ctx, 10000, 10, 10, pipePath, s.rules, s.sourceDirectory, s.language, s.lspServerPath, s.bundles, s.depOpenSourceLabelsFile, s.goplsPipe, s.log.WithName("analyzer-service"))
 	if err != nil {
 		s.log.Error(err, "unable to create analyzer service")
 		return
