@@ -39,6 +39,8 @@ type incidentsCache struct {
 }
 
 func (i *incidentsCache) Len() int {
+	i.mutex.RLock()
+	defer i.mutex.RUnlock()
 	return len(i.cache)
 }
 
@@ -48,7 +50,12 @@ func (i *incidentsCache) Get(path string) ([]CacheValue, bool) {
 	normalizedPath := normalizePath(path)
 	i.logger.V(8).Info("getting cache entry for path", "path", path, "normalizedPath", normalizedPath)
 	val, ok := i.cache[normalizedPath]
-	return val, ok
+	if !ok {
+		return nil, false
+	}
+	clonedVal := make([]CacheValue, len(val))
+	copy(clonedVal, val)
+	return clonedVal, ok
 }
 
 func (i *incidentsCache) Add(path string, value CacheValue) {
