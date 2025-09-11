@@ -80,7 +80,6 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 		discoveryCache:          []konveyor.RuleSet{},
 		discoveryCacheMutex:     sync.Mutex{},
 		cache:                   NewIncidentsCache(l),
-		cacheMutex:              sync.RWMutex{},
 		location:                location,
 		contextLines:            contextLines,
 		rules:                   rules,

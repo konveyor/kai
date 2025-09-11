@@ -61,7 +61,6 @@ type analyzer struct {
 	discoveryCacheMutex sync.Mutex
 	discoveryCache      []konveyor.RuleSet
 	cache               IncidentsCache
-	cacheMutex          sync.RWMutex
 
 	contextLines int
 	location     string
@@ -176,7 +175,6 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 		discoveryCache:      []konveyor.RuleSet{},
 		discoveryCacheMutex: sync.Mutex{},
 		cache:               NewIncidentsCache(log),
-		cacheMutex:          sync.RWMutex{},
 	}, nil
 
 }
@@ -328,16 +326,11 @@ func (a *analyzer) NotifyFileChanges(client *rpc.Client, args NotifyFileChangesA
 }
 
 func (a *analyzer) setCache(rulesets []konveyor.RuleSet) {
-	a.cacheMutex.Lock()
-	defer a.cacheMutex.Unlock()
 	a.cache = NewIncidentsCache(a.Logger)
-
 	a.addRulesetsToCache(rulesets)
 }
 
 func (a *analyzer) updateCache(rulesets []konveyor.RuleSet, includedPaths []string) {
-	a.cacheMutex.Lock()
-	defer a.cacheMutex.Unlock()
 	if includedPaths != nil {
 		a.invalidateCachePerFile(includedPaths)
 	}
@@ -379,9 +372,6 @@ func (a *analyzer) invalidateCachePerFile(paths []string) {
 }
 
 func (a *analyzer) createRulesetsFromCache() []konveyor.RuleSet {
-	a.cacheMutex.RLock()
-	defer a.cacheMutex.RUnlock()
-
 	ruleSetMap := map[string]konveyor.RuleSet{}
 	a.Logger.V(8).Info("cache", "cacheVal", a.cache)
 	for filePath, cacheValue := range a.cache.Entries() {
