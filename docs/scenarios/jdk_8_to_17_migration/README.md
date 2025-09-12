@@ -8,7 +8,7 @@ This scenario demonstrates how **Konveyor AI (Kai)** can assist in modernizing a
 
 Migrating applications from Java 8 to Java 17 helps in leveraging modern Java features, improved performance, and long-term support. However, the upgrade process is not just a simple JDK version switch. Developers and end-users often encounter compilation failures, deprecated classes, and security vulnerabilities that require manual intervention.
 
-A common challenge in this process is dealing with removed or deprecated classes and APIs. In the following guide, we will explore few issues(like below) that arise when compiling the sample Java 8 application with Java 17,
+A common challenge in this process is dealing with removed or deprecated classes and APIs. In the following guide, we will explore few issues (like below) that arise when compiling the sample Java 8 application with Java 17,
 
 ```sh
 % mvn --version
@@ -45,7 +45,7 @@ OS name: "mac os x", version: "14.7.4", arch: "aarch64", family: "mac"
 ...
 ```
 
-This issue occurs because the `sun.misc.BASE64Encoder` class, deprecated in Java8, was completely removed in Java9. Additionally, the application uses `MD5` hashing, which is considered insecure by modern cryptographic standards. We will use a custom rule in Kai to identify and refactor these issues efficiently.
+This issue occurs because the `sun.misc.BASE64Encoder` class, deprecated in Java8, was completely removed in Java9. Additionally, the application uses `MD5` hashing, which is considered insecure by modern cryptographic standards. We will use a custom rule and Kai to identify and refactor these issues efficiently.
 
 The following problems highlight the effort and expertise required to perform Java 8 to Java 17 migration:
 
@@ -54,11 +54,11 @@ The following problems highlight the effort and expertise required to perform Ja
 
 By using Kai, developers and end-users can streamline Java 8 to Java 17 migrations with minimal manual effort. Kai comes with over 2,400 community-contributed rules, covering JDK upgrades like Java 8 -> Java 17+
 
-- Built-in rules - Konveyor ships with rules that automatically detect removed or deprecated Java APIs and suggest replacements. In this guide, we use one such [rule](https://github.com/konveyor/rulesets/blob/e1ca097b35d990cab32067b55ad1144d37d10d5c/default/generated/openjdk11/191-java-removals.windup.yaml#L293) that identifies the removal of `sun.misc.BASE64Encoder` and recommends using `java.util.Base64` instead. You can explore the rulesets repo [here](https://github.com/konveyor/rulesets)
+- Built-in rules - Konveyor ships with rules that automatically detect removed or deprecated Java APIs and suggest replacements. In this guide, we use one such [rule](https://github.com/konveyor/rulesets/blob/main/default/generated/openjdk11/191-java-removals.windup.yaml#L293) that identifies the removal of `sun.misc.BASE64Encoder` and recommends using `java.util.Base64` instead. You can explore the rulesets repo [here](https://github.com/konveyor/rulesets)
 
 - Custom Rules for advanced use cases - Beyond community rules, Kai also supports custom rules, allowing users to tailor migration rules to their specific needs. In this guide, we create a [custom security rule](https://github.com/konveyor-ecosystem/migrationex/blob/main/rules/rule.yaml) that detects insecure `MD5` hashing and replaces it with `SHA-256`, ensuring compliance with modern cryptographic standards.
 
-We will demonstrate how Kai can address the above problems and simplifies the whole migration process by,
+We will demonstrate how Kai can address the above problems and simplify the whole migration process by:
 
 - Running an automated analysis to detect issues like removed APIs and outdated dependencies using default rulesets.
 - Applying a custom rule to detect a security risk and obtaining refactored code adhering to security best practices.
@@ -80,9 +80,9 @@ Ensure you have the following set up:
 
 This tutorial was built and tested using the following setup:
 
-- Java Version: OpenJDK 17
-- Maven: 3.9.9
-- Konveyor AI VSCode Extension Version: 0.1.0
+- Java Version: `OpenJDK 17`
+- Maven: `3.9.9`
+- Konveyor AI VSCode Extension Version: `0.1.0`
 - LLM Model Used: `gpt-o1-mini`
 
 _Results may vary if a different LLM model is used._ The AI model’s ability to detect and refactor code depends on the specific model's training data and capabilities. If using a different model (e.g., `gpt-4`, `llama-3`), the migration suggestions may differ in accuracy, or level of detail.
@@ -116,66 +116,16 @@ cd migrationex/migrationex
 
 Navigate to File > Open in VSCode and locate the folder we just cloned and select the sub-folder `migrationex`.
 
-### 1.2 Install the Konveyor AI VS Code Extension
+### 1.2 Install and Configure the Konveyor AI VS Code Extension
 
-Follow this [installation guide](https://github.com/konveyor/kai/blob/main/docs/scenarios/demo.md#configure-konveyor) to install the latest Konveyor AI IDE plugin.
+Follow this [getting started guide](https://github.com/konveyor/kai/blob/main/docs/getting_started.md) to install and configure the latest Konveyor AI IDE plugin.
 
 **_Note: At the time of writing this guide, we used version 0.1.0_**
 
-### 1.3 Configure Kai in VS Code
+In the [configure settings for analysis](https://github.com/konveyor/kai/blob/main/docs/getting_started.md#configure-settings-for-analysis) section, 
+you will choose label selectors (target and/or source technologies).
 
-1.3.1. When you launch the Konveyor AI (kai) Extension for VSCode extension, you will land on the Welcome Page, as shown below. ![start_png](images/start_page.png)
-
-1.3.2 If the welcome page does not appear, open the command palette by pressing Command + Shift + P. This will bring up a list of commands.
-
-#### Configure Kai for your project
-
-Before proceeding with any analysis, you must configure your GenAI key. 
-
-![missing-genAI](images/configure_genAI.png) 
-
-Run Konveyor: Open the GenAI model provider configuration file. This step will open the `provider-settings.yaml` file. 
-
-![configure-genAI](images/provider_settings.png) 
-
-By default, it is configured to use OpenAI. To change the model, update the anchor `&active` to the desired block. 
-
-Modify this file with the required arguments, such as the model and API key, to complete the setup. Sample of the provider-settings.yaml can be found [here](https://github.com/konveyor/editor-extensions/blob/main/vscode/resources/sample-provider-settings.yaml).
-
-
-Start the server by searching the command *Konveyor: Start Server*. 
-
-Before running an analysis, you must create or select a profile.
-
-- In the Konveyor Analysis View, look for the gear icon in the top-right corner of the screen.
-- Click the gear icon to open the configuration menu.
-- In the menu, choose “Manage Profiles”.
-![analysis-view](images/analysis_view.png)
-![analysis-view](images/analysis_view_2.png)
-
-Either:
-- Select an existing profile, or
-- Click “Create Profile” to define a new one (you can set rulesets, targets, etc.).
-- Once a profile is active, the warning will disappear and you can start the analysis.
-
-*This step is required. Without an active profile, the analysis won't run.*
-
-![analysis-view](images/active_profile.png)
-
-To create a new profile: 
-- Click “+ New Profile”
-- A new profile will appear in the list on the left.
-- Fill in the Profile Details:
-  - *Profile Name*: Enter a name for your profile 
-  - *Target Technologies*: Select or type the technologies you want to migrate to (e.g., Spring Boot, Quarkus).
-  - *Source Technologies*: Select or type the technologies you are migrating from (e.g., Java EE, WebLogic).
-  - (Optional) *Select Custom Rules*: User has an option to override binaries and custom rules, however it comes with the default packaged binaries and custom rules.
-  - *Active Profile Status*: 
-    - When you create your first profile, it is automatically set as the active profile.
-    - If you create multiple profiles, make sure to click “Active Profile” at the bottom of the one you want to use for analysis.
-Configuring these arguments is necessary to determine which rules apply to the project during analysis. 
-
-We will analyze the application using the following migration targets to identify potential areas for improvement:
+In this scenario, we will analyze the application using the following migration targets to identify potential areas for improvement:
 
 - Openjdk11
 - Openjdk17
@@ -187,20 +137,10 @@ _We need OpenJDK 11 as a target when migrating from Java 8 to 17 because some de
 
 Skip selecting source platform. 
 
-- Let's select the custom rule we have
+Let's select our custom rule
   ![custom rule-1](images/custom_rules_1.png)
   You will see a notification that custom rules updated
   ![custom rule-2](images/custom_rules_2.png)
-
-Profiles are saved automatically — no need to click “Save.”
-![updated-profile](images/updated_profile.png)
-
-Click on `Start` button to initialize the RPC server
-
-![start_analyzer.png](images/start_server_button.png)
-
-Once the server is running successfully, the Server Status label will turn green and display `Running`. 
-![start_analyzer.png](images/start_server_green.png)
 
 ## Step 2: Understanding the Custom Rule
 
@@ -210,7 +150,7 @@ Before we run the analysis, lets understand the custom rule we are going to use.
 
 The `Library.java` class is responsible for managing books in the system. However, it uses MD5 hashing to generate unique identifiers:
 
-Library.java (Before Migration)
+`Library.java` (Before Migration)
 
 ```java
     ...
@@ -275,14 +215,73 @@ Since MD5 hashing is insecure, we add a custom rule to detect and recommend secu
 
 You can learn more about writing your own custom rules [here](https://github.com/konveyor/kai/blob/main/docs/custom_ruleset.md)
 
-## Step 3: Run Analysis
+## Step 3: Understanding the Targets From Default Rules
+
+Now, lets understand one of the targets we selected: `jakarta-ee`.
+
+This target will select any [builtin rule](https://github.com/konveyor/rulesets/tree/main/default/generated) that has the label-selector `konveyor.io/target=jakarta-ee`.
+
+### 1. Built-in Rule for updating `javax` dependency
+
+`pom.xml` dependency (before migration):
+
+```xml
+        </dependency>
+            <dependency>
+        <groupId>javax.servlet</groupId>
+        <artifactId>javax.servlet-api</artifactId>
+        <version>4.0.1</version>
+        <scope>provided</scope>
+    </dependency>
+```
+
+#### Problem
+
+The `pom.xml` file contains dependency `javax.servlet` that will need to be updated to perform this migration.
+
+#### Solution
+
+Update this dependency group ID `javax.servlet` to `jakarta.servlet`.
+
+The built-in rule `javax-to-jakarta-dependencies-00001` coming from target `jakarta-ee` will help us resolve this problem:
+
+```yaml
+- category: mandatory
+  customVariables: []
+  description: The 'javax' groupId has been replaced by 'jakarta' group id in dependencies.
+  effort: 1
+  labels:
+  - konveyor.io/target=jakarta-ee9+
+  - konveyor.io/target=jakarta-ee
+  - konveyor.io/target=eap8
+  - konveyor.io/target=eap
+  - konveyor.io/target=jws6+
+  - konveyor.io/target=jws
+  - konveyor.io/source=spring5
+  - konveyor.io/target=spring6+
+  - konveyor.io/source
+  links:
+  - title: Jakarta EE
+    url: https://jakarta.ee/
+  message: Update the group dependency by replacing the `javax.{{renamedG}}` groupId
+    with `jakarta.{{renamedG}}`
+  ruleID: javax-to-jakarta-dependencies-00001
+  when:
+    builtin.filecontent:
+      filePattern: pom\.xml
+      pattern: groupId>javax.(annotation|batch|ejb|el|enterprise.concurrent|enterprise.deploy|faces|interceptor|jms|jws|mail|management.j2ee|resource|security.auth.message|security.jacc|servlet|servlet.jsp|servlet.jsp.jstl|transaction|websocket|ws.rs|xml.bind|xml.registry|xml.rpc|xml.soap|xml.ws)<
+```
+
+Now that we have a better understanding of the custom rule and targets for this scenario, we can begin analysis.
+
+## Step 4: Run Analysis
 
 Let's run our initial analysis:
 
 1. Once you have RPC server initialized, navigate to "Konveyor Analysis View" and click Run Analysis. Open the command palette by pressing `Command + Shift + P` to find it.
    ![start-running-analysis.png](images/start_running_analysis.png)
 
-2. The Konveyor Analysis View lists issues, allowing you to filter them by file issues. On the left side, the Konveyor Issue Panel groups files based on similar issues for easier navigation.
+2. The Konveyor Analysis View lists the found analysis issues.  We can filter them by `Files`. On the left side, the Konveyor Issue Panel groups files based on similar issues for easier navigation.
 
 ![incidents-files.png](images/analysis_view_issues.png)
 
@@ -316,13 +315,12 @@ Expand the incidents for `Library.java` and you will see three incidents
 
 - The **resolution process starts**, where Kai interacts with the **LLM**.
 - Once Kai completes processing, it suggests modifications for **Library.java**.
-  ![kai-results-1.png](images/kai_results_1.png)
   ![kai-results-2.png](images/kai_results_2.png)
   ![kai-results-3.png](images/kai_results_3.png)
 
 #### Reviewing Suggested Changes
 
-- The IDE highlights differences between the **current** and **suggested** versions.
+- The `view changes` option will highlight differences between the **current** and **suggested** versions.
 - The **right panel** displays:
   - **MD5 is replaced with SHA-256** for secure hashing.
   - **`BASE64Encoder` is replaced with `Base64.getEncoder()`** from `java.util.Base64`, which is the standard modern API.
@@ -344,10 +342,10 @@ MessageDigest sha256Digest = MessageDigest.getInstance("SHA-256"); // Updated to
 return Base64.getEncoder().encodeToString(hash); // Updated to use Base64 from java.util
 ```
 
-From the logs we notice,
+From the logs in `./vscode/konveyor-logs` we notice,
 
 ```text
- **Identify the Issue**: The code currently uses the MD5 hashing algorithm, which is considered outdated and insecure for cryptographic purposes. The recommendation is to switch to a more secure hashing algorithm, such as SHA-256.\n+\n+2. **Update the Hashing Algorithm**: We will replace the `MessageDigest.getInstance(\"MD5\")` call with `MessageDigest.getInstance(\"SHA-256\")`. This change will enhance the security of the hashing mechanism used in the application.\n+\n+3. **Remove Deprecated Classes**: The code uses `sun.misc.BASE64Encoder`, which is not part of the standard Java API and is not recommended for use. Instead, we can use `java.util.Base64` which is available in Java 8 and later. This will also ensure compatibility with OpenJDK 17.
+reasoning='\nTo migrate the provided Java 8 code to OpenJDK 17, we need to address the identified issue regarding the use of the MD5 hashing algorithm, which is considered outdated and insecure. The recommendation is to replace MD5 with a more secure hashing algorithm, such as SHA-256.\n\n### Steps to Address the Issue:\n1. **Change the Hashing Algorithm**: \n   - Replace the `MessageDigest.getInstance("MD5")` call with `MessageDigest.getInstance("SHA-256")`.\n   - This change will enhance the security of the hashing mechanism used in the application.\n\n2. **Remove Deprecated Classes**:\n   - The `sun.misc.BASE64Encoder` class is part of the internal API and is not recommended for use. Instead, we can use `java.util.Base64` which is available in Java 8 and later versions.\n   - This change will ensure that the code adheres to best practices and avoids reliance on internal APIs.\n
 ```
 
 The LLM was smart to identify that `sun.misc.BASE64Encoder` is deprecated and decided to update that as well.
@@ -441,13 +439,13 @@ Kai processes the request in **Library.java** and **LibraryServlet.java**.![java
 
 #### Applying Fixes
 
-Click the `check icon` next to the filenames in tje left pane to finalize the updates.
+Click the `check icon` next to the filenames in the left pane to finalize the updates.
 
 After applying all the changes, Kai retriggers analysis, and no further incidents were found, confirming a successful migration.
 
 ![resolved-changes.png](images/resolved_changes.png)
 
-## Step 4: Build the app
+## Step 5: Build the app
 
 With all migration changes applied, we can now build, package, and deploy the updated application.
 
@@ -468,7 +466,7 @@ mvn package
 - The `mvn clean compile` command ensures a clean slate by removing old compiled files and recompiling the updated source code.
 - The `mvn package` step creates a .war file, that is used for deployment.
 
-The generated ``.war` file can be found in the `target/` directory
+The generated `.war` file can be found in the `target/` directory
 
 ### 4.2 Deploying the app to Apache Tomcat
 
