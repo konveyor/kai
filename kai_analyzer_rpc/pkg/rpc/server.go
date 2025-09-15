@@ -67,7 +67,7 @@ func (s *Server) Accept(pipePath string) {
 	analyzerService, err := service.NewPipeAnalyzer(s.ctx, 10000, 10, 10, pipePath, s.rules, s.sourceDirectory, s.language, s.lspServerPath, s.bundles, s.depOpenSourceLabelsFile, s.goplsPipe, s.log.WithName("analyzer-service"))
 	if err != nil {
 		s.log.Error(err, "unable to create analyzer service")
-		return
+		panic(err)
 	}
 	s.Server.Handle("analysis_engine.Analyze", analyzerService.Analyze)
 	// s.Server.Handle("analysis_engine.Stop", analyzerService.Stop)

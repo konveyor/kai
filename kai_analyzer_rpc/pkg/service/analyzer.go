@@ -34,13 +34,6 @@ var (
 	tracer = otel.Tracer(name)
 )
 
-type cacheValue struct {
-	incident      konveyor.Incident
-	ViolationName string
-	violation     konveyor.Violation
-	ruleset       konveyor.RuleSet
-}
-
 type Analyzer interface {
 	Analyze(client *rpc.Client, args Args, response *Response) error
 	NotifyFileChanges(client *rpc.Client, changes NotifyFileChangesArgs, response *NotifyFileChangesResponse) error
@@ -68,8 +61,7 @@ type analyzer struct {
 
 	discoveryCacheMutex sync.Mutex
 	discoveryCache      []konveyor.RuleSet
-	cache               map[string][]cacheValue
-	cacheMutex          sync.RWMutex
+	cache               IncidentsCache
 
 	contextLines int
 	location     string
@@ -204,8 +196,7 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 		violationRulesets:   violationRulesets,
 		discoveryCache:      []konveyor.RuleSet{},
 		discoveryCacheMutex: sync.Mutex{},
-		cache:               map[string][]cacheValue{},
-		cacheMutex:          sync.RWMutex{},
+		cache:               NewIncidentsCache(log),
 	}, nil
 
 }
@@ -292,7 +283,7 @@ func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) er
 	// Then we should return early, with results from the cache
 	if len(scopes) == 0 && !args.ResetCache {
 		a.Logger.Info("no scopes and not resetting cache, return early with results from cache")
-		a.Logger.Info("Current cache len", len(a.cache))
+		a.Logger.Info("Current cache len", a.cache.Len())
 		response.Rulesets = a.createRulesetsFromCache()
 		return nil
 	}
@@ -327,6 +318,8 @@ func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) er
 		return rulesets[i].Name < rulesets[j].Name
 	})
 
+	a.Logger.V(8).Info("got rulesets", "rulesets", rulesets)
+
 	// This is a full run, set the complete new results
 	if len(args.IncludedPaths) == 0 {
 		a.Logger.V(5).Info("setting cache for full run")
@@ -355,16 +348,11 @@ func (a *analyzer) NotifyFileChanges(client *rpc.Client, args NotifyFileChangesA
 }
 
 func (a *analyzer) setCache(rulesets []konveyor.RuleSet) {
-	a.cacheMutex.Lock()
-	defer a.cacheMutex.Unlock()
-	a.cache = map[string][]cacheValue{}
-
+	a.cache = NewIncidentsCache(a.Logger)
 	a.addRulesetsToCache(rulesets)
 }
 
 func (a *analyzer) updateCache(rulesets []konveyor.RuleSet, includedPaths []string) {
-	a.cacheMutex.Lock()
-	defer a.cacheMutex.Unlock()
 	if includedPaths != nil {
 		a.invalidateCachePerFile(includedPaths)
 	}
@@ -372,49 +360,27 @@ func (a *analyzer) updateCache(rulesets []konveyor.RuleSet, includedPaths []stri
 }
 
 func (a *analyzer) addRulesetsToCache(rulesets []konveyor.RuleSet) {
-
 	for _, r := range rulesets {
 		for violationName, v := range r.Violations {
 			for _, i := range v.Incidents {
-				a.Logger.V(8).Info("here update cache incident", "incident", i)
-				if l, ok := a.cache[i.URI.Filename()]; ok {
-					l = append(l, cacheValue{
-						incident: i,
-						violation: konveyor.Violation{
-							Description: v.Description,
-							Category:    v.Category,
-							Labels:      v.Labels,
-						},
-						ViolationName: violationName,
-						ruleset: konveyor.RuleSet{
-							Name:        r.Name,
-							Description: r.Description,
-							Tags:        r.Tags,
-							Unmatched:   r.Unmatched,
-							Skipped:     r.Skipped,
-							Errors:      r.Errors,
-						},
-					})
-					a.cache[i.URI.Filename()] = l
-				} else {
-					a.cache[i.URI.Filename()] = []cacheValue{{
-						incident: i,
-						violation: konveyor.Violation{
-							Description: v.Description,
-							Category:    v.Category,
-							Labels:      v.Labels,
-						},
-						ViolationName: violationName,
-						ruleset: konveyor.RuleSet{
-							Name:        r.Name,
-							Description: r.Description,
-							Tags:        r.Tags,
-							Unmatched:   r.Unmatched,
-							Skipped:     r.Skipped,
-							Errors:      r.Errors,
-						},
-					}}
-				}
+				a.Logger.Info("here update cache incident", "incident", i)
+				a.cache.Add(i.URI.Filename(), CacheValue{
+					Incident: i,
+					Violation: konveyor.Violation{
+						Description: v.Description,
+						Category:    v.Category,
+						Labels:      v.Labels,
+					},
+					ViolationName: violationName,
+					Ruleset: konveyor.RuleSet{
+						Name:        r.Name,
+						Description: r.Description,
+						Tags:        r.Tags,
+						Unmatched:   r.Unmatched,
+						Skipped:     r.Skipped,
+						Errors:      r.Errors,
+					},
+				})
 			}
 		}
 	}
@@ -423,34 +389,30 @@ func (a *analyzer) addRulesetsToCache(rulesets []konveyor.RuleSet) {
 func (a *analyzer) invalidateCachePerFile(paths []string) {
 	for _, p := range paths {
 		a.Logger.Info("deleting cache entry for path", "path", p)
-		delete(a.cache, p)
+		a.cache.Delete(p)
 	}
 }
 
 func (a *analyzer) createRulesetsFromCache() []konveyor.RuleSet {
-	a.cacheMutex.RLock()
-	defer a.cacheMutex.RUnlock()
-
 	ruleSetMap := map[string]konveyor.RuleSet{}
 	a.Logger.V(8).Info("cache", "cacheVal", a.cache)
-	for filePath, cacheValue := range a.cache {
+	for filePath, cacheValue := range a.cache.Entries() {
 		for _, v := range cacheValue {
-
-			if ruleset, ok := ruleSetMap[v.ruleset.Name]; ok {
+			if ruleset, ok := ruleSetMap[v.Ruleset.Name]; ok {
 				if vio, ok := ruleset.Violations[v.ViolationName]; ok {
-					vio.Incidents = append(vio.Incidents, v.incident)
+					vio.Incidents = append(vio.Incidents, v.Incident)
 					ruleset.Violations[v.ViolationName] = vio
 					ruleSetMap[ruleset.Name] = ruleset
 				} else {
-					violation := v.violation
-					violation.Incidents = []konveyor.Incident{v.incident}
+					violation := v.Violation
+					violation.Incidents = []konveyor.Incident{v.Incident}
 					ruleset.Violations[v.ViolationName] = violation
 					ruleSetMap[ruleset.Name] = ruleset
 				}
 			} else {
-				violation := v.violation
-				violation.Incidents = []konveyor.Incident{v.incident}
-				ruleset := v.ruleset
+				violation := v.Violation
+				violation.Incidents = []konveyor.Incident{v.Incident}
+				ruleset := v.Ruleset
 				ruleset.Violations = map[string]konveyor.Violation{
 					v.ViolationName: violation,
 				}
