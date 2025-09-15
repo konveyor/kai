@@ -13,9 +13,11 @@ import os
 import sys
 import uuid
 from pathlib import Path
+from typing import cast
 
 from fastmcp import Client
 from fastmcp.client.transports import PythonStdioTransport
+from mcp.types import TextContent
 from pydantic import BaseModel
 
 try:
@@ -61,7 +63,7 @@ async def _run_create_incident(client: Client, client_id: str) -> int:
         result = await client.call_tool("create_incident", request)
 
         # fastmcp returns list of TextContent objects
-        incident_id = int(result[0].text) if result else None
+        incident_id = int(cast(TextContent, result[0]).text) if result else None
 
         if incident_id is None:
             raise ValueError("Incident ID is None, check server response")
@@ -148,7 +150,7 @@ public class ExampleService {
         result = await client.call_tool("create_solution", request)
 
         # fastmcp returns list of TextContent objects
-        solution_id = int(result[0].text) if result else None
+        solution_id = int(cast(TextContent, result[0]).text) if result else None
 
         if solution_id is None:
             raise ValueError("Solution ID is None, check server response")

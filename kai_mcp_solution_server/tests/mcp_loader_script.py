@@ -6,7 +6,7 @@ import sys
 import traceback
 from asyncio.log import logger
 from contextlib import AsyncExitStack, asynccontextmanager
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 
 import yaml
 from mcp import ClientSession, StdioServerParameters
@@ -177,7 +177,7 @@ async def interact_with_server(session: ClientSession) -> None:
                 with open(name, "r") as f:
                     # If the first part is a file path, read the content
                     content = f.read()
-                    sequence: list[dict] = json.loads(content)
+                    sequence: list[dict[str, Any]] = json.loads(content)
 
                 for item in sequence:
                     args_str = str(item["args"])

@@ -12,7 +12,7 @@ import os
 import ssl
 import warnings
 from types import TracebackType
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, cast
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +28,10 @@ class SSLMonkeyPatch:
 
     def __init__(self) -> None:
         self.original_ssl_create_default_context = ssl.create_default_context
-        self.original_httpx_client_init = None
-        self.original_httpx_async_client_init = None
+        self.original_httpx_client_init: Callable[[Any, Any, Any], None] | None = None
+        self.original_httpx_async_client_init: (
+            Callable[[Any, Any, Any], None] | None
+        ) = None
         self.env_vars_to_cleanup: list[str] = []
         self.httpx_patched = False
 
@@ -92,23 +94,31 @@ class SSLMonkeyPatch:
                 return
 
             # Store original methods
-            self.original_httpx_client_init: Callable = httpx.Client.__init__
-            self.original_httpx_async_client_init: Callable = httpx.AsyncClient.__init__
+            self.original_httpx_client_init = (
+                httpx.Client.__init__
+            )  # type:ignore[assignment]
+            self.original_httpx_async_client_init = (
+                httpx.AsyncClient.__init__
+            )  # type:ignore[assignment]
 
-            def patched_client_init(client_self, *args, **kwargs):
+            def patched_client_init(
+                client_self: httpx.Client, *args: Any, **kwargs: Any
+            ) -> None:
                 kwargs["verify"] = False
-                self.original_httpx_client_init(client_self, *args, **kwargs)
+                cast(Callable, self.original_httpx_client_init)(client_self, *args, **kwargs)  # type: ignore[type-arg]
 
-            def patched_async_client_init(client_self, *args, **kwargs):
+            def patched_async_client_init(
+                client_self: httpx.AsyncClient, *args: Any, **kwargs: Any
+            ) -> None:
                 kwargs["verify"] = False
-                self.original_httpx_async_client_init(client_self, *args, **kwargs)
+                cast(Callable, self.original_httpx_async_client_init)(client_self, *args, **kwargs)  # type: ignore[type-arg]
 
             # Mark the patched functions so we know they're already patched
-            patched_client_init._ssl_bypass_patched = True
-            patched_async_client_init._ssl_bypass_patched = True
+            patched_client_init._ssl_bypass_patched = True  # type: ignore[attr-defined]
+            patched_async_client_init._ssl_bypass_patched = True  # type: ignore[attr-defined]
 
-            httpx.Client.__init__ = patched_client_init
-            httpx.AsyncClient.__init__ = patched_async_client_init
+            httpx.Client.__init__ = patched_client_init  # type: ignore[assignment]
+            httpx.AsyncClient.__init__ = patched_async_client_init  # type: ignore[assignment]
 
             self.httpx_patched = True
             logger.debug("Successfully patched httpx Client classes")
@@ -148,9 +158,10 @@ class SSLMonkeyPatch:
                 import httpx
 
                 if self.original_httpx_client_init:
-                    httpx.Client.__init__ = self.original_httpx_client_init
+                    httpx.Client.__init__ = self.original_httpx_client_init  # type: ignore[method-assign, assignment]
                 if self.original_httpx_async_client_init:
-                    httpx.AsyncClient.__init__ = self.original_httpx_async_client_init
+                    httpx.AsyncClient.__init__ = self.original_httpx_async_client_init  # type: ignore[method-assign, assignment]
+
                 logger.debug("Restored original httpx Client classes")
             except Exception as e:
                 logger.warning("Failed to restore httpx patches: %s", e)

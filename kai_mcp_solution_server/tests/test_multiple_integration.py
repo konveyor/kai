@@ -12,7 +12,7 @@ from uuid import uuid4
 
 from fastmcp import Client
 from mcp import ClientSession
-from mcp.types import CallToolResult, Content, TextContent
+from mcp.types import CallToolResult, TextContent
 
 from kai_mcp_solution_server.analyzer_types import ExtendedIncident
 from kai_mcp_solution_server.server import GetBestHintResult, SuccessRateMetric
