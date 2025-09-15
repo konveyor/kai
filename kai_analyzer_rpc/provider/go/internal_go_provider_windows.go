@@ -64,7 +64,7 @@ func NewInternalProviderClientForRPCClient(ctx context.Context, log logr.Logger,
 
 	providerConfig := map[string]interface{}{
 		"lspServerName": "generic",
-		"lspServerPath": "gopls", // Dummy path since we're using RPC connection
+		"lspServerPath": "gopls", // dummy
 	}
 
 	svcClient, _, err := p.Init(ctx, log, provider.InitConfig{
