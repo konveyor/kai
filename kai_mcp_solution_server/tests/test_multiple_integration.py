@@ -5,6 +5,8 @@ import datetime
 import json
 import os
 import unittest
+from typing import Any
+from urllib.parse import urlparse
 from uuid import uuid4
 
 from fastmcp import Client
@@ -18,6 +20,20 @@ from tests.mcp_loader_script import create_client
 from tests.ssl_utils import apply_ssl_bypass
 
 # TODO: The tracebacks from these tests contain horrible impossibly-to-parse output.
+
+
+def run_async_in_thread(fn, *args: Any, **kwargs: Any) -> None:
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    try:
+        result = loop.run_until_complete(fn(*args, **kwargs))
+        return result
+    finally:
+        loop.close()
 
 
 class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
@@ -381,9 +397,6 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                 "and set MCP_SERVER_URL=http://localhost:8000"
             )
 
-        # External server mode - parse URL to get host and port
-        from urllib.parse import urlparse
-
         parsed = urlparse(external_server_url)
         host = parsed.hostname or "localhost"
         port = parsed.port or 8000
@@ -397,19 +410,6 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
             server_path=None,  # Not needed for external server
         )
         # Don't set KAI_LLM_PARAMS for external server - it should already be configured
-
-        def run_async_in_thread(fn, *args, **kwargs):
-            try:
-                loop = asyncio.get_event_loop()
-            except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-
-            try:
-                result = loop.run_until_complete(fn(*args, **kwargs))
-                return result
-            finally:
-                loop.close()
 
         async def client_task(client_id: str) -> None:
             print(f"[Client {client_id}] starting")
@@ -464,7 +464,9 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                         ) from e
 
                     print(f"[Client {client_id}] created incident {incident_id}")
-                    assert incident_id > 0, f"Invalid incident ID: {incident_id}"
+                    self.assertTrue(
+                        incident_id > 0, f"Invalid incident ID: {incident_id}"
+                    )
 
                     # Create a solution
                     solution_result = await client.session.call_tool(
@@ -504,7 +506,9 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                         ) from e
 
                     print(f"[Client {client_id}] created solution {solution_id}")
-                    assert solution_id > 0, f"Invalid solution ID: {solution_id}"
+                    self.assertTrue(
+                        solution_id > 0, f"Invalid solution ID: {solution_id}"
+                    )
 
                     # Get success rate (before accepting)
                     success_rate_result = await client.session.call_tool(
@@ -520,7 +524,6 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                     )
                     # Parse and verify success rate
                     success_rate_text = success_rate_result.content[0].text
-                    import json
 
                     success_rate = json.loads(success_rate_text)
                     print(f"[Client {client_id}] got success rate: {success_rate}")
@@ -528,7 +531,9 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                     # Handle both single object and array response
                     if isinstance(success_rate, list):
                         # If it's a list, check the first element
-                        assert len(success_rate) > 0, "Success rate list is empty"
+                        self.assertTrue(
+                            len(success_rate) > 0, "Success rate list is empty"
+                        )
                         rate = success_rate[0]
                     else:
                         rate = success_rate
@@ -539,12 +544,14 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                     initial_pending = rate["pending_solutions"]
 
                     # In a shared database, we should see at least our solution
-                    assert (
-                        rate["counted_solutions"] >= 1
-                    ), f"Expected at least 1 counted solution, got {rate['counted_solutions']}"
-                    assert (
-                        rate["pending_solutions"] >= 1
-                    ), f"Expected at least 1 pending solution, got {rate['pending_solutions']}"
+                    self.assertTrue(
+                        rate["counted_solutions"] >= 1,
+                        f"Expected at least 1 counted solution, got {rate['counted_solutions']}",
+                    )
+                    self.assertTrue(
+                        rate["pending_solutions"] >= 1,
+                        f"Expected at least 1 pending solution, got {rate['pending_solutions']}",
+                    )
 
                     # Accept the file
                     await client.session.call_tool(
@@ -583,7 +590,9 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                     # Handle both single object and array response
                     if isinstance(success_rate2, list):
                         # If it's a list, check the first element
-                        assert len(success_rate2) > 0, "Success rate list is empty"
+                        self.assertTrue(
+                            len(success_rate2) > 0, "Success rate list is empty"
+                        )
                         rate2 = success_rate2[0]
                     else:
                         rate2 = success_rate2
@@ -595,24 +604,28 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
 
                     # Since multiple clients may be working on the same violation types,
                     # we need to allow for some variance in the counts
-                    assert (
-                        delta_accepted >= 1
-                    ), f"Expected accepted to increase by at least 1, but delta was {delta_accepted} (from {initial_accepted} to {rate2['accepted_solutions']})"
-                    assert (
-                        delta_pending <= 0
-                    ), f"Expected pending to stay same or decrease, but delta was {delta_pending} (from {initial_pending} to {rate2['pending_solutions']})"
+                    self.assertTrue(
+                        delta_accepted >= 1,
+                        f"Expected accepted to increase by at least 1, but delta was {delta_accepted} (from {initial_accepted} to {rate2['accepted_solutions']})",
+                    )
+                    self.assertTrue(
+                        delta_pending <= 0,
+                        f"Expected pending to stay same or decrease, but delta was {delta_pending} (from {initial_pending} to {rate2['pending_solutions']})",
+                    )
 
                     # The sum of accepted + pending changes should be close to 0
                     # (one solution moved from pending to accepted)
                     total_delta = delta_accepted + delta_pending
-                    assert (
-                        -2 <= total_delta <= 2
-                    ), f"Expected net change close to 0, but was {total_delta} (accepted: +{delta_accepted}, pending: {delta_pending})"
+                    self.assertTrue(
+                        -2 <= total_delta <= 2,
+                        f"Expected net change close to 0, but was {total_delta} (accepted: +{delta_accepted}, pending: {delta_pending})",
+                    )
 
                     # Total counted should remain the same (or increase if others added solutions)
-                    assert (
-                        rate2["counted_solutions"] >= initial_counted
-                    ), f"Counted solutions should not decrease (was {initial_counted}, now {rate2['counted_solutions']})"
+                    self.assertTrue(
+                        rate2["counted_solutions"] >= initial_counted,
+                        f"Counted solutions should not decrease (was {initial_counted}, now {rate2['counted_solutions']})",
+                    )
 
                     print(
                         f"[Client {client_id}] ✓ All operations completed successfully"
@@ -646,7 +659,7 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                     )
                 except Exception as exc:
                     # Fail immediately with detailed error information
-                    self.fail(f"Task {task_id} failed: {exc}")
+                    self.fail(f"[Main] Task {task_id} failed: {exc}")
 
         await asyncio.sleep(10)  # wait a moment for all output to be printed
 

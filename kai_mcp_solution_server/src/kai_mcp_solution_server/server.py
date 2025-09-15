@@ -147,7 +147,7 @@ async def kai_solution_server_lifespan(
 ) -> AsyncIterator[KaiSolutionServerContext]:
     log("kai_solution_server_lifespan")
     try:
-        settings = SolutionServerSettings()
+        settings = SolutionServerSettings()  # type: ignore
         log(f"Settings: {settings.model_dump_json(indent=2)}")
 
         log("creating context")
@@ -156,15 +156,16 @@ async def kai_solution_server_lifespan(
         log("yielding context")
 
         yield ctx
-    except Exception as e:
 
+    except Exception as e:
         log(f"Error in lifespan: {traceback.format_exc()}")
         raise e
+
     finally:
         # Clean up database connections when client disconnects
-        if "ctx" in locals() and hasattr(ctx, "engine"):
+        if "ctx" in locals() and hasattr(ctx, "engine"):  # type: ignore
             log("Disposing database engine...")
-            await ctx.engine.dispose()
+            await ctx.engine.dispose()  # type: ignore
             log("Database engine disposed")
 
 
