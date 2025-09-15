@@ -4,14 +4,15 @@ import concurrent.futures
 import datetime
 import json
 import os
+import pathlib
 import unittest
-from typing import Any
+from typing import Any, Awaitable, Callable, TypeVar, cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
 from fastmcp import Client
 from mcp import ClientSession
-from mcp.types import CallToolResult
+from mcp.types import CallToolResult, Content, TextContent
 
 from kai_mcp_solution_server.analyzer_types import ExtendedIncident
 from kai_mcp_solution_server.server import GetBestHintResult, SuccessRateMetric
@@ -22,7 +23,12 @@ from tests.ssl_utils import apply_ssl_bypass
 # TODO: The tracebacks from these tests contain horrible impossibly-to-parse output.
 
 
-def run_async_in_thread(fn, *args: Any, **kwargs: Any) -> None:
+T = TypeVar("T")
+
+
+def run_async_in_thread(
+    fn: Callable[..., Awaitable[T]], *args: Any, **kwargs: Any
+) -> T:
     try:
         loop = asyncio.get_event_loop()
     except RuntimeError:
@@ -57,8 +63,8 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
 
         self.mcp_args = MCPClientArgs(
             transport="stdio",
-            server_path=os.path.join(
-                self.current_dir, "../src/kai_mcp_solution_server/"
+            server_path=pathlib.Path(
+                os.path.join(self.current_dir, "../src/kai_mcp_solution_server/")
             ),
         )
 
@@ -113,7 +119,7 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
             )
 
     async def call_tool(
-        self, session: ClientSession, tool_name: str, args: dict
+        self, session: ClientSession, tool_name: str, args: dict[str, Any]
     ) -> CallToolResult:
         """
         Helper method to call a tool and assert the response is not an error.
@@ -197,7 +203,9 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                     ]
                 },
             )
-            metric = SuccessRateMetric(**json.loads(get_success_rate.content[0].text))
+            metric = SuccessRateMetric(
+                **json.loads(cast(TextContent, get_success_rate.content[0]).text)
+            )
             print(f"Success rate of {RULESET_NAME_A}/{VIOLATION_NAME_A}: {metric}")
             self.assertEqual(
                 metric,
@@ -231,7 +239,9 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                     ]
                 },
             )
-            metric = SuccessRateMetric(**json.loads(get_success_rate.content[0].text))
+            metric = SuccessRateMetric(
+                **json.loads(cast(TextContent, get_success_rate.content[0]).text)
+            )
             print(
                 f"Success rate of {RULESET_NAME_A}/{VIOLATION_NAME_A} after accepting file: {metric}"
             )
@@ -251,7 +261,9 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                     "violation_name": VIOLATION_NAME_A,
                 },
             )
-            best_hint = GetBestHintResult(**json.loads(get_best_hint.content[0].text))
+            best_hint = GetBestHintResult(
+                **json.loads(cast(TextContent, get_best_hint.content[0]).text)
+            )
             print(f"Best hint for {RULESET_NAME_A}/{VIOLATION_NAME_A}: {best_hint}")
             self.assertEqual(best_hint.hint, llm_params["responses"][0])
 
@@ -315,7 +327,9 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                     ]
                 },
             )
-            metric = SuccessRateMetric(**json.loads(get_success_rate.content[0].text))
+            metric = SuccessRateMetric(
+                **json.loads(cast(TextContent, get_success_rate.content[0]).text)
+            )
             print(f"Success rate of {RULESET_NAME_A}/{VIOLATION_NAME_A}: {metric}")
             self.assertEqual(
                 metric,
@@ -349,7 +363,9 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                     ]
                 },
             )
-            metric = SuccessRateMetric(**json.loads(get_success_rate.content[0].text))
+            metric = SuccessRateMetric(
+                **json.loads(cast(TextContent, get_success_rate.content[0]).text)
+            )
             print(
                 f"Success rate of {RULESET_NAME_A}/{VIOLATION_NAME_A} after accepting file: {metric}"
             )
@@ -370,7 +386,9 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                     "violation_name": VIOLATION_NAME_B,
                 },
             )
-            best_hint = GetBestHintResult(**json.loads(get_best_hint.content[0].text))
+            best_hint = GetBestHintResult(
+                **json.loads(cast(TextContent, get_best_hint.content[0]).text)
+            )
             print(f"Best hint for {RULESET_NAME_A}/{VIOLATION_NAME_A}: {best_hint}")
             self.assertEqual(best_hint.hint, llm_params["responses"][0])
 
@@ -451,16 +469,18 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
 
                     # Check for tool call errors
                     if incident_result.isError:
-                        error_msg = incident_result.content[0].text
+                        error_msg = cast(TextContent, incident_result.content[0]).text
                         raise Exception(
                             f"[Client {client_id}] create_incident failed: {error_msg}"
                         )
 
                     try:
-                        incident_id = int(incident_result.content[0].text)
+                        incident_id = int(
+                            cast(TextContent, incident_result.content[0]).text
+                        )
                     except (ValueError, TypeError) as e:
                         raise Exception(
-                            f"[Client {client_id}] create_incident returned invalid response: {incident_result.content[0].text}"
+                            f"[Client {client_id}] create_incident returned invalid response: {cast(TextContent, incident_result.content[0]).text}"
                         ) from e
 
                     print(f"[Client {client_id}] created incident {incident_id}")
@@ -493,16 +513,18 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
 
                     # Check for tool call errors
                     if solution_result.isError:
-                        error_msg = solution_result.content[0].text
+                        error_msg = cast(TextContent, solution_result.content[0]).text
                         raise Exception(
                             f"[Client {client_id}] create_solution failed: {error_msg}"
                         )
 
                     try:
-                        solution_id = int(solution_result.content[0].text)
+                        solution_id = int(
+                            cast(TextContent, solution_result.content[0]).text
+                        )
                     except (ValueError, TypeError) as e:
                         raise Exception(
-                            f"[Client {client_id}] create_solution returned invalid response: {solution_result.content[0].text}"
+                            f"[Client {client_id}] create_solution returned invalid response: {cast(TextContent, solution_result.content[0]).text}"
                         ) from e
 
                     print(f"[Client {client_id}] created solution {solution_id}")
@@ -523,7 +545,9 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                         },
                     )
                     # Parse and verify success rate
-                    success_rate_text = success_rate_result.content[0].text
+                    success_rate_text = cast(
+                        TextContent, success_rate_result.content[0]
+                    ).text
 
                     success_rate = json.loads(success_rate_text)
                     print(f"[Client {client_id}] got success rate: {success_rate}")
@@ -581,7 +605,9 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                             ]
                         },
                     )
-                    success_rate_text2 = success_rate_result2.content[0].text
+                    success_rate_text2 = cast(
+                        TextContent, success_rate_result2.content[0]
+                    ).text
                     success_rate2 = json.loads(success_rate_text2)
                     print(
                         f"[Client {client_id}] got success rate after accept: {success_rate2}"
