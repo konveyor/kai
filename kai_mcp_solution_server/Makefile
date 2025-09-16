@@ -3,7 +3,7 @@
 # Configuration
 IMAGE ?= quay.io/konveyor/kai-mcp-solution-server:latest
 NAMESPACE ?= konveyor-kai-solution-server
-MOUNT_PATH ?= /
+MOUNT_PATH ?= ""
 KAI_DB_DSN ?= sqlite+aiosqlite:///kai_solution_server.db
 
 # Directories

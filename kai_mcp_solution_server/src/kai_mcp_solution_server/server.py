@@ -929,4 +929,4 @@ async def tool_reject_file(
     )
 
 
-app = mcp.http_app()
+app = mcp.http_app(path="/")
