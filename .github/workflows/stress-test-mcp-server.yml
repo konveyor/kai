@@ -61,7 +61,7 @@ jobs:
           NUM_CONCURRENT_CLIENTS: ${{ github.event.inputs.num_clients || '100' }}
         run: |
           echo "Starting MCP server connected to PostgreSQL..."
-          uv run python -m kai_mcp_solution_server --transport streamable-http --host 0.0.0.0 --port 8000 &
+          uv run python -m uvicorn kai_mcp_solution_server.server:app --host 0.0.0.0 --port 8000 --root-path=${MOUNT_PATH:-} &
           SERVER_PID=$!
 
           # Wait for server to be ready
