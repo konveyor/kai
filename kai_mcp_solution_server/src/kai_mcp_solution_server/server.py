@@ -927,3 +927,6 @@ async def tool_reject_file(
         client_id,
         file_uri,
     )
+
+
+app = mcp.http_app()
