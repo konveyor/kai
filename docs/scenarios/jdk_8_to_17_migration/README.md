@@ -82,7 +82,7 @@ This tutorial was built and tested using the following setup:
 
 - Java Version: `OpenJDK 17`
 - Maven: `3.9.9`
-- Konveyor AI VSCode Extension Version: `0.1.0`
+- Konveyor AI VSCode Extension Version: `0.2.0`
 - LLM Model Used: `gpt-o1-mini`
 
 _Results may vary if a different LLM model is used._ The AI model’s ability to detect and refactor code depends on the specific model's training data and capabilities. If using a different model (e.g., `gpt-4`, `llama-3`), the migration suggestions may differ in accuracy, or level of detail.
@@ -122,7 +122,7 @@ Follow this [getting started guide](https://github.com/konveyor/kai/blob/main/do
 
 **_Note: At the time of writing this guide, we used version 0.1.0_**
 
-In the [configure settings for analysis](https://github.com/konveyor/kai/blob/main/docs/getting_started.md#configure-settings-for-analysis) section, 
+In the [configure settings for analysis](https://github.com/konveyor/kai/blob/main/docs/getting_started.md#configure-settings-for-analysis) section,
 you will choose label selectors (target and/or source technologies).
 
 In this scenario, we will analyze the application using the following migration targets to identify potential areas for improvement:
@@ -135,12 +135,12 @@ _We need OpenJDK 11 as a target when migrating from Java 8 to 17 because some de
 
 ![select-target.png](images/select_target_technologies.png)
 
-Skip selecting source platform. 
+Skip selecting source platform.
 
 Let's select our custom rule
-  ![custom rule-1](images/custom_rules_1.png)
-  You will see a notification that custom rules updated
-  ![custom rule-2](images/custom_rules_2.png)
+![custom rule-1](images/custom_rules_1.png)
+You will see a notification that custom rules updated
+![custom rule-2](images/custom_rules_2.png)
 
 ## Step 2: Understanding the Custom Rule
 
@@ -251,19 +251,20 @@ The built-in rule `javax-to-jakarta-dependencies-00001` coming from target `jaka
   description: The 'javax' groupId has been replaced by 'jakarta' group id in dependencies.
   effort: 1
   labels:
-  - konveyor.io/target=jakarta-ee9+
-  - konveyor.io/target=jakarta-ee
-  - konveyor.io/target=eap8
-  - konveyor.io/target=eap
-  - konveyor.io/target=jws6+
-  - konveyor.io/target=jws
-  - konveyor.io/source=spring5
-  - konveyor.io/target=spring6+
-  - konveyor.io/source
+    - konveyor.io/target=jakarta-ee9+
+    - konveyor.io/target=jakarta-ee
+    - konveyor.io/target=eap8
+    - konveyor.io/target=eap
+    - konveyor.io/target=jws6+
+    - konveyor.io/target=jws
+    - konveyor.io/source=spring5
+    - konveyor.io/target=spring6+
+    - konveyor.io/source
   links:
-  - title: Jakarta EE
-    url: https://jakarta.ee/
-  message: Update the group dependency by replacing the `javax.{{renamedG}}` groupId
+    - title: Jakarta EE
+      url: https://jakarta.ee/
+  message:
+    Update the group dependency by replacing the `javax.{{renamedG}}` groupId
     with `jakarta.{{renamedG}}`
   ruleID: javax-to-jakarta-dependencies-00001
   when:
@@ -281,7 +282,7 @@ Let's run our initial analysis:
 1. Once you have RPC server initialized, navigate to "Konveyor Analysis View" and click Run Analysis. Open the command palette by pressing `Command + Shift + P` to find it.
    ![start-running-analysis.png](images/start_running_analysis.png)
 
-2. The Konveyor Analysis View lists the found analysis issues.  We can filter them by `Files`. On the left side, the Konveyor Issue Panel groups files based on similar issues for easier navigation.
+2. The Konveyor Analysis View lists the found analysis issues. We can filter them by `Files`. On the left side, the Konveyor Issue Panel groups files based on similar issues for easier navigation.
 
 ![incidents-files.png](images/analysis_view_issues.png)
 
@@ -350,7 +351,6 @@ reasoning='\nTo migrate the provided Java 8 code to OpenJDK 17, we need to addre
 
 The LLM was smart to identify that `sun.misc.BASE64Encoder` is deprecated and decided to update that as well.
 
-
 ### 3.2 Issue - The package 'javax' has been replaced by 'jakarta'
 
 Once the changes to pom.xml are applied, Kai automatically retriggers analysis and updates the analysis view
@@ -360,6 +360,7 @@ Once the changes to pom.xml are applied, Kai automatically retriggers analysis a
 #### Identifying Issues
 
 Konveyor analysis detected multiple import statements that require updates from **javax** to **jakarta**:
+
 - **Library.java**
   - Line **7**: Replace `javax.servlet.http.HttpServletResponse` with `jakarta.servlet.http.HttpServletResponse`
 - **LibraryServlet.java**
@@ -382,7 +383,6 @@ Kai processes the request in **Library.java** and **LibraryServlet.java**.![java
   The **right panel** updates it to `jakarta.servlet.http.HttpServletResponse`
 
 ![jakarta_accept_fixes.png](images/reviewing_resolutions.png)
-
 
 - **LibraryServlet.java**
   The **right panel** displays the suggested **jakarta.servlet** imports.
