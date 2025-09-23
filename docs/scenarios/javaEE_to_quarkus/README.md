@@ -16,6 +16,7 @@ solved a similar problem in the past.
     - [2.1 Change import namespaces](#21-change-import-namespaces)
     - [2.2 Modify Scope from CDI bean requirements](#22-modify-scope-from-cdi-bean-requirements)
     - [2.3 EJB Remote](#23-ejb-remote)
+    - [Notice](#notice)
     - [2.4 JMS to SmallRye](#24-jms-to-smallrye)
   - [Background](#background)
     - [Core Workflow](#core-workflow)
@@ -222,6 +223,14 @@ annotations.
 Due to the absence of support for Remote EJBs in Quarkus, you will notice that
 these functionalities are removed and replaced with REST functionality.
 
+### Notice
+
+> [!WARNING]
+>
+> The rest of this guide has not been updated to the latest version of Kai.
+> During our test day, we should figure out how things need to change. For me,
+> the MDBs were not showing up during analysis results, so Kai couldn't fix them.
+
 ### 2.4 JMS to SmallRye
 
 As you can see, there is an option to search for issues where files are grouped
@@ -280,6 +289,10 @@ mvn clean install -U && mvn compile
 ```
 
 ## Background
+
+> [!WARNING]
+>
+> This section is most likely not accurate anymore.
 
 ### Core Workflow
 
