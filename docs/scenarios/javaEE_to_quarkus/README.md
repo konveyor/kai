@@ -21,6 +21,10 @@ solved a similar problem in the past.
   - [Background](#background)
     - [Core Workflow](#core-workflow)
     - [Agentic Workflow](#agentic-workflow)
+      - [AnalyzerAgent](#analyzeragent)
+      - [MavenCompilerAgent](#mavencompileragent)
+      - [MavenDependencyAgent](#mavendependencyagent)
+      - [ReflectionAgent](#reflectionagent)
     - [Effort-Based Resolution](#effort-based-resolution)
   - [Step 3: Deploy app to Kubernetes](#step-3-deploy-app-to-kubernetes)
   - [Debug and File Incidents](#debug-and-file-incidents)
@@ -316,7 +320,7 @@ More information available
 The Agentic Workflow enables multiple agents to work together to resolve
 migration issues. The key agents include:
 
-**AnalyzerAgent**
+#### AnalyzerAgent
 
 The initial step in identifying migration issues and generating LLM-based
 solutions. Once the LLM response is received, it applies the suggested changes,
@@ -324,20 +328,20 @@ triggering various symbol resolution tasks.
 
 Upon completion, Validators reanalyze the codebase.
 
-**MavenCompilerAgent**
+#### MavenCompilerAgent
 
 Handles all non-dependency-related compilation errors.
 
 Example: Resolves SymbolNotFoundError tasks.
 
-**MavenDependencyAgent**
+#### MavenDependencyAgent
 
 Manages all dependency-related issues detected by both the Analyzer Validator
 and Compilation Validator.
 
 Example: Resolves PackageDoesNotExistError tasks.
 
-**ReflectionAgent**
+#### ReflectionAgent
 
 Invoked after each task or group of tasks to review and validate the changes
 (Reflection Iteration 1). If new tasks arise, such as
