@@ -227,7 +227,9 @@ these functionalities are removed and replaced with REST functionality.
 <!-- Needs updating past this point -->
 
 As you can see, there is an option to search for issues where files are grouped
-by common incidents. Look for "JMS not supported in Quarkus." The files
+by common incidents. Look for "JMS not supported in Quarkus".
+
+The files
 `OrderServiceMDB.java` and `InventoryNotificationMDB.java` are grouped under
 this issue. However, these files contain additional issues beyond JMS
 incompatibility.
@@ -279,7 +281,7 @@ Any additional incidents can be ignored. To update dependencies from the
 repository and compile the project, run the following command
 
 ```bash
- mvn clean install -U && mvn compile
+mvn clean install -U && mvn compile
 ```
 
 ## Background
