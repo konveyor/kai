@@ -95,38 +95,38 @@ to identify potential areas for improvement:
 
 Upon a fresh install of the extension, you should see something like this:
 
-![](images/no_active_profile_selected.png)
+![No active profile selected](images/no_active_profile_selected.png)
 
 Click on "Manage Profiles".
 
-![](images/manage_profiles_before_new.png)
+![Manage Profiles](images/manage_profiles_before_new.png)
 
 Create a profile with the aforementioned following target technologies:
 
-![](images/manage_profiles_add_target_technologies.png)
+![Manage Profiles](images/manage_profiles_add_target_technologies.png)
 
 Return back to the main "Konveyor Analysis View" page and click the settings
 icon in the top right.
 
-![](images/analysis_view_after_profile.png)
+![Analysis View](images/analysis_view_after_profile.png)
 
-![](images/get_ready_to_analyze_before_genai.png)
+![Get Ready to Analyze](images/get_ready_to_analyze_before_genai.png)
 
 Then, click "Configure GenAI Settings". Input your GenAI Credentials, for
 example, providing an `OPENAI_API_KEY` variable.
 
-![](images/empty_provider_settings.png)
+![Configure GenAI Settings](images/empty_provider_settings.png)
 
 Return to the "Konveyor Analysis View" and click "Start".
 
-![](images/analysis_view_after_started.png)
+![Analysis View](images/analysis_view_after_started.png)
 
 ## Step 2: Run Analysis
 
 Let's perform our initial analysis. Click "Run Analysis". Once the analysis is
 complete, you will see many incidents.
 
-![](images/analysis_view_first_analysis.png)
+![Analysis View](images/analysis_view_first_analysis.png)
 
 Let's focus on fixing only the 6 files necessary to migrate the Coolstore
 application.
@@ -160,26 +160,26 @@ areas that require attention during the migration process.
 
 Search for the `InventoryEntity.java file`. Click on the top right button to resolve all incidents or individual incidents as shown below.
 
-![](images/analysis_view_fix_first_file.png)
+![Analysis View fix first file](images/analysis_view_fix_first_file.png)
 
 The "Resolution Details" window will display the requested fix information as
 shown below.
 
-![](images/resolution_details_1.png)
+![Resolution Details](images/resolution_details_1.png)
 
 You can view the reasoning behind the suggested changes and additional
 information provided by Kai.
 
-![](images/resolution_details_2.png)
+![Resolution Details](images/resolution_details_2.png)
 
 Moreover, you can see the additional number of errors that requires your
 attention and number of modified files.
 
-![](images/resolution_details_3.png)
+![Resolution Details](images/resolution_details_3.png)
 
 Click on "Review Changes" to view the differences.
 
-![](images/review_changes_1.png)
+![Review Changes](images/review_changes_1.png)
 
 Accept the changes by accepting the hunks individually, or by returning to the
 previous screen and clicking "Accept All".
@@ -201,13 +201,13 @@ Let's review each file and fix all associated issues one by one. The effort
 level will remain low. Just like in Step 2.1, we will search for the file and
 request a resolution.
 
-![](images/analysis_view_catalog_service.png)
+![Analysis View CatalogService](images/analysis_view_catalog_service.png)
 
 Verify each solution, review the reasoning and additional steps, and ensure the
 requested changes are applied. In this case, Kai will rerun the analysis and
 reduce the number of incidents if the changes are compatible.
 
-![](images/review_changes_2.png)
+![Review Changes](images/review_changes_2.png)
 
 In `CatalogService.java` Stateless EJB is converted to a CDI bean by replacing
 the @Stateless annotation with a scope @ApplicationScoped.
@@ -218,7 +218,7 @@ Now lets request resolution for the `ShippingService.java` as we did in previous
 steps. Kai replaced EJBs with REST functionality and updated related imports and
 annotations.
 
-![](images/review_changes_3.png)
+![Review Changes](images/review_changes_3.png)
 
 Due to the absence of support for Remote EJBs in Quarkus, you will notice that
 these functionalities are removed and replaced with REST functionality.
@@ -246,7 +246,7 @@ In such cases, let's leverage Kai's agentic workflow, which helps solve problems
 in depth. Enable the mode by toggling the "Agent Mode" option in the main
 analysis view.
 
-![](images/analysis_view_toggle_agent_mode.png)
+![Analysis View Toggle Agent Mode](images/analysis_view_toggle_agent_mode.png)
 
 Then fix the "JMS is not Supported in Quarkus" issue. This may take longer as
 Kai is working to resolve a complex problem. Continue accepting changes until

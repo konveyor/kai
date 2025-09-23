@@ -305,7 +305,7 @@ with Jakarta EE 9+"**
 
 Once processed, the resolution is shown and a file diff appears for `pom.xml`:
 
-![](images/fixed_springboot.png)
+![Fixed Springboot](images/fixed_springboot.png)
 
 Update includes:
 
