@@ -320,7 +320,7 @@ Expand the incidents for `Library.java` and you will see three incidents
 
 #### Reviewing Suggested Changes
 
-- The `view changes` option will highlight differences between the **current** and **suggested** versions.
+- The `Review changes` option will highlight differences between the **current** and **suggested** versions.
 - The **right panel** displays:
   - **MD5 is replaced with SHA-256** for secure hashing.
   - **`BASE64Encoder` is replaced with `Base64.getEncoder()`** from `java.util.Base64`, which is the standard modern API.
@@ -328,7 +328,7 @@ Expand the incidents for `Library.java` and you will see three incidents
 
 #### Applying Fixes
 
-Click the `check icon` on the file in the left pane to apply the updates.
+Click `Accept All` to apply the changes.
 
 ![accept-changes.png](images/konveyor_resolutions.png)
 
@@ -350,7 +350,49 @@ reasoning='\nTo migrate the provided Java 8 code to OpenJDK 17, we need to addre
 
 The LLM was smart to identify that `sun.misc.BASE64Encoder` is deprecated and decided to update that as well.
 
-### 3.2 pom.xml
+
+### 3.2 Issue - The package 'javax' has been replaced by 'jakarta'
+
+Once the changes to pom.xml are applied, Kai automatically retriggers analysis and updates the analysis view
+
+![javax_analysis.png](images/javax_analysis.png)
+
+#### Identifying Issues
+
+Konveyor analysis detected multiple import statements that require updates from **javax** to **jakarta**:
+- **Library.java**
+  - Line **7**: Replace `javax.servlet.http.HttpServletResponse` with `jakarta.servlet.http.HttpServletResponse`
+- **LibraryServlet.java**
+  - Line **6**: Replace `javax.servlet.ServletException` with `jakarta.servlet.ServletException`
+  - Line **7**: Replace `javax.servlet.http.HttpServlet` with `jakarta.servlet.http.HttpServlet`
+  - Line **8**: Replace `javax.servlet.http.HttpServletRequest` with `jakarta.servlet.http.HttpServletRequest`
+  - Line **9**: Replace `javax.servlet.http.HttpServletResponse` with `jakarta.servlet.http.HttpServletResponse`
+
+#### Requesting a Fix
+
+Clicking on the **tool icon** next to the issue name initiates the resolution process.
+
+Kai processes the request in **Library.java** and **LibraryServlet.java**.![javax-fix-results.png](images/javax_fix_results.png)
+
+![konveyor-results.png](images/konveyor_results.png)
+
+#### Reviewing Suggested Changes
+
+- **Library.java**
+  The **right panel** updates it to `jakarta.servlet.http.HttpServletResponse`
+
+![jakarta_accept_fixes.png](images/reviewing_resolutions.png)
+
+
+- **LibraryServlet.java**
+  The **right panel** displays the suggested **jakarta.servlet** imports.
+  ![servlet_jakarta_changes.png](images/servlet_jakarta_changes.png)
+
+#### Applying Fixes
+
+Click `Accept All` to apply the changes.
+
+### 3.3 pom.xml
 
 #### Identifying Issues
 
@@ -365,11 +407,10 @@ We will solve both the issues together this time. Clicking on the **tool icon** 
 ![pom_files_fixes.png](images/pom_files_fixes.png)
 ![pom_results.png](images/pom_results.png)
 
-- Once complete, click on the `pom.xml` on the left pane to view the changes.
+- Once complete, click on the `Review Changes`.
 
 #### Reviewing Suggested Changes
 
-- The **left panel** shows the current `pom.xml` file.
 - The **right panel** displays the suggested changes:
   - **Updated `groupId` from `javax.servlet` → `jakarta.servlet`**.
   - **Updated `artifactId` from `javax.servlet-api` → `jakarta.servlet-api`**.
@@ -379,7 +420,7 @@ We will solve both the issues together this time. Clicking on the **tool icon** 
 
 #### Applying Fixes
 
-Click the `check icon` on the file in the left pane to apply the changes.
+Click `Accept All` to apply the changes.
 
 #### Final Output
 
@@ -387,7 +428,7 @@ Click the `check icon` on the file in the left pane to apply the changes.
 <dependency>
     <groupId>jakarta.servlet</groupId>
     <artifactId>jakarta.servlet-api</artifactId>
-    <version>5.0.0</version> <!-- Ensure this version is compatible with Jakarta EE 9+ -->
+    <version>5.0.0</version> <!-- Updated version to a compatible one -->
     <scope>provided</scope>
 </dependency>
 
@@ -398,52 +439,9 @@ Click the `check icon` on the file in the left pane to apply the changes.
 </properties>
 ```
 
-### 3.3 Issue - The package 'javax' has been replaced by 'jakarta'
-
-Once the changes to pom.xml are applied, Kai automatically retriggers analysis and updates the analysis view
-
-![javax_analysis.png](images/javax_analysis.png)
-
-#### Identifying Issues
-
-Konveyor analysis detected multiple import statements that require updates from **javax** to **jakarta**:
-- **Library.java**
-  - Line **8**: Replace `javax.servlet.http.HttpServletResponse` with `jakarta.servlet.http.HttpServletResponse`
-- **LibraryServlet.java**
-  - Line **6**: Replace `javax.servlet.ServletException` with `jakarta.servlet.ServletException`
-  - Line **7**: Replace `javax.servlet.http.HttpServlet` with `jakarta.servlet.http.HttpServlet`
-  - Line **8**: Replace `javax.servlet.http.HttpServletRequest` with `jakarta.servlet.http.HttpServletRequest`
-  - Line **9**: Replace `javax.servlet.http.HttpServletResponse` with `jakarta.servlet.http.HttpServletResponse`
-
-#### Requesting a Fix
-
-Clicking on the **tool icon** next to the issue name initiates the resolution process.
-![jakarta_fix.png](images/jakarta_fix.png)
-
-Kai processes the request in **Library.java** and **LibraryServlet.java**.![javax-fix-results.png](images/javax_fix_results.png)
-
-![konveyor-results.png](images/konveyor_results.png)
-
-#### Reviewing Suggested Changes
-
-![jakarta_accept_fixes.png](images/reviewing_resolutions.png)
-
-- **Library.java**
-  The **left panel** contains the `javax.servlet.http.HttpServletResponse` import. The **right panel** updates it to `jakarta.servlet.http.HttpServletResponse`
-  ![servlet_jakarta_changes.png](images/library_jakarta_changes.png)
-
-- **LibraryServlet.java**
-  The **left panel** shows the current code with `javax.servlet` imports.
-  The **right panel** displays the suggested **jakarta.servlet** imports.
-  ![servlet_jakarta_changes.png](images/servlet_jakarta_changes.png)
-
-#### Applying Fixes
-
-Click the `check icon` next to the filenames in the left pane to finalize the updates.
+![resolved-changes.png](images/resolved_changes.png)
 
 After applying all the changes, Kai retriggers analysis, and no further incidents were found, confirming a successful migration.
-
-![resolved-changes.png](images/resolved_changes.png)
 
 ## Step 5: Build the app
 
