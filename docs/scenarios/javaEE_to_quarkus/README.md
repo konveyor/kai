@@ -224,15 +224,8 @@ these functionalities are removed and replaced with REST functionality.
 
 ### 2.4 JMS to SmallRye
 
-<!-- Needs updating past this point -->
-
 As you can see, there is an option to search for issues where files are grouped
 by common incidents. Look for "JMS not supported in Quarkus".
-
-The files
-`OrderServiceMDB.java` and `InventoryNotificationMDB.java` are grouped under
-this issue. However, these files contain additional issues beyond JMS
-incompatibility.
 
 The incident details indicate that JavaEE/JakartaEE JMS elements should be
 removed and replaced with their Quarkus SmallRye/MicroProfile equivalents.
@@ -247,11 +240,13 @@ analysis view.
 ![](images/analysis_view_toggle_agent_mode.png)
 
 Then fix the "JMS is not Supported in Quarkus" issue. This may take longer as
-Kai is working to resolve a complex problem.
+Kai is working to resolve a complex problem. Continue accepting changes until
+the application is migrated.
 
-![jsm-to-smallRye](/docs/scenarios/javaEE_to_quarkus/images/jmstosmllrye1.png)
+![Found more changes to do](images/found_more_changes.png)
 
 Let's review all the changes one by one.
+
 ![jsm-to-smallRye](/docs/scenarios/javaEE_to_quarkus/images/jmstosmallrye2.png)
 
 The migration replaces the JMS-based Message Driven Bean (MDB) with Quarkus
