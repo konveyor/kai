@@ -2,13 +2,20 @@
 
 ## Goal
 
-This scenario demonstrates how **Konveyor AI (Kai)** can streamline the migration of a **Spring Boot 2** application to **Spring Boot 3**, **Java 17**, and **Jakarta EE**. We will use a combination of **default** and **custom rules** to:
+This scenario demonstrates how **Konveyor AI (Kai)** can streamline the
+migration of a **Spring Boot 2** application to **Spring Boot 3**, **Java 17**,
+and **Jakarta EE**. We will use a combination of **default** and **custom
+rules** to:
 
 - Detect deprecated APIs like `WebSecurityConfigurerAdapter`
 - Update `javax.*` imports to `jakarta.*`
 - Ensure compliance with Java 17
 
-The sample application used is [`springboot_simplelogin`](https://github.com/savitharaghunathan/springboot_simplelogin), and the custom rules are located [here](https://github.com/savitharaghunathan/custom_rules/tree/main/springlogin).
+The sample application used is [`springboot_simplelogin`][simplelogin], and the
+custom rules are located [here][simplelogin rules].
+
+[simplelogin]: https://github.com/savitharaghunathan/springboot_simplelogin
+[simplelogin rules]: https://github.com/savitharaghunathan/custom_rules/tree/main/springlogin
 
 ## Background
 
@@ -18,7 +25,8 @@ Spring Boot 3 enforces significant changes including:
 - Java 17 as the baseline JDK
 - Removal of legacy security configurations
 
-These changes often break compilation and require manual refactoring. With Kai, developers can:
+These changes often break compilation and require manual refactoring. With Kai,
+developers can:
 
 - Automatically identify and resolve breaking changes
 - Get LLM-powered refactoring suggestions
@@ -42,25 +50,29 @@ These changes often break compilation and require manual refactoring. With Kai, 
 git clone https://github.com/savitharaghunathan/springboot_simplelogin.git
 
 git clone https://github.com/savitharaghunathan/custom_rules.git
-
 ```
 
 ### 1.2 Install Kai VSCode Extension
 
-Follow the [official guide](https://github.com/konveyor/kai/blob/main/docs/installation.md) for installation instructions.
+Follow the [official
+guide](https://github.com/konveyor/kai/blob/main/docs/installation.md) for
+installation instructions.
 
 ## Step 2: Understand the Custom Rules
 
-Before we run the analysis, let’s understand the custom rules we are going to use for migrating from Spring Boot 2 to Spring Boot 3, focusing specifically on the removal of `WebSecurityConfigurerAdapter` and discouraged configuration overrides.
+Before we run the analysis, let’s understand the custom rules we are going to
+use for migrating from Spring Boot 2 to Spring Boot 3, focusing specifically on
+the removal of `WebSecurityConfigurerAdapter` and discouraged configuration
+overrides.
 
 ### 2.1. Custom Rule for Deprecated configure(AuthenticationManagerBuilder) Method
 
-The `SecurityConfig.java` class configures users and roles using the now-discouraged `configure (AuthenticationManagerBuilder auth)` method:
+The `SecurityConfig.java` class configures users and roles using the
+now-discouraged `configure (AuthenticationManagerBuilder auth)` method:
 
 #### Before Migration
 
 ```java
-
 @Override
 protected void configure(AuthenticationManagerBuilder auth) throws Exception {
     auth.inMemoryAuthentication()
@@ -74,11 +86,15 @@ protected void configure(AuthenticationManagerBuilder auth) throws Exception {
 
 ##### Problem
 
-Overriding `configure(AuthenticationManagerBuilder)` is discouraged in Spring Security 5.7 and won't work in Spring Boot 3/Spring 6, because `WebSecurityConfigurerAdapter` is removed.
+Overriding `configure(AuthenticationManagerBuilder)` is discouraged in Spring
+Security 5.7 and won't work in Spring Boot 3/Spring 6, because
+`WebSecurityConfigurerAdapter` is removed.
 
 ##### Solution
 
-Define a separate `UserDetailsService bean` to configure in-memory authentication. This approach aligns with the modular, bean-based style recommended in Spring Boot 3+
+Define a separate `UserDetailsService bean` to configure in-memory
+authentication. This approach aligns with the modular, bean-based style
+recommended in Spring Boot 3+
 
 #### After Migration
 
@@ -135,10 +151,10 @@ public UserDetailsService userDetailsService(PasswordEncoder encoder) {
       url: https://spring.io/blog/2022/02/21/spring-security-without-the-websecurityconfigureradapter
 ````
 
-### 2.2. Custom Rule for Deprecated configure(HttpSecurity) Method
+### 2.2. Custom Rule for Deprecated `configure(HttpSecurity)` Method
 
-The class also overrides the configure(HttpSecurity http) method to define security rules,
-login flow, and redirects
+The class also overrides the `configure(HttpSecurity http)` method to define
+security rules, login flow, and redirects
 
 #### Before Migration
 
@@ -161,11 +177,15 @@ protected void configure(HttpSecurity http) throws Exception {
 
 ##### Problem
 
-Overriding `configure(HttpSecurity)` is discouraged in Spring Security 5.7. This approach is no longer recommended due to the deprecation of `WebSecurityConfigurerAdapter` in Spring Boot 3+.
+Overriding `configure(HttpSecurity)` is discouraged in Spring Security 5.7. This
+approach is no longer recommended due to the deprecation of
+`WebSecurityConfigurerAdapter` in Spring Boot 3+.
 
 ##### Solution
 
-Declare a `SecurityFilterChain` bean to define all your security logic. Additionally, update `antMatchers()` to `requestMatchers()` in Spring Security 6+.
+Declare a `SecurityFilterChain` bean to define all your security logic.
+Additionally, update `antMatchers()` to `requestMatchers()` in Spring Security
+6+.
 
 #### Updated Code (After Migration)
 
@@ -233,76 +253,41 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
       url: https://spring.io/blog/2022/02/21/spring-security-without-the-websecurityconfigureradapter
 ````
 
-You can learn more about writing your own custom rules [here](https://github.com/konveyor/kai/blob/main/docs/custom_ruleset.md).
+You can learn more about writing your own custom rules
+[here](https://github.com/konveyor/kai/blob/main/docs/custom_ruleset.md).
 
-## Step 3: Configure and Run Analysis
+## Step 3: Configure Analysis Profile
 
-Once you've installed the Konveyor AI VSCode extension and opened your project, follow these steps to configure and run an analysis using your custom rules.
+Once you've installed the Konveyor AI VSCode extension and opened your project,
+follow these steps to configure and run an analysis using your custom rules.
 
-### 3.1 Add Custom Rules
+1. Open the Konveyor Analysis View
+2. Click on the profiles dropdown
+3. Click "Manage Profiles"
+4. Click "+ New Profile"
+5. Add the following target technologies:
+   1. `cloud-readiness`
+   2. `jakarta-ee`
+   3. `openjdk17`
+   4. `spring-boot3+`
+   5. `discovery`
+6. Click "Select Custom Rules..." and add the custom ruleset
 
-1. Open the `Welcome -> Setup Konveyor panel`.
-2. Click on `Configure Custom Rules`.
-3. From the dialog, select the folder containing your custom rules (e.g., `custom_rules/springlogin`) and click Select Custom Rules.
+The end result of the profile should look like this:
 
-![Select Custom Rules](./images/custom_rules.png)
+![custom rules](images/custom_rules_new.png)
 
-### 3.2 Enable Default Rulesets
-
-When prompted, choose “Yes” to also include Konveyor's built-in default rulesets.
-
-![Use Default Rulesets](./images/default_rulesets.png)
-
-**Note:** This ensures both custom and default rules are applied during analysis.
-
-### 3.3 Select the following targets
-
-Click on `configure Sources and Targets` and select the following targets
-
-- cloud-readiness
-- jakarta-ee
-- openjdk17
-
-Since the custom rules contain a custom target for Springboot3 rules, we need to configure the label selector. Click on `Configure Analysis Label Selector` and add the target `(konveyor.io/target=spring-boot3+)` and press `Enter`.
-
-![Label selector](./images/label_selector.png)
-
-Your `settings.json` file should look like this
-
-```yaml
-{
-  "konveyor.analysis.labelSelector": "(konveyor.io/target=cloud-readiness || konveyor.io/target=jakarta-ee || konveyor.io/target=openjdk17) || (konveyor.io/target=spring-boot3+) || (discovery)",
-  "konveyor.analysis.customRules":
-    ["/Users/sraghuna/local_dev/custom_rules/springlogin"],
-  "konveyor.analysis.useDefaultRulesets": true,
-}
-```
-
-### 3.3 Open Analysis Panel
-
-Click on `Open Analysis Panel` to view and manage your analysis tasks.
-
-![Open Analysis Panel](./images/analysis_panel.png)
-
-### 3.4 Start the Analyzer Server
-
-In the top-right corner of the Analysis Panel, click `Start` to launch the analysis server.
-
-![Start Analyzer Server](./images/start_analysis.png)
-
-### 3.5 Run Analysis
-
-Once the server is running, click `Run Analysis` to scan the project and identify issues based on the configured rulesets.
-
-![Run Analysis](./images/run_analysis.png)
+Return to the Konveyor Analysis view, start the analysis server, and click on
+"Run Analysis".
 
 ## 4. Analysis and Kai Resolutions
 
 ### 4.1 Review Analysis Results
 
-After running the analysis, the `Konveyor Analysis View` shows a list of detected issues:
+After running the analysis, the `Konveyor Analysis View` shows a list of
+detected issues:
 
-![Analysis Results](./images/analysis_results.png)
+![Run Analysis](./images/analysis_results_new.png)
 
 Issues include:
 
@@ -313,102 +298,51 @@ Issues include:
 
 ### 4.2 Fix Spring Boot Compatibility with Jakarta EE 9+
 
-Click the tool icon next to the issue: **"Version of Spring Boot not compatible with Jakarta EE 9+"**
+Click the tool icon next to the issue: **"Version of Spring Boot not compatible
+with Jakarta EE 9+"**
 
 ![Request Fix for Spring Boot Version](./images/springboot_version.png)
 
-![Kai Prompt - Spring Boot Fix](./images/springboot_prompt.png)
-
 Once processed, the resolution is shown and a file diff appears for `pom.xml`:
 
-![pom.xml Suggestion](./images/springboot_resolution.png)
+![Fixed Springboot](images/fixed_springboot.png)
 
 Update includes:
 
 - Spring Boot version: `2.7.4` -> `3.0.0`
 - Java version: `8` -> `17`
 
-![pom.xml Merge View](./images/pom_merge.png)
-
-Click on `check` icon to accept and apply the resolution.
-
-![Apply pom.xml Resolution](./images/pom_apply.png)
+Apply the resolution by accepting the individual hunks or clicking "Accept All".
 
 The analysis will re-run and update the incidents.
 
 ### 4.3 Fix Deprecated Security Config (`AuthenticationManagerBuilder`)
 
-Click the tool icon next to: **"configure(AuthenticationManagerBuilder) override is discouraged since Spring Security 5.7."**
+Click the tool icon next to: **"configure(AuthenticationManagerBuilder) override
+is discouraged since Spring Security 5.7."**.
 
-![Fix configure(AuthenticationManagerBuilder)](./images/authmgr_issue.png)
+Viewing the diff, Kai provides a code suggestion to the recommended
+`UserDetailsService` bean:
 
-![Prompt configure(AuthenticationManagerBuilder)](./images/authmgr_prompt.png)
+![User Details Service](images/user_details_service.png)
 
-Click the eye icon to view the diff
-
-![Resolution configure(AuthenticationManagerBuilder)](./images/authmgr_resolution.png)
-
-Kai provides a code suggestion to the recommended `UserDetailsService` bean:
-
-![Kai Suggestion for UserDetailsService](./images/authmgr_recommendation.png)
-
-After applying the resolution, you will see the analysis re-run and update the incidents.
-
-### 4.4 Fix Deprecated Security Config (`HttpSecurity`)
-
-Click the tool icon next to: **"configure(HttpSecurity) override is discouraged since Spring Security 5.7."**
-
-![Fix configure(HttpSecurity)](./images/httpsecurity_issue.png)
-
-![Prompt configure(HttpSecurity)](./images/httpsecurity_prompt.png)
-
-Click the eye icon to review the diff.
-
-![Resolution configure(HttpSecurity)](./images/httpsecurity_resolution.png)
-
-Kai provides a recommended bean-based configuration:
-
-![Kai Suggestion for SecurityFilterChain](./images/httpsecurity_recommendation_1.png)
-
-![Kai Suggestion for SecurityFilterChain](./images/httpsecurity_recommendation_2.png)
-
-The suggested code replaces the deprecated method:
-
-```java
-@Bean
-public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-    http
-        .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/admin").hasRole("ADMIN")
-            .requestMatchers("/user").hasRole("USER")
-            .anyRequest().permitAll()
-        )
-        .formLogin(form -> form
-            .loginPage("/login").permitAll()
-            .successHandler(customAuthenticationSuccessHandler())
-        )
-        .logout(logout -> logout.permitAll());
-
-    return http.build();
-}
-```
-
-Once you have verified the changes, apply the resolution. Analysis will re-run once again and update the issues list.
-
-![Kai apply for SecurityFilterChain](./images/httpsecurity_apply.png)
+After applying the resolution, you will see the analysis re-run and update the
+incidents. Note that in this run, it also solved the **"configure(HttpSecurity)
+override is discouraged since Spring Security 5.7."**
 
 ### 4.5 Replace `javax.*` with `jakarta.*`
 
-Click the tool icon next to the issue: **"The package 'javax' has been replaced by 'jakarta'."**
-
-![Fix javax to jakarta](./images/javax_issue.png)
+Click the tool icon next to the issue: **"The package 'javax' has been replaced
+by 'jakarta'."**
 
 Click the eye icon to review the changes in the files,
 
 - `SecurityConfig.java`
 - `LoginController.java`
+- `User.java`
 
-![Kai Resolution javax](./images/javax_resolution.png)
+![Javax Jakarta 1](images/javax_jakarta_1.png)
+![Javax Jakarta 2](images/javax_jakarta_2.png)
 
 Kai suggests updating the import statement:
 
@@ -417,11 +351,16 @@ Kai suggests updating the import statement:
 + import jakarta.servlet.http.HttpServletRequest;
 ```
 
-After applying the changes to both the files, Kai will re-run analysis and update that no incidents found.
+After applying the changes to both the files, Kai will re-run analysis. Note
+that the issues we wanted to resolve are gone.
 
-![No incidents found](./images/no_incidents_found.png)
+![No incidents left](images/no_incidents_left.png)
 
-The table below summarizes the key changes when migrating Spring Security configurations from Spring Boot 2 to Spring Boot 3 using custom rules. These updates reflect the shift away from inheritance-based configuration (e.g., `WebSecurityConfigurerAdapter`) toward a fully component-based model using `@Bean` definitions.
+The table below summarizes the key changes when migrating Spring Security
+configurations from Spring Boot 2 to Spring Boot 3 using custom rules. These
+updates reflect the shift away from inheritance-based configuration (e.g.,
+`WebSecurityConfigurerAdapter`) toward a fully component-based model using
+`@Bean` definitions.
 
 | **Area**             | **Old Usage**                                                             | **New Recommended Pattern**                              |
 | -------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------- |
@@ -430,31 +369,10 @@ The table below summarizes the key changes when migrating Spring Security config
 | Endpoint matchers    | `antMatchers("/admin")`                                                   | `requestMatchers("/admin")`                              |
 | Class structure      | `extends WebSecurityConfigurerAdapter`                                    | No inheritance. configuration is based on bean injection |
 
-### Manual Fix Example
-
-Kai may not automatically resolve all instances. For example, in `User.java`, update the persistence import manually.
-
-Open the file `User.java` in the `model` package:
-
-![User.java Location](./images/user_file.png)
-
-You will see this legacy import:
-
-```java
-import javax.persistence.*;
-```
-
-replace it with
-
-```java
-import jakarta.persistence.*;
-```
-
-![User.java Jakarta](./images/user_jakarta.png)
-
 ## 5. Run the app
 
-Once all issues have been resolved and changes applied, verify that the project builds and runs successfully.
+Once all issues have been resolved and changes applied, verify that the project
+builds and runs successfully.
 
 First check the modified files with `git status`:
 
@@ -538,11 +456,14 @@ sraghuna@sraghuna-mac springlogin % mvn clean install
 [INFO] ------------------------------------------------------------------------
 ```
 
-You should see Maven successfully compile the project, execute tests, and package the app into a JAR file:
+You should see Maven successfully compile the project, execute tests, and
+package the app into a JAR file:
 
-Look for the `BUILD SUCCESS` message, confirming that the application is packaged correctly for deployment.
+Look for the `BUILD SUCCESS` message, confirming that the application is
+packaged correctly for deployment.
 
-You are now ready to run or deploy the modernized Spring Boot application! You can run the app locally by
+You are now ready to run or deploy the modernized Spring Boot application! You
+can run the app locally by
 
 ```bash
 mvn spring-boot:run
@@ -582,11 +503,13 @@ mvn spring-boot:run
 Navigate to `localhost:8080` and you will see a login screen
 ![Login page](./images/login.png)
 
-Enter `user` and `userpass` as the login credentials and you will see a `Welcome User!` message
-![Login credentials](./images/login_credentials.png)
+Enter `user` and `userpass` as the login credentials and you will see a `Welcome
+User!` message ![Login credentials](./images/login_credentials.png)
 
 ![Welcome user](./images/welcome.png)
 
 ## Conclusion
 
-With Kai, we streamlined the migration of a Spring Boot 2 app to Spring Boot 3 in the above scenario. Kai automatically detected deprecated patterns, suggested modern replacements, and applied updates with minimal manual effort.
+With Kai, we streamlined the migration of a Spring Boot 2 app to Spring Boot 3
+in the above scenario. Kai automatically detected deprecated patterns, suggested
+modern replacements, and applied updates with minimal manual effort.
