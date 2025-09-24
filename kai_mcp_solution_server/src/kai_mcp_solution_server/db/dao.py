@@ -139,6 +139,14 @@ async def get_async_engine(url: URL | str) -> AsyncEngine:
             echo_pool=False,  # Set to True for debugging connection pool
         )
 
+        @event.listens_for(engine.sync_engine, "connect")
+        def _set_pg_timeouts(dbapi_conn: Any, conn_record: Any) -> None:
+            cur = dbapi_conn.cursor()
+            cur.execute("SET idle_session_timeout = '1min'")
+            cur.execute("SET idle_in_transaction_session_timeout = '1min'")
+            cur.execute("SET application_name = 'kai-solution-server'")
+            cur.close()
+
     return engine
 
 
