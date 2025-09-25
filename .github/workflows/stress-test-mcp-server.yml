@@ -66,7 +66,7 @@ jobs:
           KAI_DB_DSN: "postgresql+asyncpg://kai_user:kai_password@localhost:5432/kai_test_db"
           KAI_LLM_PARAMS: '{"model": "fake", "responses": ["Test response"]}'
           MCP_SERVER_URL: "http://localhost:8000"
-          NUM_CONCURRENT_CLIENTS: ${{ github.event.inputs.num_clients || '100' }}
+          NUM_CONCURRENT_CLIENTS: ${{ github.event.inputs.num_clients || '200' }}
         run: |
           echo "Starting MCP server connected to PostgreSQL..."
           uv run python -m kai_mcp_solution_server --transport streamable-http --host 0.0.0.0 --port 8000 &
