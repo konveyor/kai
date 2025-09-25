@@ -1,0 +1,49 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: docker.io/postgres:16
+    container_name: kai-postgres
+    environment:
+      POSTGRES_USER: kai_user
+      POSTGRES_PASSWORD: kai_password
+      POSTGRES_DB: kai_db
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kai_user"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - kai-postgres-data:/var/lib/postgresql/data
+      - /dev/shm:/dev/shm # Better performance with shared memory
+
+  kai-mcp-server:
+    image: ${IMAGE:-kai-mcp-solution-server:latest}
+    container_name: kai-mcp-server
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      KAI_DB_DSN: "postgresql+asyncpg://kai_user:kai_password@postgres:5432/kai_db"
+      KAI_LLM_PARAMS: ${KAI_LLM_PARAMS}
+      MOUNT_PATH: ${MOUNT_PATH:-/}
+      # Pass through API keys and credentials
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
+      AWS_REGION: ${AWS_REGION}
+      OLLAMA_HOST: ${OLLAMA_HOST}
+      # Pass through any other env vars starting with KAI_
+      KAI_API_KEY: ${KAI_API_KEY}
+
+volumes:
+  kai-postgres-data:
