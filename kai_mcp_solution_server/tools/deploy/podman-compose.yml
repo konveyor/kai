@@ -9,9 +9,9 @@ services:
       POSTGRES_PASSWORD: kai_password
       POSTGRES_DB: kai_db
     ports:
-      - "5432:5432"
+      - 5432:5432
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kai_user"]
+      test: [CMD-SHELL, pg_isready -U kai_user]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -26,9 +26,9 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - 8000:8000
     environment:
-      KAI_DB_DSN: "postgresql+asyncpg://kai_user:kai_password@postgres:5432/kai_db"
+      KAI_DB_DSN: postgresql+asyncpg://kai_user:kai_password@postgres:5432/kai_db # trunk-ignore(checkov/CKV_SECRET_4)
       KAI_LLM_PARAMS: ${KAI_LLM_PARAMS}
       MOUNT_PATH: ${MOUNT_PATH:-/}
       # Pass through API keys and credentials
@@ -46,4 +46,4 @@ services:
       KAI_API_KEY: ${KAI_API_KEY}
 
 volumes:
-  kai-postgres-data:
+  kai-postgres-data: {}

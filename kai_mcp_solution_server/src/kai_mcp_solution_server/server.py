@@ -60,7 +60,7 @@ def with_db_recovery(func):
                     return await func(kai_ctx, *args, **kwargs)
                 except IntegrityError:
                     raise
-                except SQLAlchemyTimeoutError as e:
+                except SQLAlchemyTimeoutError:
                     if attempt < max_retries - 1:
                         delay = base_delay * (2**attempt)  # Exponential backoff
                         log(
