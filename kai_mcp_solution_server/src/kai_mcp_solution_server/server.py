@@ -141,31 +141,40 @@ class KaiSolutionServerContext:
             self.model = init_chat_model(**self.settings.llm_params)
 
 
+# FastMCP does lifespans per request, with no way to do a global lifespan. This results
+# in a bunch of "too many connections" errors.
+context_semaphore_hack = asyncio.Semaphore(5)
+
+
 @asynccontextmanager
 async def kai_solution_server_lifespan(
     server: FastMCP[KaiSolutionServerContext],
 ) -> AsyncIterator[KaiSolutionServerContext]:
     log("kai_solution_server_lifespan")
-    try:
-        settings = SolutionServerSettings()
-        log(f"Settings: {settings.model_dump_json(indent=2)}")
+    log("Acquiring context lock...")
+    global context_semaphore_hack
+    async with context_semaphore_hack:
+        log("Context lock acquired.")
+        try:
+            settings = SolutionServerSettings()
+            log(f"Settings: {settings.model_dump_json(indent=2)}")
 
-        log("creating context")
-        ctx = KaiSolutionServerContext(settings)
-        await ctx.create()
-        log("yielding context")
+            log("creating context")
+            ctx = KaiSolutionServerContext(settings)
+            await ctx.create()
+            log("yielding context")
 
-        yield ctx
-    except Exception as e:
+            yield ctx
+        except Exception as e:
 
-        log(f"Error in lifespan: {traceback.format_exc()}")
-        raise e
-    finally:
-        # Clean up database connections when client disconnects
-        if "ctx" in locals() and hasattr(ctx, "engine"):
-            log("Disposing database engine...")
-            await ctx.engine.dispose()
-            log("Database engine disposed")
+            log(f"Error in lifespan: {traceback.format_exc()}")
+            raise e
+        finally:
+            # Clean up database connections when client disconnects
+            if "ctx" in locals() and hasattr(ctx, "engine"):
+                log("Disposing database engine...")
+                await ctx.engine.dispose()
+                log("Database engine disposed")
 
 
 mcp: FastMCP[KaiSolutionServerContext] = FastMCP(
