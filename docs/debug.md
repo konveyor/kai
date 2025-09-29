@@ -1,10 +1,16 @@
 # Debug Kai And File Issues
 
-Logs are divided into two separate files under your working directory at /.vscode/konveyor-logs:
+## Helpful logs
 
-- kai-analyzer-server.log: This file is useful for debugging issues related to running analysis. It provides details about the Java and Maven installation, the initialization of the Java connection, and the startup process of the analyzer server.
+Under your working directory at `/.vscode/konveyor`:
 
-- kai-rpc-server.log: This log is intended for debugging the RPC server and any communication with the AI system. It captures interactions involved in fixing incidents and retrieving results.
+- `analysis_<>.json` is an analysis output file that gives details on the rules used during analysis.
+
+Use `Ctrl + Shift + P` to open the command palette and search for: `Developer: Open Extension Logs Folder` with logs at `konveyor.konveyor/`
+
+- `analyzer.log`: This file is useful for debugging issues related to running analysis. It provides details about the Java and Maven installation, the initialization of the Java connection, and the startup process of the analyzer server.
+
+- `extension.log`: This log is intended for debugging the RPC server and solution server, and any communication with the AI system. It captures interactions involved in fixing incidents and retrieving results.
 
 ## File an Issue
 
@@ -45,4 +51,4 @@ Help us resolve your issue faster by providing detailed information. Please foll
 
 - **No Incidents Found**: Check the `.vscode/settings.json` file in your working directory to ensure the targets are correctly recorded.
 
-- **Failed to Run Initial Analysis**: Verify that the correct Java and Maven versions are set in the current environment. Detailed logs can be found in `kai-analyzer-server.log`.
+- **Failed to Run Initial Analysis**: Verify that the correct Java and Maven versions are set in the current environment. Detailed logs can be found [above](#helpful-logs).

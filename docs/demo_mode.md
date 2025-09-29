@@ -29,17 +29,14 @@ Now, you will need to add the path you would like to use for the cache to the JS
 
 ![image](images/demo_mode/cache_dir_json_settings.png)
 
-The key to use is `conveyor.kai.cacheDir`, and the value is an absolute path to a location on your hard drive. In the example, I am putting the cache to `/Users/shurley/repos/kai/cache,` but you can change this to wherever you would like to store it.
+The key to use is `konveyor.kai.cacheDir`, and the value is an absolute path to a location on your hard drive. In the example, I am putting the cache to `/Users/shurley/repos/kai/cache,` but you can change this to wherever you would like to store it.
 
 ### Configure Demo Mode
 
 To configure demo mode, you must open the settings panel again.
-
-![image](images/open_settings.png)
+See the first step [here](#configure-cache-directory) if needed.
 
 Now, you will search for `kai.demo` and find the setting for demo mode.
-
-![image](images/demo_mode/searched_kai_cache_dir.png)
 
 Select the checkbox if it is not already selected, and you should be all set!
 
