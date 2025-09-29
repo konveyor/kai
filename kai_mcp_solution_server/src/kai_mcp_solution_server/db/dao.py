@@ -112,7 +112,15 @@ async def ensure_tables_exist(engine: AsyncEngine) -> None:
 
 
 async def kill_idle_connections(engine: AsyncEngine) -> None:
-    """Kill all idle connections from this application to the database."""
+    """Kill all idle connections from this application to the database.
+
+    Note: This is a PostgreSQL-specific operation and will be skipped for other databases.
+    """
+    # Only execute for PostgreSQL databases
+    if engine.dialect.name != "postgresql":
+        # Silently skip for non-PostgreSQL databases
+        return
+
     async with engine.begin() as conn:
         await conn.execute(
             text(
@@ -157,13 +165,17 @@ async def get_async_engine(url: URL | str) -> AsyncEngine:
             pool_reset_on_return="rollback",  # Reset connections on return to pool
         )
 
-        @event.listens_for(engine.sync_engine, "connect")
-        def _set_pg_timeouts(dbapi_conn: Any, conn_record: Any) -> None:
-            cur = dbapi_conn.cursor()
-            cur.execute("SET idle_session_timeout = '1min'")
-            cur.execute("SET idle_in_transaction_session_timeout = '1min'")
-            cur.execute("SET application_name = 'kai-solution-server'")
-            cur.close()
+        # Only set PostgreSQL-specific timeouts and application name for PostgreSQL
+        # Note: We check the dialect name after engine creation
+        if engine.dialect.name == "postgresql":
+
+            @event.listens_for(engine.sync_engine, "connect")
+            def _set_pg_timeouts(dbapi_conn: Any, conn_record: Any) -> None:
+                cur = dbapi_conn.cursor()
+                cur.execute("SET idle_session_timeout = '1min'")
+                cur.execute("SET idle_in_transaction_session_timeout = '1min'")
+                cur.execute("SET application_name = 'kai-solution-server'")
+                cur.close()
 
     return engine
 
