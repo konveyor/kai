@@ -1,12 +1,15 @@
 module github.com/konveyor/kai-analyzer
 
-go 1.23.1
+go 1.23.9
+
+toolchain go1.24.7
 
 require (
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/cenkalti/rpc2 v1.0.4
 	github.com/go-logr/logr v1.4.2
 	github.com/konveyor/analyzer-lsp v0.7.0-alpha.2.0.20250701125529-3f487798629f
+	github.com/konveyor/analyzer-lsp/external-providers/generic-external-provider v0.0.0-20250904084509-942c196a2d41
 	github.com/konveyor/analyzer-lsp/external-providers/java-external-provider v0.0.0-20250701125529-3f487798629f
 	go.opentelemetry.io/otel v1.35.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.34.0
@@ -53,9 +56,9 @@ require (
 	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250115164207-1a7da9e5054f // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250218202821-56aae31c358a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250414145226-207652e42e2e // indirect
-	google.golang.org/grpc v1.71.1 // indirect
+	google.golang.org/grpc v1.72.2 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
