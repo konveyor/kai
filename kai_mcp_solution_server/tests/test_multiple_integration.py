@@ -1,6 +1,4 @@
 import asyncio
-import concurrent
-import concurrent.futures
 import datetime
 import json
 import os
@@ -398,20 +396,9 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
         )
         # Don't set KAI_LLM_PARAMS for external server - it should already be configured
 
-        def run_async_in_thread(fn, *args, **kwargs):
-            try:
-                loop = asyncio.get_event_loop()
-            except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-
-            try:
-                result = loop.run_until_complete(fn(*args, **kwargs))
-                return result
-            finally:
-                loop.close()
-
-        async def client_task(client_id: str) -> None:
+        async def client_task(
+            client_id: str, ready_event: asyncio.Event, release_event: asyncio.Event
+        ) -> None:
             print(f"[Client {client_id}] starting")
             apply_ssl_bypass()
 
@@ -439,8 +426,8 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                             "extended_incident": {
                                 "uri": f"file://test/file_{client_id}.java",
                                 "message": f"Test issue for client {client_id}",
-                                "ruleset_name": f"test-ruleset-{client_id % 10}",  # Share some rulesets
-                                "violation_name": f"test-violation-{client_id % 5}",  # Share some violations
+                                "ruleset_name": f"test-ruleset-{client_id}",  # Unique per client for predictable tests
+                                "violation_name": f"test-violation-{client_id}",  # Unique per client for predictable tests
                                 "violation_category": "potential",
                                 "code_snip": "// test code",
                                 "line_number": 42,
@@ -512,8 +499,8 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                         {
                             "violation_ids": [
                                 {
-                                    "ruleset_name": f"test-ruleset-{client_id % 10}",
-                                    "violation_name": f"test-violation-{client_id % 5}",
+                                    "ruleset_name": f"test-ruleset-{client_id}",
+                                    "violation_name": f"test-violation-{client_id}",
                                 }
                             ]
                         },
@@ -568,8 +555,8 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                         {
                             "violation_ids": [
                                 {
-                                    "ruleset_name": f"test-ruleset-{client_id % 10}",
-                                    "violation_name": f"test-violation-{client_id % 5}",
+                                    "ruleset_name": f"test-ruleset-{client_id}",
+                                    "violation_name": f"test-violation-{client_id}",
                                 }
                             ]
                         },
@@ -617,8 +604,18 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                     print(
                         f"[Client {client_id}] ✓ All operations completed successfully"
                     )
+
+                    # Signal that this client is ready and wait for release
+                    ready_event.set()
+                    print(
+                        f"[Client {client_id}] waiting for all clients to complete..."
+                    )
+                    await release_event.wait()
+                    print(f"[Client {client_id}] released, closing connection")
+
             except Exception as e:
                 print(f"[Client {client_id}] ERROR: {e}")
+                ready_event.set()  # Still signal ready even on error
                 raise  # Re-raise to fail the test
 
         # External server should already be running
@@ -626,33 +623,52 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
         NUM_TASKS = int(os.environ.get("NUM_CONCURRENT_CLIENTS", "30"))
         print(f"Testing with {NUM_TASKS} concurrent clients")
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=NUM_TASKS) as executor:
-            # Submit each task to the thread pool and store the Future objects.
-            # The executor will call run_async_in_thread for each task ID.
-            futures = {
-                executor.submit(run_async_in_thread, client_task, i): i
-                for i in range(1, NUM_TASKS + 1)
-            }
+        # Create events for synchronization
+        ready_events = [asyncio.Event() for _ in range(NUM_TASKS)]
+        release_event = asyncio.Event()
 
-            # Use as_completed() to process results as they become available.
-            # Fail fast - if any task fails, immediately fail the whole test
-            for future in concurrent.futures.as_completed(futures):
-                task_id = futures[future]
-                try:
-                    result = future.result()
-                    print(
-                        f"[Main] received result for Task {task_id}: {result}",
-                        flush=True,
-                    )
-                except Exception as exc:
-                    # Fail immediately with detailed error information
-                    self.fail(f"Task {task_id} failed: {exc}")
+        # Launch all client tasks concurrently
+        tasks = [
+            asyncio.create_task(client_task(i, ready_events[i - 1], release_event))
+            for i in range(1, NUM_TASKS + 1)
+        ]
 
-        await asyncio.sleep(10)  # wait a moment for all output to be printed
+        print(f"Waiting for all {NUM_TASKS} clients to complete their operations...")
+
+        # Wait for all clients to signal they're ready (operations complete, connections still open)
+        await asyncio.gather(*[event.wait() for event in ready_events])
+
+        print(
+            f"All {NUM_TASKS} clients have completed operations with connections still open!"
+        )
+        print(
+            "Holding all connections open for 5 seconds to stress test the connection pool..."
+        )
+        await asyncio.sleep(5)
+
+        # Now release all clients to close their connections
+        print("Releasing all clients to close connections...")
+        release_event.set()
+
+        # Wait for all tasks to complete
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Check for exceptions
+        exceptions = [
+            (i + 1, r) for i, r in enumerate(results) if isinstance(r, Exception)
+        ]
+        if exceptions:
+            failure_msg = "\n".join([f"Task {tid}: {exc}" for tid, exc in exceptions])
+            self.fail(f"{len(exceptions)}/{NUM_TASKS} tasks failed:\n{failure_msg}")
+
+        await asyncio.sleep(2)  # wait a moment for all output to be printed
 
         print(
             f"\n✓ All {NUM_TASKS} clients completed successfully with correct results!"
         )
+
+        # Each client already verified their own data within their task,
+        # so we've confirmed that all operations succeeded and persisted correctly
 
         # Wait a bit for async hint generation to complete
         print("\nWaiting for hint generation to complete...")

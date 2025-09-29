@@ -16,6 +16,7 @@ from sqlalchemy import (
     String,
     event,
     func,
+    text,
 )
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
@@ -110,6 +111,30 @@ async def ensure_tables_exist(engine: AsyncEngine) -> None:
         await conn.run_sync(Base.metadata.create_all)
 
 
+async def kill_idle_connections(engine: AsyncEngine) -> None:
+    """Kill all idle connections from this application to the database.
+
+    Note: This is a PostgreSQL-specific operation and will be skipped for other databases.
+    """
+    # Only execute for PostgreSQL databases
+    if engine.dialect.name != "postgresql":
+        # Silently skip for non-PostgreSQL databases
+        return
+
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                """
+                SELECT pg_terminate_backend(pid)
+                FROM pg_stat_activity
+                WHERE application_name = 'kai-solution-server'
+                AND state = 'idle'
+                AND pid != pg_backend_pid()
+                """
+            )
+        )
+
+
 async def get_async_engine(url: URL | str) -> AsyncEngine:
     # Convert to string if URL object
     url_str = str(url)
@@ -133,19 +158,24 @@ async def get_async_engine(url: URL | str) -> AsyncEngine:
             url,
             pool_size=20,  # Base connections maintained in pool
             max_overflow=80,  # Additional connections created as needed (total max = 100)
-            pool_timeout=30,  # Timeout waiting for a connection from pool
+            pool_timeout=60,  # Timeout waiting for a connection from pool
             pool_recycle=3600,  # Recycle connections after 1 hour
             pool_pre_ping=True,  # Test connections before using
             echo_pool=False,  # Set to True for debugging connection pool
+            pool_reset_on_return="rollback",  # Reset connections on return to pool
         )
 
-        @event.listens_for(engine.sync_engine, "connect")
-        def _set_pg_timeouts(dbapi_conn: Any, conn_record: Any) -> None:
-            cur = dbapi_conn.cursor()
-            cur.execute("SET idle_session_timeout = '1min'")
-            cur.execute("SET idle_in_transaction_session_timeout = '1min'")
-            cur.execute("SET application_name = 'kai-solution-server'")
-            cur.close()
+        # Only set PostgreSQL-specific timeouts and application name for PostgreSQL
+        # Note: We check the dialect name after engine creation
+        if engine.dialect.name == "postgresql":
+
+            @event.listens_for(engine.sync_engine, "connect")
+            def _set_pg_timeouts(dbapi_conn: Any, conn_record: Any) -> None:
+                cur = dbapi_conn.cursor()
+                cur.execute("SET idle_session_timeout = '1min'")
+                cur.execute("SET idle_in_transaction_session_timeout = '1min'")
+                cur.execute("SET application_name = 'kai-solution-server'")
+                cur.close()
 
     return engine
 

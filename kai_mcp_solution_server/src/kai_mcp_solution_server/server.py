@@ -1,11 +1,12 @@
 import asyncio
+import functools
 import json
 import os
 import sys
 import traceback
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable, Coroutine
 from contextlib import asynccontextmanager
-from typing import Annotated, Any, cast
+from typing import Annotated, Any, ParamSpec, TypeVar, cast
 
 from fastmcp import Context, FastMCP
 from langchain.chat_models import init_chat_model
@@ -14,7 +15,9 @@ from langchain_community.chat_models.fake import FakeListChatModel
 from pydantic import BaseModel, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from sqlalchemy import URL, and_, make_url, or_, select
-from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.exc import DBAPIError, IntegrityError, OperationalError
+from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from kai_mcp_solution_server.analyzer_types import ExtendedIncident
 from kai_mcp_solution_server.ast_diff.parser import Language, extract_ast_info
@@ -26,6 +29,7 @@ from kai_mcp_solution_server.db.dao import (
     DBSolution,
     DBViolation,
     get_async_engine,
+    kill_idle_connections,
 )
 from kai_mcp_solution_server.db.python_objects import (
     SolutionFile,
@@ -34,6 +38,66 @@ from kai_mcp_solution_server.db.python_objects import (
     associate_files,
     get_diff,
 )
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+
+def with_db_recovery(
+    func: Callable[..., Coroutine[Any, Any, T]]
+) -> Callable[..., Coroutine[Any, Any, T]]:
+    """Decorator to execute database operations with automatic recovery on connection errors.
+
+    Uses a semaphore to limit concurrent DB operations and prevent pool exhaustion.
+    Implements exponential backoff with retry on connection errors.
+    """
+
+    @functools.wraps(func)
+    async def wrapper(
+        kai_ctx: KaiSolutionServerContext, *args: Any, **kwargs: Any
+    ) -> T:
+        if _SharedResources.db_semaphore is None:
+            raise RuntimeError("Database semaphore not initialized")
+
+        # Semaphore ensures we don't overwhelm the connection pool
+        async with _SharedResources.db_semaphore:
+            max_retries = 3
+            base_delay = 0.1  # 100ms base delay
+
+            for attempt in range(max_retries):
+                try:
+                    return await func(kai_ctx, *args, **kwargs)
+                except IntegrityError:
+                    raise
+                except SQLAlchemyTimeoutError:
+                    if attempt < max_retries - 1:
+                        delay = base_delay * (2**attempt)  # Exponential backoff
+                        log(
+                            f"Connection pool timeout (attempt {attempt + 1}), retrying in {delay}s..."
+                        )
+                        await asyncio.sleep(delay)
+                        await _recover_from_db_error()
+                    else:
+                        log(f"Connection pool exhausted after {max_retries} attempts")
+                        raise
+                except (DBAPIError, OperationalError) as e:
+                    if attempt < max_retries - 1:
+                        delay = base_delay * (2**attempt)
+                        log(
+                            f"Database error (attempt {attempt + 1}): {e}, retrying in {delay}s..."
+                        )
+                        await asyncio.sleep(delay)
+                        await _recover_from_db_error()
+                        await kai_ctx.create()
+                    else:
+                        log(f"Database error after {max_retries} attempts, giving up")
+                        raise
+
+            # This should never be reached due to the loop structure,
+            # but mypy needs an explicit unreachable marker
+            raise RuntimeError("Unexpected: retry loop completed without returning")
+
+    return wrapper
 
 
 class SolutionServerSettings(BaseSettings):
@@ -108,37 +172,109 @@ class SolutionServerSettings(BaseSettings):
         return data
 
 
+class _SharedResources:
+    """Global shared resources initialized once at module level."""
+
+    engine: AsyncEngine | None = None
+    session_maker: async_sessionmaker[AsyncSession] | None = None
+    model: BaseChatModel | None = None
+    initialization_lock: asyncio.Lock | None = None
+    initialized: bool = False
+    # Semaphore to limit concurrent DB operations (prevent connection pool exhaustion)
+    db_semaphore: asyncio.Semaphore | None = None
+    max_concurrent_ops: int = 80  # Allow up to 80 concurrent DB operations
+
+
+async def _initialize_shared_resources() -> None:
+    """Initialize shared resources once, protected by a lock."""
+    if _SharedResources.initialization_lock is None:
+        _SharedResources.initialization_lock = asyncio.Lock()
+
+    async with _SharedResources.initialization_lock:
+        if _SharedResources.initialized:
+            return
+
+        from kai_mcp_solution_server.db.dao import Base
+
+        log(
+            "Initializing shared database engine and model (once for all connections)..."
+        )
+        settings = SolutionServerSettings()
+
+        # Initialize semaphore to limit concurrent DB operations
+        _SharedResources.db_semaphore = asyncio.Semaphore(
+            _SharedResources.max_concurrent_ops
+        )
+        log(
+            f"DB operation semaphore initialized with limit: {_SharedResources.max_concurrent_ops}"
+        )
+
+        # Initialize database engine
+        _SharedResources.engine = await get_async_engine(settings.db_dsn)
+        async with _SharedResources.engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        _SharedResources.session_maker = async_sessionmaker(
+            bind=_SharedResources.engine, expire_on_commit=False
+        )
+
+        # Initialize model
+        if settings.llm_params is None:
+            raise ValueError("LLM parameters must be provided in the settings.")
+        elif settings.llm_params.get("model") == "fake":
+            llm_params = settings.llm_params.copy()
+            llm_params.pop("model", None)
+            if "responses" not in llm_params:
+                llm_params["responses"] = ["fake response"]
+            _SharedResources.model = FakeListChatModel(**llm_params)
+        else:
+            _SharedResources.model = init_chat_model(**settings.llm_params)
+
+        _SharedResources.initialized = True
+        log("Shared resources initialized successfully")
+
+
+async def _recover_from_db_error() -> None:
+    """Recover from database errors by killing idle connections or recreating engine."""
+    if _SharedResources.engine is not None:
+        log("Recovering from database error - killing idle connections...")
+        try:
+            await kill_idle_connections(_SharedResources.engine)
+            log("Successfully killed idle connections")
+        except Exception as e:
+            log(f"Failed to kill idle connections: {e}")
+            log("Disposing and recreating engine...")
+            await _SharedResources.engine.dispose()
+            _SharedResources.initialized = False
+            await _initialize_shared_resources()
+
+
 class KaiSolutionServerContext:
+    """Per-connection context that references shared resources."""
+
     def __init__(self, settings: SolutionServerSettings) -> None:
         self.settings = settings
         self.lock = asyncio.Lock()
+        # References to shared resources (set in create())
+        self.engine: AsyncEngine | None = None
+        self.session_maker: async_sessionmaker[AsyncSession] | None = None
+        self.model: BaseChatModel | None = None
 
     async def create(self) -> None:
-        from kai_mcp_solution_server.db.dao import Base
+        """Initialize shared resources if needed and reference them."""
+        await _initialize_shared_resources()
 
-        self.engine = await get_async_engine(self.settings.db_dsn)
+        if _SharedResources.engine is None:
+            raise RuntimeError("Database engine failed to initialize")
+        if _SharedResources.session_maker is None:
+            raise RuntimeError("Session maker failed to initialize")
+        if _SharedResources.model is None:
+            raise RuntimeError("Model failed to initialize")
 
-        # Ensure tables exist (safe - only creates if not already there)
-        async with self.engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-
-        self.session_maker = async_sessionmaker(
-            bind=self.engine, expire_on_commit=False
-        )
-        self.model: BaseChatModel
-
-        if self.settings.llm_params is None:
-            raise ValueError("LLM parameters must be provided in the settings.")
-        elif self.settings.llm_params.get("model") == "fake":
-            llm_params = self.settings.llm_params.copy()
-            llm_params.pop("model", None)
-            if "responses" not in llm_params:
-                llm_params["responses"] = [
-                    "fake response",
-                ]
-            self.model = FakeListChatModel(**llm_params)
-        else:
-            self.model = init_chat_model(**self.settings.llm_params)
+        log(f"Connection using shared engine: {id(_SharedResources.engine)}")
+        self.engine = _SharedResources.engine
+        self.session_maker = _SharedResources.session_maker
+        self.model = _SharedResources.model
 
 
 @asynccontextmanager
@@ -157,15 +293,8 @@ async def kai_solution_server_lifespan(
 
         yield ctx
     except Exception as e:
-
         log(f"Error in lifespan: {traceback.format_exc()}")
         raise e
-    finally:
-        # Clean up database connections when client disconnects
-        if "ctx" in locals() and hasattr(ctx, "engine"):
-            log("Disposing database engine...")
-            await ctx.engine.dispose()
-            log("Database engine disposed")
 
 
 mcp: FastMCP[KaiSolutionServerContext] = FastMCP(
@@ -178,11 +307,14 @@ class CreateIncidentResult(BaseModel):
     solution_id: int
 
 
+@with_db_recovery
 async def create_incident(
     kai_ctx: KaiSolutionServerContext,
     client_id: str,
     extended_incident: ExtendedIncident,
 ) -> int:
+    if kai_ctx.session_maker is None:
+        raise RuntimeError("Session maker not initialized")
     async with kai_ctx.session_maker.begin() as session:
         violation_stmt = select(DBViolation).where(
             DBViolation.ruleset_name == extended_incident.ruleset_name,
@@ -265,6 +397,7 @@ async def tool_create_multiple_incidents(
     return results
 
 
+@with_db_recovery
 async def create_solution(
     kai_ctx: KaiSolutionServerContext,
     client_id: str,
@@ -280,6 +413,8 @@ async def create_solution(
     if used_hint_ids is None:
         used_hint_ids = []
 
+    if kai_ctx.session_maker is None:
+        raise RuntimeError("Session maker not initialized")
     async with kai_ctx.session_maker.begin() as session:
         incident_ids_cond = [
             and_(DBIncident.id == incident_id, DBIncident.client_id == client_id)
@@ -394,10 +529,13 @@ async def tool_create_solution(
     )
 
 
+@with_db_recovery
 async def generate_hint_v1(
     kai_ctx: KaiSolutionServerContext,
     client_id: str,
 ) -> None:
+    if kai_ctx.session_maker is None:
+        raise RuntimeError("Session maker not initialized")
     async with kai_ctx.session_maker.begin() as session:
         solutions_stmt = select(DBSolution).where(
             DBSolution.client_id == client_id,
@@ -440,6 +578,8 @@ async def generate_hint_v1(
 
             log(f"Generating hint for client {client_id} with prompt:\n{prompt}")
 
+            if kai_ctx.model is None:
+                raise RuntimeError("Model not initialized")
             response = await kai_ctx.model.ainvoke(prompt)
 
             log(f"Generated hint: {response.content}")
@@ -458,11 +598,14 @@ async def generate_hint_v1(
             await session.flush()
 
 
+@with_db_recovery
 async def generate_hint_v2(
     kai_ctx: KaiSolutionServerContext,
     client_id: str,
 ) -> None:
     # print(f"Generating hint for client {client_id}", file=sys.stderr)
+    if kai_ctx.session_maker is None:
+        raise RuntimeError("Session maker not initialized")
     async with kai_ctx.session_maker.begin() as session:
         solutions_stmt = select(DBSolution).where(
             DBSolution.client_id == client_id,
@@ -518,6 +661,8 @@ async def generate_hint_v2(
 
             # print(f"Generating hint for client {client_id} with prompt:\n{prompt}", file=sys.stderr)
 
+            if kai_ctx.model is None:
+                raise RuntimeError("Model not initialized")
             response = await kai_ctx.model.ainvoke(prompt)
 
             # print(f"Generated hint: {response.content}", file=sys.stderr)
@@ -536,6 +681,7 @@ async def generate_hint_v2(
             await session.flush()
 
 
+@with_db_recovery
 async def generate_hint_v3(
     kai_ctx: KaiSolutionServerContext,
     client_id: str,
@@ -543,6 +689,8 @@ async def generate_hint_v3(
     """
     Generate hints for accepted solutions using improved prompt format with better structure.
     """
+    if kai_ctx.session_maker is None:
+        raise RuntimeError("Session maker not initialized")
     async with kai_ctx.session_maker.begin() as session:
         solutions_stmt = select(DBSolution).where(
             DBSolution.client_id == client_id,
@@ -610,6 +758,8 @@ async def generate_hint_v3(
             ast_diff_str = "\n\n".join(str(a) for a in ast_diffs if a is not None)
             prompt += f"AST Diff:\n{ast_diff_str}\n\n"
 
+            if kai_ctx.model is None:
+                raise RuntimeError("Model not initialized")
             response = await kai_ctx.model.ainvoke(prompt)
 
             hint = DBHint(
@@ -626,11 +776,14 @@ async def generate_hint_v3(
             await session.flush()
 
 
+@with_db_recovery
 async def delete_solution(
     kai_ctx: KaiSolutionServerContext,
     client_id: str,
     solution_id: int,
 ) -> bool:
+    if kai_ctx.session_maker is None:
+        raise RuntimeError("Session maker not initialized")
     async with kai_ctx.session_maker.begin() as session:
         sln = await session.get(DBSolution, solution_id)
         if sln is None:
@@ -665,11 +818,14 @@ class GetBestHintResult(BaseModel):
     hint_id: int
 
 
+@with_db_recovery
 async def get_best_hint(
     kai_ctx: KaiSolutionServerContext,
     ruleset_name: str,
     violation_name: str,
 ) -> GetBestHintResult | None:
+    if kai_ctx.session_maker is None:
+        raise RuntimeError("Session maker not initialized")
     async with kai_ctx.session_maker.begin() as session:
         violation_name_stmt = select(DBViolation).where(
             DBViolation.ruleset_name == ruleset_name,
@@ -727,6 +883,7 @@ class SuccessRateMetric(BaseModel):
     unknown_solutions: int = 0
 
 
+@with_db_recovery
 async def get_success_rate(
     kai_ctx: KaiSolutionServerContext,
     violation_ids: list[ViolationID],
@@ -736,6 +893,8 @@ async def get_success_rate(
     if len(violation_ids) == 0:
         return result
 
+    if kai_ctx.session_maker is None:
+        raise RuntimeError("Session maker not initialized")
     async with kai_ctx.session_maker.begin() as session:
         violations_where = or_(  # type: ignore[arg-type]
             and_(
@@ -809,11 +968,14 @@ async def tool_get_success_rate(
     )
 
 
+@with_db_recovery
 async def accept_file(
     kai_ctx: KaiSolutionServerContext,
     client_id: str,
     solution_file: SolutionFile,
 ) -> None:
+    if kai_ctx.session_maker is None:
+        raise RuntimeError("Session maker not initialized")
     async with kai_ctx.session_maker.begin() as session:
         solutions_stmt = select(DBSolution).where(DBSolution.client_id == client_id)
         solutions = (await session.execute(solutions_stmt)).scalars().all()
@@ -897,11 +1059,14 @@ async def tool_accept_file(
     )
 
 
+@with_db_recovery
 async def reject_file(
     kai_ctx: KaiSolutionServerContext,
     client_id: str,
     file_uri: str,
 ) -> None:
+    if kai_ctx.session_maker is None:
+        raise RuntimeError("Session maker not initialized")
     async with kai_ctx.session_maker.begin() as session:
         solutions_stmt = select(DBSolution).where(DBSolution.client_id == client_id)
         solutions = (await session.execute(solutions_stmt)).scalars().all()
