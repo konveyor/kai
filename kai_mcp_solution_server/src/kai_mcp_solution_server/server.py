@@ -316,8 +316,11 @@ async def create_incident(
     if kai_ctx.session_maker is None:
         raise RuntimeError("Session maker not initialized")
 
-    # Retry once if we hit a duplicate violation race condition
-    for attempt in range(2):
+    # Retry with exponential backoff if we hit a duplicate violation race condition
+    max_attempts = 3
+    base_delay = 0.05  # 50ms base delay
+
+    for attempt in range(max_attempts):
         try:
             async with kai_ctx.session_maker.begin() as session:
                 violation_stmt = select(DBViolation).where(
@@ -358,11 +361,14 @@ async def create_incident(
 
         except IntegrityError as e:
             error_msg = str(e)
-            if "kai_violations_pkey" in error_msg and attempt == 0:
+            if "kai_violations_pkey" in error_msg and attempt < max_attempts - 1:
+                # Exponential backoff: 50ms, 100ms, 200ms
+                delay = base_delay * (2**attempt)
                 log(
-                    f"Duplicate violation creation detected for {extended_incident.ruleset_name} - {extended_incident.violation_name}, retrying..."
+                    f"Duplicate violation creation detected for {extended_incident.ruleset_name} - "
+                    f"{extended_incident.violation_name}, retrying in {delay:.0f}ms (attempt {attempt + 1}/{max_attempts})..."
                 )
-                await asyncio.sleep(0.01)
+                await asyncio.sleep(delay)
                 continue
             else:
                 raise
