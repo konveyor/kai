@@ -122,11 +122,18 @@ test-stress:
 		echo "  MCP_SERVER_URL=http://localhost:8000 make test-stress"; \
 		exit 1; \
 	fi
-	@echo "Running stress test against external server at $${MCP_SERVER_URL}"
+	@echo "Running stress tests against external server at $${MCP_SERVER_URL}"
 	@echo "Testing with $${NUM_CONCURRENT_CLIENTS:-30} concurrent clients..."
+	@echo ""
+	@echo "Running multiple users stress test..."
 	MCP_SERVER_URL=$${MCP_SERVER_URL} \
 	NUM_CONCURRENT_CLIENTS=$${NUM_CONCURRENT_CLIENTS:-30} \
 	uv run python -m pytest tests/test_multiple_integration.py::TestMultipleIntegration::test_multiple_users -xvs
+	@echo ""
+	@echo "Running duplicate violations stress test..."
+	MCP_SERVER_URL=$${MCP_SERVER_URL} \
+	NUM_CONCURRENT_CLIENTS=$${NUM_CONCURRENT_CLIENTS:-30} \
+	uv run python -m pytest tests/test_duplicate_violations.py::TestDuplicateViolations::test_concurrent_duplicate_violations -xvs
 
 # Test against HTTP server
 .PHONY: test-http

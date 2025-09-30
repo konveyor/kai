@@ -315,41 +315,59 @@ async def create_incident(
 ) -> int:
     if kai_ctx.session_maker is None:
         raise RuntimeError("Session maker not initialized")
-    async with kai_ctx.session_maker.begin() as session:
-        violation_stmt = select(DBViolation).where(
-            DBViolation.ruleset_name == extended_incident.ruleset_name,
-            DBViolation.violation_name == extended_incident.violation_name,
-        )
 
-        violation = (await session.execute(violation_stmt)).scalar_one_or_none()
-        if violation is None:
-            log(
-                f"Violation {extended_incident.ruleset_name} - {extended_incident.violation_name} not found in the database.",
-            )
+    # Retry once if we hit a duplicate violation race condition
+    for attempt in range(2):
+        try:
+            async with kai_ctx.session_maker.begin() as session:
+                violation_stmt = select(DBViolation).where(
+                    DBViolation.ruleset_name == extended_incident.ruleset_name,
+                    DBViolation.violation_name == extended_incident.violation_name,
+                )
 
-            violation = DBViolation(
-                ruleset_name=extended_incident.ruleset_name,
-                ruleset_description=extended_incident.ruleset_description,
-                violation_name=extended_incident.violation_name,
-                violation_category=extended_incident.violation_category,
-                incidents=set(),
-                hints=set(),
-            )
-            session.add(violation)
+                violation = (await session.execute(violation_stmt)).scalar_one_or_none()
+                if violation is None:
+                    log(
+                        f"Violation {extended_incident.ruleset_name} - {extended_incident.violation_name} not found in the database.",
+                    )
 
-        incident = DBIncident(
-            client_id=client_id,
-            uri=extended_incident.uri,
-            message=extended_incident.message,
-            code_snip=extended_incident.code_snip,
-            line_number=extended_incident.line_number,
-            variables=extended_incident.variables,
-            violation=violation,
-            solution=None,
-        )
-        session.add(incident)
+                    violation = DBViolation(
+                        ruleset_name=extended_incident.ruleset_name,
+                        ruleset_description=extended_incident.ruleset_description,
+                        violation_name=extended_incident.violation_name,
+                        violation_category=extended_incident.violation_category,
+                        incidents=set(),
+                        hints=set(),
+                    )
+                    session.add(violation)
 
-    return incident.id
+                incident = DBIncident(
+                    client_id=client_id,
+                    uri=extended_incident.uri,
+                    message=extended_incident.message,
+                    code_snip=extended_incident.code_snip,
+                    line_number=extended_incident.line_number,
+                    variables=extended_incident.variables,
+                    violation=violation,
+                    solution=None,
+                )
+                session.add(incident)
+                await session.flush()
+
+                return incident.id
+
+        except IntegrityError as e:
+            error_msg = str(e)
+            if "kai_violations_pkey" in error_msg and attempt == 0:
+                log(
+                    f"Duplicate violation creation detected for {extended_incident.ruleset_name} - {extended_incident.violation_name}, retrying..."
+                )
+                await asyncio.sleep(0.01)
+                continue
+            else:
+                raise
+
+    raise RuntimeError("Failed to create incident after retries")
 
 
 @mcp.tool(name="create_incident")
