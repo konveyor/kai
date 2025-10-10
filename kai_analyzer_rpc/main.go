@@ -27,7 +27,6 @@ func main() {
 	lspServerPath := flag.String("lspServerPath", "", "this will be the path to the lsp")
 	bundles := flag.String("bundles", "", "Comma separated list of path to java analyzer bundles")
 	depOpenSourceLabelsFile := flag.String("depOpenSourceLabelsFile", "", "Path to the dep open source labels file")
-	goplsPipe := flag.String("goplsPipe", "", "Path to the gopls pipe/socket for connecting to existing gopls instance")
 	language := flag.String("language", "", "Target language for analysis (java, go)")
 	pipePath := flag.String("pipePath", "", "Path to the pipe to use for bi-directional communication")
 	logVerbosity := flag.Int("verbosity", -4, "how verbose would you like the logs to be, error logs are 8, warning logs are 4 info logs are 0 and debug logs are -4, going more negative gives more logs.")
@@ -59,7 +58,7 @@ func main() {
 	}
 
 	l := logr.FromSlogHandler(logger)
-	usingPipe, err := validateFlags(sourceDirectory, rules, language, lspServerPath, bundles, depOpenSourceLabelsFile, goplsPipe, pipePath, l)
+	usingPipe, err := validateFlags(sourceDirectory, rules, language, lspServerPath, bundles, depOpenSourceLabelsFile, pipePath, l)
 	if err != nil {
 		panic(err)
 	}
@@ -89,7 +88,7 @@ func main() {
 		l.Info("Starting Server")
 		var s *kairpc.Server
 		if !usingPipe {
-			l.Info("Starting Analyzer", "source-dir", *sourceDirectory, "rules-dir", *rules, "language", *language, "lspServerPath", *lspServerPath, "bundles", *bundles, "depOpenSourceLabelsFile", *depOpenSourceLabelsFile, "goplsPipe", *goplsPipe)
+			l.Info("Starting Analyzer", "source-dir", *sourceDirectory, "rules-dir", *rules, "language", *language, "lspServerPath", *lspServerPath, "bundles", *bundles, "depOpenSourceLabelsFile", *depOpenSourceLabelsFile)
 			// We need to start up the JSON RPC server and start listening for messages
 			analyzerService, err := service.NewAnalyzer(
 				10000, 10, 10,
@@ -99,7 +98,6 @@ func main() {
 				*lspServerPath,
 				*bundles,
 				*depOpenSourceLabelsFile,
-				*goplsPipe,
 				*rules,
 				l,
 			)
@@ -120,7 +118,7 @@ func main() {
 			codec := codec.NewConnectionCodec(codec.Connection{Input: os.Stdin, Output: os.Stdout}, l)
 			server.ServeCodec(codec)
 		} else {
-			s = kairpc.NewServer(ctx, server, l, "notification.Notify", *rules, *sourceDirectory, *language, *lspServerPath, *bundles, *depOpenSourceLabelsFile, *goplsPipe)
+			s = kairpc.NewServer(ctx, server, l, "notification.Notify", *rules, *sourceDirectory, *language)
 			s.OnConnect(func(c *rpc.Client) {
 				err := c.Notify("started", nil)
 				if err != nil {
@@ -141,7 +139,7 @@ func main() {
 
 }
 
-func validateFlags(sourceDirectory, rules, language, lspServerPath, bundles, depOpenSourceLabelsFile, goplsPipe, pipePath *string, l logr.Logger) (bool, error) {
+func validateFlags(sourceDirectory, rules, language, lspServerPath, bundles, depOpenSourceLabelsFile, pipePath *string, l logr.Logger) (bool, error) {
 	if sourceDirectory == nil || *sourceDirectory == "" {
 		return false, fmt.Errorf("source directory must be valid")
 	}
@@ -183,14 +181,6 @@ func validateFlags(sourceDirectory, rules, language, lspServerPath, bundles, dep
 			return false, fmt.Errorf("go is not installed or not on the PATH")
 		}
 		l.Info("Go is installed")
-
-		// Go-specific parameter validation
-		if goplsPipe == nil || *goplsPipe == "" {
-			return false, fmt.Errorf("goplsPipe must be set for Go analysis")
-		}
-
-		// Note: We don't validate the pipe/socket exists here since it may be created dynamically
-		l.Info("Will connect to existing gopls", "pipe", *goplsPipe)
 
 	default:
 		return false, fmt.Errorf("unsupported language: %s. Supported languages: java, go", *language)

@@ -7,9 +7,10 @@ import (
 	"context"
 	"net"
 
+	extgeneric "github.com/konveyor/analyzer-lsp/external-providers/generic-external-provider/pkg/generic_external_provider"
+
 	"github.com/cenkalti/rpc2"
 	"github.com/go-logr/logr"
-	extgeneric "github.com/konveyor/analyzer-lsp/external-providers/generic-external-provider/pkg/generic_external_provider"
 	"github.com/konveyor/analyzer-lsp/provider"
 	"github.com/konveyor/kai-analyzer/pkg/codec"
 	clientwrapper "github.com/konveyor/kai-analyzer/pkg/rpc/client"
@@ -21,12 +22,11 @@ type InternalProviderClient struct {
 }
 
 // NewInternalProviderClient creates a Go provider that connects to existing gopls via pipe
-func NewInternalProviderClient(ctx context.Context, log logr.Logger, contextLines int, location, pipeFile string) (provider.InternalProviderClient, error) {
+func NewInternalProviderClientForPipe(ctx context.Context, log logr.Logger, contextLines int, location, pipeFile string) (provider.InternalProviderClient, error) {
 	p := extgeneric.NewGenericProvider("generic", log)
 
 	providerConfig := map[string]interface{}{
 		"lspServerName": "generic",
-		"lspServerPath": "gopls",
 	}
 
 	conn, err := net.Dial("unix", pipeFile)
@@ -58,13 +58,12 @@ func NewInternalProviderClient(ctx context.Context, log logr.Logger, contextLine
 	}, nil
 }
 
-// NewInternalProviderClientForRPCClient creates a Go provider using existing RPC client
+// NewInternalProviderClientForRPCClient creates a Go provider that uses an existing RPC client
 func NewInternalProviderClientForRPCClient(ctx context.Context, log logr.Logger, contextLines int, location string, client *rpc2.Client) (provider.InternalProviderClient, error) {
 	p := extgeneric.NewGenericProvider("generic", log)
 
 	providerConfig := map[string]interface{}{
 		"lspServerName": "generic",
-		"lspServerPath": "gopls", // Dummy path since we're using RPC connection
 	}
 
 	svcClient, _, err := p.Init(ctx, log, provider.InitConfig{
@@ -75,6 +74,31 @@ func NewInternalProviderClientForRPCClient(ctx context.Context, log logr.Logger,
 		RPC: &clientwrapper.Client{
 			Client: client,
 		},
+	})
+	if err != nil {
+		return &InternalProviderClient{}, err
+	}
+
+	return &InternalProviderClient{
+		BaseClient:    p,
+		ServiceClient: svcClient,
+	}, nil
+}
+
+// NewInternalProviderClient creates a Go provider that starts gopls directly using LSP path
+func NewInternalProviderClient(ctx context.Context, log logr.Logger, contextLines int, location, lspServerPath string) (provider.InternalProviderClient, error) {
+	p := extgeneric.NewGenericProvider("generic", log)
+
+	providerConfig := map[string]interface{}{
+		"lspServerName": "generic",
+		"lspServerPath": lspServerPath,
+	}
+
+	svcClient, _, err := p.Init(ctx, log, provider.InitConfig{
+		Location:               location,
+		Proxy:                  &provider.Proxy{},
+		ProviderSpecificConfig: providerConfig,
+		AnalysisMode:           "source-only",
 	})
 	if err != nil {
 		return &InternalProviderClient{}, err

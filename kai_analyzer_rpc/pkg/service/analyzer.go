@@ -70,7 +70,7 @@ type analyzer struct {
 	updateConditionProvider func(*rpc.Client, map[string]provider.InternalProviderClient, []engine.RuleSet, []engine.RuleSet, logr.Logger, int, string, string) ([]engine.RuleSet, []engine.RuleSet, error)
 }
 
-func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, language, lspServerPath, bundles, depOpenSourceLabelsFile, goplsPipe, rules string, log logr.Logger) (Analyzer, error) {
+func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, language, lspServerPath, bundles, depOpenSourceLabelsFile, rules string, log logr.Logger) (Analyzer, error) {
 	prefix, err := filepath.Abs(location)
 	if err != nil {
 		return nil, err
@@ -98,6 +98,7 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 		return nil, err
 	}
 
+	// Initialize providers map
 	providers := map[string]provider.InternalProviderClient{
 		"builtin": bProvider,
 	}
@@ -116,8 +117,8 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 		log.Info("Java provider initialized successfully")
 
 	case "go":
-		log.Info("Initializing Go provider", "goplsPipe", goplsPipe)
-		goProvider, err := golang.NewInternalProviderClient(ctx, log, contextLines, location, goplsPipe)
+		log.Info("Initializing Go provider", "lspServerPath", lspServerPath)
+		goProvider, err := golang.NewInternalProviderClient(ctx, log, contextLines, location, lspServerPath)
 		if err != nil {
 			cancelFunc()
 			return nil, err

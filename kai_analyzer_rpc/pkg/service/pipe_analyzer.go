@@ -19,7 +19,7 @@ import (
 	"github.com/konveyor/kai-analyzer/provider/java"
 )
 
-func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contextLines int, pipePath, rules, location, language, lspServerPath, bundles, depOpenSourceLabelsFile, goplsPipe string, l logr.Logger) (Analyzer, error) {
+func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contextLines int, pipePath, rules, location, language string, l logr.Logger) (Analyzer, error) {
 	prefix, err := filepath.Abs(location)
 	if err != nil {
 		return nil, err
@@ -47,6 +47,7 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 		return nil, err
 	}
 
+	// Initialize providers map
 	providers := map[string]provider.InternalProviderClient{
 		"builtin": bProvider,
 	}
@@ -55,7 +56,7 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 	l.Info("About to initialize provider", "language", language)
 	switch language {
 	case "java":
-		l.Info("Initializing Java provider for pipe", "pipePath", pipePath, "lspServerPath", lspServerPath, "bundles", bundles)
+		l.Info("Initializing Java provider for pipe", "pipePath", pipePath)
 		jProvider, err := java.NewInternalProviderClientForPipe(ctx, l, contextLines, location, pipePath)
 		if err != nil {
 			cancelFunc()
@@ -65,8 +66,8 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 		l.Info("Java provider initialized successfully")
 
 	case "go":
-		l.Info("Initializing Go provider for pipe", "goplsPipe", goplsPipe)
-		goProvider, err := golang.NewInternalProviderClient(ctx, l, contextLines, location, goplsPipe)
+		l.Info("Initializing Go provider for pipe", "pipePath", pipePath)
+		goProvider, err := golang.NewInternalProviderClientForPipe(ctx, l, contextLines, location, pipePath)
 		if err != nil {
 			cancelFunc()
 			return nil, err
@@ -78,7 +79,6 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 		cancelFunc()
 		return nil, errors.New("unsupported language: " + language + ". Supported languages: java, go")
 	}
-
 	parser := parser.RuleParser{
 		ProviderNameToClient: providers,
 		Log:                  l.WithName("parser"),
@@ -169,15 +169,28 @@ func updateProviderConditionToUseNewRPClientParseRules(client *rpc2.Client,
 	contextLines int,
 	location, rules string) ([]engine.RuleSet, []engine.RuleSet, error) {
 
+	// Start with all existing providers
+	providers := make(map[string]provider.InternalProviderClient)
+	for name, provider := range existingProviders {
+		providers[name] = provider
+	}
+
+	// Create new Java provider for RPC client if needed
 	jProvider, err := java.NewInternalProviderClientForRPCClient(context.TODO(), log, contextLines, location, client)
 	if err != nil {
 		return nil, nil, err
 	}
+	providers["java"] = jProvider
 
-	var bProvider provider.InternalProviderClient
-	if val, ok := existingProviders["builtin"]; ok {
-		bProvider = val
-	} else {
+	// Create new Go provider for RPC client if needed
+	goProvider, err := golang.NewInternalProviderClientForRPCClient(context.TODO(), log, contextLines, location, client)
+	if err != nil {
+		return nil, nil, err
+	}
+	providers["go"] = goProvider
+
+	// Ensure builtin provider exists
+	if _, ok := providers["builtin"]; !ok {
 		bProvider, err := lib.GetProviderClient(provider.Config{Name: "builtin"}, log)
 		if err != nil {
 			return nil, nil, err
@@ -186,11 +199,7 @@ func updateProviderConditionToUseNewRPClientParseRules(client *rpc2.Client,
 		if err != nil {
 			return nil, nil, err
 		}
-	}
-
-	providers := map[string]provider.InternalProviderClient{
-		"java":    jProvider,
-		"builtin": bProvider,
+		providers["builtin"] = bProvider
 	}
 
 	parser := parser.RuleParser{

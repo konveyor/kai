@@ -64,3 +64,5 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 
 )
+
+replace github.com/konveyor/analyzer-lsp/external-providers/generic-external-provider => github.com/savitharaghunathan/analyzer-lsp/external-providers/generic-external-provider v0.0.0-20251010174935-10221cbdd556
