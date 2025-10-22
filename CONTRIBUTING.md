@@ -11,12 +11,6 @@
   - [Pull Request Lifecycle](#pull-request-lifecycle)
   - [Pull Request Title](#pull-request-title)
   - [Development Environment Setup](#development-environment-setup)
-  - [Linting](#linting)
-  - [Testing](#testing)
-  - [Modifying a Python Dependency](#modifying-a-python-dependency)
-  - [Running the Project](#running-the-project)
-    - [Using Open Telemetry](#using-open-telemetry)
-  - [Working with Notebooks](#working-with-notebooks)
   - [Sign Your Commits](#sign-your-commits)
     - [DCO](#dco)
   - [Pull Request Checklist](#pull-request-checklist)
@@ -154,73 +148,7 @@ For more info, you can consult the pr check we run at
 
 ## Development Environment Setup
 
-See [docs/contrib/dev_environment.md](docs/contrib/dev_environment.md)
-
-## Linting
-
-We use [Trunk](https://docs.trunk.io) to lint our project.
-
-1. Install trunk via: https://docs.trunk.io/check#install-the-cli
-1. Run the linters: `trunk check`
-1. Format code: `trunk fmt`
-
-You can also configure Trunk to automatically check your code before pushing via
-[git hooks](https://docs.trunk.io/cli/getting-started/actions/git-hooks).
-
-## Testing
-
-- Please include a unit test for new features
-- See [docs/contrib/testing.md](docs/contrib/testing.md) for more guidance on
-  testing
-
-## Modifying a Python Dependency
-
-If you need to add or update a Python dependency in the project, open
-`pyproject.toml` and add the new dependency to the `dependencies` list or modify
-an existing one.
-
-## Running the Project
-
-1. Setup your development environment as per
-   [docs/contrib/dev_environment.md](/docs/contrib/dev_environment.md)
-2. **Demo Interaction**: Read and follow [example/README.md](/example/README.md)
-   to learn how to leverage a Python script `example/run_demo.py` which will
-   script interaction with Kai.
-
-Running `run_demo.py` from the `example` directory is a recommended way for
-developers to interact with the project, allowing you to explore and test the
-workflow. For end users, the standard interaction will be through the IDE
-plugin, which provides the main interface for usage. The `run_demo.py` script
-is an optional method to get a feel for the project.
-
-For end users, please refer to the IDE plugin documentation for the primary interaction path.
-
-### Using Open Telemetry
-
-If you would like to use Open Telemetry to see the spans and performance of
-specific code paths you should look at using Jaeger.
-
-To run the all-in-one Jaeger instance use:
-
-```bash
-podman run --rm \
- -e COLLECTOR_ZIPKIN_HOST_PORT=:9411 \
-  -p 16686:16686 \
- -p 4317:4317 \
-  -p 4318:4318 \
- -p 9411:9411 \
-  jaegertracing/all-in-one:latest
-```
-
-Once you do this, then you can use `localhost:16686` to see the Jaeger
-interface.
-
-When you run the demo, use `ENABLE_TRACING=1 ./run_demo.py`
-
-## Working with Notebooks
-
-When working with Jupyter Notebooks, ensure you've installed the project in
-editable mode `pip install -e .` to access all project modules and dependencies.
+The majority of Kai's development has moved to Typescript in the VSCode extension at https://github.com/konveyor/editor-extensions
 
 ## Sign Your Commits
 
@@ -265,12 +193,6 @@ before you submit your code:
 - Ensure that [trunk](https://docs.trunk.io/code-quality/advanced-setup/cli) is happy
   - `trunk check`
   - `trunk fmt`
-- Ensure that unit tests pass. See
-  [docs/contrib/testing.md](docs/contrib/testing.md)
 - If adding a new feature please add a new unit test
-- If you modified `requirements.txt` please see [Modifying a Python
-  Dependency](#modifying-a-python-dependency)
-- Ensure that [`example/run_demo.py`](example/run_demo.py) works
-- Commits are signed as per [DCO](#dco)
 - PR Title begins with a gitemoji as described in [Pull Request
   Title](#pull-request-title)

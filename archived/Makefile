@@ -13,6 +13,13 @@ POSTGRES_RUN_ARGS ?=
 run-postgres:
 	$(CONTAINER_RUNTIME) run -it $(POSTGRES_RUN_ARGS) -v data:/var/lib/postgresql/data -e POSTGRES_USER=kai -e POSTGRES_PASSWORD=dog8code -e POSTGRES_DB=kai -p 5432:5432 docker.io/library/postgres:16.3
 
+# ## Note: MacOS workaround is required, see https://github.com/konveyor/kai/issues/374
+run-server:
+	bash -c 'set -m; _trap () { kill -15 $$PID; } ; trap _trap SIGINT ;\
+	if [[ "$$(uname)" -eq "Darwin" ]] ; then export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES ; fi ;\
+	PYTHONPATH=$(KAI_PYTHON_PATH) python kai/server.py & export PID=$$! ;\
+	while kill -0 $$PID > /dev/null 2>&1; do wait $$PID; done'
+
 run-konveyor-importer:
 	PYTHONPATH=$(KAI_PYTHON_PATH) python kai/hub_importer.py --loglevel ${LOGLEVEL} --config_filepath ./kai/config.toml ${IMPORTER_ARGS} ${HUB_URL}
 
@@ -21,7 +28,6 @@ load-data:
 
 # This will build the kai-analyzer-rpc binary for serving the analysis over RPC.
 build-kai-analyzer:
-	mkdir -p dist
 	cd kai_analyzer_rpc && go build -o kai-analyzer main.go
 	cp kai_analyzer_rpc/kai-analyzer dist/kai-analyzer-rpc
 
@@ -49,6 +55,18 @@ get-analyzer-deps:
 get-rulesets:
 	(cd example/analysis && rm -rf rulesets && git clone --depth 1 --branch v0.6.0 https://github.com/konveyor/rulesets); rm -rf example/analysis/rulesets/preview
 
+run-demo:
+	cd example && python run_demo.py
+
+run-debug-driver:
+	python kai/reactive_codeplanner/main.py \
+		--kai-config example/initialize.toml \
+		--source-directory example/coolstore \
+		--rules-directory example/analysis/rulesets/default/generated \
+		--analyzer-lsp-server-binary example/analysis/kai-analyzer-rpc \
+		--analyzer-lsp-path example/analysis/jdtls/bin/jdtls \
+		--analyzer-lsp-java-bundle example/analysis/bundle.jar \
+		--label-selector "(konveyor.io/target=quarkus || konveyor.io/target=jakarta-ee || konveyor.io/target=jakarta-ee8 || konveyor.io/target=jakarta-ee9 || konveyor.io/target=cloud-readiness)"
 
 # This will run all the things that you need to do, to configure the demo.
 config-demo: set-binaries-demo get-analyzer-deps get-rulesets
