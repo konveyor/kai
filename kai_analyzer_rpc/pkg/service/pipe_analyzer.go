@@ -19,7 +19,8 @@ import (
 	"github.com/konveyor/kai-analyzer/provider/java"
 )
 
-func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contextLines int, pipePath, rules, location, language string, l logr.Logger) (Analyzer, error) {
+func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contextLines int, pipePath, rules, location, language, dependencyProviderPath string, l logr.Logger) (Analyzer, error) {
+	l.Info("NewPipeAnalyzer called", "dependencyProviderPath", dependencyProviderPath)
 	prefix, err := filepath.Abs(location)
 	if err != nil {
 		return nil, err
@@ -66,8 +67,11 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 		l.Info("Java provider initialized successfully")
 
 	case "go":
-		l.Info("Initializing Go provider for pipe", "pipePath", pipePath)
-		goProvider, err := golang.NewInternalProviderClientForPipe(ctx, l, contextLines, location, pipePath)
+		l.Info("Initializing Go provider for pipe", "pipePath", pipePath, "dependencyProviderPath", dependencyProviderPath)
+		if dependencyProviderPath == "" {
+			l.Info("WARNING: dependencyProviderPath is empty - dependency analysis may not work")
+		}
+		goProvider, err := golang.NewInternalProviderClientForPipe(ctx, l, contextLines, location, pipePath, dependencyProviderPath)
 		if err != nil {
 			cancelFunc()
 			return nil, err
@@ -106,6 +110,7 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 		location:                location,
 		contextLines:            contextLines,
 		rules:                   rules,
+		dependencyProviderPath:  dependencyProviderPath,
 		updateConditionProvider: updateProviderConditionToUseNewRPClientParseRules,
 	}, nil
 
@@ -167,13 +172,17 @@ func updateProviderConditionToUseNewRPClientParseRules(client *rpc2.Client,
 	discoveryRulesets, violationRulesets []engine.RuleSet,
 	log logr.Logger,
 	contextLines int,
-	location, rules string) ([]engine.RuleSet, []engine.RuleSet, error) {
+	location, rules, dependencyProviderPath string) ([]engine.RuleSet, []engine.RuleSet, error) {
 
 	// Start with all existing providers
 	providers := make(map[string]provider.InternalProviderClient)
 	for name, provider := range existingProviders {
 		providers[name] = provider
 	}
+
+	// Use the dependency provider path passed from the analyzer
+	log.Info("Using dependency provider path from analyzer configuration", "dependencyProviderPath", dependencyProviderPath)
+	log.Info("DEBUG: updateProviderConditionToUseNewRPClientParseRules called", "dependencyProviderPath", dependencyProviderPath, "len", len(dependencyProviderPath))
 
 	// Create new Java provider for RPC client if needed
 	jProvider, err := java.NewInternalProviderClientForRPCClient(context.TODO(), log, contextLines, location, client)
@@ -183,7 +192,8 @@ func updateProviderConditionToUseNewRPClientParseRules(client *rpc2.Client,
 	providers["java"] = jProvider
 
 	// Create new Go provider for RPC client if needed
-	goProvider, err := golang.NewInternalProviderClientForRPCClient(context.TODO(), log, contextLines, location, client)
+	log.Info("Creating new Go provider for RPC client", "dependencyProviderPath", dependencyProviderPath)
+	goProvider, err := golang.NewInternalProviderClientForRPCClient(context.TODO(), log, contextLines, location, client, dependencyProviderPath)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -22,12 +22,15 @@ type InternalProviderClient struct {
 }
 
 // NewInternalProviderClient creates a Go provider that connects to existing gopls via pipe
-func NewInternalProviderClientForPipe(ctx context.Context, log logr.Logger, contextLines int, location, pipeFile string) (provider.InternalProviderClient, error) {
+func NewInternalProviderClientForPipe(ctx context.Context, log logr.Logger, contextLines int, location, pipeFile, dependencyProviderPath string) (provider.InternalProviderClient, error) {
+	log.Info("Initializing Go provider for pipe", "location", location, "pipeFile", pipeFile, "dependencyProviderPath", dependencyProviderPath)
 	p := extgeneric.NewGenericProvider("generic", log)
 
 	providerConfig := map[string]interface{}{
-		"lspServerName": "generic",
+		"lspServerName":          "generic",
+		"dependencyProviderPath": dependencyProviderPath,
 	}
+	log.Info("Go provider config for pipe", "config", providerConfig)
 
 	conn, err := net.Dial("unix", pipeFile)
 	if err != nil {
@@ -39,6 +42,7 @@ func NewInternalProviderClientForPipe(ctx context.Context, log logr.Logger, cont
 	c := codec.NewCodec(ctx, reader, writer, log.WithName("go-provider"), "", rpc2.NewState())
 	client := rpc2.NewClientWithCodec(c)
 
+	log.Info("About to call provider.Init for pipe", "config", providerConfig)
 	svcClient, _, err := p.Init(ctx, log, provider.InitConfig{
 		Location:               location,
 		Proxy:                  &provider.Proxy{},
@@ -49,7 +53,10 @@ func NewInternalProviderClientForPipe(ctx context.Context, log logr.Logger, cont
 		},
 	})
 	if err != nil {
+		log.Error(err, "provider.Init failed for pipe")
 		return &InternalProviderClient{}, err
+	} else {
+		log.Info("provider.Init succeeded for pipe", "svcClient", svcClient)
 	}
 
 	return &InternalProviderClient{
@@ -59,13 +66,15 @@ func NewInternalProviderClientForPipe(ctx context.Context, log logr.Logger, cont
 }
 
 // NewInternalProviderClientForRPCClient creates a Go provider that uses an existing RPC client
-func NewInternalProviderClientForRPCClient(ctx context.Context, log logr.Logger, contextLines int, location string, client *rpc2.Client) (provider.InternalProviderClient, error) {
+func NewInternalProviderClientForRPCClient(ctx context.Context, log logr.Logger, contextLines int, location string, client *rpc2.Client, dependencyProviderPath string) (provider.InternalProviderClient, error) {
 	p := extgeneric.NewGenericProvider("generic", log)
 
 	providerConfig := map[string]interface{}{
-		"lspServerName": "generic",
+		"lspServerName":          "generic",
+		"dependencyProviderPath": dependencyProviderPath,
 	}
 
+	log.Info("About to call provider.Init", "config", providerConfig)
 	svcClient, _, err := p.Init(ctx, log, provider.InitConfig{
 		Location:               location,
 		Proxy:                  &provider.Proxy{},
@@ -75,6 +84,11 @@ func NewInternalProviderClientForRPCClient(ctx context.Context, log logr.Logger,
 			Client: client,
 		},
 	})
+	if err != nil {
+		log.Error(err, "provider.Init failed")
+	} else {
+		log.Info("provider.Init succeeded", "svcClient", svcClient)
+	}
 	if err != nil {
 		return &InternalProviderClient{}, err
 	}
@@ -86,13 +100,16 @@ func NewInternalProviderClientForRPCClient(ctx context.Context, log logr.Logger,
 }
 
 // NewInternalProviderClient creates a Go provider that starts gopls directly using LSP path
-func NewInternalProviderClient(ctx context.Context, log logr.Logger, contextLines int, location, lspServerPath string) (provider.InternalProviderClient, error) {
+func NewInternalProviderClient(ctx context.Context, log logr.Logger, contextLines int, location, lspServerPath, dependencyProviderPath string) (provider.InternalProviderClient, error) {
+	log.Info("Initializing Go provider for direct LSP", "location", location, "lspServerPath", lspServerPath, "dependencyProviderPath", dependencyProviderPath)
 	p := extgeneric.NewGenericProvider("generic", log)
 
 	providerConfig := map[string]interface{}{
-		"lspServerName": "generic",
-		"lspServerPath": lspServerPath,
+		"lspServerName":          "generic",
+		"lspServerPath":          lspServerPath,
+		"dependencyProviderPath": dependencyProviderPath,
 	}
+	log.Info("Go provider config for direct LSP", "config", providerConfig)
 
 	svcClient, _, err := p.Init(ctx, log, provider.InitConfig{
 		Location:               location,

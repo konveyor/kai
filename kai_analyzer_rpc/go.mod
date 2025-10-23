@@ -65,4 +65,6 @@ require (
 
 )
 
-replace github.com/konveyor/analyzer-lsp/external-providers/generic-external-provider => github.com/savitharaghunathan/analyzer-lsp/external-providers/generic-external-provider v0.0.0-20251010174935-10221cbdd556
+replace github.com/konveyor/analyzer-lsp => github.com/savitharaghunathan/analyzer-lsp v0.0.0-20251023175617-c6b0e586cae8
+
+replace github.com/konveyor/analyzer-lsp/external-providers/generic-external-provider => github.com/savitharaghunathan/analyzer-lsp/external-providers/generic-external-provider v0.0.0-20251023175617-c6b0e586cae8

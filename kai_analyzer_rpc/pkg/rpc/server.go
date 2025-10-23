@@ -28,12 +28,13 @@ type Server struct {
 	sourceDirectory         string
 	language                string
 	lspServerPath           string
+	dependencyProviderPath  string
 	bundles                 string
 	depOpenSourceLabelsFile string
 	goplsPipe               string
 }
 
-func NewServer(ctx context.Context, s *rpc.Server, log logr.Logger, notificationServiceName string, rules string, sourceDirectory string, language string) *Server {
+func NewServer(ctx context.Context, s *rpc.Server, log logr.Logger, notificationServiceName string, rules string, sourceDirectory string, language string, dependencyProviderPath string) *Server {
 	state := rpc.NewState()
 	state.Set("seq", &atomic.Uint64{})
 	return &Server{ctx: ctx,
@@ -44,6 +45,7 @@ func NewServer(ctx context.Context, s *rpc.Server, log logr.Logger, notification
 		rules:                   rules,
 		sourceDirectory:         sourceDirectory,
 		language:                language,
+		dependencyProviderPath:  dependencyProviderPath,
 	}
 }
 
@@ -61,7 +63,7 @@ func (s *Server) Accept(pipePath string) {
 		panic(err)
 	}
 	// Register pipe analysis handler with configurable language parameters
-	analyzerService, err := service.NewPipeAnalyzer(s.ctx, 10000, 10, 10, pipePath, s.rules, s.sourceDirectory, s.language, s.log.WithName("analyzer-service"))
+	analyzerService, err := service.NewPipeAnalyzer(s.ctx, 10000, 10, 10, pipePath, s.rules, s.sourceDirectory, s.language, s.dependencyProviderPath, s.log.WithName("analyzer-service"))
 	if err != nil {
 		s.log.Error(err, "unable to create analyzer service")
 		panic(err)

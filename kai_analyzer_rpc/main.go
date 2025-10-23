@@ -27,9 +27,10 @@ func main() {
 	lspServerPath := flag.String("lspServerPath", "", "this will be the path to the lsp")
 	bundles := flag.String("bundles", "", "Comma separated list of path to java analyzer bundles")
 	depOpenSourceLabelsFile := flag.String("depOpenSourceLabelsFile", "", "Path to the dep open source labels file")
+	dependencyProviderPath := flag.String("dependencyProviderPath", "", "Path to the dependency provider binary")
 	language := flag.String("language", "", "Target language for analysis (java, go)")
 	pipePath := flag.String("pipePath", "", "Path to the pipe to use for bi-directional communication")
-	logVerbosity := flag.Int("verbosity", -4, "how verbose would you like the logs to be, error logs are 8, warning logs are 4 info logs are 0 and debug logs are -4, going more negative gives more logs.")
+	logVerbosity := flag.Int("verbosity", -50, "how verbose would you like the logs to be, error logs are 8, warning logs are 4 info logs are 0 and debug logs are -4, going more negative gives more logs.")
 
 	// TODO(djzager): We should do verbosity type argument(s)
 	logLevel := slog.Level(*logVerbosity)
@@ -88,7 +89,7 @@ func main() {
 		l.Info("Starting Server")
 		var s *kairpc.Server
 		if !usingPipe {
-			l.Info("Starting Analyzer", "source-dir", *sourceDirectory, "rules-dir", *rules, "language", *language, "lspServerPath", *lspServerPath, "bundles", *bundles, "depOpenSourceLabelsFile", *depOpenSourceLabelsFile)
+			l.Info("Starting Analyzer", "source-dir", *sourceDirectory, "rules-dir", *rules, "language", *language, "lspServerPath", *lspServerPath, "bundles", *bundles, "depOpenSourceLabelsFile", *depOpenSourceLabelsFile, "dependencyProviderPath", *dependencyProviderPath)
 			// We need to start up the JSON RPC server and start listening for messages
 			analyzerService, err := service.NewAnalyzer(
 				10000, 10, 10,
@@ -98,6 +99,7 @@ func main() {
 				*lspServerPath,
 				*bundles,
 				*depOpenSourceLabelsFile,
+				*dependencyProviderPath,
 				*rules,
 				l,
 			)
@@ -118,7 +120,7 @@ func main() {
 			codec := codec.NewConnectionCodec(codec.Connection{Input: os.Stdin, Output: os.Stdout}, l)
 			server.ServeCodec(codec)
 		} else {
-			s = kairpc.NewServer(ctx, server, l, "notification.Notify", *rules, *sourceDirectory, *language)
+			s = kairpc.NewServer(ctx, server, l, "notification.Notify", *rules, *sourceDirectory, *language, *dependencyProviderPath)
 			s.OnConnect(func(c *rpc.Client) {
 				err := c.Notify("started", nil)
 				if err != nil {

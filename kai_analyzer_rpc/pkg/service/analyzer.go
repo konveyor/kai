@@ -63,14 +63,15 @@ type analyzer struct {
 	discoveryCache      []konveyor.RuleSet
 	cache               IncidentsCache
 
-	contextLines int
-	location     string
-	rules        string
+	contextLines           int
+	location               string
+	rules                  string
+	dependencyProviderPath string
 
-	updateConditionProvider func(*rpc.Client, map[string]provider.InternalProviderClient, []engine.RuleSet, []engine.RuleSet, logr.Logger, int, string, string) ([]engine.RuleSet, []engine.RuleSet, error)
+	updateConditionProvider func(*rpc.Client, map[string]provider.InternalProviderClient, []engine.RuleSet, []engine.RuleSet, logr.Logger, int, string, string, string) ([]engine.RuleSet, []engine.RuleSet, error)
 }
 
-func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, language, lspServerPath, bundles, depOpenSourceLabelsFile, rules string, log logr.Logger) (Analyzer, error) {
+func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, language, lspServerPath, bundles, depOpenSourceLabelsFile, dependencyProviderPath, rules string, log logr.Logger) (Analyzer, error) {
 	prefix, err := filepath.Abs(location)
 	if err != nil {
 		return nil, err
@@ -117,8 +118,8 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 		log.Info("Java provider initialized successfully")
 
 	case "go":
-		log.Info("Initializing Go provider", "lspServerPath", lspServerPath)
-		goProvider, err := golang.NewInternalProviderClient(ctx, log, contextLines, location, lspServerPath)
+		log.Info("Initializing Go provider", "lspServerPath", lspServerPath, "dependencyProviderPath", dependencyProviderPath)
+		goProvider, err := golang.NewInternalProviderClient(ctx, log, contextLines, location, lspServerPath, dependencyProviderPath)
 		if err != nil {
 			cancelFunc()
 			return nil, err
@@ -188,16 +189,17 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 	// Generate discoveryRulesetCache here??
 
 	return &analyzer{
-		Logger:              log,
-		engine:              eng,
-		engineCtx:           ctx,
-		cancelFunc:          cancelFunc,
-		initedProviders:     providers,
-		discoveryRulesets:   discoveryRulesets,
-		violationRulesets:   violationRulesets,
-		discoveryCache:      []konveyor.RuleSet{},
-		discoveryCacheMutex: sync.Mutex{},
-		cache:               NewIncidentsCache(log),
+		Logger:                 log,
+		engine:                 eng,
+		engineCtx:              ctx,
+		cancelFunc:             cancelFunc,
+		initedProviders:        providers,
+		discoveryRulesets:      discoveryRulesets,
+		violationRulesets:      violationRulesets,
+		discoveryCache:         []konveyor.RuleSet{},
+		discoveryCacheMutex:    sync.Mutex{},
+		cache:                  NewIncidentsCache(log),
+		dependencyProviderPath: dependencyProviderPath,
 	}, nil
 
 }
@@ -252,7 +254,7 @@ func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) er
 	dRulesets, vRulesets := a.discoveryRulesets, a.violationRulesets
 	if a.updateConditionProvider != nil {
 		var err error
-		dRulesets, vRulesets, err = a.updateConditionProvider(client, a.initedProviders, a.discoveryRulesets, a.violationRulesets, a.Logger.WithName("provider update"), a.contextLines, a.location, a.rules)
+		dRulesets, vRulesets, err = a.updateConditionProvider(client, a.initedProviders, a.discoveryRulesets, a.violationRulesets, a.Logger.WithName("provider update"), a.contextLines, a.location, a.rules, a.dependencyProviderPath)
 		if err != nil {
 			a.Logger.Error(err, "unable to update Conditions with new client")
 			return err
