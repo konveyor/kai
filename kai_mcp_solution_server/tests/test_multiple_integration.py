@@ -8,12 +8,12 @@ from uuid import uuid4
 from fastmcp import Client
 from mcp import ClientSession
 from mcp.types import CallToolResult
-
-from kai_mcp_solution_server.analyzer_types import ExtendedIncident
-from kai_mcp_solution_server.server import GetBestHintResult, SuccessRateMetric
 from tests.mcp_client import MCPClientArgs
 from tests.mcp_loader_script import create_client
 from tests.ssl_utils import apply_ssl_bypass
+
+from kai_mcp_solution_server.analyzer_types import ExtendedIncident
+from kai_mcp_solution_server.server import GetBestHintResult, SuccessRateMetric
 
 # TODO: The tracebacks from these tests contain horrible impossibly-to-parse output.
 

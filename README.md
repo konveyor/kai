@@ -17,7 +17,6 @@ code to a new platform. It uses **Large Language Models** (LLMs) guided by
 insights into how the organization solved similar problems in the past, helping
 **streamline** and **automate** the code modernization process.
 
-
 ## 🔍 About The Project
 
 Kai is an AI-enabled tool that assists with modernizing applications. Kai is
@@ -61,7 +60,7 @@ models.
 > Kai is in early development. We are actively working on improving the tool and
 > adding new features.
 
-Kai began as a Python project in this repository, yet over time it has evolved to be mostly based on Typescript now and as such the majority of the Kai source code exists in the [konveyor/editor-extensions](https://github.com/konveyor/editor-extensions) repository.  This repository contains some related components such as the kai_mcp_solution_server and kai_analyzer_rpc.
+Kai began as a Python project in this repository, yet over time it has evolved to be mostly based on Typescript now and as such the majority of the Kai source code exists in the [konveyor/editor-extensions](https://github.com/konveyor/editor-extensions) repository. This repository contains some related components such as the kai_mcp_solution_server and kai_analyzer_rpc.
 
 ### 🛠️ Design and Architecture
 

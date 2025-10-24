@@ -6,9 +6,9 @@ from uuid import uuid4
 
 from fastmcp import Client
 from mcp.types import CallToolResult
+from tests.ssl_utils import apply_ssl_bypass
 
 from kai_mcp_solution_server.analyzer_types import ExtendedIncident
-from tests.ssl_utils import apply_ssl_bypass
 
 
 class TestDuplicateViolations(unittest.IsolatedAsyncioTestCase):

@@ -13,14 +13,15 @@
 Before you install Kai, you must:
 
 - Create an API key for an LLM model.
+
   - Supported LLM providers: **OpenAI**, Amazon Bedrock, **Azure OpenAI**, DeepSeek, Google Gemini, Ollama
   - OpenAI-API-compatible endpoints such as OpenShift AI
 
 - Install Language Support for Java(TM) by Red Hat extension
-- Install Java v17 and later 
+- Install Java v17 and later
 - Install Maven v3.9+
 - Install Git and add it to the `$PATH` variable
-- Configure an application in Visual Studio Code 
+- Configure an application in Visual Studio Code
 
 Running Kai consists of:
 
@@ -40,6 +41,7 @@ IDE extension.
 <!-- <iframe width="560" height="315" src="https://www.youtube.com/embed/IBa8B_RluGs" title="Kai configuration walkthrough" frameborder="0" allowfullscreen></iframe> -->
 
 Click the Kai VSCode extension to perform the following tasks:
+
 1. [Configure Kai settings](#configure-kai-settings)
 1. [Configure settings for analysis](#configure-settings-for-analysis)
 1. [Starting the RPC server](#starting-the-rpc-server)
@@ -57,12 +59,13 @@ Click the Kai VSCode extension to perform the following tasks:
 Access the Kai settings from `Extensions > Konveyor AI Extension for VS Code settings icon > Settings`.
 
 You can configure basic settings such as:
-- Configure the solution server endpoint 
+
+- Configure the solution server endpoint
 - Select the editor view for analysis: diff or merge
 - (Optional) Choose the agent mode for automated analysis with manual review
-- (Optional) Choose the demo mode to use cached responses from the LLM 
+- (Optional) Choose the demo mode to use cached responses from the LLM
 
-### Configure settings for analysis 
+### Configure settings for analysis
 
 You can configure the initial profile and other settings on the `Get Ready to Analyze` page or by modifying `settings.json`. For more details; see [configuration](./contrib/configuration.md) for a full list of available settings.
 
@@ -70,11 +73,12 @@ You can configure the initial profile and other settings on the `Get Ready to An
 
 <!-- <iframe width="560" height="315" src="https://www.youtube.com/embed/6YN_pGGMSW4" title="Kai profile settings" frameborder="0" allowfullscreen></iframe> -->
 
-To go to the `Get Ready to Analyze` page,  
-  - Click `Konveyor extension > Open Konveyor Analysis View (icon) > Settings (icon)`.
-  - Type `Ctrl + Shift + P` to open the Command Palette and type "Konveyor:Manage Analysis Profile".
+To go to the `Get Ready to Analyze` page,
 
-You can access the following configurations on the `Get Ready to Analyze` page: 
+- Click `Konveyor extension > Open Konveyor Analysis View (icon) > Settings (icon)`.
+- Type `Ctrl + Shift + P` to open the Command Palette and type "Konveyor:Manage Analysis Profile".
+
+You can access the following configurations on the `Get Ready to Analyze` page:
 
 - Select Profile
 - Configure a Label selector (source and target technologies)
@@ -112,11 +116,11 @@ To understand the label selector syntax see the [rule label selector documentati
 
 <!-- To use this option click
 
-![image](images/walkthroughs_configure_analysis_label_selector.png) No longer found in the profile settings--> 
+![image](images/walkthroughs_configure_analysis_label_selector.png) No longer found in the profile settings-->
 
 #### Configure the generative AI API key
 
-On the `Get Ready to Analyze` page, you can configure the LLM API key needed for Kai analysis. 
+On the `Get Ready to Analyze` page, you can configure the LLM API key needed for Kai analysis.
 
 [![Kai generative AI API key configuration](https://i.ytimg.com/vi/F4Va8KFqYV4/hqdefault.jpg)](https://youtu.be/F4Va8KFqYV4)
 
@@ -126,7 +130,7 @@ To see more information about LLM provider configuration, see the [LLM selection
 
 ## Starting the RPC server
 
-Click `Start` to start the RPC server on the `Konveyor Analysis View` page. This action activates the `Run Analysis` button. 
+Click `Start` to start the RPC server on the `Konveyor Analysis View` page. This action activates the `Run Analysis` button.
 
 ![image](images/start-rpc-server.png)
 
@@ -136,7 +140,7 @@ Now that you installed and started Kai, you can use the Kai extension to run sta
 
 ### Running analysis
 
-After starting the RPC server on the `Konveyor Analysis View` page, you can run a full analysis of the codebase based on the prior configured analysis arguments by clicking `Run Analysis`. 
+After starting the RPC server on the `Konveyor Analysis View` page, you can run a full analysis of the codebase based on the prior configured analysis arguments by clicking `Run Analysis`.
 
 > [!NOTE]
 > You must select a profile with necessary configurations such as source and target technologies before you run an analysis.
