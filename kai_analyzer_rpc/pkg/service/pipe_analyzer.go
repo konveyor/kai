@@ -3,57 +3,61 @@ package service
 
 import (
 	"context"
-	"path/filepath"
+	"errors"
+	"fmt"
 	"strings"
 	"sync"
 
-	"github.com/cenkalti/rpc2"
 	"github.com/go-logr/logr"
 	"github.com/konveyor/analyzer-lsp/engine"
 	"github.com/konveyor/analyzer-lsp/output/v1/konveyor"
 	"github.com/konveyor/analyzer-lsp/parser"
 	"github.com/konveyor/analyzer-lsp/provider"
 	"github.com/konveyor/analyzer-lsp/provider/lib"
-	"github.com/konveyor/kai-analyzer/provider/java"
 )
 
-func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contextLines int, pipePath, rules, location string, l logr.Logger) (Analyzer, error) {
-	prefix, err := filepath.Abs(location)
-	if err != nil {
-		return nil, err
-	}
+func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contextLines int, rules, providerConfigFile string, l logr.Logger) (Analyzer, error) {
 	ctx, cancelFunc := context.WithCancel(ctx)
-	eng := engine.CreateRuleEngine(ctx,
-		10,
-		l,
-		engine.WithIncidentLimit(limitIncidents),
-		engine.WithCodeSnipLimit(limitCodeSnips),
-		engine.WithContextLines(contextLines),
-		//engine.WithIncidentSelector(incidentSelector),
-		engine.WithLocationPrefixes([]string{prefix}),
-	)
-
-	// this function already init's the java provider
-	jProvider, err := java.NewInternalProviderClientForPipe(ctx, l, contextLines, location, pipePath)
+	// Get the providers from the provider config.
+	l.Info("getting provider config", "config", providerConfigFile)
+	configs, err := provider.GetConfig(providerConfigFile)
 	if err != nil {
-		cancelFunc()
-		return nil, err
+		return nil, errors.Join(err, errors.New("unable to get provider config"))
 	}
 
-	bProvider, err := lib.GetProviderClient(provider.Config{Name: "builtin"}, l)
-	if err != nil {
-		cancelFunc()
-		return nil, err
+	l.Info("got provider config", "config", providerConfigFile, "configs", configs)
+	providers := map[string]provider.InternalProviderClient{}
+	defaultBuiltinConfigs := []provider.InitConfig{}
+	locations := []string{}
+	for _, config := range configs {
+		if config.Address == "" || config.BinaryPath != "" {
+			return nil, fmt.Errorf("You can only use an existing provider serving at a particular location")
+		}
+		for _, initConfig := range config.InitConfig {
+			if initConfig.PipeName == "" {
+				return nil, fmt.Errorf("The providers should only be using a pipe to communicate to the LSP")
+			}
+			locations = append(locations, initConfig.Location)
+			defaultBuiltinConfigs = append(defaultBuiltinConfigs, provider.InitConfig{
+				Location: initConfig.Location,
+			})
+		}
+		providerClient, err := lib.GetProviderClient(config, l)
+		if err != nil {
+			return nil, err
+		}
+		providers[config.Name] = providerClient
 	}
-	_, err = bProvider.ProviderInit(context.Background(), []provider.InitConfig{{Location: location}})
-	if err != nil {
-		cancelFunc()
-		return nil, err
-	}
-
-	providers := map[string]provider.InternalProviderClient{
-		"java":    jProvider,
-		"builtin": bProvider,
+	if _, ok := providers["builtin"]; !ok {
+		// Have to add the builtin provider here
+		builtinClient, err := lib.GetProviderClient(provider.Config{
+			Name:       "builtin",
+			InitConfig: defaultBuiltinConfigs,
+		}, l)
+		if err != nil {
+			return nil, err
+		}
+		providers["builtin"] = builtinClient
 	}
 
 	parser := parser.RuleParser{
@@ -61,42 +65,80 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 		Log:                  l.WithName("parser"),
 	}
 
-	discoveryRulesets, violationRulesets, err := parseRules(parser, rules, l, cancelFunc)
+	discoveryRulesets, violationRulesets, neededProviders, err := parseRules(parser, rules, l, cancelFunc)
 	if err != nil {
 		return nil, err
 	}
+	builtinConfigs := []provider.InitConfig{}
+	for k, neededProvider := range neededProviders {
+		switch k {
+		case "builtin":
+			continue
+		default:
+			l.Info("initing provider", "provider", k)
+			additionalBuiltinConfigs, err := neededProvider.ProviderInit(ctx, nil)
+			if err != nil {
+				return nil, err
+			}
+			builtinConfigs = append(builtinConfigs, additionalBuiltinConfigs...)
+		}
+	}
+	if builtinClient, ok := neededProviders["builtin"]; ok {
+		if _, err = builtinClient.ProviderInit(ctx, builtinConfigs); err != nil {
+			return nil, err
+		}
+	} else {
+		providers["builtin"] = builtinClient
+		_, err = builtinClient.ProviderInit(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	eng := engine.CreateRuleEngine(ctx,
+		10,
+		l,
+		engine.WithIncidentLimit(limitIncidents),
+		engine.WithCodeSnipLimit(limitCodeSnips),
+		engine.WithContextLines(contextLines),
+		engine.WithLocationPrefixes(locations),
+	)
 
 	l.Info("using rulesets", "discoverRulesets", len(discoveryRulesets), "violationRulesets", len(violationRulesets))
 	// Generate discoveryRulesetCache here??
 
 	return &analyzer{
-		Logger:                  l,
-		engine:                  eng,
-		engineCtx:               ctx,
-		cancelFunc:              cancelFunc,
-		initedProviders:         providers,
-		discoveryRulesets:       discoveryRulesets,
-		violationRulesets:       violationRulesets,
-		discoveryCache:          []konveyor.RuleSet{},
-		discoveryCacheMutex:     sync.Mutex{},
-		cache:                   NewIncidentsCache(l),
-		location:                location,
-		contextLines:            contextLines,
-		rules:                   rules,
-		updateConditionProvider: updateProviderConditionToUseNewRPClientParseRules,
+		Logger:              l,
+		engine:              eng,
+		engineCtx:           ctx,
+		cancelFunc:          cancelFunc,
+		initedProviders:     neededProviders,
+		discoveryRulesets:   discoveryRulesets,
+		violationRulesets:   violationRulesets,
+		discoveryCache:      []konveyor.RuleSet{},
+		discoveryCacheMutex: sync.Mutex{},
+		cache:               NewIncidentsCache(l),
+		locations:           locations,
+		contextLines:        contextLines,
+		rules:               rules,
+		//updateConditionProvider: updateProviderConditionToUseNewRPClientParseRules,
 	}, nil
 
 }
 
-func parseRules(parser parser.RuleParser, rules string, l logr.Logger, cancelFunc func()) ([]engine.RuleSet, []engine.RuleSet, error) {
+func parseRules(parser parser.RuleParser, rules string, l logr.Logger, cancelFunc func()) ([]engine.RuleSet, []engine.RuleSet, map[string]provider.InternalProviderClient, error) {
 	discoveryRulesets := []engine.RuleSet{}
 	violationRulesets := []engine.RuleSet{}
+	neededProviders := map[string]provider.InternalProviderClient{}
 	for _, f := range strings.Split(rules, ",") {
-		internRuleSets, _, err := parser.LoadRules(strings.TrimSpace(f))
+		internRuleSets, newNeededProviders, err := parser.LoadRules(strings.TrimSpace(f))
 		if err != nil {
 			l.Error(err, "unable to parse all the rules for ruleset", "file", f)
 			cancelFunc()
-			return nil, nil, err
+			return nil, nil, nil, err
+		}
+		for k, v := range newNeededProviders {
+			neededProviders[k] = v
 		}
 
 		for _, interimRuleSet := range internRuleSets {
@@ -136,9 +178,10 @@ func parseRules(parser parser.RuleParser, rules string, l logr.Logger, cancelFun
 			}
 		}
 	}
-	return discoveryRulesets, violationRulesets, nil
+	return discoveryRulesets, violationRulesets, neededProviders, nil
 }
 
+/*
 func updateProviderConditionToUseNewRPClientParseRules(client *rpc2.Client,
 	existingProviders map[string]provider.InternalProviderClient,
 	discoveryRulesets, violationRulesets []engine.RuleSet,
@@ -175,116 +218,4 @@ func updateProviderConditionToUseNewRPClientParseRules(client *rpc2.Client,
 		Log:                  log.WithName("parser"),
 	}
 	return parseRules(parser, rules, log, func() {})
-}
-
-// TODO: This code was not working but should work and should be the more correct way to do this rather then re-parsing rules.
-// func updateProviderConditionToUseNewRPClient(client *rpc2.Client,
-// 	discoveryRulesets, violationRulesets []engine.RuleSet,
-// 	log logr.Logger,
-// 	contextLines int,
-// 	location, _ string) ([]engine.RuleSet, []engine.RuleSet, error) {
-// 	//create new java provider
-
-// 	c, err := java.NewInternalProviderClientForRPCClient(context.TODO(), log, contextLines, location, client)
-// 	if err != nil {
-// 		return nil, nil, err
-// 	}
-// 	client.Notify("started", nil)
-// 	reply := map[string]interface{}{}
-// 	client.Call("workspace/executeCommand", []map[string]interface{}{{"command": "io.konveyor.tackle.ruleEntry",
-// 		"arguments": map[string]interface{}{
-// 			"analysisMode": "source-only",
-// 			"location":     "11",
-// 			"project":      "java",
-// 			"query":        "java.rmi*"},
-// 		"id":      1,
-// 		"jsonrpc": "2.0"}}, reply)
-
-// 	for _, rs := range discoveryRulesets {
-// 		for _, r := range rs.Rules {
-// 			switch r.When.(type) {
-// 			case engine.ConditionEntry:
-// 				log.Info("dealing with simplest case", "before", fmt.Sprintf("%+v", r.When))
-// 				v := r.When.(engine.ConditionEntry)
-// 				if x, ok := v.ProviderSpecificConfig.(provider.ProviderCondition); ok {
-// 					if strings.Contains(reflect.TypeOf(x.Client).String(), "java") {
-// 						x.Client = c
-// 						v.ProviderSpecificConfig = x
-// 					}
-// 					r.When = v
-// 					log.Info("dealing with simplest case", "after", fmt.Sprintf("%+v", r.When))
-// 				}
-// 			case engine.AndCondition:
-// 				v := r.When.(engine.AndCondition)
-// 				conditions := handleConditionEntries(v.Conditions, c)
-// 				v.Conditions = conditions
-// 				r.When = v
-// 			case engine.OrCondition:
-// 				v := r.When.(engine.OrCondition)
-// 				conditions := handleConditionEntries(v.Conditions, c)
-// 				v.Conditions = conditions
-// 				r.When = v
-// 			default:
-// 				panic(fmt.Errorf("invalid top level condition when type: %T -- %+v", r.When, r.When))
-// 			}
-// 		}
-// 	}
-// 	for _, rs := range violationRulesets {
-// 		for _, r := range rs.Rules {
-// 			switch r.When.(type) {
-// 			case engine.ConditionEntry:
-// 				v := r.When.(engine.ConditionEntry)
-// 				if x, ok := v.ProviderSpecificConfig.(provider.ProviderCondition); ok {
-// 					if strings.Contains(reflect.TypeOf(x.Client).String(), "java") {
-// 						x.Client = c
-// 						v.ProviderSpecificConfig = x
-// 					}
-// 				}
-// 				r.When = v
-// 			case engine.AndCondition:
-// 				v := r.When.(engine.AndCondition)
-// 				conditions := handleConditionEntries(v.Conditions, c)
-// 				v.Conditions = conditions
-// 				r.When = v
-// 			case engine.OrCondition:
-// 				v := r.When.(engine.OrCondition)
-// 				conditions := handleConditionEntries(v.Conditions, c)
-// 				v.Conditions = conditions
-// 				r.When = v
-// 			default:
-// 				panic(fmt.Errorf("invalid top level condition when type: %T -- %+v", r.When, r.When))
-// 			}
-
-// 		}
-// 	}
-// 	return discoveryRulesets, violationRulesets, nil
-// }
-
-// func handleConditionEntries(entries []engine.ConditionEntry, c provider.InternalProviderClient) []engine.ConditionEntry {
-// 	ret := []engine.ConditionEntry{}
-// 	for _, ce := range entries {
-// 		switch ce.ProviderSpecificConfig.(type) {
-// 		case engine.ConditionEntry:
-// 			v := ce.ProviderSpecificConfig.(engine.ConditionEntry)
-// 			if x, ok := v.ProviderSpecificConfig.(provider.ProviderCondition); ok {
-// 				x.Client = c
-// 				v.ProviderSpecificConfig = x
-// 			}
-// 			ret = append(ret, ce)
-// 		case engine.AndCondition:
-// 			v := ce.ProviderSpecificConfig.(engine.AndCondition)
-// 			conditions := handleConditionEntries(v.Conditions, c)
-// 			v.Conditions = conditions
-// 			ce.ProviderSpecificConfig = v
-// 			ret = append(ret, ce)
-
-// 		case engine.OrCondition:
-// 			v := ce.ProviderSpecificConfig.(engine.OrCondition)
-// 			conditions := handleConditionEntries(v.Conditions, c)
-// 			v.Conditions = conditions
-// 			ce.ProviderSpecificConfig = v
-// 			ret = append(ret, ce)
-// 		}
-// 	}
-// 	return ret
-// }
+} */
