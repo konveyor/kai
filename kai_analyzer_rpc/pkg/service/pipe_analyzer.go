@@ -18,6 +18,7 @@ import (
 
 func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contextLines int, rules, providerConfigFile string, l logr.Logger) (Analyzer, error) {
 	ctx, cancelFunc := context.WithCancel(ctx)
+	defer cancelFunc()
 	// Get the providers from the provider config.
 	l.Info("getting provider config", "config", providerConfigFile)
 	configs, err := provider.GetConfig(providerConfigFile)
@@ -95,6 +96,7 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 		}
 	}
 
+	ctx, cancelFunc = context.WithCancel(context.Background())
 	eng := engine.CreateRuleEngine(ctx,
 		10,
 		l,
@@ -180,42 +182,3 @@ func parseRules(parser parser.RuleParser, rules string, l logr.Logger, cancelFun
 	}
 	return discoveryRulesets, violationRulesets, neededProviders, nil
 }
-
-/*
-func updateProviderConditionToUseNewRPClientParseRules(client *rpc2.Client,
-	existingProviders map[string]provider.InternalProviderClient,
-	discoveryRulesets, violationRulesets []engine.RuleSet,
-	log logr.Logger,
-	contextLines int,
-	location, rules string) ([]engine.RuleSet, []engine.RuleSet, error) {
-
-	jProvider, err := java.NewInternalProviderClientForRPCClient(context.TODO(), log, contextLines, location, client)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var bProvider provider.InternalProviderClient
-	if val, ok := existingProviders["builtin"]; ok {
-		bProvider = val
-	} else {
-		bProvider, err := lib.GetProviderClient(provider.Config{Name: "builtin"}, log)
-		if err != nil {
-			return nil, nil, err
-		}
-		_, err = bProvider.ProviderInit(context.Background(), []provider.InitConfig{{Location: location}})
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-
-	providers := map[string]provider.InternalProviderClient{
-		"java":    jProvider,
-		"builtin": bProvider,
-	}
-
-	parser := parser.RuleParser{
-		ProviderNameToClient: providers,
-		Log:                  log.WithName("parser"),
-	}
-	return parseRules(parser, rules, log, func() {})
-} */
