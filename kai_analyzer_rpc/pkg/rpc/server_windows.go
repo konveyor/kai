@@ -26,11 +26,11 @@ type Server struct {
 	notificationServiceName string
 	connections             []net.Conn
 	rules                   string
-	sourceDirectory         string
+	providerConfigFile      string
 	initService             *sync.Once
 }
 
-func NewServer(ctx context.Context, s *rpc.Server, log logr.Logger, notificationServiceName string, rules string, sourceDirectory string) *Server {
+func NewServer(ctx context.Context, s *rpc.Server, log logr.Logger, notificationServiceName string, rules string, providerConfigFile string) *Server {
 	state := rpc.NewState()
 	state.Set("seq", &atomic.Uint64{})
 	return &Server{ctx: ctx,
@@ -39,7 +39,7 @@ func NewServer(ctx context.Context, s *rpc.Server, log logr.Logger, notification
 		state:                   state,
 		notificationServiceName: notificationServiceName,
 		rules:                   rules,
-		sourceDirectory:         sourceDirectory,
+		providerConfigFile:      providerConfigFile,
 		initService:             &sync.Once{},
 	}
 }
@@ -51,7 +51,7 @@ func (s *Server) Accept(pipePath string) {
 	if err != nil {
 		panic(err)
 	}
-	analyzerService, err := service.NewPipeAnalyzer(s.ctx, 10000, 10, 10, pipePath, s.rules, s.sourceDirectory, s.log.WithName("analyzer-service"))
+	analyzerService, err := service.NewPipeAnalyzer(s.ctx, 10000, 10, 10, s.rules, s.providerConfigFile, s.log.WithName("analyzer-service"))
 	if err != nil {
 		s.log.Error(err, "unable to create analyzer service")
 		return

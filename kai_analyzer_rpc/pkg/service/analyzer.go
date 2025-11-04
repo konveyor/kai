@@ -3,9 +3,7 @@ package service
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"sort"
-	"strings"
 	"sync"
 
 	rpc "github.com/cenkalti/rpc2"
@@ -14,11 +12,8 @@ import (
 	"github.com/konveyor/analyzer-lsp/engine"
 	"github.com/konveyor/analyzer-lsp/engine/labels"
 	"github.com/konveyor/analyzer-lsp/output/v1/konveyor"
-	"github.com/konveyor/analyzer-lsp/parser"
 	"github.com/konveyor/analyzer-lsp/provider"
-	"github.com/konveyor/analyzer-lsp/provider/lib"
 	"github.com/konveyor/kai-analyzer/pkg/scope"
-	"github.com/konveyor/kai-analyzer/provider/java"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 )
@@ -63,12 +58,13 @@ type analyzer struct {
 	cache               IncidentsCache
 
 	contextLines int
-	location     string
+	locations    []string
 	rules        string
 
 	updateConditionProvider func(*rpc.Client, map[string]provider.InternalProviderClient, []engine.RuleSet, []engine.RuleSet, logr.Logger, int, string, string) ([]engine.RuleSet, []engine.RuleSet, error)
 }
 
+/*
 func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, incidentSelector, lspServerPath, bundles, depOpenSourceLabelsFile, rules string, log logr.Logger) (Analyzer, error) {
 	prefix, err := filepath.Abs(location)
 	if err != nil {
@@ -85,12 +81,13 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 		engine.WithLocationPrefixes([]string{prefix}),
 	)
 
+	// TODO: I am pretty sure that this should just be deleteod now.
 	// this function already init's the java provider
-	jProvider, err := java.NewInternalProviderClient(ctx, log, contextLines, location, lspServerPath, bundles, depOpenSourceLabelsFile)
-	if err != nil {
-		cancelFunc()
-		return nil, err
-	}
+	//jProvider, err := java.NewInternalProviderClient(ctx, log, contextLines, location, lspServerPath, bundles, depOpenSourceLabelsFile)
+	//if err != nil {
+	//cancelFunc()
+	//	return nil, err
+	//}
 
 	bProvider, err := lib.GetProviderClient(provider.Config{Name: "builtin"}, log)
 	if err != nil {
@@ -178,6 +175,7 @@ func NewAnalyzer(limitIncidents, limitCodeSnips, contextLines int, location, inc
 	}, nil
 
 }
+*/
 
 func labelsContainDiscoveryOrAlways(labels []string) (bool, bool) {
 	foundDiscoveryLabel := false
@@ -228,12 +226,13 @@ func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) er
 
 	dRulesets, vRulesets := a.discoveryRulesets, a.violationRulesets
 	if a.updateConditionProvider != nil {
-		var err error
+		// TODO: This needs to be added back, but I am pretty sure that it was not not working
+		/*var err error
 		dRulesets, vRulesets, err = a.updateConditionProvider(client, a.initedProviders, a.discoveryRulesets, a.violationRulesets, a.Logger.WithName("provider update"), a.contextLines, a.location, a.rules)
 		if err != nil {
 			a.Logger.Error(err, "unable to update Conditions with new client")
 			return err
-		}
+		}*/
 		a.Logger.Info("updated rulesets", "discovery", len(a.discoveryRulesets), "violations", len(a.violationRulesets))
 	}
 
