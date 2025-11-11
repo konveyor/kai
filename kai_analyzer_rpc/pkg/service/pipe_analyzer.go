@@ -89,6 +89,13 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 			return nil, err
 		}
 	} else {
+		builtinClient, err := lib.GetProviderClient(provider.Config{
+			Name:       "builtin",
+			InitConfig: defaultBuiltinConfigs,
+		}, l)
+		if err != nil {
+			return nil, err
+		}
 		providers["builtin"] = builtinClient
 		_, err = builtinClient.ProviderInit(ctx, nil)
 		if err != nil {

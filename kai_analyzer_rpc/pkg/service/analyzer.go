@@ -295,7 +295,7 @@ func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) er
 		return rulesets[i].Name < rulesets[j].Name
 	})
 
-	a.Logger.V(8).Info("got rulesets", "rulesets", rulesets)
+	a.Logger.Info("got rulesets", "rulesets", rulesets)
 
 	// This is a full run, set the complete new results
 	if len(args.IncludedPaths) == 0 {
