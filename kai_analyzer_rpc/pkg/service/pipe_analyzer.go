@@ -17,6 +17,27 @@ import (
 	"github.com/konveyor/analyzer-lsp/provider/lib"
 )
 
+// NewPipeAnalyzer creates a new analyzer instance for pipe-based communication.
+//
+// This function initializes the analyzer with the specified configuration and emits
+// progress events throughout the initialization process.
+//
+// Parameters:
+//   - ctx: Context for cancellation and deadline control
+//   - limitIncidents: Maximum number of incidents to report per rule
+//   - limitCodeSnips: Maximum number of code snippets to include
+//   - contextLines: Number of context lines to include around incidents
+//   - rules: Comma-separated list of rule file paths
+//   - providerConfigFile: Path to the provider configuration file
+//   - l: Logger for diagnostic output
+//   - progressReporter: Reporter for emitting progress events during analysis
+//
+// Progress events emitted:
+//   - StageInit: When initialization begins
+//   - StageProviderInit: During provider initialization (per provider)
+//   - StageRuleParsing: After rules are loaded (includes total count)
+//
+// Returns an Analyzer instance or an error if initialization fails.
 func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contextLines int, rules, providerConfigFile string, l logr.Logger, progressReporter progress.ProgressReporter) (Analyzer, error) {
 	// Emit init event
 	progressReporter.Report(progress.ProgressEvent{

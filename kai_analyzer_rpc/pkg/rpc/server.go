@@ -30,6 +30,22 @@ type Server struct {
 	progressReporter        progress.ProgressReporter
 }
 
+// NewServer creates a new RPC server instance for analyzer communication.
+//
+// The server manages the lifecycle of the analyzer service and handles
+// RPC connections over Unix domain sockets.
+//
+// Parameters:
+//   - ctx: Context for server lifecycle management
+//   - s: Underlying RPC server implementation
+//   - log: Logger for diagnostic output
+//   - notificationServiceName: Name of the notification service to register
+//   - rules: Comma-separated list of rule file paths
+//   - providerConfigFile: Path to the provider configuration file
+//   - progressReporter: Reporter for emitting analysis progress events
+//
+// The progressReporter is passed to the analyzer service and used to emit
+// real-time progress updates during analysis operations.
 func NewServer(ctx context.Context, s *rpc.Server, log logr.Logger, notificationServiceName string, rules string, providerConfigFile string, progressReporter progress.ProgressReporter) *Server {
 	state := rpc.NewState()
 	state.Set("seq", &atomic.Uint64{})

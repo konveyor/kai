@@ -104,7 +104,28 @@ func main() {
 
 }
 
-// createProgressReporter creates the appropriate progress reporter based on the flags
+// createProgressReporter creates the appropriate progress reporter based on CLI flags.
+//
+// The progressOutput parameter specifies where to write progress events:
+//   - "" (empty): Returns NoopReporter with zero overhead
+//   - "stderr": Writes to standard error
+//   - "stdout": Writes to standard output
+//   - any other value: Treats as file path and creates the file
+//
+// The progressFormat parameter specifies the output format:
+//   - "json": NDJSON format for programmatic consumption
+//   - "text": Human-readable format
+//   - any other value: Defaults to JSON format
+//
+// Returns a ProgressReporter and a cleanup function. The cleanup function
+// must be called (typically via defer) to properly close any opened files.
+//
+// If file creation fails, the function logs a warning and falls back to stderr.
+//
+// Example usage:
+//
+//	reporter, cleanup := createProgressReporter("stderr", "json", logger)
+//	defer cleanup()
 func createProgressReporter(progressOutput, progressFormat string, l logr.Logger) (progress.ProgressReporter, func()) {
 	// If no progress output specified, use noop reporter (zero overhead)
 	if progressOutput == "" {
