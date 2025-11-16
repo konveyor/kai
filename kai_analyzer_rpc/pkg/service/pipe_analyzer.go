@@ -12,11 +12,17 @@ import (
 	"github.com/konveyor/analyzer-lsp/engine"
 	"github.com/konveyor/analyzer-lsp/output/v1/konveyor"
 	"github.com/konveyor/analyzer-lsp/parser"
+	"github.com/konveyor/analyzer-lsp/progress"
 	"github.com/konveyor/analyzer-lsp/provider"
 	"github.com/konveyor/analyzer-lsp/provider/lib"
 )
 
-func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contextLines int, rules, providerConfigFile string, l logr.Logger) (Analyzer, error) {
+func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contextLines int, rules, providerConfigFile string, l logr.Logger, progressReporter progress.ProgressReporter) (Analyzer, error) {
+	// Emit init event
+	progressReporter.Report(progress.ProgressEvent{
+		Stage: progress.StageInit,
+	})
+
 	ctx, cancelFunc := context.WithCancel(ctx)
 	defer cancelFunc()
 	// Get the providers from the provider config.
@@ -70,6 +76,20 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 	if err != nil {
 		return nil, err
 	}
+
+	// Report rule parsing complete
+	totalRules := 0
+	for _, rs := range discoveryRulesets {
+		totalRules += len(rs.Rules)
+	}
+	for _, rs := range violationRulesets {
+		totalRules += len(rs.Rules)
+	}
+	progressReporter.Report(progress.ProgressEvent{
+		Stage: progress.StageRuleParsing,
+		Total: totalRules,
+	})
+
 	builtinConfigs := []provider.InitConfig{}
 	for k, neededProvider := range neededProviders {
 		switch k {
@@ -77,10 +97,18 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 			continue
 		default:
 			l.Info("initing provider", "provider", k)
+			progressReporter.Report(progress.ProgressEvent{
+				Stage:   progress.StageProviderInit,
+				Message: fmt.Sprintf("Initializing %s provider", k),
+			})
 			additionalBuiltinConfigs, err := neededProvider.ProviderInit(ctx, nil)
 			if err != nil {
 				return nil, err
 			}
+			progressReporter.Report(progress.ProgressEvent{
+				Stage:   progress.StageProviderInit,
+				Message: fmt.Sprintf("Provider %s ready", k),
+			})
 			builtinConfigs = append(builtinConfigs, additionalBuiltinConfigs...)
 		}
 	}
@@ -130,6 +158,7 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 		locations:           locations,
 		contextLines:        contextLines,
 		rules:               rules,
+		progressReporter:    progressReporter,
 		//updateConditionProvider: updateProviderConditionToUseNewRPClientParseRules,
 	}, nil
 

@@ -13,6 +13,7 @@ import (
 
 	rpc "github.com/cenkalti/rpc2"
 	"github.com/go-logr/logr"
+	"github.com/konveyor/analyzer-lsp/progress"
 	"github.com/konveyor/kai-analyzer/pkg/codec"
 	"github.com/konveyor/kai-analyzer/pkg/service"
 )
@@ -26,9 +27,10 @@ type Server struct {
 	connections             []net.Conn
 	rules                   string
 	providerConfigFile      string
+	progressReporter        progress.ProgressReporter
 }
 
-func NewServer(ctx context.Context, s *rpc.Server, log logr.Logger, notificationServiceName string, rules string, providerConfigFile string) *Server {
+func NewServer(ctx context.Context, s *rpc.Server, log logr.Logger, notificationServiceName string, rules string, providerConfigFile string, progressReporter progress.ProgressReporter) *Server {
 	state := rpc.NewState()
 	state.Set("seq", &atomic.Uint64{})
 	return &Server{ctx: ctx,
@@ -37,7 +39,8 @@ func NewServer(ctx context.Context, s *rpc.Server, log logr.Logger, notification
 		state:                   state,
 		notificationServiceName: notificationServiceName,
 		rules:                   rules,
-		providerConfigFile:      providerConfigFile}
+		providerConfigFile:      providerConfigFile,
+		progressReporter:        progressReporter}
 }
 
 func (s *Server) Accept(pipePath string) {
@@ -54,7 +57,7 @@ func (s *Server) Accept(pipePath string) {
 		panic(err)
 	}
 	// Register pipe analysis handler
-	analyzerService, err := service.NewPipeAnalyzer(s.ctx, 10000, 10, 10, s.rules, s.providerConfigFile, s.log.WithName("analyzer-service"))
+	analyzerService, err := service.NewPipeAnalyzer(s.ctx, 10000, 10, 10, s.rules, s.providerConfigFile, s.log.WithName("analyzer-service"), s.progressReporter)
 	if err != nil {
 		s.log.Error(err, "unable to create analyzer service")
 		panic(err)
