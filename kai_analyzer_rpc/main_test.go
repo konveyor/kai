@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -58,7 +59,7 @@ func TestCreateProgressReporter_Text(t *testing.T) {
 
 func TestCreateProgressReporter_File(t *testing.T) {
 	// Should create reporter that writes to file
-	tmpFile := "/tmp/kai-progress-test.json"
+	tmpFile := filepath.Join(os.TempDir(), "kai-progress-test.json")
 	defer os.Remove(tmpFile)
 
 	reporter, cleanup := createProgressReporter(tmpFile, "json", logr.Discard())
