@@ -12,6 +12,7 @@ import (
 	"github.com/konveyor/analyzer-lsp/engine"
 	"github.com/konveyor/analyzer-lsp/engine/labels"
 	"github.com/konveyor/analyzer-lsp/output/v1/konveyor"
+	"github.com/konveyor/analyzer-lsp/progress"
 	"github.com/konveyor/analyzer-lsp/provider"
 	"github.com/konveyor/kai-analyzer/pkg/scope"
 	"go.opentelemetry.io/otel"
@@ -60,6 +61,8 @@ type analyzer struct {
 	contextLines int
 	locations    []string
 	rules        string
+
+	progressReporter progress.ProgressReporter
 
 	updateConditionProvider func(*rpc.Client, map[string]provider.InternalProviderClient, []engine.RuleSet, []engine.RuleSet, logr.Logger, int, string, string) ([]engine.RuleSet, []engine.RuleSet, error)
 }
@@ -276,8 +279,10 @@ func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) er
 	// to determine if discovery rule segmentation saves us enough
 	if len(dRulesets) != 0 && args.ResetCache {
 		// Here we want to refresh the discovery ruleset cache
+		// Engine will emit per-rule progress automatically
 		ctx, span := tracer.Start(ctx, "discovery-rules")
-		rulesets := a.engine.RunRulesScoped(ctx, dRulesets, engine.NewScope(scopes...), selectors...)
+		rulesets := a.engine.RunRulesScopedWithOptions(ctx, dRulesets, engine.NewScope(scopes...),
+			[]engine.RunOption{engine.WithProgressReporter(a.progressReporter)}, selectors...)
 		a.discoveryCacheMutex.Lock()
 		a.discoveryCache = rulesets
 		a.discoveryCacheMutex.Unlock()
@@ -286,9 +291,10 @@ func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) er
 	scopes = append(scopes, scope.NewDiscoveryRuleScope(a.Logger, a.discoveryCache))
 
 	// This will already wait
-	//
+	// Engine will emit per-rule progress automatically
 	violationCTX, violationSpan := tracer.Start(ctx, "violation-rules")
-	rulesets := a.engine.RunRulesScoped(violationCTX, vRulesets, engine.NewScope(scopes...), selectors...)
+	rulesets := a.engine.RunRulesScopedWithOptions(violationCTX, vRulesets, engine.NewScope(scopes...),
+		[]engine.RunOption{engine.WithProgressReporter(a.progressReporter)}, selectors...)
 	violationSpan.End()
 
 	sort.SliceStable(rulesets, func(i, j int) bool {
@@ -308,6 +314,12 @@ func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) er
 
 	// Now we need to invalidate anything, from the files in included paths
 	response.Rulesets = a.createRulesetsFromCache()
+
+	// Report analysis complete
+	a.progressReporter.Report(progress.ProgressEvent{
+		Stage: progress.StageComplete,
+	})
+
 	return nil
 }
 

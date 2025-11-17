@@ -12,6 +12,7 @@ import (
 	rpc "github.com/cenkalti/rpc2"
 
 	"github.com/go-logr/logr"
+	"github.com/konveyor/analyzer-lsp/progress"
 	kairpc "github.com/konveyor/kai-analyzer/pkg/rpc"
 	"github.com/konveyor/kai-analyzer/pkg/service"
 	"github.com/konveyor/kai-analyzer/pkg/tracing"
@@ -23,6 +24,8 @@ func main() {
 	serverPipe := flag.String("server-pipe", "", "Path to the pipe to use for bi-directional communication")
 	providerConfigFile := flag.String("provider-config", "", "Path the provider config file")
 	logVerbosity := flag.Int("verbosity", -4, "how verbose would you like the logs to be, error logs are 8, warning logs are 4 info logs are 0 and debug logs are -4, going more negative gives more logs.")
+	progressOutput := flag.String("progress-output", "", "Where to write progress events (stderr, stdout, or file path)")
+	progressFormat := flag.String("progress-format", "json", "Format for progress output: text or json")
 
 	// TODO(djzager): We should do verbosity type argument(s)
 	logLevel := slog.Level(*logVerbosity)
@@ -52,7 +55,12 @@ func main() {
 
 	l := logr.FromSlogHandler(logger)
 
-	l.Info("args", "rules", rules, "logFile", logFile, "serverPipe", serverPipe, "providerConfig", providerConfigFile, "verbosity", logVerbosity)
+	l.Info("args", "rules", rules, "logFile", logFile, "serverPipe", serverPipe, "providerConfig", providerConfigFile, "verbosity", logVerbosity, "progressOutput", progressOutput, "progressFormat", progressFormat)
+
+	// Create progress reporter
+	progressReporter, cleanupProgress := createProgressReporter(*progressOutput, *progressFormat, l)
+	defer cleanupProgress()
+
 	// Check if ENABLE_TRACING is set in the environment.
 	if _, enable_tracing := os.LookupEnv("ENABLE_TRACING"); enable_tracing {
 		// Set up OpenTelemetry.
@@ -76,7 +84,7 @@ func main() {
 	signal.Notify(cancelChan, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
 		l.Info("Starting Server")
-		s := kairpc.NewServer(ctx, server, l, "notification.Notify", *rules, *providerConfigFile)
+		s := kairpc.NewServer(ctx, server, l, "notification.Notify", *rules, *providerConfigFile, progressReporter)
 		s.OnConnect(func(c *rpc.Client) {
 			err := c.Notify("started", nil)
 			if err != nil {
@@ -94,4 +102,68 @@ func main() {
 	// When we get here, call stop on the analyzer server
 	l.Info("stopping server", "signal", sig)
 
+}
+
+// createProgressReporter creates the appropriate progress reporter based on CLI flags.
+//
+// The progressOutput parameter specifies where to write progress events:
+//   - "" (empty): Returns NoopReporter with zero overhead
+//   - "stderr": Writes to standard error
+//   - "stdout": Writes to standard output
+//   - any other value: Treats as file path and creates the file
+//
+// The progressFormat parameter specifies the output format:
+//   - "json": NDJSON format for programmatic consumption
+//   - "text": Human-readable format
+//   - any other value: Defaults to JSON format
+//
+// Returns a ProgressReporter and a cleanup function. The cleanup function
+// must be called (typically via defer) to properly close any opened files.
+//
+// If file creation fails, the function logs a warning and falls back to stderr.
+//
+// Example usage:
+//
+//	reporter, cleanup := createProgressReporter("stderr", "json", logger)
+//	defer cleanup()
+func createProgressReporter(progressOutput, progressFormat string, l logr.Logger) (progress.ProgressReporter, func()) {
+	// If no progress output specified, use noop reporter (zero overhead)
+	if progressOutput == "" {
+		return progress.NewNoopReporter(), func() {}
+	}
+
+	var writer *os.File
+	cleanup := func() {}
+
+	switch progressOutput {
+	case "stderr":
+		writer = os.Stderr
+	case "stdout":
+		writer = os.Stdout
+	default:
+		// Try to create a file
+		file, err := os.Create(progressOutput)
+		if err != nil {
+			l.Error(err, "failed to create progress output file, falling back to stderr", "path", progressOutput)
+			writer = os.Stderr
+		} else {
+			writer = file
+			cleanup = func() { file.Close() }
+		}
+	}
+
+	// Create the appropriate reporter based on format
+	var reporter progress.ProgressReporter
+	switch progressFormat {
+	case "json":
+		reporter = progress.NewJSONReporter(writer)
+	case "text":
+		reporter = progress.NewTextReporter(writer)
+	default:
+		l.Info("unknown progress format, defaulting to json", "format", progressFormat)
+		reporter = progress.NewJSONReporter(writer)
+	}
+
+	l.Info("progress reporting enabled", "output", progressOutput, "format", progressFormat)
+	return reporter, cleanup
 }

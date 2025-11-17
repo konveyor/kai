@@ -12,11 +12,38 @@ import (
 	"github.com/konveyor/analyzer-lsp/engine"
 	"github.com/konveyor/analyzer-lsp/output/v1/konveyor"
 	"github.com/konveyor/analyzer-lsp/parser"
+	"github.com/konveyor/analyzer-lsp/progress"
 	"github.com/konveyor/analyzer-lsp/provider"
 	"github.com/konveyor/analyzer-lsp/provider/lib"
 )
 
-func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contextLines int, rules, providerConfigFile string, l logr.Logger) (Analyzer, error) {
+// NewPipeAnalyzer creates a new analyzer instance for pipe-based communication.
+//
+// This function initializes the analyzer with the specified configuration and emits
+// progress events throughout the initialization process.
+//
+// Parameters:
+//   - ctx: Context for cancellation and deadline control
+//   - limitIncidents: Maximum number of incidents to report per rule
+//   - limitCodeSnips: Maximum number of code snippets to include
+//   - contextLines: Number of context lines to include around incidents
+//   - rules: Comma-separated list of rule file paths
+//   - providerConfigFile: Path to the provider configuration file
+//   - l: Logger for diagnostic output
+//   - progressReporter: Reporter for emitting progress events during analysis
+//
+// Progress events emitted:
+//   - StageInit: When initialization begins
+//   - StageProviderInit: During provider initialization (per provider)
+//   - StageRuleParsing: After rules are loaded (includes total count)
+//
+// Returns an Analyzer instance or an error if initialization fails.
+func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contextLines int, rules, providerConfigFile string, l logr.Logger, progressReporter progress.ProgressReporter) (Analyzer, error) {
+	// Emit init event
+	progressReporter.Report(progress.ProgressEvent{
+		Stage: progress.StageInit,
+	})
+
 	ctx, cancelFunc := context.WithCancel(ctx)
 	defer cancelFunc()
 	// Get the providers from the provider config.
@@ -70,6 +97,20 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 	if err != nil {
 		return nil, err
 	}
+
+	// Report rule parsing complete
+	totalRules := 0
+	for _, rs := range discoveryRulesets {
+		totalRules += len(rs.Rules)
+	}
+	for _, rs := range violationRulesets {
+		totalRules += len(rs.Rules)
+	}
+	progressReporter.Report(progress.ProgressEvent{
+		Stage: progress.StageRuleParsing,
+		Total: totalRules,
+	})
+
 	builtinConfigs := []provider.InitConfig{}
 	for k, neededProvider := range neededProviders {
 		switch k {
@@ -77,10 +118,18 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 			continue
 		default:
 			l.Info("initing provider", "provider", k)
+			progressReporter.Report(progress.ProgressEvent{
+				Stage:   progress.StageProviderInit,
+				Message: fmt.Sprintf("Initializing %s provider", k),
+			})
 			additionalBuiltinConfigs, err := neededProvider.ProviderInit(ctx, nil)
 			if err != nil {
 				return nil, err
 			}
+			progressReporter.Report(progress.ProgressEvent{
+				Stage:   progress.StageProviderInit,
+				Message: fmt.Sprintf("Provider %s ready", k),
+			})
 			builtinConfigs = append(builtinConfigs, additionalBuiltinConfigs...)
 		}
 	}
@@ -130,6 +179,7 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 		locations:           locations,
 		contextLines:        contextLines,
 		rules:               rules,
+		progressReporter:    progressReporter,
 		//updateConditionProvider: updateProviderConditionToUseNewRPClientParseRules,
 	}, nil
 
