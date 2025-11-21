@@ -5,8 +5,8 @@ go 1.23.9
 require (
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/cenkalti/rpc2 v1.0.4
-	github.com/go-logr/logr v1.4.2
-	github.com/konveyor/analyzer-lsp v0.8.1-alpha.2.0.20251111032340-8753c07691be
+	github.com/go-logr/logr v1.4.3
+	github.com/konveyor/analyzer-lsp v0.9.0-alpha.1.0.20251121202139-b3f742caf596
 	go.opentelemetry.io/otel v1.35.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.34.0
 	go.opentelemetry.io/otel/sdk v1.35.0
@@ -34,8 +34,8 @@ require (
 	github.com/jhump/protoreflect v1.16.0 // indirect
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
-	github.com/swaggest/jsonschema-go v0.3.73 // indirect
-	github.com/swaggest/openapi-go v0.2.57 // indirect
+	github.com/swaggest/jsonschema-go v0.3.74 // indirect
+	github.com/swaggest/openapi-go v0.2.58 // indirect
 	github.com/swaggest/refl v1.3.1 // indirect
 	go.lsp.dev/uri v0.3.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
@@ -54,5 +54,3 @@ require (
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
-
-replace github.com/konveyor/analyzer-lsp => /home/pranav/Projects/analyzer-lsp
