@@ -59,11 +59,11 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 	locations := []string{}
 	for _, config := range configs {
 		if config.Address == "" || config.BinaryPath != "" {
-			return nil, fmt.Errorf("You can only use an existing provider serving at a particular location")
+			return nil, fmt.Errorf("you can only use an existing provider serving at a particular location")
 		}
 		for _, initConfig := range config.InitConfig {
 			if initConfig.PipeName == "" {
-				return nil, fmt.Errorf("The providers should only be using a pipe to communicate to the LSP")
+				return nil, fmt.Errorf("the providers should only be using a pipe to communicate to the LSP")
 			}
 			locations = append(locations, initConfig.Location)
 			defaultBuiltinConfigs = append(defaultBuiltinConfigs, provider.InitConfig{
@@ -93,7 +93,7 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 		Log:                  l.WithName("parser"),
 	}
 
-	discoveryRulesets, violationRulesets, neededProviders, err := parseRules(parser, rules, l, cancelFunc)
+	discoveryRulesets, violationRulesets, neededProviders, providerConditions, err := parseRules(parser, rules, l, cancelFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -152,6 +152,15 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 		}
 	}
 
+	// Call Prepare() on all providers with the provider conditions
+	for k, v := range providerConditions {
+		if _, ok := neededProviders[k]; ok {
+			if err := neededProviders[k].Prepare(ctx, v); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	ctx, cancelFunc = context.WithCancel(context.Background())
 	eng := engine.CreateRuleEngine(ctx,
 		10,
@@ -185,21 +194,27 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 
 }
 
-func parseRules(parser parser.RuleParser, rules string, l logr.Logger, cancelFunc func()) ([]engine.RuleSet, []engine.RuleSet, map[string]provider.InternalProviderClient, error) {
+func parseRules(parser parser.RuleParser, rules string, l logr.Logger, cancelFunc func()) ([]engine.RuleSet, []engine.RuleSet, map[string]provider.InternalProviderClient, map[string][]provider.ConditionsByCap, error) {
 	discoveryRulesets := []engine.RuleSet{}
 	violationRulesets := []engine.RuleSet{}
 	neededProviders := map[string]provider.InternalProviderClient{}
+	providerConditions := map[string][]provider.ConditionsByCap{}
 	for _, f := range strings.Split(rules, ",") {
-		internRuleSets, newNeededProviders, err := parser.LoadRules(strings.TrimSpace(f))
+		internRuleSets, newNeededProviders, provConditions, err := parser.LoadRules(strings.TrimSpace(f))
 		if err != nil {
 			l.Error(err, "unable to parse all the rules for ruleset", "file", f)
 			cancelFunc()
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 		for k, v := range newNeededProviders {
 			neededProviders[k] = v
 		}
-
+		for k, v := range provConditions {
+			if _, ok := providerConditions[k]; !ok {
+				providerConditions[k] = []provider.ConditionsByCap{}
+			}
+			providerConditions[k] = append(providerConditions[k], v...)
+		}
 		for _, interimRuleSet := range internRuleSets {
 			runCacheResetRuleset := engine.RuleSet{
 				Name:        interimRuleSet.Name,
@@ -237,5 +252,5 @@ func parseRules(parser parser.RuleParser, rules string, l logr.Logger, cancelFun
 			}
 		}
 	}
-	return discoveryRulesets, violationRulesets, neededProviders, nil
+	return discoveryRulesets, violationRulesets, neededProviders, providerConditions, nil
 }
