@@ -93,9 +93,9 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 		Log:                  l.WithName("parser"),
 	}
 
-	discoveryRulesets, violationRulesets, neededProviders, providerConditions, err := parseRules(parser, rules, l, cancelFunc)
+	discoveryRulesets, violationRulesets, neededProviders, providerConditions, err := parseRules(parser, rules, l)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to parse rules: %w", err)
 	}
 
 	// Report rule parsing complete
@@ -194,7 +194,7 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 
 }
 
-func parseRules(parser parser.RuleParser, rules string, l logr.Logger, cancelFunc func()) ([]engine.RuleSet, []engine.RuleSet, map[string]provider.InternalProviderClient, map[string][]provider.ConditionsByCap, error) {
+func parseRules(parser parser.RuleParser, rules string, l logr.Logger) ([]engine.RuleSet, []engine.RuleSet, map[string]provider.InternalProviderClient, map[string][]provider.ConditionsByCap, error) {
 	discoveryRulesets := []engine.RuleSet{}
 	violationRulesets := []engine.RuleSet{}
 	neededProviders := map[string]provider.InternalProviderClient{}
@@ -203,7 +203,6 @@ func parseRules(parser parser.RuleParser, rules string, l logr.Logger, cancelFun
 		internRuleSets, newNeededProviders, provConditions, err := parser.LoadRules(strings.TrimSpace(f))
 		if err != nil {
 			l.Error(err, "unable to parse all the rules for ruleset", "file", f)
-			cancelFunc()
 			return nil, nil, nil, nil, err
 		}
 		for k, v := range newNeededProviders {
