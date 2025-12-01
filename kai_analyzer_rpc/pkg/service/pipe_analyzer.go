@@ -61,7 +61,7 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 		Log:                  l.WithName("parser"),
 	}
 
-	discoveryRulesets, violationRulesets, err := parseRules(parser, rules, l, cancelFunc)
+	discoveryRulesets, violationRulesets, err := parseRules(parser, rules, l)
 	if err != nil {
 		return nil, err
 	}
@@ -88,14 +88,13 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 
 }
 
-func parseRules(parser parser.RuleParser, rules string, l logr.Logger, cancelFunc func()) ([]engine.RuleSet, []engine.RuleSet, error) {
+func parseRules(parser parser.RuleParser, rules string, l logr.Logger) ([]engine.RuleSet, []engine.RuleSet, error) {
 	discoveryRulesets := []engine.RuleSet{}
 	violationRulesets := []engine.RuleSet{}
 	for _, f := range strings.Split(rules, ",") {
 		internRuleSets, _, err := parser.LoadRules(strings.TrimSpace(f))
 		if err != nil {
 			l.Error(err, "unable to parse all the rules for ruleset", "file", f)
-			cancelFunc()
 			return nil, nil, err
 		}
 
@@ -174,7 +173,7 @@ func updateProviderConditionToUseNewRPClientParseRules(client *rpc2.Client,
 		ProviderNameToClient: providers,
 		Log:                  log.WithName("parser"),
 	}
-	return parseRules(parser, rules, log, func() {})
+	return parseRules(parser, rules, log)
 }
 
 // TODO: This code was not working but should work and should be the more correct way to do this rather then re-parsing rules.
