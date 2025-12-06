@@ -227,6 +227,13 @@ func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) er
 	ctx, span := tracer.Start(ctx, "analyze")
 	defer span.End()
 
+	// Create a combined progress reporter that sends to both stream and RPC
+	// This maintains backward compatibility while adding RPC notifications
+	progressReporter := NewMultiProgressReporter(
+		a.progressReporter,
+		NewRPCProgressReporter(client, a.Logger.WithName("rpc-progress")),
+	)
+
 	dRulesets, vRulesets := a.discoveryRulesets, a.violationRulesets
 	if a.updateConditionProvider != nil {
 		// TODO: This needs to be added back, but I am pretty sure that it was not not working
@@ -282,7 +289,7 @@ func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) er
 		// Engine will emit per-rule progress automatically
 		ctx, span := tracer.Start(ctx, "discovery-rules")
 		rulesets := a.engine.RunRulesScopedWithOptions(ctx, dRulesets, engine.NewScope(scopes...),
-			[]engine.RunOption{engine.WithProgressReporter(a.progressReporter)}, selectors...)
+			[]engine.RunOption{engine.WithProgressReporter(progressReporter)}, selectors...)
 		a.discoveryCacheMutex.Lock()
 		a.discoveryCache = rulesets
 		a.discoveryCacheMutex.Unlock()
@@ -294,7 +301,7 @@ func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) er
 	// Engine will emit per-rule progress automatically
 	violationCTX, violationSpan := tracer.Start(ctx, "violation-rules")
 	rulesets := a.engine.RunRulesScopedWithOptions(violationCTX, vRulesets, engine.NewScope(scopes...),
-		[]engine.RunOption{engine.WithProgressReporter(a.progressReporter)}, selectors...)
+		[]engine.RunOption{engine.WithProgressReporter(progressReporter)}, selectors...)
 	violationSpan.End()
 
 	sort.SliceStable(rulesets, func(i, j int) bool {
@@ -316,7 +323,7 @@ func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) er
 	response.Rulesets = a.createRulesetsFromCache()
 
 	// Report analysis complete
-	a.progressReporter.Report(progress.ProgressEvent{
+	progressReporter.Report(progress.ProgressEvent{
 		Stage: progress.StageComplete,
 	})
 
