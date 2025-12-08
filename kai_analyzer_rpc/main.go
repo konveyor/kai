@@ -57,7 +57,9 @@ func main() {
 
 	l.Info("args", "rules", rules, "logFile", logFile, "serverPipe", serverPipe, "providerConfig", providerConfigFile, "verbosity", logVerbosity, "progressOutput", progressOutput, "progressFormat", progressFormat)
 
-	// Create progress reporter
+	// Create progress reporter for stream-based output (stderr/stdout/file).
+	// Note: During analysis, progress events are also sent via RPC notifications
+	// to the "analysis.progress" method for real-time client updates.
 	progressReporter, cleanupProgress := createProgressReporter(*progressOutput, *progressFormat, l)
 	defer cleanupProgress()
 
@@ -105,6 +107,11 @@ func main() {
 }
 
 // createProgressReporter creates the appropriate progress reporter based on CLI flags.
+//
+// This creates a stream-based reporter for writing progress to stderr/stdout/file.
+// During analysis, progress events are ALSO sent via RPC notifications to the
+// "analysis.progress" method, allowing clients to receive real-time updates through
+// the RPC channel without parsing streams.
 //
 // The progressOutput parameter specifies where to write progress events:
 //   - "" (empty): Returns NoopReporter with zero overhead
