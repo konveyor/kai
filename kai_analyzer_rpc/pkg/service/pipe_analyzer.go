@@ -62,10 +62,6 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 			return nil, fmt.Errorf("you can only use an existing provider serving at a particular location")
 		}
 		for _, initConfig := range config.InitConfig {
-			// C# provider uses tree-sitter directly and doesn't need LSP pipe
-			if initConfig.PipeName == "" && config.Name != "c-sharp" {
-				return nil, fmt.Errorf("the providers should only be using a pipe to communicate to the LSP")
-			}
 			locations = append(locations, initConfig.Location)
 			defaultBuiltinConfigs = append(defaultBuiltinConfigs, provider.InitConfig{
 				Location: initConfig.Location,
