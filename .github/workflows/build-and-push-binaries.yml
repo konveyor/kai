@@ -8,22 +8,10 @@ on:
         value: ${{ jobs.share_matrix_info.outputs.matrix_info }}
   workflow_dispatch:
     inputs:
-      publish_artifacts_to_release:
-        type: boolean
-        default: true
-        description: Upload binaries to an existing github release. When not set, binaries will be uploaded as temporary github artifacts.
-      use_latest_release:
-        type: boolean
-        default: true
-        description: Upload binaries to the most recent release
-      pattern:
+      tag:
         type: string
-        default: "v*"
-        description: Pick from tags matching this pattern
-      pre_release:
-        type: boolean
-        description: Look for pre-release?
-        default: false
+        required: true
+        description: Tag name to attach binaries to (e.g., v0.9.0-alpha.4)
   pull_request:
   push:
 
@@ -160,15 +148,6 @@ jobs:
           Add-Content -Path $env:GITHUB_PATH -Value "C:\hostedtoolcache\windows\maven\3.9.9\x64\bin" -Encoding utf8
           Add-Content -Path $env:GITHUB_ENV -Value "Path=$env:Path;C:\hostedtoolcache\windows\maven\3.9.9\x64\bin" -Encoding utf8
 
-      - id: release_info
-        if: ${{ github.event.inputs.publish_artifacts_to_release || false }}
-        uses: joutvhu/get-release@v1
-        with:
-          latest: ${{ github.event.inputs.use_latest_release }}
-          pattern: ${{ github.event.inputs.pattern }}
-          prerelease: ${{ github.event.inputs.pre_release }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -400,41 +379,20 @@ jobs:
           # Copy individual binary for potential release upload
           Copy-Item kai_analyzer_rpc\kai-analyzer-rpc.exe kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}.exe
 
-      - name: Upload zip package to release
-        if: ${{ github.event.inputs.publish_artifacts_to_release || false }}
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload binaries to release
+        if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event.inputs.tag }}
+        uses: ncipollo/release-action@v1
         with:
-          upload_url: ${{ steps.release_info.outputs.upload_url }}
-          asset_path: kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip
-          asset_name: kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip
-          asset_content_type: application/zip
-
-      - name: Upload kai-analyzer-rpc binary to release (Linux & Mac)
-        if: ${{ (github.event.inputs.publish_artifacts_to_release || false) && ! startsWith(matrix.runs_on.os, 'windows') }}
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.release_info.outputs.upload_url }}
-          asset_path: kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}
-          asset_name: kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}
-          asset_content_type: application/octet-stream
-
-      - name: Upload kai-analyzer-rpc binary to release (Windows)
-        if: ${{ (github.event.inputs.publish_artifacts_to_release || false) && startsWith(matrix.runs_on.os, 'windows') }}
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.release_info.outputs.upload_url }}
-          asset_path: kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}.exe
-          asset_name: kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}.exe
-          asset_content_type: application/octet-stream
+          tag: ${{ github.event.inputs.tag || github.ref_name }}
+          artifacts: "kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip,kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}*"
+          allowUpdates: true
+          omitBodyDuringUpdate: true
+          omitNameDuringUpdate: true
+          omitPrereleaseDuringUpdate: true
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload binaries as artifact
-        if: ${{ !github.event.inputs.publish_artifacts_to_release || true }}
+        if: ${{ !(github.event.inputs.tag || startsWith(github.ref, 'refs/tags/v')) }}
         uses: actions/upload-artifact@v4
         with:
           name: kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip
