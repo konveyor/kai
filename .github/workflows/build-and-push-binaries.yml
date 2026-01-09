@@ -161,11 +161,11 @@ jobs:
           Add-Content -Path $env:GITHUB_ENV -Value "Path=$env:Path;C:\hostedtoolcache\windows\maven\3.9.9\x64\bin" -Encoding utf8
 
       - id: release_info
-        if: ${{ github.event.inputs.publish_artifacts_to_release || false }}
+        if: ${{ github.event.inputs.publish_artifacts_to_release || startsWith(github.ref, 'refs/tags/v') }}
         uses: joutvhu/get-release@v1
         with:
-          latest: ${{ github.event.inputs.use_latest_release }}
-          pattern: ${{ github.event.inputs.pattern }}
+          latest: ${{ github.event.inputs.use_latest_release || startsWith(github.ref, 'refs/tags/v') }}
+          pattern: ${{ github.event.inputs.pattern || github.ref_name }}
           prerelease: ${{ github.event.inputs.pre_release }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -401,7 +401,7 @@ jobs:
           Copy-Item kai_analyzer_rpc\kai-analyzer-rpc.exe kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}.exe
 
       - name: Upload zip package to release
-        if: ${{ github.event.inputs.publish_artifacts_to_release || false }}
+        if: ${{ github.event.inputs.publish_artifacts_to_release || startsWith(github.ref, 'refs/tags/v') }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -412,7 +412,7 @@ jobs:
           asset_content_type: application/zip
 
       - name: Upload kai-analyzer-rpc binary to release (Linux & Mac)
-        if: ${{ (github.event.inputs.publish_artifacts_to_release || false) && ! startsWith(matrix.runs_on.os, 'windows') }}
+        if: ${{ (github.event.inputs.publish_artifacts_to_release || startsWith(github.ref, 'refs/tags/v')) && ! startsWith(matrix.runs_on.os, 'windows') }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -423,7 +423,7 @@ jobs:
           asset_content_type: application/octet-stream
 
       - name: Upload kai-analyzer-rpc binary to release (Windows)
-        if: ${{ (github.event.inputs.publish_artifacts_to_release || false) && startsWith(matrix.runs_on.os, 'windows') }}
+        if: ${{ (github.event.inputs.publish_artifacts_to_release || startsWith(github.ref, 'refs/tags/v')) && startsWith(matrix.runs_on.os, 'windows') }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -434,7 +434,7 @@ jobs:
           asset_content_type: application/octet-stream
 
       - name: Upload binaries as artifact
-        if: ${{ !github.event.inputs.publish_artifacts_to_release || true }}
+        if: ${{ !(github.event.inputs.publish_artifacts_to_release || startsWith(github.ref, 'refs/tags/v')) }}
         uses: actions/upload-artifact@v4
         with:
           name: kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip
