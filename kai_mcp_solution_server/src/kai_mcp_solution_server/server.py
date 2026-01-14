@@ -298,7 +298,7 @@ async def kai_solution_server_lifespan(
 
 
 mcp: FastMCP[KaiSolutionServerContext] = FastMCP(
-    "KaiSolutionServer", lifespan=kai_solution_server_lifespan, dependencies=[]
+    "KaiSolutionServer", lifespan=kai_solution_server_lifespan
 )
 
 
