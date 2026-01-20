@@ -32,7 +32,7 @@ class Incident(BaseModel):
     An Incident is a specific instance of a rule being violated.
     """
 
-    model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
+    model_config = ConfigDict(populate_by_name=True)
 
     # NOTE: `str` is the best equivalent of Go's `json.RawMessage`
     uri: str
