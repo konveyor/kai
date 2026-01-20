@@ -293,7 +293,19 @@ class TestMCPIntegration(unittest.TestCase):
                             "✓ SSL handshake succeeded - monkey patch bypassed certificate verification"
                         )
                 except Exception as e:
-                    if "ssl" in str(e).lower() or "certificate" in str(e).lower():
+                    error_str = str(e)
+                    # Remove URLs from the error message to avoid false positives
+                    # from URLs that contain "ssl" in them (like badssl.com)
+                    import re
+
+                    error_without_urls = re.sub(
+                        r"https?://[^\s]+", "", error_str.lower()
+                    )
+
+                    if (
+                        "ssl" in error_without_urls
+                        or "certificate" in error_without_urls
+                    ):
                         ssl_error_found = True
                         print(f"✗ SSL monkey patch failed to bypass verification: {e}")
                     else:
