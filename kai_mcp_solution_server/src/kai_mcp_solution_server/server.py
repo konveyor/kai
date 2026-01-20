@@ -10,8 +10,8 @@ from typing import Annotated, Any, ParamSpec, TypeVar, cast
 
 from fastmcp import Context, FastMCP
 from langchain.chat_models import init_chat_model
-from langchain.chat_models.base import BaseChatModel
 from langchain_community.chat_models.fake import FakeListChatModel
+from langchain_core.language_models.chat_models import BaseChatModel
 from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from sqlalchemy import URL, and_, make_url, or_, select
@@ -389,6 +389,8 @@ async def tool_create_incident(
     associated with the incident does not exist in the database, it will be created
     as well.
     """
+    if ctx.request_context is None:
+        raise RuntimeError("No request context available")
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     return await create_incident(
         kai_ctx,
@@ -410,6 +412,8 @@ async def tool_create_multiple_incidents(
     If any of the violations associated with the incidents do not exist in the
     database, they will be created as well.
     """
+    if ctx.request_context is None:
+        raise RuntimeError("No request context available")
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     results: list[CreateIncidentResult] = []
 
@@ -541,6 +545,8 @@ async def tool_create_solution(
     If the incident IDs do not exist in the database, a ValueError will be raised.
     If the used hint IDs do not exist in the database, a ValueError will be raised
     """
+    if ctx.request_context is None:
+        raise RuntimeError("No request context available")
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     return await create_solution(
         kai_ctx,
@@ -825,6 +831,8 @@ async def tool_delete_solution(
     """
     Delete the solution with the given ID from the database.
     """
+    if ctx.request_context is None:
+        raise RuntimeError("No request context available")
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     return await delete_solution(
         kai_ctx,
@@ -890,6 +898,8 @@ async def tool_get_best_hint(
     and the hint ID. The hint is considered the best if it has at least one solution
     with the status "accepted".
     """
+    if ctx.request_context is None:
+        raise RuntimeError("No request context available")
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     return await get_best_hint(
         kai_ctx,
@@ -1002,6 +1012,8 @@ async def tool_get_success_rate(
     an empty list is returned. If any of the violations do not exist in the database,
     they are ignored.
     """
+    if ctx.request_context is None:
+        raise RuntimeError("No request context available")
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     return await get_success_rate(
         kai_ctx,
@@ -1092,6 +1104,8 @@ async def tool_accept_file(
     client_id: str,
     solution_file: SolutionFile,
 ) -> None:
+    if ctx.request_context is None:
+        raise RuntimeError("No request context available")
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     return await accept_file(
         kai_ctx,
@@ -1126,6 +1140,8 @@ async def tool_reject_file(
     client_id: str,
     file_uri: str,
 ) -> None:
+    if ctx.request_context is None:
+        raise RuntimeError("No request context available")
     kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
     return await reject_file(
         kai_ctx,
