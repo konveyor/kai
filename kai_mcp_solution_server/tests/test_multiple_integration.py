@@ -273,6 +273,7 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                 ),
             )
 
+            await asyncio.sleep(0.5)  # Wait for hint generation
             get_best_hint = await self.call_tool(
                 session,
                 "get_best_hint",
