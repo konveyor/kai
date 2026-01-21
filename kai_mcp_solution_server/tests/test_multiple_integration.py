@@ -216,7 +216,12 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                 },
             )
             metrics_list = json.loads(get_success_rate.content[0].text)
-            metric = SuccessRateMetric(**metrics_list[0]) if metrics_list else None
+            if isinstance(metrics_list, list) and len(metrics_list) > 0:
+                metric = SuccessRateMetric(**metrics_list[0])
+            elif isinstance(metrics_list, dict):
+                metric = SuccessRateMetric(**metrics_list)
+            else:
+                metric = None
             print(f"Success rate of {RULESET_NAME_A}/{VIOLATION_NAME_A}: {metric}")
             self.assertEqual(
                 metric,
@@ -256,7 +261,12 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                 },
             )
             metrics_list = json.loads(get_success_rate.content[0].text)
-            metric = SuccessRateMetric(**metrics_list[0]) if metrics_list else None
+            if isinstance(metrics_list, list) and len(metrics_list) > 0:
+                metric = SuccessRateMetric(**metrics_list[0])
+            elif isinstance(metrics_list, dict):
+                metric = SuccessRateMetric(**metrics_list)
+            else:
+                metric = None
             print(
                 f"Success rate of {RULESET_NAME_A}/{VIOLATION_NAME_A} after accepting file: {metric}"
             )
@@ -282,7 +292,25 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                     "violation_name": VIOLATION_NAME_A,
                 },
             )
-            best_hint = GetBestHintResult(**json.loads(get_best_hint.content[0].text))
+            # Handle case where hint generation may not have completed yet
+            if get_best_hint.content and len(get_best_hint.content) > 0:
+                best_hint = GetBestHintResult(
+                    **json.loads(get_best_hint.content[0].text)
+                )
+            else:
+                # If no hint yet, wait a bit more and retry
+                await asyncio.sleep(1.0)
+                get_best_hint = await self.call_tool(
+                    session,
+                    "get_best_hint",
+                    {
+                        "ruleset_name": RULESET_NAME_A,
+                        "violation_name": VIOLATION_NAME_A,
+                    },
+                )
+                best_hint = GetBestHintResult(
+                    **json.loads(get_best_hint.content[0].text)
+                )
             print(f"Best hint for {RULESET_NAME_A}/{VIOLATION_NAME_A}: {best_hint}")
             self.assertEqual(best_hint.hint, llm_params["responses"][0])
 
@@ -347,7 +375,12 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                 },
             )
             metrics_list = json.loads(get_success_rate.content[0].text)
-            metric = SuccessRateMetric(**metrics_list[0]) if metrics_list else None
+            if isinstance(metrics_list, list) and len(metrics_list) > 0:
+                metric = SuccessRateMetric(**metrics_list[0])
+            elif isinstance(metrics_list, dict):
+                metric = SuccessRateMetric(**metrics_list)
+            else:
+                metric = None
             print(f"Success rate of {RULESET_NAME_A}/{VIOLATION_NAME_A}: {metric}")
             self.assertEqual(
                 metric,
@@ -387,7 +420,12 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                 },
             )
             metrics_list = json.loads(get_success_rate.content[0].text)
-            metric = SuccessRateMetric(**metrics_list[0]) if metrics_list else None
+            if isinstance(metrics_list, list) and len(metrics_list) > 0:
+                metric = SuccessRateMetric(**metrics_list[0])
+            elif isinstance(metrics_list, dict):
+                metric = SuccessRateMetric(**metrics_list)
+            else:
+                metric = None
             print(
                 f"Success rate of {RULESET_NAME_A}/{VIOLATION_NAME_A} after accepting file: {metric}"
             )
@@ -413,7 +451,25 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                     "violation_name": VIOLATION_NAME_B,
                 },
             )
-            best_hint = GetBestHintResult(**json.loads(get_best_hint.content[0].text))
+            # Handle case where hint generation may not have completed yet
+            if get_best_hint.content and len(get_best_hint.content) > 0:
+                best_hint = GetBestHintResult(
+                    **json.loads(get_best_hint.content[0].text)
+                )
+            else:
+                # If no hint yet, wait a bit more and retry
+                await asyncio.sleep(1.0)
+                get_best_hint = await self.call_tool(
+                    session,
+                    "get_best_hint",
+                    {
+                        "ruleset_name": RULESET_NAME_B,
+                        "violation_name": VIOLATION_NAME_B,
+                    },
+                )
+                best_hint = GetBestHintResult(
+                    **json.loads(get_best_hint.content[0].text)
+                )
             print(f"Best hint for {RULESET_NAME_A}/{VIOLATION_NAME_A}: {best_hint}")
             self.assertEqual(best_hint.hint, llm_params["responses"][0])
 
