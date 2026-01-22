@@ -1,8 +1,6 @@
 module github.com/konveyor/kai-analyzer
 
-go 1.24.0
-
-toolchain go1.24.11
+go 1.23.12
 
 require (
 	github.com/Microsoft/go-winio v0.6.2
@@ -27,7 +25,7 @@ require (
 	github.com/cenkalti/hub v1.0.2 // indirect
 	github.com/dlclark/regexp2 v1.11.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -45,7 +43,6 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.34.0 // indirect
 	go.opentelemetry.io/otel/metric v1.35.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
-	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/oauth2 v0.28.0 // indirect
 	golang.org/x/sync v0.18.0 // indirect
