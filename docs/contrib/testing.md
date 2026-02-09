@@ -1,7 +1,18 @@
 # Testing
 
-## How to run regression tests
+## MCP Solution Server
 
-1. Install the prerequisites in Setup and activate the python virtual environment
-2. Ensure you've checked out the source code for sample applications: Run: [./kai_solution_server/samples/fetch_sample_apps.sh](./kai_solution_server/samples/fetch_sample_apps.sh)
-3. Run: [./run_tests.sh](./run_tests.sh)
+```sh
+cd kai_mcp_solution_server
+make test
+```
+
+See [kai_mcp_solution_server/README.md](../../kai_mcp_solution_server/README.md)
+for more details.
+
+## Go Analyzer RPC
+
+```sh
+cd kai_analyzer_rpc
+go test ./...
+```

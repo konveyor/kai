@@ -13,70 +13,42 @@
 Kai [(/kaɪ/, rhymes with pie)](https://www.howtopronounce.com/ka%C3%AC-4) - An
 AI-enabled tool that simplifies the process of modernizing application source
 code to a new platform. It uses **Large Language Models** (LLMs) guided by
-**static code analysis**, along with **data from Konveyor**. This data provides
-insights into how the organization solved similar problems in the past, helping
-**streamline** and **automate** the code modernization process.
+**static code analysis**, along with **data from Konveyor**.
 
-- [📖 Explore the docs!](/docs)
-- [💻 Run through a demo!](/docs/scenarios/README.md)
-- [📈 View the Roadmap!](ROADMAP.md)
-
-## 🔍 About The Project
-
-Kai is an AI-enabled tool that assists with modernizing applications. Kai is
-designed to help developers write code more efficiently by providing suggestions
-and solutions to common problems. It does this by performing [Retrieval
-Augmented Generation (RAG)](https://arxiv.org/abs/2005.11401), working with LLMs
-by using [Konveyor](https://github.com/konveyor) analysis reports about the
-codebase and generating solutions based on previously solved examples.
-
-Now, you may be thinking: _How is Kai different than other generative AI tools?_
-
-### 1. Kai uses Konveyor’s analysis reports
-
-Konveyor generates analysis reports via
-[Kantra](https://github.com/konveyor/kantra) throughout a migration. This
-history of reports tells you what’s wrong with your codebase, where the issues
-are, and when they happened. This functionality exists today, and developers are
-already using this data to make decisions. And because of our RAG approach, this
-is all possible _without additional fine-tuning_.
-
-### 2. Kai learns throughout a migration
-
-As you migrate more pieces of your
-codebase with Kai, it can learn from the data available, and get better
-recommendations for the next application, and the next, and so on. This shapes
-the code suggestions to be similar to how your organization has solved problems
-in the past.
-
-### 3. Kai is focused on migration
-
-LLMs are very powerful tools, but without explicit guidance, they can generate a
-lot of garbage. Using Konveyor’s analysis reports allows us to focus Kai’s
-generative power on the specific problems that need to be solved. This pointed,
-specific data is the key to unlocking the full potential of large language
-models.
-
-## 🏫 Learn More
-
-> [!NOTE]
+> **Looking for the Kai IDE extension?** Head to the
+> [editor-extensions](https://github.com/konveyor/editor-extensions) repository
+> for installation, configuration, usage instructions, and releases.
 >
-> Kai is in early development. We are actively working on improving the tool and
-> adding new features. If you are interested in contributing to the project,
-> please see our [Contributor Guide](CONTRIBUTING.md).
+> This repository contains the **backend components and documentation** that
+> support the IDE extension.
 
-### 🗺️ Roadmap
+## For End Users
 
-- See [ROADMAP.md](ROADMAP.md) to learn about the project's goals and milestones
+Install the Kai IDE extension from the
+[editor-extensions releases](https://github.com/konveyor/editor-extensions/releases)
+page and follow the
+[extension README](https://github.com/konveyor/editor-extensions/blob/main/vscode/core/README.md)
+for setup and usage.
 
-### 🛠️ Design and Architecture
+Migration scenarios and walkthroughs are available in the
+[docs/scenarios/](docs/scenarios/) directory.
 
-- [Technical background for our approach](docs/design/technical_background.md)
-- [Initial presentation slides introducing
-  Kai](https://docs.google.com/presentation/d/1awMdp5hHC6L4Xc_uY6Kj4XiskAArDGPhyQRBI6GJUAo/)
-- See other technical design related information at [docs/design](docs/design)
+## For Developers
 
-### 🗣️ Conference Talks and Blog Posts
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding standards,
+and how to submit pull requests.
+
+### Repository Components
+
+- **[`kai_mcp_solution_server/`](kai_mcp_solution_server/)** - MCP (Model
+  Context Protocol) solution server for storing and retrieving solved migration
+  examples. Self-contained Python project with its own `pyproject.toml`. See its
+  [README](kai_mcp_solution_server/README.md) for details.
+
+- **[`kai_analyzer_rpc/`](kai_analyzer_rpc/)** - Go-based analyzer RPC plugin
+  that serves code analysis over RPC, used by the IDE extension.
+
+## Conference Talks and Blog Posts
 
 - 2025 April 01: [Project Lightning Talk: Revolutionizing Legacy Migrations with
   Konveyor AI - Jonah Sussman](https://kccnceu2025.sched.com/event/1tcwv)
@@ -84,57 +56,22 @@ models.
   modernization](https://www.cncf.io/blog/2024/11/22/konveyor-ai-supporting-application-modernization/)
 - 2024 August 29: [Incident Storage in Kai - A Deep
   Dive](https://www.konveyor.io/blog/kai-incident-storage-2024/)
-- 2024 August 26: [Modernization 101: A Beginner's Guide to Application
-  Modernization and Methodology - DevConf.US
-  2024](https://www.youtube.com/watch?v=ic5WnbYVTto)
 - 2024 July 23: [Embracing the Future of Application Modernization with
   KAI](https://shaaf.dev/post/2024-07-23-embracing-the-future-of-app-mod-with-konveyor-ai/)
 - 2024 May 07: [Apply generative AI to app modernization with Konveyor
   AI](https://developers.redhat.com/articles/2024/05/07/modernize-apps-konveyor-ai)
-- 2024 May 07: [Deep Dive: Kai - Generative AI Applied to Application
-  Modernization](https://konveyor.io/blog/2024/kai-deep-dive-2024/)
 
-### 📽️ Demo Video
-
-![DemoVideo](/docs/images/Kai_April_26c.gif)
-
-[Check out our 15 minute guided demo video to see Kai in
-action!](https://www.youtube.com/watch?v=aE8qNY2m4v4)
-
-#### Additional YouTube Videos from Community Members
-
-- [Upgrade your code with AI: Build Your Own Amazon
-  Q](https://www.youtube.com/watch?v=IF2xQlii4ws) from [Dean
-  Peterson](https://www.linkedin.com/in/deantrepreneur/)
-
-## 🚀 Getting Started
-
-We recommend new users download a [release of
-Kai](https://github.com/konveyor/editor-extensions/releases) and then walk
-through a guided scenario to get a feel of Kai's potential. We've streamlined
-the install experience so you just need to download a `.vsix` file and install
-it in your VSCode IDE.
-
-1. Please follow the steps here to proceed with getting started:
-   [docs/getting_started.md](docs/getting_started.md)
-2. After you have Kai installed we encourage you to run through one of our
-   guided scenarios at: [docs/scenarios](docs/scenarios/README.md)
-
-## Documentation
-
-Please see [docs/README.md](docs/README.md) for an overview of our documentation
-
-## 🌐 Contributing
+## Contributing
 
 Our project welcomes contributions from any member of our community. To get
 started contributing, please see our [Contributor Guide](CONTRIBUTING.md).
 
-## ⚖️ Code of Conduct
+## Code of Conduct
 
 Refer to Konveyor's Code of Conduct
 [here](https://github.com/konveyor/community/blob/main/CODE_OF_CONDUCT.md).
 
-## 📜 License
+## License
 
 This project is licensed under the Apache License 2.0 - see the
 [LICENSE](LICENSE) file for details.

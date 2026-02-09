@@ -13,21 +13,17 @@
   - [Development Environment Setup](#development-environment-setup)
   - [Linting](#linting)
   - [Testing](#testing)
-  - [Modifying a Python Dependency](#modifying-a-python-dependency)
-  - [Running the Project](#running-the-project)
-    - [Using Open Telemetry](#using-open-telemetry)
-  - [Working with Notebooks](#working-with-notebooks)
   - [Sign Your Commits](#sign-your-commits)
     - [DCO](#dco)
   - [Pull Request Checklist](#pull-request-checklist)
 
-Welcome! We are glad that you want to contribute to our project! 💖
+Welcome! We are glad that you want to contribute to our project!
 
 As you get started, you are in the best position to give us feedback on areas of
 the project that we need help with, including:
 
 - Problems found during setting up a new developer environment
-- Gaps in our Quickstart Guide or documentation
+- Gaps in our documentation
 - Bugs in our automation scripts
 
 If anything doesn't make sense, or doesn't work when you run it, please open a
@@ -43,7 +39,6 @@ We welcome many different types of contributions including:
 - Documentation
 - Issue Triage
 - Answering questions on Slack/Mailing List
-- Web design
 - Communications / Social Media / Blog Posts
 - Release management
 
@@ -57,14 +52,14 @@ Please consider joining the [Konveyor community
 meetings](https://github.com/konveyor/community?tab=readme-ov-file#konveyor-community-meetings).
 
 Everyone is welcome to come to any of our meetings. You never need an invite to
-join us. In fact, we want you to join us, even if you don’t have anything you
+join us. In fact, we want you to join us, even if you don't have anything you
 feel like you want to contribute. Just being there is enough!
 
 You can find out more about our meetings
 [here](https://github.com/konveyor/community?tab=readme-ov-file#konveyor-community-meetings).
-You don’t have to turn on your video. The first time you come, introducing
+You don't have to turn on your video. The first time you come, introducing
 yourself is more than enough. Over time, we hope that you feel comfortable
-voicing your opinions, giving feedback on others’ ideas, and even sharing your
+voicing your opinions, giving feedback on others' ideas, and even sharing your
 own ideas and experiences.
 
 ## Contact Us
@@ -104,8 +99,8 @@ for any contributor.
   has issues that are suitable for someone who isn't a core maintainer and is
   good to pursue after your first pull request.
 
-Sometimes there won’t be any issues with these labels. That’s ok! There is
-likely still something for you to work on. If you want to contribute but don’t
+Sometimes there won't be any issues with these labels. That's ok! There is
+likely still something for you to work on. If you want to contribute but don't
 know where to start or can't find a suitable issue, you can reach out to us in
 [slack](#slack)
 
@@ -137,12 +132,12 @@ custom changes) are:
 
 |     |              |                                |
 | --- | ------------ | ------------------------------ |
-| 🐛  | `:bug:`      | Bug fixes                      |
-| 📖  | `:book:`     | Documentation                  |
-| ✨  | `:sparkles:` | New features                   |
-| 🌱  | `:seedling:` | Infrastructure related changes |
-| ⚠️  | `:warning:`  | Breaking changes               |
-| 👻  | `:ghost:`    | Misc updates/fixes             |
+| Bug  | `:bug:`      | Bug fixes                      |
+| Book  | `:book:`     | Documentation                  |
+| Sparkles  | `:sparkles:` | New features                   |
+| Seedling  | `:seedling:` | Infrastructure related changes |
+| Warning  | `:warning:`  | Breaking changes               |
+| Ghost  | `:ghost:`    | Misc updates/fixes             |
 
 For a full list, please check out [gitmoji.dev](https://gitmoji.dev)
 
@@ -154,7 +149,15 @@ For more info, you can consult the pr check we run at
 
 ## Development Environment Setup
 
-See [docs/contrib/dev_environment.md](docs/contrib/dev_environment.md)
+This repository contains two active components:
+
+- **`kai_mcp_solution_server/`** - Python MCP solution server. See its
+  [README](kai_mcp_solution_server/README.md) for development setup.
+- **`kai_analyzer_rpc/`** - Go analyzer RPC plugin. Build with
+  `cd kai_analyzer_rpc && go build -o kai-analyzer main.go`.
+
+For IDE extension development, see the
+[editor-extensions](https://github.com/konveyor/editor-extensions) repository.
 
 ## Linting
 
@@ -169,58 +172,13 @@ You can also configure Trunk to automatically check your code before pushing via
 
 ## Testing
 
-- Please include a unit test for new features
-- See [docs/contrib/testing.md](docs/contrib/testing.md) for more guidance on
-  testing
+- **MCP Solution Server**: `cd kai_mcp_solution_server && make test`
+- **Go Analyzer**: `cd kai_analyzer_rpc && go test ./...`
 
-## Modifying a Python Dependency
+IDE extension tests live in the
+[editor-extensions](https://github.com/konveyor/editor-extensions) repository.
 
-If you need to add or update a Python dependency in the project, open
-`pyproject.toml` and add the new dependency to the `dependencies` list or modify
-an existing one.
-
-## Running the Project
-
-1. Setup your development environment as per
-   [docs/contrib/dev_environment.md](/docs/contrib/dev_environment.md)
-2. **Demo Interaction**: Read and follow [example/README.md](/example/README.md)
-   to learn how to leverage a Python script `example/run_demo.py` which will
-   script interaction with Kai.
-
-Running `run_demo.py` from the `example` directory is a recommended way for
-developers to interact with the project, allowing you to explore and test the
-workflow. For end users, the standard interaction will be through the IDE
-plugin, which provides the main interface for usage. The `run_demo.py` script
-is an optional method to get a feel for the project.
-
-For end users, please refer to the IDE plugin documentation for the primary interaction path.
-
-### Using Open Telemetry
-
-If you would like to use Open Telemetry to see the spans and performance of
-specific code paths you should look at using Jaeger.
-
-To run the all-in-one Jaeger instance use:
-
-```bash
-podman run --rm \
- -e COLLECTOR_ZIPKIN_HOST_PORT=:9411 \
-  -p 16686:16686 \
- -p 4317:4317 \
-  -p 4318:4318 \
- -p 9411:9411 \
-  jaegertracing/all-in-one:latest
-```
-
-Once you do this, then you can use `localhost:16686` to see the Jaeger
-interface.
-
-When you run the demo, use `ENABLE_TRACING=1 ./run_demo.py`
-
-## Working with Notebooks
-
-When working with Jupyter Notebooks, ensure you've installed the project in
-editable mode `pip install -e .` to access all project modules and dependencies.
+Please include tests for new features.
 
 ## Sign Your Commits
 
@@ -265,12 +223,8 @@ before you submit your code:
 - Ensure that [trunk](https://docs.trunk.io/code-quality/advanced-setup/cli) is happy
   - `trunk check`
   - `trunk fmt`
-- Ensure that unit tests pass. See
-  [docs/contrib/testing.md](docs/contrib/testing.md)
+- Ensure that tests pass
 - If adding a new feature please add a new unit test
-- If you modified `requirements.txt` please see [Modifying a Python
-  Dependency](#modifying-a-python-dependency)
-- Ensure that [`example/run_demo.py`](example/run_demo.py) works
 - Commits are signed as per [DCO](#dco)
 - PR Title begins with a gitemoji as described in [Pull Request
   Title](#pull-request-title)

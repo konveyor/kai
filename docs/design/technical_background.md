@@ -28,7 +28,7 @@ Note: For purposes of this initial prototype we are using an example of Java EE 
   1.  Static Code Analysis
 
       - We pinpoint where to begin work by leveraging static code analysis to guide us
-      - The static code analysis is informed via a collection of crowd sourced knowledge contained in our [rulesets](https://github.com/konveyor/rulesets/tree/main) plus augmented via [custom-rules](https://github.com/konveyor-ecosystem/kai/tree/main/kai_solution_server/samples/custom_rules)
+      - The static code analysis is informed via a collection of crowd sourced knowledge contained in our [rulesets](https://github.com/konveyor/rulesets/tree/main) plus augmented via custom-rules
       - We include in the prompt Analysis metadata information to give the LLM more context [such as](https://github.com/konveyor-ecosystem/kai/blob/main/example/analysis/coolstore/output.yaml#L2789)
 
             remote-ejb-to-quarkus-00000:
@@ -51,7 +51,7 @@ Note: For purposes of this initial prototype we are using an example of Java EE 
 
       - We mine data Konveyor has stored from the Application Hub to search for when other applications have fixed the same rule violations and learn how they fixed it and pass that info into the prompt to aid the LLM
       - This ability to leverage how the issue was seen and fixed in the past helps to give the LLM extra context to give a higher quality result.
-      - This is an [early prompt we created](https://github.com/konveyor-ecosystem/kai/blob/main/notebooks/jms_to_smallrye_reactive/output/gpt-4-1106-preview/helloworldmdb/custom-ruleset/jms-to-reactive-quarkus-00050/few_shot/template.txt) to help give a feel of this in action and the [result we got back from a LLM](https://github.com/konveyor-ecosystem/kai/blob/main/notebooks/jms_to_smallrye_reactive/output/gpt-4-1106-preview/helloworldmdb/custom-ruleset/jms-to-reactive-quarkus-00050/few_shot/result.txt)
+      - Early prototypes used prompt templates and few-shot examples to demonstrate this capability in action.
 
 ## Further Reading
 

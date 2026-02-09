@@ -17,12 +17,9 @@ on:
 
 # the build matrix exists as an env var so that we can
 # share that info reliably with the "calling" workflow
-# TODO: removing  { "os": "windows-11-preview-arm", "shell": "cmd" }, from the matrix
-# we have to wait for the a real image to be published that actually has what we
-# need to use it. This wil be fine for now.
 env:
-  BUILD_MATRIX: | 
-    [ 
+  BUILD_MATRIX: |
+    [
       { "os": "ubuntu-24.04", "shell": "bash" },
       { "os": "macos-latest", "shell": "bash" },
       { "os": "macos-15-intel", "shell": "bash" },
@@ -30,31 +27,6 @@ env:
       { "os": "windows-latest", "shell": "cmd" }
     ]
 jobs:
-  # these are specific java artifacts (cross-platform) that we
-  # download on linux and re-use on other platforms
-  download_artifacts:
-    name: Download cross-platform java dependencies
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          repository: konveyor/kai
-      
-      - name: Download deps
-        run: |
-          git config --global user.email "no-reply@konveyor.io"
-          git config --global user.name "Konveyor CI"
-          make get-analyzer-deps
-          make get-rulesets
-          cd example/analysis && zip -r java-deps.zip maven.default.index jdtls bundle.jar rulesets
-      
-      - name: Upload deps as temp artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: java-deps.zip
-          path: ./example/analysis/java-deps.zip
-
   # this job exists because we want to store the build matrix as output
   # it will be used in the subsequent job as well as in a "calling" workflow
   share_matrix_info:
@@ -65,268 +37,36 @@ jobs:
     steps:
       - id: matrix_info
         run: |
-          { 
+          {
             echo 'matrix_info<<EOF'
             echo '${{ env.BUILD_MATRIX }}'
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
-  e2e_test:
+  build:
     needs:
-    - share_matrix_info
-    - download_artifacts
-    name: Run e2e test
+      - share_matrix_info
+    name: Build Go binary
     strategy:
-      #fail-fast: false
       matrix:
         runs_on: ${{ fromJson(needs.share_matrix_info.outputs.matrix_info) }}
-        models:
-          - provider: ChatOpenAI
-            model_id: kai-test-generation
     runs-on: ${{ matrix.runs_on.os }}
     steps:
-      # Keeping these steps, because if we must, we may need to use them to get arm builds for windows.
-      - name: Download Git for Windows (aarch64)
-        uses: robinraju/release-downloader@v1
-        if: ${{ matrix.runs_on.os == 'windows-11-preview-arm'}}
-        with:
-          repository: "git-for-windows/git"
-          tag: "v2.48.0-rc1.windows.1"
-          filename: "Git-2.48.0-rc1-arm64.exe"
-
-      - name: Install Git for Windows (aarch64)
-        if: ${{ matrix.runs_on.os == 'windows-11-preview-arm'}}
-        run: |
-          Start-Process -FilePath "Git-2.48.0-rc1-arm64.exe" -ArgumentList "/VERYSILENT" -NoNewWindow -Wait
-          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\cmd" -Encoding utf8
-          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\bin" -Encoding utf8
-
-      - name: install windows compilers
-        if: ${{ matrix.runs_on.os == 'windows-11-preview-arm'}}
-        run: |
-          Set-ExecutionPolicy Bypass -Scope Process
-          Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')) 
-          echo "C:\ProgramData\chocolatey\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          choco feature enable -n allowGlobalConfirmation
-          choco install visualstudio2022-workload-vctools --package-parameters "--includeOptional"
-          choco install -y llvm
-          Get-ChildItem -Path "C:\Program Files\LLVM\bin" -ErrorAction Ignore
-          Get-ChildItem -Path "C:\Program Files (x86)\LLVM\bin" -ErrorAction Ignore
-          & "C:\Program Files\LLVM\bin\clang.exe" --version
-          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\LLVM\bin" -Encoding utf8
-          Set-Alias -Name clang -Value "C:\Program Files\LLVM\bin\clang.exe"
-          clang --version
-      
       - name: Checkout code
         uses: actions/checkout@v3
         with:
           repository: konveyor/kai
-
-      - uses: actions/setup-java@v3
-        if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
-        with:
-          distribution: "oracle"
-          java-version: "17"
-      
-      - uses: actions/setup-java@v3
-        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
-        with:
-          distribution: "microsoft"
-          java-version: "17"
-
-      - name: Set up Maven
-        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
-        uses: stCarolas/setup-maven@v5
-        with:
-          maven-version: 3.9.9
-
-      - name: Add things to path
-        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
-        run: |
-          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\cmd" -Encoding utf8
-          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\bin" -Encoding utf8
-          Add-Content -Path $env:GITHUB_PATH -Value "C:\hostedtoolcache\windows\maven\3.9.9\x64\bin" -Encoding utf8
-          Add-Content -Path $env:GITHUB_ENV -Value "Path=$env:Path;C:\hostedtoolcache\windows\maven\3.9.9\x64\bin" -Encoding utf8
-
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.12"
 
       - uses: actions/setup-go@v5
         with:
           go-version: "1.23"
           check-latest: true
 
-      - name: Set up venv (linux & mac)
-        if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
-        run: |
-          python -m venv venv
-          . venv/bin/activate
-          echo PATH=$PATH >> $GITHUB_ENV
-
-      - name: Build RPC server
-        if: false
-        run: |
-          pip install pyinstaller
-          pip install -e .
-          pyinstaller build/build.spec
-        env:
-          PATH: ${{ env.PATH }}
-
       - name: Build Kai Analyzer
-        # if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           cd kai_analyzer_rpc
           go build -ldflags="-extldflags=-static" -o kai-analyzer-rpc main.go
           cd ..
-
-      # - name: Build Kai Analyzer (windows)
-      #   if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
-      #   run: |
-      #     cd kai_analyzer_rpc; go build -ldflags="-extldflags=-static" -o kai-analyzer-rpc main.go; cd ..
-
-      - name: Download Build Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: java-deps.zip
-
-      - name: Setup analysis deps (linux & mac)
-        if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
-        run: |
-          unzip java-deps.zip -d java-deps
-          cp -r java-deps/* ./example/analysis
-  
-      - name: Setup analysis deps (windows)
-        if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
-        run: |
-          Expand-Archive -Path java-deps.zip -DestinationPath java-deps
-          Copy-Item -Verbose -Path .\java-deps\* -Destination .\example\analysis -Recurse
-
-      - name: Run e2e test
-        if: false # ${{ startsWith(matrix.runs_on.os, 'windows') }}
-        run: |
-          git config --global user.email "no-reply@konveyor.io"
-          git config --global user.name "Konveyor CI"
-
-          cp ./dist/kai-rpc-server.exe ./example/analysis/
-          cp ./kai_analyzer_rpc/kai-analyzer-rpc ./example/analysis/
-
-          Remove-Item -Path .\example\initialize.toml
-
-          New-Item -Path ".\example\initialize.toml" -ItemType File -Value @"
-          root_path = "./coolstore"
-          analyzer_lsp_java_bundle_paths = [ "./analysis/bundle.jar" ]
-          analyzer_lsp_lsp_path = "./analysis/jdtls/bin/jdtls"
-          analyzer_lsp_rpc_path = "./analysis/kai-analyzer-rpc"
-          analyzer_lsp_rules_paths = [ "./analysis/rulesets/default/generated" ]
-          analyzer_lsp_dep_labels_path = "./analysis/maven.default.index"
-
-          demo_mode = true
-          enable_reflection = false
-
-          [log_config]
-          log_level = "info"
-          file_log_level = "debug"
-          log_dir_path = '${{github.workspace}}\logs\'
-
-          [model_provider]
-          provider = "${{ matrix.models.provider }}"
-          [model_provider.args]
-          model = "${{ matrix.models.model_id }}"
-          
-          "@
-
-          if ("${{ matrix.models.max_new_tokens }}") {
-            Add-Content -Path ".\example\initialize.toml" -Value "parameters.max_new_tokens = ${{ matrix.models.max_new_tokens }}"
-          }
-          
-          Get-Content -Path .\example\initialize.toml
-
-          Get-Command python
-          Set-Location -Path .\example
-
-          git clone https://github.com/konveyor-ecosystem/coolstore.git
-          pip list 
-          python run_demo.py
-          cd coolstore
-          $changed_files_count = (git diff --name-only | Measure-Object).Count
-          if ($changed_files_count -eq 26) {
-            echo "Tests passed"
-            exit 0
-          } 
-          else {
-            echo "Tests failed, only $changed_files_count where changed"
-            git diff --name-only
-            cat ../../logs/kai_server.log
-            cat ../../logs/kai_server.log
-            exit 1
-          }
-        env:
-          GENAI_KEY: "BWAHAHA"
-          OPENAI_API_KEY: "BWAHAHA"
-
-      - name: Run e2e test
-        if: false 
-        # ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
-        run: |
-          git config --global user.email "no-reply@konveyor.io"
-          git config --global user.name "Konveyor CI"
-
-          cp ./dist/kai-rpc-server ./example/analysis/
-          cp ./kai_analyzer_rpc/kai-analyzer-rpc ./example/analysis/
-
-          cat << EOF > ./example/initialize.toml
-          root_path = "./coolstore"
-          analyzer_lsp_java_bundle_paths = [ "./analysis/bundle.jar" ]
-          analyzer_lsp_lsp_path = "./analysis/jdtls/bin/jdtls"
-          analyzer_lsp_rpc_path = "./analysis/kai-analyzer-rpc"
-          analyzer_lsp_rules_paths = [ "./analysis/rulesets/default/generated" ]
-          analyzer_lsp_dep_labels_path = "./analysis/maven.default.index"
-
-          demo_mode = true
-          enable_reflection = false
-
-          [log_config]
-          log_level = "info"
-          file_log_level = "debug"
-          log_dir_path = "${{github.workspace}}/logs/"
-          
-          [model_provider]
-          provider = "${{ matrix.models.provider }}"
-         
-          [model_provider.args]
-          model = "${{ matrix.models.model_id }}"
-          EOF
-
-          if [[ -n "${{ matrix.models.max_new_tokens }}" ]]; then
-          cat << EOF >> ./example/initialize.toml
-          parameters.max_new_tokens = ${{ matrix.models.max_new_tokens }}
-          EOF
-          fi
-          cat ./example/initialize.toml
-          
-          which python
-          cd example
-          ./fetch.sh
-          ./run_demo.py
-          cd coolstore
-          changed_files_count=$(git diff --name-only | wc -l)
-          if (( changed_files_count == 26 )); then
-            echo "Tests passed"
-            exit 0
-          else
-            echo "Tests failed, only $changed_files_count where changed"
-            git diff --name-only
-            cat ../../logs/kai_server.log
-            cat ../../logs/kai_server.log
-            exit 1
-          fi
-        env:
-          PATH: ${{ env.PATH }}
-          GENAI_KEY: "BWAHAHA"
-          OPENAI_API_KEY: "BWAHAHA"
 
       - name: lowercase runner.os (linux & mac)
         if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
@@ -337,7 +77,7 @@ jobs:
         if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
         run: |
           $os_string = "${{ runner.os }}"
-          $lowercase_os_string = $os_string.ToLower() 
+          $lowercase_os_string = $os_string.ToLower()
           echo "OS=$lowercase_os_string" >> $env:GITHUB_ENV
 
       - name: Identify OS Arch (linux & mac)
@@ -350,33 +90,17 @@ jobs:
         run: |
           echo "OS_ARCH=$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)" >> $env:GITHUB_ENV
 
-      - name: Archive binaries (linux & mac)
+      - name: Archive binary (linux & mac)
         if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
-        # run: |
-        #   zip -j kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip dist/kai-rpc-server kai_analyzer_rpc/kai-analyzer-rpc ./example/analysis/maven.default.index ./example/analysis/bundle.jar 
-        #   zip -r kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip ./example/analysis/jdtls ./example/analysis/rulesets
         run: |
-          zip -j kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip kai_analyzer_rpc/kai-analyzer-rpc ./example/analysis/maven.default.index ./example/analysis/bundle.jar 
-          zip -r kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip ./example/analysis/jdtls ./example/analysis/rulesets
-
-          # Copy individual binary for potential release upload
+          zip -j kai-analyzer-rpc.${{ env.OS }}-${{ env.OS_ARCH }}.zip kai_analyzer_rpc/kai-analyzer-rpc
           cp kai_analyzer_rpc/kai-analyzer-rpc kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}
 
-      - name: Archive binaries (windows)
+      - name: Archive binary (windows)
         if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
-        # run: |
-        #   mv kai_analyzer_rpc\kai-analyzer-rpc kai_analyzer_rpc\kai-analyzer-rpc.exe
-        #   $filesToInclude = "dist\kai-rpc-server.exe", "kai_analyzer_rpc\kai-analyzer-rpc.exe", "java-deps\maven.default.index", "java-deps\rulesets", "java-deps\bundle.jar", "java-deps\jdtls"
-        #   Compress-Archive -Path $filesToInclude -Destination kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip
         run: |
-          # Rename to add .exe extension
           mv kai_analyzer_rpc\kai-analyzer-rpc kai_analyzer_rpc\kai-analyzer-rpc.exe
-          
-          # Create the zip package
-          $filesToInclude = "kai_analyzer_rpc\kai-analyzer-rpc.exe", "java-deps\maven.default.index", "java-deps\rulesets", "java-deps\bundle.jar", "java-deps\jdtls"
-          Compress-Archive -Path $filesToInclude -Destination kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip
-          
-          # Copy individual binary for potential release upload
+          Compress-Archive -Path "kai_analyzer_rpc\kai-analyzer-rpc.exe" -Destination kai-analyzer-rpc.${{ env.OS }}-${{ env.OS_ARCH }}.zip
           Copy-Item kai_analyzer_rpc\kai-analyzer-rpc.exe kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}.exe
 
       - name: Upload binaries to release
@@ -384,7 +108,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ github.event.inputs.tag || github.ref_name }}
-          artifacts: "kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip,kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}*"
+          artifacts: "kai-analyzer-rpc.${{ env.OS }}-${{ env.OS_ARCH }}.zip,kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}*"
           allowUpdates: true
           omitBodyDuringUpdate: true
           omitNameDuringUpdate: true
@@ -395,5 +119,5 @@ jobs:
         if: ${{ !(github.event.inputs.tag || startsWith(github.ref, 'refs/tags/v')) }}
         uses: actions/upload-artifact@v4
         with:
-          name: kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip
-          path: kai-rpc-server.${{ env.OS }}-${{ env.OS_ARCH }}.zip
+          name: kai-analyzer-rpc.${{ env.OS }}-${{ env.OS_ARCH }}.zip
+          path: kai-analyzer-rpc.${{ env.OS }}-${{ env.OS_ARCH }}.zip

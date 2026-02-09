@@ -1,24 +1,37 @@
-# Konveyor AI (Kai) Documentation Overview
+# Konveyor AI (Kai) Documentation
 
-## Installation
+## End Users
 
-- [Installation.md](installation.md)
+For installation, configuration, and usage of the Kai IDE extension, see the
+[editor-extensions](https://github.com/konveyor/editor-extensions) repository
+and the
+[extension README](https://github.com/konveyor/editor-extensions/blob/main/vscode/core/README.md).
 
-## Configuration
+### Migration Scenarios
 
-- [Configuration.md](configuration.md)
-- [LLM Selection](llm_selection.md)
+Step-by-step walkthroughs for common migration tasks:
 
-## Guided Scenarios
+- [Scenarios overview](scenarios/README.md)
+- [Java EE to Quarkus](scenarios/javaEE_to_quarkus/README.md)
+- [JDK 8 to 17](scenarios/jdk_8_to_17_migration/README.md)
+- [Migrating custom library apps using solution server](scenarios/migrating_custom_library_apps_using_solution_server/)
 
-- [Scenarios](scenarios/README.md)
-  - A collection of guided walkthroughs introducing the usage of Kai by stepping through common legacy software migration problems
+### Other Guides
 
-## Custom Rule Usage and Authoring
+- [Demo Mode](demo_mode.md) - Using cached LLM responses for demos and testing
 
-- [Custom Rules](custom_ruleset.md)
+## Backend Components
 
-## Troubleshooting
+- [MCP Solution Server](../kai_mcp_solution_server/README.md) - Stores and
+  retrieves solved migration examples via the Model Context Protocol
 
-- [Debug](debug.md)
-  - Guidance on how to troubleshoot an issue with Kai
+## Design
+
+- [Technical Background](design/technical_background.md)
+- [Solved Incident Store](design/solved_incident_store.md)
+- [Hub Integration](design/hub_integration.md)
+
+## Contributing
+
+- [Development Environment](contrib/dev_environment.md)
+- [Testing](contrib/testing.md)
