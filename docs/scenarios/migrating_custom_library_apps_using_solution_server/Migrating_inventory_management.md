@@ -98,7 +98,7 @@ Ensure you have the following set up:
 
 - [VSCode](https://code.visualstudio.com/download)
 - [Git](https://git-scm.com/downloads)
-- [GenAI credentials](https://github.com/konveyor/kai/blob/main/docs/llm_selection.md#openai-service)
+- [GenAI credentials](https://github.com/konveyor/kai/blob/main/kai_mcp_solution_server/README.md#getting-started)
 - Java 21 installed
 - Maven 3.9+
 - [Medical Device Inventory Management System](https://github.com/savitharaghunathan/inventory_management)

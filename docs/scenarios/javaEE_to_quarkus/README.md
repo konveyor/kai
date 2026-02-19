@@ -58,7 +58,7 @@ Download the latest from [here][kai extension releases]
 
 ### Installation
 
-Follow the steps in the [installation guide](../../getting_started.md) to
+Follow the steps in the [installation guide](https://github.com/konveyor/editor-extensions/blob/main/vscode/core/README.md) to
 install Kai. It will help you find the latest build and complete the setup.
 
 ### Download the Demo Application
@@ -343,7 +343,7 @@ minikube service list
 
 ## Debug and File Incidents
 
-Please review this [page](/docs/debug.md) for information on Logs,
+Please review the [editor-extensions troubleshooting guide](https://github.com/konveyor/editor-extensions/blob/main/vscode/core/README.md) for information on Logs,
 Troubleshooting, and Filing Issues.
 
 ## Conclusion
