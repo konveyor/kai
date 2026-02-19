@@ -110,7 +110,7 @@ class SolutionServerSettings(BaseSettings):
     - SQLite: `sqlite+aiosqlite:///path/to/database.db`
     """
 
-    llm_params: dict[str, Any] | None
+    llm_params: dict[str, Any] | None = None
 
     @model_validator(mode="before")
     @classmethod

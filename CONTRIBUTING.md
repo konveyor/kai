@@ -130,14 +130,14 @@ Please ensure the title of your PR begins with a
 [gitmoji](https://github.com/carloscuesta/gitmoji). A few examples (with our
 custom changes) are:
 
-|     |              |                                |
-| --- | ------------ | ------------------------------ |
-| Bug  | `:bug:`      | Bug fixes                      |
-| Book  | `:book:`     | Documentation                  |
-| Sparkles  | `:sparkles:` | New features                   |
-| Seedling  | `:seedling:` | Infrastructure related changes |
+|          |              |                                |
+| -------- | ------------ | ------------------------------ |
+| Bug      | `:bug:`      | Bug fixes                      |
+| Book     | `:book:`     | Documentation                  |
+| Sparkles | `:sparkles:` | New features                   |
+| Seedling | `:seedling:` | Infrastructure related changes |
 | Warning  | `:warning:`  | Breaking changes               |
-| Ghost  | `:ghost:`    | Misc updates/fixes             |
+| Ghost    | `:ghost:`    | Misc updates/fixes             |
 
 For a full list, please check out [gitmoji.dev](https://gitmoji.dev)
 
