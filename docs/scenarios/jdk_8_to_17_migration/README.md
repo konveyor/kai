@@ -69,7 +69,7 @@ Ensure you have the following set up:
 
 - [VSCode](https://code.visualstudio.com/download)
 - [Git](https://git-scm.com/downloads)
-- [GenAI credentials](https://github.com/konveyor/kai/blob/main/docs/llm_selection.md#openai-service)
+- [GenAI credentials](https://github.com/konveyor/kai/blob/main/kai_mcp_solution_server/README.md#getting-started)
 - Java 17 installed
 - Maven 3.9+
 - [Java sample app](https://github.com/konveyor-ecosystem/migrationex.git)
@@ -118,11 +118,11 @@ Navigate to File > Open in VSCode and locate the folder we just cloned and selec
 
 ### 1.2 Install and Configure the Konveyor AI VS Code Extension
 
-Follow this [getting started guide](https://github.com/konveyor/kai/blob/main/docs/getting_started.md) to install and configure the latest Konveyor AI IDE plugin.
+Follow the [editor-extensions guide](https://github.com/konveyor/editor-extensions/blob/main/vscode/core/README.md) to install and configure the latest Konveyor AI IDE plugin.
 
 **_Note: At the time of writing this guide, we used version 0.1.0_**
 
-In the [configure settings for analysis](https://github.com/konveyor/kai/blob/main/docs/getting_started.md#configure-settings-for-analysis) section,
+In the configure settings for analysis section of the [editor-extensions guide](https://github.com/konveyor/editor-extensions/blob/main/vscode/core/README.md),
 you will choose label selectors (target and/or source technologies).
 
 In this scenario, we will analyze the application using the following migration targets to identify potential areas for improvement:
@@ -213,7 +213,7 @@ Since MD5 hashing is insecure, we add a custom rule to detect and recommend secu
       url: https://csrc.nist.gov/projects/hash-functions
 ````
 
-You can learn more about writing your own custom rules [here](https://github.com/konveyor/kai/blob/main/docs/custom_ruleset.md)
+You can learn more about writing your own custom rules [here](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md)
 
 ## Step 3: Understanding the Targets From Default Rules
 

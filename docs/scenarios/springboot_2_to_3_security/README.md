@@ -36,7 +36,7 @@ developers can:
 
 - [VSCode](https://code.visualstudio.com/download)
 - [Git](https://git-scm.com/downloads)
-- [GenAI credentials](https://github.com/konveyor/kai/blob/main/docs/llm_selection.md#openai-service)
+- [GenAI credentials](https://github.com/konveyor/kai/blob/main/kai_mcp_solution_server/README.md#getting-started)
 - Java 17
 - Maven 3.9+
 - Sample App: [`springboot_simplelogin`](https://github.com/savitharaghunathan/springboot_simplelogin)
@@ -55,7 +55,7 @@ git clone https://github.com/savitharaghunathan/custom_rules.git
 ### 1.2 Install Kai VSCode Extension
 
 Follow the [official
-guide](https://github.com/konveyor/kai/blob/main/docs/installation.md) for
+guide](https://github.com/konveyor/editor-extensions/blob/main/vscode/core/README.md) for
 installation instructions.
 
 ## Step 2: Understand the Custom Rules
@@ -254,7 +254,7 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
 ````
 
 You can learn more about writing your own custom rules
-[here](https://github.com/konveyor/kai/blob/main/docs/custom_ruleset.md).
+[here](https://github.com/konveyor/analyzer-lsp/blob/main/docs/rules.md).
 
 ## Step 3: Configure Analysis Profile
 

@@ -45,6 +45,68 @@ The server implements the following functionality:
    KAI_LLM_PARAMS='{"model": "fake"}'
    ```
 
+   <details>
+   <summary>More provider examples (Bedrock, Azure, Ollama, and others)</summary>
+
+   #### Amazon Bedrock
+
+   ```bash
+   export KAI_LLM_PARAMS='{"model": "anthropic.claude-v2", "model_provider": "bedrock", "region_name": "<region>", "aws_access_key_id": "<redacted>", "aws_secret_access_key": "<redacted>"}'
+   ```
+
+   > **Note:** Authentication to Amazon Bedrock will look for environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` to handle authentication. While not required, it's recommended to use the [aws cli](https://aws.amazon.com/cli/) and verify you have command line access to AWS services working before proceeding. You can use the `aws_access_key_id`, `aws_secret_access_key` and `region_name` if you don't have the environment variables or the config/credentials file from aws cli.
+
+   #### Azure OpenAI
+
+   ```bash
+   export KAI_LLM_PARAMS='{"model": "shurley-gpt-4o-mini-deployment", "model_provider": "azure_openai", "api_key": "<redacted>", "api_version": "2024-04-01-preview", "azure_endpoint": "https://shurley.openai.azure.com/"}'
+   ```
+
+   #### Google Gemini
+
+   ```bash
+   export KAI_LLM_PARAMS='{"model": "gemini-2.5-pro", "model_provider": "google_genai", "google_api_key": "<redacted>"}'
+   ```
+
+   #### OpenAI
+
+   ```bash
+   export KAI_LLM_PARAMS='{"model": "gpt-4o", "model_provider": "openai"}'
+   ```
+
+   > **Note:** Set the `OPENAI_API_KEY` environment variable. Follow the directions from OpenAI [here](https://help.openai.com/en/articles/4936850-where-do-i-find-my-openai-api-key) to get your API key.
+
+   #### Ollama
+
+   ```bash
+   export KAI_LLM_PARAMS='{"model": "llama3", "model_provider": "ollama", "base_url": "127.0.0.1:11434"}'
+   ```
+
+   > **Note:** Update `model` to reflect the local Ollama model you have running and want to use.
+
+   #### OpenShift AI
+
+   [OpenShift AI](https://www.redhat.com/en/technologies/cloud-computing/openshift/openshift-ai) or [OpenDataHub](https://opendatahub.io/) provides a means of running models on your own Kubernetes cluster. Kai connects to these models via an OpenAI compatible API.
+
+   ```bash
+   export SSL_CERT_FILE="<Server's SSL_CERT_FILE>"
+   export REQUESTS_CA_BUNDLE="<Server's REQUESTS_CA_BUNDLE>"
+   export OPENAI_API_KEY="<Server's OPENAI_API_KEY>"
+   export KAI_LLM_PARAMS='{"model": "kai-test-generation", "model_provider": "openai", "base_url": "https://kai-test-generation-llms.apps.konveyor-ai.migration.example.com/v1"}'
+   ```
+
+   > **Note:** `model` AND `base_url` are related — for this service a different model also has a different and explicit endpoint. It is NOT sufficient to simply change the `model`. See [github.com/jmontleon/openshift-ai-with-gpu-autoscaling](https://github.com/jmontleon/openshift-ai-with-gpu-autoscaling) for deployment guidance.
+
+   #### Podman Desktop
+
+   ```bash
+   export KAI_LLM_PARAMS='{"model": "mistral-7b-instruct-v0-2", "model_provider": "openai", "base_url": "http://localhost:35841/v1"}'
+   ```
+
+   > **Note:** `base_url` and `model` need to be updated to match what you have deployed in Podman.
+
+   </details>
+
 1. Set the `KAI_DB_DSN` environment variable. Here are two common ones:
 
    ```bash
