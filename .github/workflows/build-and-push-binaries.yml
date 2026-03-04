@@ -124,7 +124,7 @@ jobs:
       - name: Archive binary with Java deps (linux & mac)
         if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
         run: |
-          zip -j kai-analyzer-rpc.${{ env.OS }}-${{ env.OS_ARCH }}.zip kai_analyzer_rpc/kai-analyzer-rpc java-deps/example/analysis/maven.default.index java-deps/example/analysis/bundle.jar
+          zip -j kai-analyzer-rpc.${{ env.OS }}-${{ env.OS_ARCH }}.zip kai_analyzer_rpc/kai-analyzer-rpc java-deps/maven.default.index java-deps/bundle.jar
           cp kai_analyzer_rpc/kai-analyzer-rpc kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}
 
       - name: Archive binary with Java deps (windows)
@@ -133,8 +133,8 @@ jobs:
           New-Item -ItemType Directory -Path staging -Force
           mv kai_analyzer_rpc\kai-analyzer-rpc kai_analyzer_rpc\kai-analyzer-rpc.exe
           Copy-Item kai_analyzer_rpc\kai-analyzer-rpc.exe staging\
-          Copy-Item java-deps\example\analysis\maven.default.index staging\
-          Copy-Item java-deps\example\analysis\bundle.jar staging\
+          Copy-Item java-deps\maven.default.index staging\
+          Copy-Item java-deps\bundle.jar staging\
           Compress-Archive -Path staging\* -Destination kai-analyzer-rpc.${{ env.OS }}-${{ env.OS_ARCH }}.zip
           Copy-Item kai_analyzer_rpc\kai-analyzer-rpc.exe kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}.exe
 
