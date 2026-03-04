@@ -27,6 +27,30 @@ env:
       { "os": "windows-latest", "shell": "cmd" }
     ]
 jobs:
+  # Download cross-platform Java dependencies (bundle.jar, maven.default.index)
+  # from the jdtls-server-base container image. These are platform-independent
+  # and get bundled into the release zips for the editor-extensions to extract.
+  download_java_deps:
+    name: Download Java analysis dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          repository: konveyor/kai
+
+      - name: Download Java deps from container image
+        run: |
+          make get-analyzer-deps CONTAINER_RUNTIME=docker
+
+      - name: Upload Java deps as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: java-deps
+          path: |
+            example/analysis/maven.default.index
+            example/analysis/bundle.jar
+
   # this job exists because we want to store the build matrix as output
   # it will be used in the subsequent job as well as in a "calling" workflow
   share_matrix_info:
@@ -46,7 +70,8 @@ jobs:
   build:
     needs:
       - share_matrix_info
-    name: Build Go binary
+      - download_java_deps
+    name: Build and package
     strategy:
       matrix:
         runs_on: ${{ fromJson(needs.share_matrix_info.outputs.matrix_info) }}
@@ -67,6 +92,12 @@ jobs:
           cd kai_analyzer_rpc
           go build -ldflags="-extldflags=-static" -o kai-analyzer-rpc main.go
           cd ..
+
+      - name: Download Java deps artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: java-deps
+          path: java-deps
 
       - name: lowercase runner.os (linux & mac)
         if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
@@ -90,17 +121,21 @@ jobs:
         run: |
           echo "OS_ARCH=$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)" >> $env:GITHUB_ENV
 
-      - name: Archive binary (linux & mac)
+      - name: Archive binary with Java deps (linux & mac)
         if: ${{ ! startsWith(matrix.runs_on.os, 'windows') }}
         run: |
-          zip -j kai-analyzer-rpc.${{ env.OS }}-${{ env.OS_ARCH }}.zip kai_analyzer_rpc/kai-analyzer-rpc
+          zip -j kai-analyzer-rpc.${{ env.OS }}-${{ env.OS_ARCH }}.zip kai_analyzer_rpc/kai-analyzer-rpc java-deps/example/analysis/maven.default.index java-deps/example/analysis/bundle.jar
           cp kai_analyzer_rpc/kai-analyzer-rpc kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}
 
-      - name: Archive binary (windows)
+      - name: Archive binary with Java deps (windows)
         if: ${{ startsWith(matrix.runs_on.os, 'windows') }}
         run: |
+          New-Item -ItemType Directory -Path staging -Force
           mv kai_analyzer_rpc\kai-analyzer-rpc kai_analyzer_rpc\kai-analyzer-rpc.exe
-          Compress-Archive -Path "kai_analyzer_rpc\kai-analyzer-rpc.exe" -Destination kai-analyzer-rpc.${{ env.OS }}-${{ env.OS_ARCH }}.zip
+          Copy-Item kai_analyzer_rpc\kai-analyzer-rpc.exe staging\
+          Copy-Item java-deps\example\analysis\maven.default.index staging\
+          Copy-Item java-deps\example\analysis\bundle.jar staging\
+          Compress-Archive -Path staging\* -Destination kai-analyzer-rpc.${{ env.OS }}-${{ env.OS_ARCH }}.zip
           Copy-Item kai_analyzer_rpc\kai-analyzer-rpc.exe kai-analyzer-rpc-${{ env.OS }}-${{ env.OS_ARCH }}.exe
 
       - name: Upload binaries to release
