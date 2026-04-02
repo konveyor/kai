@@ -34,10 +34,55 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    kwargs: dict[str, Any] = {"transport": args.transport}
-    if args.transport != "stdio":
-        kwargs["port"] = args.port
-        kwargs["host"] = args.host
-        kwargs["path"] = args.mount_path
+    if args.transport == "stdio":
+        # stdio mode: no REST API, just MCP over stdin/stdout
+        mcp.run(transport="stdio")
+    else:
+        # HTTP mode: composite app with MCP + REST API
+        import asyncio
+        from collections.abc import AsyncIterator
+        from contextlib import asynccontextmanager
 
-    mcp.run(**kwargs)
+        import uvicorn
+        from starlette.applications import Starlette
+        from starlette.routing import Mount
+
+        from kai_mcp_solution_server.constants import log
+        from kai_mcp_solution_server.resources import KaiSolutionServerContext
+        from kai_mcp_solution_server.rest.app import create_rest_app
+        from kai_mcp_solution_server.settings import SolutionServerSettings
+
+        rest_app = create_rest_app()
+
+        @asynccontextmanager
+        async def composite_lifespan(app: Starlette) -> AsyncIterator[None]:
+            log("Starting composite app lifespan")
+            settings = SolutionServerSettings()
+            ctx = KaiSolutionServerContext(settings)
+            await ctx.create()
+            # Share the context with the REST app via app.state
+            rest_app.state.kai_ctx = ctx
+            log("Composite app lifespan ready")
+            yield
+            log("Composite app lifespan shutdown")
+
+        mcp_app = mcp.http_app(
+            transport="streamable-http",
+            path=args.mount_path,
+        )
+
+        composite = Starlette(
+            routes=[
+                Mount("/api/v1", app=rest_app),
+                Mount("/", app=mcp_app),
+            ],
+            lifespan=composite_lifespan,
+        )
+
+        uvicorn_kwargs: dict[str, Any] = {}
+        if args.host is not None:
+            uvicorn_kwargs["host"] = args.host
+        if args.port is not None:
+            uvicorn_kwargs["port"] = args.port
+
+        uvicorn.run(composite, **uvicorn_kwargs)
