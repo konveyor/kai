@@ -5,6 +5,8 @@
 **Source labels:** java-ee, eap7, hibernate5.0
 **Target labels:** quarkus, quarkus3, jakarta-ee, jakarta-ee9, cloud-readiness, hibernate, hibernate6, resteasy, openjdk21
 
+**Label selector:** `konveyor.io/target=quarkus || konveyor.io/target=quarkus3 || konveyor.io/target=jakarta-ee || konveyor.io/target=jakarta-ee9 || konveyor.io/target=cloud-readiness || konveyor.io/target=hibernate || konveyor.io/target=hibernate6 || konveyor.io/target=resteasy || konveyor.io/target=openjdk21`
+
 ## Summary
 
 | Metric               | Count |

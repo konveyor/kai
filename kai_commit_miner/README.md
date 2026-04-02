@@ -79,9 +79,12 @@ Dry-run mode writes to `--dry-run-output-dir` (default `.kai_miner_output`):
 
 Generate a report: `uv run python -m kai_commit_miner.report <output_dir> [report.md]`
 
-## Example
+## Examples
 
-See [examples/coolstore-javaee-to-quarkus.md](examples/coolstore-javaee-to-quarkus.md) for a full report from mining the [coolstore](https://github.com/konveyor-ecosystem/coolstore) Java EE 7 → Quarkus migration.
+Sample reports from mining the [coolstore](https://github.com/konveyor-ecosystem/coolstore) Java EE 7 → Quarkus migration:
+
+- **[With kantra analysis](examples/coolstore-javaee-to-quarkus.md)** — 204 violations resolved, 34 hints, 7 new rules ($0.67)
+- **[Without analysis](examples/coolstore-no-analysis.md)** — diff-only mode, 15 rules discovered from scratch ($0.10)
 
 ## CLI reference
 

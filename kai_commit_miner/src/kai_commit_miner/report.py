@@ -44,6 +44,10 @@ def _migration_section(lines: list[str], metadata: dict) -> None:
         lines.append(f"**Target labels:** {', '.join(targets)}")
     if sources or targets:
         lines.append("")
+    label_selector = metadata.get("label_selector", "")
+    if label_selector:
+        lines.append(f"**Label selector:** `{label_selector}`")
+        lines.append("")
 
 
 def _summary_section(
