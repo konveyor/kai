@@ -25,7 +25,7 @@ except ImportError:
 
 from kai_mcp_solution_server.analyzer_types import ExtendedIncident
 from kai_mcp_solution_server.db.python_objects import SolutionFile, ViolationID
-from kai_mcp_solution_server.server import SuccessRateMetric
+from kai_mcp_solution_server.service import SuccessRateMetric
 
 # Configure logger
 logger = logging.getLogger("kai-mcp-client")

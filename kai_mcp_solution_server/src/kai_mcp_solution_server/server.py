@@ -1,280 +1,34 @@
-import asyncio
-import functools
-import json
-import os
-import sys
 import traceback
-from collections.abc import AsyncIterator, Callable, Coroutine
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Annotated, Any, ParamSpec, TypeVar, cast
+from typing import cast
 
 from fastmcp import Context, FastMCP
-from langchain.chat_models import init_chat_model
-from langchain_community.chat_models.fake import FakeListChatModel
-from langchain_core.language_models.chat_models import BaseChatModel
-from pydantic import BaseModel, Field, model_validator
-from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
-from sqlalchemy import URL, and_, make_url, or_, select
-from sqlalchemy.exc import DBAPIError, IntegrityError, OperationalError
-from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from kai_mcp_solution_server.analyzer_types import ExtendedIncident
-from kai_mcp_solution_server.ast_diff.parser import Language, extract_ast_info
 from kai_mcp_solution_server.constants import log
-from kai_mcp_solution_server.db.dao import (
-    DBFile,
-    DBHint,
-    DBIncident,
-    DBSolution,
-    DBViolation,
-    get_async_engine,
-    kill_idle_connections,
+from kai_mcp_solution_server.db.python_objects import SolutionFile, ViolationID
+from kai_mcp_solution_server.resources import KaiSolutionServerContext
+from kai_mcp_solution_server.service import (
+    CreateIncidentResult,
+    GetBestHintResult,
+    SuccessRateMetric,
+    accept_file,
+    create_incident,
+    create_solution,
+    delete_solution,
+    get_best_hint,
+    get_success_rate,
+    reject_file,
 )
-from kai_mcp_solution_server.db.python_objects import (
-    SolutionFile,
-    SolutionStatus,
-    ViolationID,
-    associate_files,
-    get_diff,
-)
-
-P = ParamSpec("P")
-T = TypeVar("T")
+from kai_mcp_solution_server.settings import SolutionServerSettings
 
 
-def with_db_recovery(
-    func: Callable[..., Coroutine[Any, Any, T]]
-) -> Callable[..., Coroutine[Any, Any, T]]:
-    """Decorator to execute database operations with automatic recovery on connection errors.
-
-    Uses a semaphore to limit concurrent DB operations and prevent pool exhaustion.
-    Implements exponential backoff with retry on connection errors.
-    """
-
-    @functools.wraps(func)
-    async def wrapper(
-        kai_ctx: KaiSolutionServerContext, *args: Any, **kwargs: Any
-    ) -> T:
-        if _SharedResources.db_semaphore is None:
-            raise RuntimeError("Database semaphore not initialized")
-
-        # Semaphore ensures we don't overwhelm the connection pool
-        async with _SharedResources.db_semaphore:
-            max_retries = 3
-            base_delay = 0.1  # 100ms base delay
-
-            for attempt in range(max_retries):
-                try:
-                    return await func(kai_ctx, *args, **kwargs)
-                except IntegrityError:
-                    raise
-                except SQLAlchemyTimeoutError:
-                    if attempt < max_retries - 1:
-                        delay = base_delay * (2**attempt)  # Exponential backoff
-                        log(
-                            f"Connection pool timeout (attempt {attempt + 1}), retrying in {delay}s..."
-                        )
-                        await asyncio.sleep(delay)
-                        await _recover_from_db_error()
-                    else:
-                        log(f"Connection pool exhausted after {max_retries} attempts")
-                        raise
-                except (DBAPIError, OperationalError) as e:
-                    if attempt < max_retries - 1:
-                        delay = base_delay * (2**attempt)
-                        log(
-                            f"Database error (attempt {attempt + 1}): {e}, retrying in {delay}s..."
-                        )
-                        await asyncio.sleep(delay)
-                        await _recover_from_db_error()
-                        await kai_ctx.create()
-                    else:
-                        log(f"Database error after {max_retries} attempts, giving up")
-                        raise
-
-            # This should never be reached due to the loop structure,
-            # but mypy needs an explicit unreachable marker
-            raise RuntimeError("Unexpected: retry loop completed without returning")
-
-    return wrapper
-
-
-class SolutionServerSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="kai_")
-
-    db_dsn: Annotated[URL, NoDecode]
-    """
-    Example DSNs:
-    - PostgreSQL: `postgresql+asyncpg://username:password@host:port/database`
-    - SQLite: `sqlite+aiosqlite:///path/to/database.db`
-    """
-
-    llm_params: dict[str, Any] | None = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def validate_db_dsn(cls, data: Any) -> Any:
-        """
-        Environment variables added:
-        - `KAI_DB_DRIVERNAME`
-        - `KAI_DB_USERNAME`
-        - `KAI_DB_PASSWORD`
-        - `KAI_DB_HOST`
-        - `KAI_DB_PORT`
-        - `KAI_DB_DATABASE`
-
-        1. Any parameters supplied via Python's `SolutionServerSettings`
-           constructor takes highest precedence, then any configuration supplied
-           via `KAI_DB_DSN`.
-        2. Try to parse `KAI_DB_DSN` as a json object, containing `drivername`,
-           `username`, etc... If that fails, parse it as a connection string.
-        3. If the `KAI_DB_DSN` environment variable or the `db_dsn` field is not
-           supplied, try to get all information from the new variables
-        """
-
-        if isinstance(data, dict):
-            kwargs: dict[str, Any]
-
-            if "db_dsn" not in data:
-                kwargs = {}
-
-            elif isinstance(data["db_dsn"], URL):
-                kwargs = data["db_dsn"]._asdict()
-
-            elif isinstance(data["db_dsn"], dict):
-                kwargs = data["db_dsn"]
-
-            elif isinstance(data["db_dsn"], str):
-                try:
-                    kwargs = json.loads(data["db_dsn"])
-                except json.JSONDecodeError:
-                    kwargs = make_url(data["db_dsn"])._asdict()
-
-            else:
-                raise ValueError(
-                    f"Invalid type for db_dsn: {type(data['db_dsn'])}. Expected missing, str, dict, or URL."
-                )
-
-            for key in [
-                "drivername",
-                "username",
-                "password",
-                "host",
-                "port",
-                "database",
-            ]:
-                if kwargs.get(key) is None:
-                    kwargs[key] = os.getenv(f"KAI_DB_{key.upper()}", None)
-
-            data["db_dsn"] = URL.create(**kwargs)
-
-        return data
-
-
-class _SharedResources:
-    """Global shared resources initialized once at module level."""
-
-    engine: AsyncEngine | None = None
-    session_maker: async_sessionmaker[AsyncSession] | None = None
-    model: BaseChatModel | None = None
-    initialization_lock: asyncio.Lock | None = None
-    initialized: bool = False
-    # Semaphore to limit concurrent DB operations (prevent connection pool exhaustion)
-    db_semaphore: asyncio.Semaphore | None = None
-    max_concurrent_ops: int = 80  # Allow up to 80 concurrent DB operations
-
-
-async def _initialize_shared_resources() -> None:
-    """Initialize shared resources once, protected by a lock."""
-    if _SharedResources.initialization_lock is None:
-        _SharedResources.initialization_lock = asyncio.Lock()
-
-    async with _SharedResources.initialization_lock:
-        if _SharedResources.initialized:
-            return
-
-        from kai_mcp_solution_server.db.dao import Base
-
-        log(
-            "Initializing shared database engine and model (once for all connections)..."
-        )
-        settings = SolutionServerSettings()
-
-        # Initialize semaphore to limit concurrent DB operations
-        _SharedResources.db_semaphore = asyncio.Semaphore(
-            _SharedResources.max_concurrent_ops
-        )
-        log(
-            f"DB operation semaphore initialized with limit: {_SharedResources.max_concurrent_ops}"
-        )
-
-        # Initialize database engine
-        _SharedResources.engine = await get_async_engine(settings.db_dsn)
-        async with _SharedResources.engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-
-        _SharedResources.session_maker = async_sessionmaker(
-            bind=_SharedResources.engine, expire_on_commit=False
-        )
-
-        # Initialize model
-        if settings.llm_params is None:
-            raise ValueError("LLM parameters must be provided in the settings.")
-        elif settings.llm_params.get("model") == "fake":
-            llm_params = settings.llm_params.copy()
-            llm_params.pop("model", None)
-            if "responses" not in llm_params:
-                llm_params["responses"] = ["fake response"]
-            _SharedResources.model = FakeListChatModel(**llm_params)
-        else:
-            _SharedResources.model = init_chat_model(**settings.llm_params)
-
-        _SharedResources.initialized = True
-        log("Shared resources initialized successfully")
-
-
-async def _recover_from_db_error() -> None:
-    """Recover from database errors by killing idle connections or recreating engine."""
-    if _SharedResources.engine is not None:
-        log("Recovering from database error - killing idle connections...")
-        try:
-            await kill_idle_connections(_SharedResources.engine)
-            log("Successfully killed idle connections")
-        except Exception as e:
-            log(f"Failed to kill idle connections: {e}")
-            log("Disposing and recreating engine...")
-            await _SharedResources.engine.dispose()
-            _SharedResources.initialized = False
-            await _initialize_shared_resources()
-
-
-class KaiSolutionServerContext:
-    """Per-connection context that references shared resources."""
-
-    def __init__(self, settings: SolutionServerSettings) -> None:
-        self.settings = settings
-        self.lock = asyncio.Lock()
-        # References to shared resources (set in create())
-        self.engine: AsyncEngine | None = None
-        self.session_maker: async_sessionmaker[AsyncSession] | None = None
-        self.model: BaseChatModel | None = None
-
-    async def create(self) -> None:
-        """Initialize shared resources if needed and reference them."""
-        await _initialize_shared_resources()
-
-        if _SharedResources.engine is None:
-            raise RuntimeError("Database engine failed to initialize")
-        if _SharedResources.session_maker is None:
-            raise RuntimeError("Session maker failed to initialize")
-        if _SharedResources.model is None:
-            raise RuntimeError("Model failed to initialize")
-
-        log(f"Connection using shared engine: {id(_SharedResources.engine)}")
-        self.engine = _SharedResources.engine
-        self.session_maker = _SharedResources.session_maker
-        self.model = _SharedResources.model
+def _get_kai_ctx(ctx: Context) -> KaiSolutionServerContext:
+    """Extract KaiSolutionServerContext from an MCP Context."""
+    if ctx.request_context is None:
+        raise RuntimeError("No request context available")
+    return cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
 
 
 @asynccontextmanager
@@ -292,88 +46,14 @@ async def kai_solution_server_lifespan(
         log("yielding context")
 
         yield ctx
-    except Exception as e:
+    except Exception:
         log(f"Error in lifespan: {traceback.format_exc()}")
-        raise e
+        raise
 
 
 mcp: FastMCP[KaiSolutionServerContext] = FastMCP(
     "KaiSolutionServer", lifespan=kai_solution_server_lifespan
 )
-
-
-class CreateIncidentResult(BaseModel):
-    incident_id: int
-    solution_id: int
-
-
-@with_db_recovery
-async def create_incident(
-    kai_ctx: KaiSolutionServerContext,
-    client_id: str,
-    extended_incident: ExtendedIncident,
-) -> int:
-    if kai_ctx.session_maker is None:
-        raise RuntimeError("Session maker not initialized")
-
-    # Retry with exponential backoff if we hit a duplicate violation race condition
-    max_attempts = 3
-    base_delay = 0.05  # 50ms base delay
-
-    for attempt in range(max_attempts):
-        try:
-            async with kai_ctx.session_maker.begin() as session:
-                violation_stmt = select(DBViolation).where(
-                    DBViolation.ruleset_name == extended_incident.ruleset_name,
-                    DBViolation.violation_name == extended_incident.violation_name,
-                )
-
-                violation = (await session.execute(violation_stmt)).scalar_one_or_none()
-                if violation is None:
-                    log(
-                        f"Violation {extended_incident.ruleset_name} - {extended_incident.violation_name} not found in the database.",
-                    )
-
-                    violation = DBViolation(
-                        ruleset_name=extended_incident.ruleset_name,
-                        ruleset_description=extended_incident.ruleset_description,
-                        violation_name=extended_incident.violation_name,
-                        violation_category=extended_incident.violation_category,
-                        incidents=set(),
-                        hints=set(),
-                    )
-                    session.add(violation)
-
-                incident = DBIncident(
-                    client_id=client_id,
-                    uri=extended_incident.uri,
-                    message=extended_incident.message,
-                    code_snip=extended_incident.code_snip,
-                    line_number=extended_incident.line_number,
-                    variables=extended_incident.variables,
-                    violation=violation,
-                    solution=None,
-                )
-                session.add(incident)
-                await session.flush()
-
-                return incident.id
-
-        except IntegrityError as e:
-            error_msg = str(e)
-            if "kai_violations_pkey" in error_msg and attempt < max_attempts - 1:
-                # Exponential backoff: 50ms, 100ms, 200ms
-                delay = base_delay * (2**attempt)
-                log(
-                    f"Duplicate violation creation detected for {extended_incident.ruleset_name} - "
-                    f"{extended_incident.violation_name}, retrying in {delay:.0f}ms (attempt {attempt + 1}/{max_attempts})..."
-                )
-                await asyncio.sleep(delay)
-                continue
-            else:
-                raise
-
-    raise RuntimeError("Failed to create incident after retries")
 
 
 @mcp.tool(name="create_incident")
@@ -389,9 +69,7 @@ async def tool_create_incident(
     associated with the incident does not exist in the database, it will be created
     as well.
     """
-    if ctx.request_context is None:
-        raise RuntimeError("No request context available")
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    kai_ctx = _get_kai_ctx(ctx)
     return await create_incident(
         kai_ctx,
         client_id,
@@ -412,120 +90,13 @@ async def tool_create_multiple_incidents(
     If any of the violations associated with the incidents do not exist in the
     database, they will be created as well.
     """
-    if ctx.request_context is None:
-        raise RuntimeError("No request context available")
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    kai_ctx = _get_kai_ctx(ctx)
     results: list[CreateIncidentResult] = []
-
-    # Lock removed - database handles concurrent access
     for extended_incident in extended_incidents:
         incident_id = await create_incident(kai_ctx, client_id, extended_incident)
         results.append(CreateIncidentResult(incident_id=incident_id, solution_id=0))
 
     return results
-
-
-@with_db_recovery
-async def create_solution(
-    kai_ctx: KaiSolutionServerContext,
-    client_id: str,
-    incident_ids: list[int],
-    before: list[SolutionFile],
-    after: list[SolutionFile],
-    reasoning: str | None = None,
-    used_hint_ids: list[int] | None = None,
-) -> int:
-    if len(incident_ids) == 0:
-        raise ValueError("At least one incident ID must be provided.")
-
-    if used_hint_ids is None:
-        used_hint_ids = []
-
-    if kai_ctx.session_maker is None:
-        raise RuntimeError("Session maker not initialized")
-    async with kai_ctx.session_maker.begin() as session:
-        incident_ids_cond = [
-            and_(DBIncident.id == incident_id, DBIncident.client_id == client_id)
-            for incident_id in incident_ids
-        ]
-        incidents_stmt = select(DBIncident).where(or_(*incident_ids_cond))
-        incidents = (await session.execute(incidents_stmt)).scalars().all()
-
-        hint_stmt = select(DBHint).where(DBHint.id.in_(used_hint_ids))
-        hints = (await session.execute(hint_stmt)).scalars().all()
-
-        if missing_ids := set(used_hint_ids) - {hint.id for hint in hints}:
-            raise ValueError(
-                f"Some hint IDs {missing_ids} do not exist in the database."
-            )
-
-        # Try to match the before files. If you can't, create them.
-        # Create the after files. Associate them with the before files.
-        # Create the solution.
-
-        db_before_files: set[DBFile] = set()
-        for file in before:
-            stmt = (
-                select(DBFile)
-                .where(
-                    DBFile.client_id == client_id,
-                    DBFile.uri == file.uri,
-                )
-                .order_by(DBFile.created_at.desc())
-            )
-            prev_before = (await session.execute(stmt)).scalars().first()
-
-            if prev_before is None or prev_before.content != file.content:
-                next_before = DBFile(
-                    client_id=client_id,
-                    uri=file.uri,
-                    content=file.content,
-                    status=SolutionStatus.PENDING,
-                    solution_before=set(),
-                    solution_after=set(),
-                )
-                session.add(next_before)
-                db_before_files.add(next_before)
-            else:
-                db_before_files.add(prev_before)
-
-        db_after_files: set[DBFile] = set()
-        for file in after:
-            # FIXME: Something is fishy here...
-            next_after = DBFile(
-                client_id=client_id,
-                uri=file.uri,
-                content=file.content,
-                status=SolutionStatus.PENDING,
-                solution_before=set(),
-                solution_after=set(),
-            )
-
-            stmt = (
-                select(DBFile)
-                .where(
-                    DBFile.client_id == client_id,
-                    DBFile.uri == file.uri,
-                )
-                .order_by(DBFile.created_at.desc())
-            )
-
-            db_after_files.add(next_after)
-            session.add(next_after)
-
-        solution = DBSolution(
-            client_id=client_id,
-            before=db_before_files,
-            after=db_after_files,
-            reasoning=reasoning,
-            solution_status=SolutionStatus.UNKNOWN,
-            incidents=set(incidents),
-            hints=set(hints),
-        )
-
-        session.add(solution)
-
-    return solution.id
 
 
 @mcp.tool(name="create_solution")
@@ -545,9 +116,7 @@ async def tool_create_solution(
     If the incident IDs do not exist in the database, a ValueError will be raised.
     If the used hint IDs do not exist in the database, a ValueError will be raised
     """
-    if ctx.request_context is None:
-        raise RuntimeError("No request context available")
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    kai_ctx = _get_kai_ctx(ctx)
     return await create_solution(
         kai_ctx,
         client_id,
@@ -559,269 +128,6 @@ async def tool_create_solution(
     )
 
 
-@with_db_recovery
-async def generate_hint_v1(
-    kai_ctx: KaiSolutionServerContext,
-    client_id: str,
-) -> None:
-    if kai_ctx.session_maker is None:
-        raise RuntimeError("Session maker not initialized")
-    async with kai_ctx.session_maker.begin() as session:
-        solutions_stmt = select(DBSolution).where(
-            DBSolution.client_id == client_id,
-            or_(
-                DBSolution.solution_status == SolutionStatus.ACCEPTED,
-                DBSolution.solution_status == SolutionStatus.MODIFIED,
-            ),
-        )
-        solutions = (await session.execute(solutions_stmt)).scalars().all()
-        if len(solutions) == 0:
-            log(
-                f"No accepted or modified solutions found for client {client_id}. No hint generated."
-            )
-            return
-
-        for solution in solutions:
-            prompt = (
-                "The following incidents had this accepted solution. "
-                "Generate a hint for the user so that they can perform the same solution:\n"
-            )
-
-            for i, incident in enumerate(solution.incidents):
-                prompt += (
-                    f"Incident {i + 1}:\n"
-                    f"  URI: {incident.uri}\n"
-                    f"  Message: {incident.message}\n"
-                    f"  Code Snippet: {incident.code_snip}\n"
-                    f"  Line Number: {incident.line_number}\n"
-                    f"  Variables: {incident.variables}\n"
-                    f"  Violation: {incident.violation.ruleset_name} - "
-                    f"  {incident.violation.violation_name}\n\n"
-                )
-
-            diff = get_diff(
-                [SolutionFile(uri=f.uri, content=f.content) for f in solution.before],
-                [SolutionFile(uri=f.uri, content=f.content) for f in solution.after],
-            )
-
-            prompt += "Solution:\n" f"{diff}\n\n"
-
-            log(f"Generating hint for client {client_id} with prompt:\n{prompt}")
-
-            if kai_ctx.model is None:
-                raise RuntimeError("Model not initialized")
-            response = await kai_ctx.model.ainvoke(prompt)
-
-            log(f"Generated hint: {response.content}")
-
-            hint = DBHint(
-                text=str(response.content),
-                violations=set(
-                    incident.violation
-                    for incident in solution.incidents
-                    if incident.violation is not None
-                ),
-                solutions=set([solution]),
-            )
-            session.add(hint)
-
-            await session.flush()
-
-
-@with_db_recovery
-async def generate_hint_v2(
-    kai_ctx: KaiSolutionServerContext,
-    client_id: str,
-) -> None:
-    # print(f"Generating hint for client {client_id}", file=sys.stderr)
-    if kai_ctx.session_maker is None:
-        raise RuntimeError("Session maker not initialized")
-    async with kai_ctx.session_maker.begin() as session:
-        solutions_stmt = select(DBSolution).where(
-            DBSolution.client_id == client_id,
-            or_(
-                DBSolution.solution_status == SolutionStatus.ACCEPTED,
-                DBSolution.solution_status == SolutionStatus.MODIFIED,
-            ),
-        )
-        solutions = (await session.execute(solutions_stmt)).scalars().all()
-        if len(solutions) == 0:
-            print(
-                f"No accepted solutions found for client {client_id}. No hint generated.",
-                file=sys.stderr,
-            )
-            return
-
-        for solution in solutions:
-            prompt = (
-                "The following incidents had this accepted solution. "
-                "Generate a hint for the user so that they can create the same solution:\n"
-            )
-
-            for i, incident in enumerate(solution.incidents):
-                prompt += (
-                    f"Incident {i + 1}:\n"
-                    f"  URI: {incident.uri}\n"
-                    f"  Message: {incident.message}\n"
-                    f"  Code Snippet: {incident.code_snip}\n"
-                    f"  Line Number: {incident.line_number}\n"
-                    f"  Variables: {incident.variables}\n"
-                    f"  Violation: {incident.violation.ruleset_name} - "
-                    f"  {incident.violation.violation_name}\n\n"
-                )
-
-            diff = associate_files(
-                [SolutionFile(uri=f.uri, content=f.content) for f in solution.before],
-                [SolutionFile(uri=f.uri, content=f.content) for f in solution.after],
-            )
-
-            ast_diffs: list[dict[str, Any]] = []
-            for (_before_uri, _after_uri), (before_file, after_file) in diff.items():
-                if before_file.content == after_file.content:
-                    continue
-
-                ast_diffs.append(
-                    extract_ast_info(before_file.content, language=Language.JAVA).diff(
-                        extract_ast_info(after_file.content, language=Language.JAVA)
-                    )
-                )
-
-            ast_diff_str = "\n\n".join(str(a) for a in ast_diffs if a is not None)
-            prompt += f"AST Diff:\n{ast_diff_str}\n\n"
-
-            # print(f"Generating hint for client {client_id} with prompt:\n{prompt}", file=sys.stderr)
-
-            if kai_ctx.model is None:
-                raise RuntimeError("Model not initialized")
-            response = await kai_ctx.model.ainvoke(prompt)
-
-            # print(f"Generated hint: {response.content}", file=sys.stderr)
-
-            hint = DBHint(
-                text=str(response.content),
-                violations=set(
-                    incident.violation
-                    for incident in solution.incidents
-                    if incident.violation is not None
-                ),
-                solutions=set([solution]),
-            )
-            session.add(hint)
-
-            await session.flush()
-
-
-@with_db_recovery
-async def generate_hint_v3(
-    kai_ctx: KaiSolutionServerContext,
-    client_id: str,
-) -> None:
-    """
-    Generate hints for accepted solutions using improved prompt format with better structure.
-    """
-    if kai_ctx.session_maker is None:
-        raise RuntimeError("Session maker not initialized")
-    async with kai_ctx.session_maker.begin() as session:
-        solutions_stmt = select(DBSolution).where(
-            DBSolution.client_id == client_id,
-            or_(
-                DBSolution.solution_status == SolutionStatus.ACCEPTED,
-                DBSolution.solution_status == SolutionStatus.MODIFIED,
-            ),
-        )
-        solutions = (await session.execute(solutions_stmt)).scalars().all()
-        if len(solutions) == 0:
-            print(
-                f"No accepted or modified solutions found for client {client_id}. No hint generated.",
-                file=sys.stderr,
-            )
-            return
-
-        for solution in solutions:
-            prompt = (
-                "The following incidents had this accepted solution. "
-                "Use the AST diffs below as a guiding pattern for migration.\n\n"
-                "Generate a hint for the user so that they can migrate the code.\n\n"
-                "IMPORTANT: Follow this EXACT output format:\n"
-                "---\n"
-                "SUMMARY:\n"
-                "[concise summary of necessary changes]\n\n"
-                "HINT:\n"
-                "[numbered steps with generic, reusable code examples]\n"
-                "---\n\n"
-                "Guidelines for high-quality response:\n"
-                "1. Keep SUMMARY concise and focused\n"
-                "2. Use numbered steps (1, 2, 3) in HINT section\n"
-                "3. Provide generic before/after code examples that can be reused and mark them as examples (e.g. 'Example 1: Before: ... After: ...')\n"
-                "4. Write in direct, actionable tone\n"
-                "Incidents:\n"
-            )
-
-            for i, incident in enumerate(solution.incidents):
-                prompt += (
-                    f"Incident {i + 1}:\n"
-                    f"  URI: {incident.uri}\n"
-                    f"  Message: {incident.message}\n"
-                    f"  Code Snippet: {incident.code_snip}\n"
-                    f"  Line Number: {incident.line_number}\n"
-                    f"  Variables: {incident.variables}\n"
-                    f"  Violation: {incident.violation.ruleset_name} - "
-                    f"  {incident.violation.violation_name}\n\n"
-                )
-
-            diff = associate_files(
-                [SolutionFile(uri=f.uri, content=f.content) for f in solution.before],
-                [SolutionFile(uri=f.uri, content=f.content) for f in solution.after],
-            )
-
-            ast_diffs: list[dict[str, Any]] = []
-            for (_before_uri, _after_uri), (before_file, after_file) in diff.items():
-                if before_file.content == after_file.content:
-                    continue
-
-                ast_diffs.append(
-                    extract_ast_info(before_file.content, language=Language.JAVA).diff(
-                        extract_ast_info(after_file.content, language=Language.JAVA)
-                    )
-                )
-
-            ast_diff_str = "\n\n".join(str(a) for a in ast_diffs if a is not None)
-            prompt += f"AST Diff:\n{ast_diff_str}\n\n"
-
-            if kai_ctx.model is None:
-                raise RuntimeError("Model not initialized")
-            response = await kai_ctx.model.ainvoke(prompt)
-
-            hint = DBHint(
-                text=str(response.content),
-                violations=set(
-                    incident.violation
-                    for incident in solution.incidents
-                    if incident.violation is not None
-                ),
-                solutions=set([solution]),
-            )
-            session.add(hint)
-
-            await session.flush()
-
-
-@with_db_recovery
-async def delete_solution(
-    kai_ctx: KaiSolutionServerContext,
-    client_id: str,
-    solution_id: int,
-) -> bool:
-    if kai_ctx.session_maker is None:
-        raise RuntimeError("Session maker not initialized")
-    async with kai_ctx.session_maker.begin() as session:
-        sln = await session.get(DBSolution, solution_id)
-        if sln is None:
-            return False
-        await session.delete(sln)
-    return True
-
-
 @mcp.tool(name="delete_solution")
 async def tool_delete_solution(
     ctx: Context,
@@ -831,9 +137,7 @@ async def tool_delete_solution(
     """
     Delete the solution with the given ID from the database.
     """
-    if ctx.request_context is None:
-        raise RuntimeError("No request context available")
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    kai_ctx = _get_kai_ctx(ctx)
     return await delete_solution(
         kai_ctx,
         client_id,
@@ -843,45 +147,6 @@ async def tool_delete_solution(
 
 # TODO: Make this a resource instead of a tool. Need to figure out how to handle
 # lists in a resource.
-
-
-class GetBestHintResult(BaseModel):
-    hint: str
-    hint_id: int
-
-
-@with_db_recovery
-async def get_best_hint(
-    kai_ctx: KaiSolutionServerContext,
-    ruleset_name: str,
-    violation_name: str,
-) -> GetBestHintResult | None:
-    if kai_ctx.session_maker is None:
-        raise RuntimeError("Session maker not initialized")
-    async with kai_ctx.session_maker.begin() as session:
-        violation_name_stmt = select(DBViolation).where(
-            DBViolation.ruleset_name == ruleset_name,
-            DBViolation.violation_name == violation_name,
-        )
-        violation = (await session.execute(violation_name_stmt)).scalar_one_or_none()
-        if violation is None:
-            log(
-                f"Violation {ruleset_name} - {violation_name} not found in the database.",
-            )
-            return None
-
-        for hint in sorted(violation.hints, key=lambda h: h.created_at, reverse=True):
-            if any(
-                s.solution_status == SolutionStatus.ACCEPTED
-                or s.solution_status == SolutionStatus.MODIFIED
-                for s in hint.solutions
-            ):
-                return GetBestHintResult(
-                    hint=hint.text or "",
-                    hint_id=hint.id,
-                )
-
-    return None
 
 
 @mcp.tool(name="get_best_hint")
@@ -898,102 +163,12 @@ async def tool_get_best_hint(
     and the hint ID. The hint is considered the best if it has at least one solution
     with the status "accepted".
     """
-    if ctx.request_context is None:
-        raise RuntimeError("No request context available")
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    kai_ctx = _get_kai_ctx(ctx)
     return await get_best_hint(
         kai_ctx,
         ruleset_name,
         violation_name,
     )
-
-
-class SuccessRateMetric(BaseModel):
-    violation_id: ViolationID
-
-    counted_solutions: int = 0
-
-    accepted_solutions: int = 0
-    accepted_incidents: list[int] = Field(default_factory=list)
-
-    rejected_solutions: int = 0
-    rejected_incidents: list[int] = Field(default_factory=list)
-
-    modified_solutions: int = 0
-    modified_incidents: list[int] = Field(default_factory=list)
-
-    pending_solutions: int = 0
-    pending_incidents: list[int] = Field(default_factory=list)
-
-    unknown_solutions: int = 0
-    unknown_incidents: list[int] = Field(default_factory=list)
-
-
-@with_db_recovery
-async def get_success_rate(
-    kai_ctx: KaiSolutionServerContext,
-    violation_ids: list[ViolationID],
-) -> list[SuccessRateMetric] | None:
-    result: list[SuccessRateMetric] = []
-
-    if len(violation_ids) == 0:
-        return result
-
-    if kai_ctx.session_maker is None:
-        raise RuntimeError("Session maker not initialized")
-    async with kai_ctx.session_maker.begin() as session:
-        violations_where = or_(  # type: ignore[arg-type]
-            and_(
-                DBViolation.ruleset_name == violation_id.ruleset_name,
-                DBViolation.violation_name == violation_id.violation_name,
-            )
-            for violation_id in violation_ids
-        )
-
-        violations_stmt = select(DBViolation).where(violations_where)
-        violations = (await session.execute(violations_stmt)).scalars().all()
-
-        for violation in violations:
-            metric = SuccessRateMetric(
-                violation_id=ViolationID(
-                    ruleset_name=violation.ruleset_name,
-                    violation_name=violation.violation_name,
-                ),
-            )
-
-            for incident in violation.incidents:
-                if incident.solution is None:
-                    continue
-
-                # FIXME: This should be automatic, but its not
-                incident.solution.update_solution_status()
-
-                # TODO: Make this cleaner
-                metric.counted_solutions += 1
-
-                if incident.solution.solution_status == SolutionStatus.ACCEPTED:
-                    metric.accepted_solutions += 1
-                    metric.accepted_incidents.append(incident.id)
-
-                elif incident.solution.solution_status == SolutionStatus.REJECTED:
-                    metric.rejected_solutions += 1
-                    metric.rejected_incidents.append(incident.id)
-
-                elif incident.solution.solution_status == SolutionStatus.MODIFIED:
-                    metric.modified_solutions += 1
-                    metric.modified_incidents.append(incident.id)
-
-                elif incident.solution.solution_status == SolutionStatus.PENDING:
-                    metric.pending_solutions += 1
-                    metric.pending_incidents.append(incident.id)
-
-                elif incident.solution.solution_status == SolutionStatus.UNKNOWN:
-                    metric.unknown_solutions += 1
-                    metric.unknown_incidents.append(incident.id)
-
-            result.append(metric)
-
-    return result
 
 
 # TODO: Make this a resource instead of a tool. Need to figure out how to handle
@@ -1012,90 +187,11 @@ async def tool_get_success_rate(
     an empty list is returned. If any of the violations do not exist in the database,
     they are ignored.
     """
-    if ctx.request_context is None:
-        raise RuntimeError("No request context available")
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    kai_ctx = _get_kai_ctx(ctx)
     return await get_success_rate(
         kai_ctx,
         violation_ids,
     )
-
-
-@with_db_recovery
-async def accept_file(
-    kai_ctx: KaiSolutionServerContext,
-    client_id: str,
-    solution_file: SolutionFile,
-) -> None:
-    if kai_ctx.session_maker is None:
-        raise RuntimeError("Session maker not initialized")
-    async with kai_ctx.session_maker.begin() as session:
-        solutions_stmt = select(DBSolution).where(DBSolution.client_id == client_id)
-        solutions = (await session.execute(solutions_stmt)).scalars().all()
-
-        # Files to add or remove from the solution
-        files_to_update: set[tuple[DBSolution, DBFile]] = set()
-
-        for solution in solutions:
-            for file in solution.after:
-                if file.uri != solution_file.uri:
-                    continue
-
-                if file.content == solution_file.content:
-                    file.status = SolutionStatus.ACCEPTED
-                    continue
-
-                files_to_update.add((solution, file))
-
-        if len(files_to_update) != 0:
-            log(
-                f"Updating {len(files_to_update)} files for client {client_id} with URI {solution_file.uri}",
-            )
-            new_file = DBFile(
-                client_id=client_id,
-                uri=solution_file.uri,
-                content=solution_file.content,
-                status=SolutionStatus.MODIFIED,
-                solution_before=set(),
-                solution_after=set(),
-            )
-            session.add(new_file)
-            for solution, old_file in files_to_update:
-                # Remove the old file from the solution
-                solution.after.remove(old_file)
-                solution.after.add(new_file)
-
-                session.add(new_file)
-                session.add(solution)
-
-        await session.flush()
-
-        all_solutions_accepted_or_modified = True
-        for solution in solutions:
-            # FIXME: There is some extreme weirdness going on here. The data in the
-            # database does not update when the object updates, so we have to invalidate
-            # it and refresh it. Also, sometimes the solution status is not updated
-            # automatically?
-            session.expire(solution)
-            await session.refresh(solution)
-            solution.update_solution_status()
-            session.add(solution)
-            await session.flush()
-
-            print(
-                f"Solution {solution.id} status: {solution.solution_status}",
-                file=sys.stderr,
-            )
-
-            if not (
-                solution.solution_status == SolutionStatus.ACCEPTED
-                or solution.solution_status == SolutionStatus.MODIFIED
-            ):
-                all_solutions_accepted_or_modified = False
-                break
-
-    if all_solutions_accepted_or_modified:
-        asyncio.create_task(generate_hint_v3(kai_ctx, client_id))  # type: ignore[unused-awaitable, unused-ignore]
 
 
 @mcp.tool(name="accept_file")
@@ -1104,34 +200,12 @@ async def tool_accept_file(
     client_id: str,
     solution_file: SolutionFile,
 ) -> None:
-    if ctx.request_context is None:
-        raise RuntimeError("No request context available")
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    kai_ctx = _get_kai_ctx(ctx)
     return await accept_file(
         kai_ctx,
         client_id,
         solution_file,
     )
-
-
-@with_db_recovery
-async def reject_file(
-    kai_ctx: KaiSolutionServerContext,
-    client_id: str,
-    file_uri: str,
-) -> None:
-    if kai_ctx.session_maker is None:
-        raise RuntimeError("Session maker not initialized")
-    async with kai_ctx.session_maker.begin() as session:
-        solutions_stmt = select(DBSolution).where(DBSolution.client_id == client_id)
-        solutions = (await session.execute(solutions_stmt)).scalars().all()
-
-        for solution in solutions:
-            for file in solution.after:
-                if file.uri != file_uri:
-                    continue
-
-                file.status = SolutionStatus.REJECTED
 
 
 @mcp.tool(name="reject_file")
@@ -1140,9 +214,7 @@ async def tool_reject_file(
     client_id: str,
     file_uri: str,
 ) -> None:
-    if ctx.request_context is None:
-        raise RuntimeError("No request context available")
-    kai_ctx = cast(KaiSolutionServerContext, ctx.request_context.lifespan_context)
+    kai_ctx = _get_kai_ctx(ctx)
     return await reject_file(
         kai_ctx,
         client_id,
