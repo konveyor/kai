@@ -23,7 +23,7 @@ from kai_commit_miner.classifier.llm_classifier import LLMClassifier
 from kai_commit_miner.client.solution_server import DryRunClient, SolutionServerClient
 from kai_commit_miner.config import AnalyzerBackendType, MinerSettings
 from kai_commit_miner.diff.report_differ import diff_reports
-from kai_commit_miner.git.diff_parser import parse_unified_diff
+from kai_commit_miner.git.diff_parser import FileDiff, parse_unified_diff
 from kai_commit_miner.git.repo import GitRepo
 from kai_commit_miner.migration_inferrer import (
     MigrationInfo,
@@ -61,6 +61,56 @@ def _normalize_report_uris(report: AnalysisReport, worktree_path: str) -> None:
                 continue
             for incident in violation.incidents:
                 incident.uri = _normalize_uri(incident.uri, worktree_path)
+
+
+def _add_rename_summary(
+    unattributed: list[UnattributedChange],
+    renames: list["FileDiff"],
+) -> None:
+    """Summarize bulk renames as a synthetic unattributed change.
+
+    Instead of sending 2500 individual rename entries to the LLM,
+    group by common prefix change and add one summary entry per pattern.
+    """
+    from collections import Counter
+
+    from kai_commit_miner.git.diff_parser import DiffHunk
+
+    patterns: Counter[tuple[str, str]] = Counter()
+    for fd in renames:
+        old_parts = fd.old_path.split("/")
+        new_parts = fd.new_path.split("/")
+        # Find the first diverging directory
+        common_len = 0
+        for o, n in zip(old_parts, new_parts):
+            if o == n:
+                common_len += 1
+            else:
+                old_prefix = "/".join(old_parts[: common_len + 1])
+                new_prefix = "/".join(new_parts[: common_len + 1])
+                patterns[(old_prefix, new_prefix)] += 1
+                break
+
+    for (old_prefix, new_prefix), count in patterns.most_common():
+        summary = (
+            f"# {count} files renamed: {old_prefix}/ -> {new_prefix}/\n"
+            f"# This is a directory structure migration pattern.\n"
+            f"# Example: {renames[0].old_path} -> {renames[0].new_path}"
+        )
+        unattributed.append(
+            UnattributedChange(
+                file_path=f"{old_prefix}/ (rename pattern)",
+                hunks=[
+                    DiffHunk(
+                        old_start=0,
+                        old_count=0,
+                        new_start=0,
+                        new_count=0,
+                        content=summary,
+                    )
+                ],
+            )
+        )
 
 
 @dataclass
@@ -256,6 +306,10 @@ class MiningPipeline:
                 for fd in file_diffs
                 if fd.hunks
             ]
+            # Summarize rename patterns as synthetic unattributed changes
+            renames = [fd for fd in file_diffs if fd.is_renamed and not fd.hunks]
+            if renames:
+                _add_rename_summary(unattributed, renames)
             print(
                 f"  {len(unattributed)} file changes (all unattributed)",
                 file=sys.stderr,
@@ -267,6 +321,7 @@ class MiningPipeline:
             model=model,
             migration_description=migration_desc,
             known_rulesets=known_rulesets,
+            max_prompt_tokens=self.settings.max_prompt_tokens,
         )
 
         classification = await classifier.classify_commit_pair(

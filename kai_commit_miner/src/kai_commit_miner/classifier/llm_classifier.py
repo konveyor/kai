@@ -40,10 +40,12 @@ class LLMClassifier:
         model: BaseChatModel,
         migration_description: str,
         known_rulesets: list[str],
+        max_prompt_tokens: int = 16000,
     ) -> None:
         self.model = model
         self.migration_description = migration_description
         self.known_rulesets = known_rulesets
+        self.max_prompt_tokens = max_prompt_tokens
         self._accumulated_hints: dict[ViolationID, str] = {}
         self._known_violation_names: set[str] = set()
         # LLM call tracking
@@ -236,23 +238,130 @@ class LLMClassifier:
         commit_before: str,
         commit_after: str,
     ) -> list[RuleCandidate]:
-        prompt = build_rule_discovery_prompt(
-            migration_description=self.migration_description,
-            known_rulesets=self.known_rulesets,
-            known_violation_names=sorted(self._known_violation_names),
-            unattributed_changes=unattributed_changes,
-            commit_before=commit_before,
-            commit_after=commit_after,
+        # Chunk changes by file category so each gets focused attention
+        chunks = _chunk_by_category(unattributed_changes, self.max_prompt_tokens)
+        all_candidates: list[RuleCandidate] = []
+
+        for label, chunk in chunks:
+            if not chunk:
+                continue
+            print(f"    Rules: {label} ({len(chunk)} files)...", file=sys.stderr)
+            prompt = build_rule_discovery_prompt(
+                migration_description=self.migration_description,
+                known_rulesets=self.known_rulesets,
+                known_violation_names=sorted(self._known_violation_names),
+                unattributed_changes=chunk,
+                commit_before=commit_before,
+                commit_after=commit_after,
+            )
+
+            try:
+                self.llm_calls += 1
+                response = await self.model.ainvoke(prompt)
+                self._track_usage(response)
+                candidates = _parse_rule_candidates(str(response.content), commit_after)
+                all_candidates.extend(candidates)
+                # Add discovered rule IDs to known set so subsequent chunks don't rediscover
+                for c in candidates:
+                    if c.ruleID:
+                        self._known_violation_names.add(c.ruleID)
+            except Exception as e:
+                print(
+                    f"    Warning: rule discovery failed for {label}: {e}",
+                    file=sys.stderr,
+                )
+
+        return all_candidates
+
+
+def _categorize_file(path: str) -> str:
+    """Categorize a file path for chunked rule discovery."""
+    p = path.lower()
+    if p.endswith((".java",)):
+        return "java"
+    if "pom.xml" in p or "build.gradle" in p:
+        return "build"
+    if (
+        p.endswith((".xml", ".properties", ".yaml", ".yml"))
+        and "deploy" not in p
+        and "docker" not in p
+        and "kubernetes" not in p
+    ):
+        return "config"
+    if "docker" in p or "kubernetes" in p or "deploy" in p or "openshift" in p:
+        return "infrastructure"
+    if "(rename pattern)" in p:
+        return "renames"
+    return "other"
+
+
+def _estimate_tokens(changes: list[UnattributedChange]) -> int:
+    """Rough token estimate for a list of changes (1 token ≈ 4 chars)."""
+    total = 0
+    for c in changes:
+        total += len(c.file_path)
+        for h in c.hunks[:5]:
+            total += len(h.content)
+    return total // 4
+
+
+def _chunk_by_category(
+    changes: list[UnattributedChange],
+    max_tokens: int,
+) -> list[tuple[str, list[UnattributedChange]]]:
+    """Group unattributed changes by file category, then split large groups by token budget.
+
+    Returns (label, changes) pairs. Each chunk fits within max_tokens (approximately).
+    Within each category, files are sorted by diff size descending (larger diffs first).
+    """
+    from collections import defaultdict
+
+    by_cat: dict[str, list[UnattributedChange]] = defaultdict(list)
+    for c in changes:
+        cat = _categorize_file(c.file_path)
+        by_cat[cat].append(c)
+
+    # Sort each category by diff size descending (prefer larger, more interesting diffs)
+    for cat in by_cat:
+        by_cat[cat].sort(
+            key=lambda c: sum(len(h.content) for h in c.hunks), reverse=True
         )
 
-        try:
-            self.llm_calls += 1
-            response = await self.model.ainvoke(prompt)
-            self._track_usage(response)
-            return _parse_rule_candidates(str(response.content), commit_after)
-        except Exception as e:
-            print(f"Warning: rule discovery failed: {e}", file=sys.stderr)
-            return []
+    # Prompt overhead (instructions, known rules, etc.) is roughly 2000 tokens
+    budget = max(max_tokens - 2000, 4000)
+
+    chunks: list[tuple[str, list[UnattributedChange]]] = []
+    # Process in a consistent order
+    for cat in ["java", "build", "config", "infrastructure", "renames", "other"]:
+        cat_changes = by_cat.get(cat, [])
+        if not cat_changes:
+            continue
+
+        # Split into sub-chunks if the category exceeds the budget
+        current_chunk: list[UnattributedChange] = []
+        current_tokens = 0
+        chunk_idx = 0
+
+        for change in cat_changes:
+            change_tokens = _estimate_tokens([change])
+            if current_chunk and current_tokens + change_tokens > budget:
+                label = (
+                    f"{cat} ({chunk_idx + 1})"
+                    if chunk_idx > 0 or (current_tokens + change_tokens > budget)
+                    else cat
+                )
+                chunks.append((label, current_chunk))
+                current_chunk = []
+                current_tokens = 0
+                chunk_idx += 1
+            current_chunk.append(change)
+            current_tokens += change_tokens
+
+        if current_chunk:
+            label = f"{cat} ({chunk_idx + 1})" if chunk_idx > 0 else cat
+            chunks.append((label, current_chunk))
+
+    return chunks
 
 
 def _cluster_fixes(fixes: list[AttributedFix]) -> dict[str, list[AttributedFix]]:

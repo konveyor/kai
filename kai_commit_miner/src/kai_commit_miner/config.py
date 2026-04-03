@@ -42,6 +42,9 @@ class MinerSettings(BaseSettings):
 
     # Performance
     cache_dir: Path = Path(".kai_miner_cache")
+    max_prompt_tokens: int = (
+        16000  # Approx max input tokens per LLM call (guides chunking)
+    )
 
     # Dry run mode
     dry_run: bool = False

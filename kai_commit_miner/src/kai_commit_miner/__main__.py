@@ -54,6 +54,12 @@ def main() -> None:
     parser.add_argument(
         "--dry-run-output-dir", type=Path, default=Path(".kai_miner_output")
     )
+    parser.add_argument(
+        "--max-prompt-tokens",
+        type=int,
+        default=16000,
+        help="Approx max input tokens per LLM call (guides chunking)",
+    )
     parser.add_argument("--llm-params-file", type=Path, default=None)
 
     args = parser.parse_args()
@@ -75,6 +81,7 @@ def main() -> None:
         solution_server_url=args.solution_server_url,
         solution_server_client_id=args.client_id,
         cache_dir=args.cache_dir,
+        max_prompt_tokens=args.max_prompt_tokens,
         dry_run=args.dry_run,
         dry_run_output_dir=args.dry_run_output_dir,
         llm_params=llm_params,
