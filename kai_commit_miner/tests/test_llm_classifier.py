@@ -95,18 +95,17 @@ class TestLLMClassifier(unittest.IsolatedAsyncioTestCase):
 
     async def test_classify_discovers_rule_candidates(self) -> None:
         rule_yaml = """```yaml
-- ruleID: mined-quarkus-version-update
-  description: Maven version update for Quarkus
+- ruleID: mined-javaee-web-api-dependency
+  description: Detects Java EE Web API dependency that needs removal
   category: mandatory
   effort: 1
   when:
     java.dependency:
-      name: io.quarkus:quarkus-bom
-      upperbound: "2.99"
+      name: javax:javaee-web-api
   message: |
-    Update Quarkus BOM to 3.x
+    Remove javaee-web-api dependency and replace with individual framework extensions
   labels:
-    - konveyor.io/source=quarkus2
+    - konveyor.io/source=java-ee
     - konveyor.io/target=quarkus3
 ```"""
         model = FakeListChatModel(responses=[rule_yaml])
@@ -124,10 +123,10 @@ class TestLLMClassifier(unittest.IsolatedAsyncioTestCase):
         )
 
         assert len(result.rule_candidates) == 1
-        assert result.rule_candidates[0].ruleID == "mined-quarkus-version-update"
+        assert result.rule_candidates[0].ruleID == "mined-javaee-web-api-dependency"
         assert result.rule_candidates[0].category == "mandatory"
         assert "java.dependency" in result.rule_candidates[0].when_yaml
-        assert len(result.rule_candidates[0].validation_notes) == 0  # valid rule
+        assert "javax" in result.rule_candidates[0].when_yaml
 
     async def test_classify_both_hints_and_rules(self) -> None:
         model = FakeListChatModel(

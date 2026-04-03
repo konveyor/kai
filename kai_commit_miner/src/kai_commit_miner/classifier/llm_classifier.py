@@ -260,6 +260,7 @@ class LLMClassifier:
                 response = await self.model.ainvoke(prompt)
                 self._track_usage(response)
                 candidates = _parse_rule_candidates(str(response.content), commit_after)
+                candidates = _filter_after_state_rules(candidates)
                 all_candidates.extend(candidates)
                 # Add discovered rule IDs to known set so subsequent chunks don't rediscover
                 for c in candidates:
@@ -272,6 +273,38 @@ class LLMClassifier:
                 )
 
         return all_candidates
+
+
+_TARGET_KEYWORDS = {
+    "quarkus",
+    "jakarta",
+    "microprofile",
+    "smallrye",
+    "vertx",
+    "mutiny",
+    "io.quarkus",
+    "jakarta.ee",
+    "eclipse.microprofile",
+}
+
+
+def _filter_after_state_rules(candidates: list[RuleCandidate]) -> list[RuleCandidate]:
+    """Remove rules that detect target/after-state patterns instead of pre-migration ones."""
+    filtered = []
+    for c in candidates:
+        when_lower = c.when_yaml.lower()
+        rule_id_lower = c.ruleID.lower()
+        # Check if the when condition or ruleID references a target framework
+        is_after_state = any(kw in when_lower for kw in _TARGET_KEYWORDS)
+        if is_after_state:
+            print(
+                f"    Filtered after-state rule: {c.ruleID} "
+                f"(when condition references target framework)",
+                file=sys.stderr,
+            )
+            continue
+        filtered.append(c)
+    return filtered
 
 
 def _categorize_file(path: str) -> str:

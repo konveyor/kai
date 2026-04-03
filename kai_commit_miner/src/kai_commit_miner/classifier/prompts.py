@@ -151,6 +151,23 @@ def build_rule_discovery_prompt(
         if len(change.hunks) > 5:
             prompt += f"*({len(change.hunks) - 5} more hunks)*\n"
 
+    # Detect if this chunk is build files and add specific instructions
+    is_build = any(
+        "pom.xml" in c.file_path.lower() or "build.gradle" in c.file_path.lower()
+        for c in unattributed_changes
+    )
+    if is_build:
+        prompt += (
+            "\n## BUILD FILE INSTRUCTIONS\n"
+            "For build files (pom.xml, build.gradle):\n"
+            "- Focus on REMOVED dependencies and configuration (the `-` lines)\n"
+            "- Do NOT create rules that detect the NEW dependencies being added — "
+            "those are the TARGET framework, not what pre-migration code has\n"
+            "- Generate ONE rule per significant dependency that was removed or replaced\n"
+            "- Use `java.dependency` conditions with the OLD groupId:artifactId\n"
+            "- For Maven plugin changes, generate separate rules for each plugin\n\n"
+        )
+
     prompt += (
         "\n## Instructions\n"
         "For each migration pattern in the diffs, generate an analyzer-lsp rule.\n\n"
@@ -158,7 +175,8 @@ def build_rule_discovery_prompt(
         "- The `when` condition detects the OLD (pre-migration) pattern\n"
         "- The `message` explains what to REPLACE it with (the new pattern)\n"
         "- `java.referenced` pattern must be a fully qualified class FROM THE OLD CODE\n"
-        "- `builtin.filecontent` pattern must match OLD file content\n\n"
+        "- `builtin.filecontent` pattern must match OLD file content\n"
+        "- `java.dependency` name must be the OLD dependency, not the new one\n\n"
         "Assess `migration_relevance`:\n"
         "- `high` -- clearly migration-related (old API usage, old config format)\n"
         "- `medium` -- probably migration-related, needs human review\n"
