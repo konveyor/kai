@@ -67,9 +67,9 @@ func TestAnalyzer_RuleSets(t *testing.T) {
 		t.Errorf("expected violation ruleset name 'violation-1', got '%s'", gotViolation[0].Name)
 	}
 
-	// Verify defensive copy — appending to returned slice should not affect internals
-	gotDiscovery = append(gotDiscovery, engine.RuleSet{Name: "extra"})
-	if len(a.discoveryRulesets) != 1 {
+	// Verify defensive copy — mutating returned elements should not affect internals
+	gotDiscovery[0].Name = "mutated"
+	if a.discoveryRulesets[0].Name == "mutated" {
 		t.Error("mutating returned slice should not affect internal discovery rulesets")
 	}
 }
