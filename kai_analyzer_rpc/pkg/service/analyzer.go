@@ -234,15 +234,27 @@ func (a *analyzer) Stop() {
 }
 
 func (a *analyzer) Providers() map[string]provider.InternalProviderClient {
-	return a.initedProviders
+	out := make(map[string]provider.InternalProviderClient, len(a.initedProviders))
+	for k, v := range a.initedProviders {
+		out[k] = v
+	}
+	return out
 }
 
 func (a *analyzer) RuleSets() ([]engine.RuleSet, []engine.RuleSet) {
-	return a.discoveryRulesets, a.violationRulesets
+	discovery := append([]engine.RuleSet(nil), a.discoveryRulesets...)
+	violation := append([]engine.RuleSet(nil), a.violationRulesets...)
+	return discovery, violation
 }
 
 func (a *analyzer) Cache() IncidentsCache {
-	return a.cache
+	snapshot := NewIncidentsCache(a.Logger.WithName("cache-snapshot"))
+	for filePath, entries := range a.cache.Entries() {
+		for _, entry := range entries {
+			snapshot.Add(filePath, entry)
+		}
+	}
+	return snapshot
 }
 
 func (a *analyzer) CachedRuleSets() []konveyor.RuleSet {

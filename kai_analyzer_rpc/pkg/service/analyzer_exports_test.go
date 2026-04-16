@@ -30,6 +30,12 @@ func TestAnalyzer_Providers(t *testing.T) {
 	if _, ok := got["builtin"]; !ok {
 		t.Error("expected 'builtin' provider")
 	}
+
+	// Verify defensive copy — mutating returned map should not affect internal state
+	delete(got, "java")
+	if len(a.initedProviders) != 2 {
+		t.Error("mutating returned map should not affect internal providers")
+	}
 }
 
 func TestAnalyzer_RuleSets(t *testing.T) {
@@ -59,6 +65,12 @@ func TestAnalyzer_RuleSets(t *testing.T) {
 	}
 	if gotViolation[0].Name != "violation-1" {
 		t.Errorf("expected violation ruleset name 'violation-1', got '%s'", gotViolation[0].Name)
+	}
+
+	// Verify defensive copy — appending to returned slice should not affect internals
+	gotDiscovery = append(gotDiscovery, engine.RuleSet{Name: "extra"})
+	if len(a.discoveryRulesets) != 1 {
+		t.Error("mutating returned slice should not affect internal discovery rulesets")
 	}
 }
 
@@ -90,6 +102,12 @@ func TestAnalyzer_Cache(t *testing.T) {
 	}
 	if entries[0].ViolationName != "test-violation" {
 		t.Errorf("expected violation name 'test-violation', got '%s'", entries[0].ViolationName)
+	}
+
+	// Verify defensive copy — mutating returned cache should not affect internals
+	got.Delete("/test/file.java")
+	if a.cache.Len() != 1 {
+		t.Error("mutating returned cache should not affect internal cache")
 	}
 }
 
