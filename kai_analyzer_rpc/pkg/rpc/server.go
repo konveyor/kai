@@ -27,7 +27,7 @@ type Server struct {
 	connections             []net.Conn
 	rules                   string
 	providerConfigFile      string
-	progressReporter        progress.ProgressReporter
+	progressReporter        progress.Reporter
 }
 
 // NewServer creates a new RPC server instance for analyzer communication.
@@ -46,7 +46,7 @@ type Server struct {
 //
 // The progressReporter is passed to the analyzer service and used to emit
 // real-time progress updates during analysis operations.
-func NewServer(ctx context.Context, s *rpc.Server, log logr.Logger, notificationServiceName string, rules string, providerConfigFile string, progressReporter progress.ProgressReporter) *Server {
+func NewServer(ctx context.Context, s *rpc.Server, log logr.Logger, notificationServiceName string, rules string, providerConfigFile string, progressReporter progress.Reporter) *Server {
 	state := rpc.NewState()
 	state.Set("seq", &atomic.Uint64{})
 	return &Server{ctx: ctx,

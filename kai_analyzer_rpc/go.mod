@@ -1,12 +1,12 @@
 module github.com/konveyor/kai-analyzer
 
-go 1.23.12
+go 1.25
 
 require (
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/cenkalti/rpc2 v1.0.4
 	github.com/go-logr/logr v1.4.3
-	github.com/konveyor/analyzer-lsp v0.9.0-alpha.1.0.20251203200919-34d2ff81082b
+	github.com/konveyor/analyzer-lsp v0.9.0-beta.1.0.20260409003728-110b745a8404
 	go.opentelemetry.io/otel v1.35.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.33.0
 	go.opentelemetry.io/otel/sdk v1.35.0
@@ -17,8 +17,8 @@ require (
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	github.com/PaesslerAG/gval v1.2.4 // indirect
 	github.com/antchfx/jsonquery v1.3.0 // indirect
-	github.com/antchfx/xmlquery v1.3.12 // indirect
-	github.com/antchfx/xpath v1.2.4 // indirect
+	github.com/antchfx/xmlquery v1.4.5-0.20250930041715-a4181c99a362 // indirect
+	github.com/antchfx/xpath v1.3.5 // indirect
 	github.com/bufbuild/protocompile v0.10.0 // indirect
 	github.com/cbroglie/mustache v1.4.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect

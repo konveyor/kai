@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/konveyor/analyzer-lsp/progress"
+	progressreporter "github.com/konveyor/analyzer-lsp/progress/reporter"
 	kairpc "github.com/konveyor/kai-analyzer/pkg/rpc"
 	"github.com/konveyor/kai-analyzer/pkg/service"
 	"github.com/konveyor/kai-analyzer/pkg/tracing"
@@ -133,7 +134,7 @@ func main() {
 //
 //	reporter, cleanup := createProgressReporter("stderr", "json", logger)
 //	defer cleanup()
-func createProgressReporter(progressOutput, progressFormat string, l logr.Logger) (progress.ProgressReporter, func()) {
+func createProgressReporter(progressOutput, progressFormat string, l logr.Logger) (progress.Reporter, func()) {
 	// If no progress output specified, use noop reporter (zero overhead)
 	if progressOutput == "" {
 		return progress.NewNoopReporter(), func() {}
@@ -160,15 +161,15 @@ func createProgressReporter(progressOutput, progressFormat string, l logr.Logger
 	}
 
 	// Create the appropriate reporter based on format
-	var reporter progress.ProgressReporter
+	var reporter progress.Reporter
 	switch progressFormat {
 	case "json":
-		reporter = progress.NewJSONReporter(writer)
+		reporter = progressreporter.NewJSONReporter(writer)
 	case "text":
-		reporter = progress.NewTextReporter(writer)
+		reporter = progressreporter.NewTextReporter(writer)
 	default:
 		l.Info("unknown progress format, defaulting to json", "format", progressFormat)
-		reporter = progress.NewJSONReporter(writer)
+		reporter = progressreporter.NewJSONReporter(writer)
 	}
 
 	l.Info("progress reporting enabled", "output", progressOutput, "format", progressFormat)
