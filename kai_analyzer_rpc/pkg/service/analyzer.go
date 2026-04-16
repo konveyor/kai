@@ -33,6 +33,18 @@ type Analyzer interface {
 	Analyze(client *rpc.Client, args Args, response *Response) error
 	NotifyFileChanges(client *rpc.Client, changes NotifyFileChangesArgs, response *NotifyFileChangesResponse) error
 	Stop()
+
+	// Providers returns the initialized provider clients.
+	Providers() map[string]provider.InternalProviderClient
+
+	// RuleSets returns the parsed discovery and violation rulesets.
+	RuleSets() (discovery []engine.RuleSet, violation []engine.RuleSet)
+
+	// Cache returns the incidents cache.
+	Cache() IncidentsCache
+
+	// CachedRuleSets reconstructs RuleSets from the current cache state.
+	CachedRuleSets() []konveyor.RuleSet
 }
 
 type NotifyFileChangesArgs struct {
@@ -62,7 +74,7 @@ type analyzer struct {
 	locations    []string
 	rules        string
 
-	progressReporter progress.ProgressReporter
+	progressReporter progress.Reporter
 
 	updateConditionProvider func(*rpc.Client, map[string]provider.InternalProviderClient, []engine.RuleSet, []engine.RuleSet, logr.Logger, int, string, string) ([]engine.RuleSet, []engine.RuleSet, error)
 }
@@ -221,6 +233,34 @@ func (a *analyzer) Stop() {
 	}
 }
 
+func (a *analyzer) Providers() map[string]provider.InternalProviderClient {
+	out := make(map[string]provider.InternalProviderClient, len(a.initedProviders))
+	for k, v := range a.initedProviders {
+		out[k] = v
+	}
+	return out
+}
+
+func (a *analyzer) RuleSets() ([]engine.RuleSet, []engine.RuleSet) {
+	discovery := append([]engine.RuleSet(nil), a.discoveryRulesets...)
+	violation := append([]engine.RuleSet(nil), a.violationRulesets...)
+	return discovery, violation
+}
+
+func (a *analyzer) Cache() IncidentsCache {
+	snapshot := NewIncidentsCache(a.Logger.WithName("cache-snapshot"))
+	for filePath, entries := range a.cache.Entries() {
+		for _, entry := range entries {
+			snapshot.Add(filePath, entry)
+		}
+	}
+	return snapshot
+}
+
+func (a *analyzer) CachedRuleSets() []konveyor.RuleSet {
+	return a.createRulesetsFromCache()
+}
+
 func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) error {
 	prop := otel.GetTextMapPropagator()
 	ctx := prop.Extract(context.Background(), args.Carrier)
@@ -323,7 +363,7 @@ func (a *analyzer) Analyze(client *rpc.Client, args Args, response *Response) er
 	response.Rulesets = a.createRulesetsFromCache()
 
 	// Report analysis complete
-	progressReporter.Report(progress.ProgressEvent{
+	progressReporter.Report(progress.Event{
 		Stage: progress.StageComplete,
 	})
 

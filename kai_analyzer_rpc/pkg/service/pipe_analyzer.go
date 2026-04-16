@@ -38,11 +38,17 @@ import (
 //   - StageRuleParsing: After rules are loaded (includes total count)
 //
 // Returns an Analyzer instance or an error if initialization fails.
-func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contextLines int, rules, providerConfigFile string, l logr.Logger, progressReporter progress.ProgressReporter) (Analyzer, error) {
+func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contextLines int, rules, providerConfigFile string, l logr.Logger, progressReporter progress.Reporter) (Analyzer, error) {
 	// Emit init event
-	progressReporter.Report(progress.ProgressEvent{
+	progressReporter.Report(progress.Event{
 		Stage: progress.StageInit,
 	})
+
+	// Create a Progress instance for provider progress tracking
+	pg, err := progress.New(progress.WithContext(ctx), progress.WithReporters(progressReporter))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create progress tracker: %w", err)
+	}
 
 	ctx, cancelFunc := context.WithCancel(ctx)
 	defer cancelFunc()
@@ -67,7 +73,7 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 				Location: initConfig.Location,
 			})
 		}
-		providerClient, err := lib.GetProviderClient(config, l)
+		providerClient, err := lib.GetProviderClient(config, l, pg)
 		if err != nil {
 			return nil, err
 		}
@@ -78,7 +84,7 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 		builtinClient, err := lib.GetProviderClient(provider.Config{
 			Name:       "builtin",
 			InitConfig: defaultBuiltinConfigs,
-		}, l)
+		}, l, pg)
 		if err != nil {
 			return nil, err
 		}
@@ -103,7 +109,7 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 	for _, rs := range violationRulesets {
 		totalRules += len(rs.Rules)
 	}
-	progressReporter.Report(progress.ProgressEvent{
+	progressReporter.Report(progress.Event{
 		Stage: progress.StageRuleParsing,
 		Total: totalRules,
 	})
@@ -115,7 +121,7 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 			continue
 		default:
 			l.Info("initing provider", "provider", k)
-			progressReporter.Report(progress.ProgressEvent{
+			progressReporter.Report(progress.Event{
 				Stage:   progress.StageProviderInit,
 				Message: fmt.Sprintf("Initializing %s provider", k),
 			})
@@ -123,7 +129,7 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 			if err != nil {
 				return nil, err
 			}
-			progressReporter.Report(progress.ProgressEvent{
+			progressReporter.Report(progress.Event{
 				Stage:   progress.StageProviderInit,
 				Message: fmt.Sprintf("Provider %s ready", k),
 			})
@@ -138,7 +144,7 @@ func NewPipeAnalyzer(ctx context.Context, limitIncidents, limitCodeSnips, contex
 		builtinClient, err := lib.GetProviderClient(provider.Config{
 			Name:       "builtin",
 			InitConfig: defaultBuiltinConfigs,
-		}, l)
+		}, l, pg)
 		if err != nil {
 			return nil, err
 		}

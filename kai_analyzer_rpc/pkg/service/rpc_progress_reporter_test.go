@@ -39,7 +39,7 @@ func (m *mockRPCNotifier) getNotifications() []notificationCall {
 
 // newRPCProgressReporterForTest creates an RPC progress reporter for testing.
 // This bypasses the NewRPCProgressReporter constructor to allow passing a mock.
-func newRPCProgressReporterForTest(notifier RPCNotifier, logger logr.Logger) progress.ProgressReporter {
+func newRPCProgressReporterForTest(notifier RPCNotifier, logger logr.Logger) progress.Reporter {
 	return &RPCProgressReporter{
 		notifier: notifier,
 		logger:   logger,
@@ -54,7 +54,7 @@ func TestRPCProgressReporter_Report(t *testing.T) {
 	reporter := newRPCProgressReporterForTest(mockNotifier, logr.Discard())
 
 	// Report a progress event
-	event := progress.ProgressEvent{
+	event := progress.Event{
 		Stage:   progress.StageInit,
 		Message: "Starting analysis",
 	}
@@ -71,7 +71,7 @@ func TestRPCProgressReporter_Report(t *testing.T) {
 	}
 
 	// Verify the event was passed correctly
-	if eventArg, ok := notifications[0].args.(progress.ProgressEvent); ok {
+	if eventArg, ok := notifications[0].args.(progress.Event); ok {
 		if eventArg.Stage != progress.StageInit {
 			t.Errorf("expected stage StageInit, got %s", eventArg.Stage)
 		}
@@ -100,7 +100,7 @@ func TestRPCProgressReporter_AllStages(t *testing.T) {
 	}
 
 	for _, stage := range stages {
-		event := progress.ProgressEvent{
+		event := progress.Event{
 			Stage:   stage,
 			Message: string(stage),
 		}
@@ -118,7 +118,7 @@ func TestRPCProgressReporter_AllStages(t *testing.T) {
 			t.Errorf("notification %d: expected method 'analysis.progress', got '%s'", i, notification.method)
 		}
 
-		if eventArg, ok := notification.args.(progress.ProgressEvent); ok {
+		if eventArg, ok := notification.args.(progress.Event); ok {
 			if eventArg.Stage != stages[i] {
 				t.Errorf("notification %d: expected stage %s, got %s", i, stages[i], eventArg.Stage)
 			}
@@ -134,7 +134,7 @@ func TestRPCProgressReporter_WithProgress(t *testing.T) {
 	reporter := newRPCProgressReporterForTest(mockNotifier, logr.Discard())
 
 	// Report progress event with current/total/percent
-	event := progress.ProgressEvent{
+	event := progress.Event{
 		Stage:   progress.StageRuleExecution,
 		Message: "Processing rule xyz",
 		Current: 5,
@@ -149,7 +149,7 @@ func TestRPCProgressReporter_WithProgress(t *testing.T) {
 		t.Fatalf("expected 1 notification, got %d", len(notifications))
 	}
 
-	if eventArg, ok := notifications[0].args.(progress.ProgressEvent); ok {
+	if eventArg, ok := notifications[0].args.(progress.Event); ok {
 		if eventArg.Current != 5 {
 			t.Errorf("expected current 5, got %d", eventArg.Current)
 		}
@@ -167,7 +167,7 @@ func TestRPCProgressReporter_NilNotifier(t *testing.T) {
 	reporter := newRPCProgressReporterForTest(nil, logr.Discard())
 
 	// Should not panic when reporting with nil client
-	event := progress.ProgressEvent{
+	event := progress.Event{
 		Stage: progress.StageInit,
 	}
 	reporter.Report(event)
@@ -185,7 +185,7 @@ func TestRPCProgressReporter_NotifyError(t *testing.T) {
 	reporter := newRPCProgressReporterForTest(mockNotifier, logr.Discard())
 
 	// Should not panic when Notify returns an error
-	event := progress.ProgressEvent{
+	event := progress.Event{
 		Stage: progress.StageInit,
 	}
 	reporter.Report(event)
@@ -212,7 +212,7 @@ func TestMultiProgressReporter_MultipleReporters(t *testing.T) {
 	multiReporter := NewMultiProgressReporter(reporter1, reporter2)
 
 	// Report an event
-	event := progress.ProgressEvent{
+	event := progress.Event{
 		Stage:   progress.StageInit,
 		Message: "Test",
 	}
@@ -235,7 +235,7 @@ func TestMultiProgressReporter_EmptyList(t *testing.T) {
 	multiReporter := NewMultiProgressReporter()
 
 	// Should not panic when reporting
-	event := progress.ProgressEvent{
+	event := progress.Event{
 		Stage: progress.StageInit,
 	}
 	multiReporter.Report(event)
@@ -248,7 +248,7 @@ func TestMultiProgressReporter_NilReporters(t *testing.T) {
 	multiReporter := NewMultiProgressReporter(nil, nil)
 
 	// Should not panic when reporting
-	event := progress.ProgressEvent{
+	event := progress.Event{
 		Stage: progress.StageInit,
 	}
 	multiReporter.Report(event)
@@ -266,7 +266,7 @@ func TestMultiProgressReporter_SingleReporter(t *testing.T) {
 	multiReporter := NewMultiProgressReporter(reporter)
 
 	// Report an event
-	event := progress.ProgressEvent{
+	event := progress.Event{
 		Stage: progress.StageInit,
 	}
 	multiReporter.Report(event)
@@ -287,7 +287,7 @@ func TestMultiProgressReporter_MixedNilAndValid(t *testing.T) {
 	multiReporter := NewMultiProgressReporter(nil, reporter, nil)
 
 	// Report an event
-	event := progress.ProgressEvent{
+	event := progress.Event{
 		Stage: progress.StageInit,
 	}
 	multiReporter.Report(event)
@@ -320,7 +320,7 @@ func TestMultiProgressReporter_ConcurrentReporting(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			for j := 0; j < eventsPerGoroutine; j++ {
-				event := progress.ProgressEvent{
+				event := progress.Event{
 					Stage:   progress.StageRuleExecution,
 					Current: id*eventsPerGoroutine + j,
 					Total:   numGoroutines * eventsPerGoroutine,

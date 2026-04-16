@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/konveyor/analyzer-lsp/progress"
+	progressreporter "github.com/konveyor/analyzer-lsp/progress/reporter"
 )
 
 func TestCreateProgressReporter_Noop(t *testing.T) {
@@ -22,7 +23,7 @@ func TestCreateProgressReporter_Noop(t *testing.T) {
 	}
 
 	// NoopReporter should not panic when reporting
-	reporter.Report(progress.ProgressEvent{
+	reporter.Report(progress.Event{
 		Stage: progress.StageInit,
 	})
 }
@@ -70,7 +71,7 @@ func TestCreateProgressReporter_File(t *testing.T) {
 	}
 
 	// Report an event
-	reporter.Report(progress.ProgressEvent{
+	reporter.Report(progress.Event{
 		Stage: progress.StageInit,
 	})
 
@@ -93,9 +94,9 @@ func TestCreateProgressReporter_InvalidFile(t *testing.T) {
 func TestProgressReporter_JSONFormat(t *testing.T) {
 	// Test that JSON reporter produces valid JSON
 	var buf bytes.Buffer
-	reporter := progress.NewJSONReporter(&buf)
+	reporter := progressreporter.NewJSONReporter(&buf)
 
-	event := progress.ProgressEvent{
+	event := progress.Event{
 		Stage:   progress.StageRuleExecution,
 		Current: 23,
 		Total:   45,
@@ -110,7 +111,7 @@ func TestProgressReporter_JSONFormat(t *testing.T) {
 	}
 
 	// Verify it's valid JSON
-	var parsed progress.ProgressEvent
+	var parsed progress.Event
 	lines := strings.Split(strings.TrimSpace(output), "\n")
 	if err := json.Unmarshal([]byte(lines[0]), &parsed); err != nil {
 		t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
@@ -144,9 +145,9 @@ func TestProgressReporter_JSONFormat(t *testing.T) {
 func TestProgressReporter_TextFormat(t *testing.T) {
 	// Test that text reporter produces human-readable output
 	var buf bytes.Buffer
-	reporter := progress.NewTextReporter(&buf)
+	reporter := progressreporter.NewTextReporter(&buf)
 
-	event := progress.ProgressEvent{
+	event := progress.Event{
 		Stage:   progress.StageRuleExecution,
 		Current: 23,
 		Total:   45,
@@ -168,7 +169,7 @@ func TestProgressReporter_TextFormat(t *testing.T) {
 func TestProgressReporter_AllStages(t *testing.T) {
 	// Test that all stages can be reported without errors
 	var buf bytes.Buffer
-	reporter := progress.NewJSONReporter(&buf)
+	reporter := progressreporter.NewJSONReporter(&buf)
 
 	stages := []progress.Stage{
 		progress.StageInit,
@@ -179,7 +180,7 @@ func TestProgressReporter_AllStages(t *testing.T) {
 	}
 
 	for _, stage := range stages {
-		reporter.Report(progress.ProgressEvent{
+		reporter.Report(progress.Event{
 			Stage: stage,
 		})
 	}
@@ -193,7 +194,7 @@ func TestProgressReporter_AllStages(t *testing.T) {
 
 	// Verify each line is valid JSON
 	for i, line := range lines {
-		var event progress.ProgressEvent
+		var event progress.Event
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
 			t.Errorf("Line %d: failed to parse JSON: %v", i, err)
 		}

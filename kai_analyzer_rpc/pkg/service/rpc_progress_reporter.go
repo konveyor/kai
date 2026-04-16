@@ -14,7 +14,7 @@ type RPCNotifier interface {
 
 // RPCProgressReporter sends progress notifications through the RPC channel.
 //
-// This reporter implements progress.ProgressReporter by sending events
+// This reporter implements progress.Reporter by sending events
 // as RPC notifications to the "analysis.progress" method. This allows
 // clients to receive real-time progress updates through the established
 // RPC channel without parsing stderr/stdout streams.
@@ -40,7 +40,7 @@ type RPCProgressReporter struct {
 //   - logger: Logger for error handling and debugging
 //
 // Returns a ProgressReporter that sends events via RPC notifications.
-func NewRPCProgressReporter(client *rpc.Client, logger logr.Logger) progress.ProgressReporter {
+func NewRPCProgressReporter(client *rpc.Client, logger logr.Logger) progress.Reporter {
 	return &RPCProgressReporter{
 		notifier: client,
 		logger:   logger,
@@ -49,13 +49,13 @@ func NewRPCProgressReporter(client *rpc.Client, logger logr.Logger) progress.Pro
 
 // Report sends a progress event as an RPC notification.
 //
-// This method implements progress.ProgressReporter.Report() by sending
+// This method implements progress.Reporter.Report() by sending
 // the event to the "analysis.progress" notification endpoint. Errors
 // are logged but do not disrupt the analysis process.
 //
 // The method is safe for concurrent use and does not block, as
 // rpc.Client.Notify() is non-blocking.
-func (r *RPCProgressReporter) Report(event progress.ProgressEvent) {
+func (r *RPCProgressReporter) Report(event progress.Event) {
 	if r.notifier == nil {
 		r.logger.V(5).Info("RPC notifier is nil, skipping progress notification")
 		return

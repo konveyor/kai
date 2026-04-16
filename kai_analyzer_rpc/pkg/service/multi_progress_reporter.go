@@ -13,7 +13,7 @@ import (
 // The reporter is safe for concurrent use as it delegates to the underlying
 // reporters, which are required to be thread-safe.
 type MultiProgressReporter struct {
-	reporters []progress.ProgressReporter
+	reporters []progress.Reporter
 }
 
 // NewMultiProgressReporter creates a progress reporter that sends to multiple destinations.
@@ -24,9 +24,9 @@ type MultiProgressReporter struct {
 // Returns a ProgressReporter that forwards events to all provided reporters.
 // If the list is empty, returns a noop reporter. If there's only one reporter,
 // returns that reporter directly for efficiency.
-func NewMultiProgressReporter(reporters ...progress.ProgressReporter) progress.ProgressReporter {
+func NewMultiProgressReporter(reporters ...progress.Reporter) progress.Reporter {
 	// Filter out nil reporters
-	validReporters := make([]progress.ProgressReporter, 0, len(reporters))
+	validReporters := make([]progress.Reporter, 0, len(reporters))
 	for _, r := range reporters {
 		if r != nil {
 			validReporters = append(validReporters, r)
@@ -46,12 +46,12 @@ func NewMultiProgressReporter(reporters ...progress.ProgressReporter) progress.P
 
 // Report sends the progress event to all configured reporters.
 //
-// This method implements progress.ProgressReporter.Report() by forwarding
+// This method implements progress.Reporter.Report() by forwarding
 // the event to each underlying reporter. If a reporter fails, the error
 // is handled internally by that reporter and does not affect other reporters.
 //
 // The method is safe for concurrent use.
-func (m *MultiProgressReporter) Report(event progress.ProgressEvent) {
+func (m *MultiProgressReporter) Report(event progress.Event) {
 	for _, reporter := range m.reporters {
 		reporter.Report(event)
 	}
