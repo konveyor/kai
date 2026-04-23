@@ -494,3 +494,78 @@ class DBHint(Base):
 
     def __neq__(self, other: object) -> bool:
         return not self.__eq__(other)
+
+
+# --- Collection tables for grouping mined solutions ---
+
+collection_solution_association_table = Table(
+    "kai_collection_solution_association",
+    Base.metadata,
+    Column(
+        "collection_id",
+        ForeignKey("kai_collections.id", ondelete="CASCADE", onupdate="CASCADE"),
+    ),
+    Column(
+        "solution_id",
+        ForeignKey("kai_solutions.id", ondelete="CASCADE", onupdate="CASCADE"),
+    ),
+)
+
+collection_incident_association_table = Table(
+    "kai_collection_incident_association",
+    Base.metadata,
+    Column(
+        "collection_id",
+        ForeignKey("kai_collections.id", ondelete="CASCADE", onupdate="CASCADE"),
+    ),
+    Column(
+        "incident_id",
+        ForeignKey("kai_incidents.id", ondelete="CASCADE", onupdate="CASCADE"),
+    ),
+)
+
+
+class DBCollection(Base):
+    __tablename__ = "kai_collections"
+
+    id: Mapped[int] = mapped_column(init=False, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(unique=True)
+    description: Mapped[str | None] = mapped_column(default=None)
+    source_repo: Mapped[str | None] = mapped_column(default=None)
+    migration_type: Mapped[str | None] = mapped_column(default=None)
+    metadata_: Mapped[dict[str, Any]] = mapped_column("metadata", default_factory=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        init=False,
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        init=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    solutions: Mapped[set["DBSolution"]] = relationship(
+        secondary=collection_solution_association_table,
+        lazy="selectin",
+        default_factory=set,
+    )
+    incidents: Mapped[set["DBIncident"]] = relationship(
+        secondary=collection_incident_association_table,
+        lazy="selectin",
+        default_factory=set,
+    )
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, DBCollection):
+            raise NotImplementedError(f"Cannot compare DBCollection with {type(other)}")
+        return self.id == other.id
+
+    def __neq__(self, other: object) -> bool:
+        return not self.__eq__(other)

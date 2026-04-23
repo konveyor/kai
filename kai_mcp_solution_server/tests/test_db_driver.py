@@ -1,7 +1,5 @@
-from kai_mcp_solution_server.server import (
-    KaiSolutionServerContext,
-    SolutionServerSettings,
-)
+from kai_mcp_solution_server.resources import KaiSolutionServerContext
+from kai_mcp_solution_server.settings import SolutionServerSettings
 
 
 async def main() -> None:
