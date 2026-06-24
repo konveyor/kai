@@ -36,8 +36,8 @@ from kai_mcp_solution_server.db.python_objects import (
     SolutionStatus,
     ViolationID,
     associate_files,
-    get_diff,
 )
+from kai_mcp_solution_server.prompts import render_prompt
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -569,158 +569,6 @@ async def tool_create_solution(
 
 
 @with_db_recovery
-async def generate_hint_v1(
-    kai_ctx: KaiSolutionServerContext,
-    client_id: str,
-) -> None:
-    if kai_ctx.session_maker is None:
-        raise RuntimeError("Session maker not initialized")
-    async with kai_ctx.session_maker.begin() as session:
-        solutions_stmt = select(DBSolution).where(
-            DBSolution.client_id == client_id,
-            or_(
-                DBSolution.solution_status == SolutionStatus.ACCEPTED,
-                DBSolution.solution_status == SolutionStatus.MODIFIED,
-            ),
-        )
-        solutions = (await session.execute(solutions_stmt)).scalars().all()
-        if len(solutions) == 0:
-            log(
-                f"No accepted or modified solutions found for client {client_id}. No hint generated."
-            )
-            return
-
-        for solution in solutions:
-            prompt = (
-                "The following incidents had this accepted solution. "
-                "Generate a hint for the user so that they can perform the same solution:\n"
-            )
-
-            for i, incident in enumerate(solution.incidents):
-                prompt += (
-                    f"Incident {i + 1}:\n"
-                    f"  URI: {incident.uri}\n"
-                    f"  Message: {incident.message}\n"
-                    f"  Code Snippet: {incident.code_snip}\n"
-                    f"  Line Number: {incident.line_number}\n"
-                    f"  Variables: {incident.variables}\n"
-                    f"  Violation: {incident.violation.ruleset_name} - "
-                    f"  {incident.violation.violation_name}\n\n"
-                )
-
-            diff = get_diff(
-                [SolutionFile(uri=f.uri, content=f.content) for f in solution.before],
-                [SolutionFile(uri=f.uri, content=f.content) for f in solution.after],
-            )
-
-            prompt += "Solution:\n" f"{diff}\n\n"
-
-            log(f"Generating hint for client {client_id} with prompt:\n{prompt}")
-
-            if kai_ctx.model is None:
-                raise RuntimeError("Model not initialized")
-            response = await kai_ctx.model.ainvoke(prompt)
-
-            log(f"Generated hint: {response.content}")
-
-            hint = DBHint(
-                text=str(response.content),
-                violations=set(
-                    incident.violation
-                    for incident in solution.incidents
-                    if incident.violation is not None
-                ),
-                solutions=set([solution]),
-            )
-            session.add(hint)
-
-            await session.flush()
-
-
-@with_db_recovery
-async def generate_hint_v2(
-    kai_ctx: KaiSolutionServerContext,
-    client_id: str,
-) -> None:
-    # print(f"Generating hint for client {client_id}", file=sys.stderr)
-    if kai_ctx.session_maker is None:
-        raise RuntimeError("Session maker not initialized")
-    async with kai_ctx.session_maker.begin() as session:
-        solutions_stmt = select(DBSolution).where(
-            DBSolution.client_id == client_id,
-            or_(
-                DBSolution.solution_status == SolutionStatus.ACCEPTED,
-                DBSolution.solution_status == SolutionStatus.MODIFIED,
-            ),
-        )
-        solutions = (await session.execute(solutions_stmt)).scalars().all()
-        if len(solutions) == 0:
-            print(
-                f"No accepted solutions found for client {client_id}. No hint generated.",
-                file=sys.stderr,
-            )
-            return
-
-        for solution in solutions:
-            prompt = (
-                "The following incidents had this accepted solution. "
-                "Generate a hint for the user so that they can create the same solution:\n"
-            )
-
-            for i, incident in enumerate(solution.incidents):
-                prompt += (
-                    f"Incident {i + 1}:\n"
-                    f"  URI: {incident.uri}\n"
-                    f"  Message: {incident.message}\n"
-                    f"  Code Snippet: {incident.code_snip}\n"
-                    f"  Line Number: {incident.line_number}\n"
-                    f"  Variables: {incident.variables}\n"
-                    f"  Violation: {incident.violation.ruleset_name} - "
-                    f"  {incident.violation.violation_name}\n\n"
-                )
-
-            diff = associate_files(
-                [SolutionFile(uri=f.uri, content=f.content) for f in solution.before],
-                [SolutionFile(uri=f.uri, content=f.content) for f in solution.after],
-            )
-
-            ast_diffs: list[dict[str, Any]] = []
-            for (_before_uri, _after_uri), (before_file, after_file) in diff.items():
-                if before_file.content == after_file.content:
-                    continue
-
-                ast_diffs.append(
-                    extract_ast_info(before_file.content, language=Language.JAVA).diff(
-                        extract_ast_info(after_file.content, language=Language.JAVA)
-                    )
-                )
-
-            ast_diff_str = "\n\n".join(str(a) for a in ast_diffs if a is not None)
-            prompt += f"AST Diff:\n{ast_diff_str}\n\n"
-
-            # print(f"Generating hint for client {client_id} with prompt:\n{prompt}", file=sys.stderr)
-
-            if kai_ctx.model is None:
-                raise RuntimeError("Model not initialized")
-            response = await kai_ctx.model.ainvoke(prompt)
-
-            # print(f"Generated hint: {response.content}", file=sys.stderr)
-
-            hint = DBHint(
-                text=str(response.content),
-                violations=set(
-                    incident.violation
-                    for incident in solution.incidents
-                    if incident.violation is not None
-                ),
-                solutions=set([solution]),
-            )
-            session.add(hint)
-
-            await session.flush()
-
-
-@with_db_recovery
 async def generate_hint_v3(
     kai_ctx: KaiSolutionServerContext,
     client_id: str,
@@ -747,37 +595,6 @@ async def generate_hint_v3(
             return
 
         for solution in solutions:
-            prompt = (
-                "The following incidents had this accepted solution. "
-                "Use the AST diffs below as a guiding pattern for migration.\n\n"
-                "Generate a hint for the user so that they can migrate the code.\n\n"
-                "IMPORTANT: Follow this EXACT output format:\n"
-                "---\n"
-                "SUMMARY:\n"
-                "[concise summary of necessary changes]\n\n"
-                "HINT:\n"
-                "[numbered steps with generic, reusable code examples]\n"
-                "---\n\n"
-                "Guidelines for high-quality response:\n"
-                "1. Keep SUMMARY concise and focused\n"
-                "2. Use numbered steps (1, 2, 3) in HINT section\n"
-                "3. Provide generic before/after code examples that can be reused and mark them as examples (e.g. 'Example 1: Before: ... After: ...')\n"
-                "4. Write in direct, actionable tone\n"
-                "Incidents:\n"
-            )
-
-            for i, incident in enumerate(solution.incidents):
-                prompt += (
-                    f"Incident {i + 1}:\n"
-                    f"  URI: {incident.uri}\n"
-                    f"  Message: {incident.message}\n"
-                    f"  Code Snippet: {incident.code_snip}\n"
-                    f"  Line Number: {incident.line_number}\n"
-                    f"  Variables: {incident.variables}\n"
-                    f"  Violation: {incident.violation.ruleset_name} - "
-                    f"  {incident.violation.violation_name}\n\n"
-                )
-
             diff = associate_files(
                 [SolutionFile(uri=f.uri, content=f.content) for f in solution.before],
                 [SolutionFile(uri=f.uri, content=f.content) for f in solution.after],
@@ -795,7 +612,12 @@ async def generate_hint_v3(
                 )
 
             ast_diff_str = "\n\n".join(str(a) for a in ast_diffs if a is not None)
-            prompt += f"AST Diff:\n{ast_diff_str}\n\n"
+
+            prompt = render_prompt(
+                "generate_hint_v3",
+                incidents=solution.incidents,
+                ast_diff_str=ast_diff_str,
+            )
 
             if kai_ctx.model is None:
                 raise RuntimeError("Model not initialized")
