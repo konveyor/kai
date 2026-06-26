@@ -69,5 +69,8 @@ def test_v3_preserves_migration_scaffolding(name: str) -> None:
     for incident in incidents:
         assert incident.uri in rendered
         assert incident.message in rendered
+        assert incident.code_snip in rendered
+        assert str(incident.line_number) in rendered
+        assert str(incident.variables) in rendered
         assert incident.violation.violation_name in rendered
     assert ast_diff_str in rendered

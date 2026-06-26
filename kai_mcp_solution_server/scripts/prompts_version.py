@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 import re
 import sys
+import tomllib
 from pathlib import Path
 
 import yaml
@@ -29,6 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PROMPTS_DIR = ROOT / "src" / "kai_mcp_solution_server" / "prompts"
 TEMPLATES_DIR = PROMPTS_DIR / "templates"
 MANIFEST_PATH = PROMPTS_DIR / "manifest.yaml"
+PYPROJECT_PATH = ROOT / "pyproject.toml"
 
 # Matches a leftover Python f-string placeholder like ``{incident.uri}`` while
 # ignoring Jinja's own ``{{ ... }}`` / ``{% ... %}``.
@@ -48,6 +50,17 @@ def check() -> int:
     templates = manifest.get("templates", [])
     problems: list[str] = []
     env = Environment()  # noqa: S701  # nosec B701 - parses templates, never renders
+
+    # The prompt-set version must stay in lockstep with the package version so
+    # release metadata can't drift (see PROMPT_GOVERNANCE.md).
+    pkg_version = (
+        tomllib.loads(PYPROJECT_PATH.read_text()).get("project", {}).get("version")
+    )
+    if manifest.get("version") != pkg_version:
+        problems.append(
+            f"Prompt-set version ({manifest.get('version')}) does not match the package "
+            f"version in pyproject.toml ({pkg_version}). Keep them in lockstep."
+        )
 
     on_disk = {p.relative_to(ROOT).as_posix() for p in TEMPLATES_DIR.rglob("*.jinja")}
     declared = {t["path"] for t in templates}
