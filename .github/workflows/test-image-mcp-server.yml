@@ -1,0 +1,116 @@
+name: MCP Server Image Smoke Test
+
+# Builds the deployed container image and exercises it end-to-end. Every other
+# test runs the server from source against the pinned lockfile, so nothing
+# verified the *image*, which resolves dependencies at build time. That gap is
+# exactly what let issue #934 through: a rebuild floated fastmcp to a major
+# version whose MCP SDK enables DNS-rebinding protection by default, and the
+# server started returning HTTP 421 for every request arriving through an ingress
+# with a mismatched Host header.
+
+on:
+  pull_request:
+    paths:
+      - 'kai_mcp_solution_server/**'
+      - '.github/workflows/test-image-mcp-server.yml'
+  push:
+    branches:
+      - main
+      - 'release-*'
+    paths:
+      - 'kai_mcp_solution_server/**'
+      - '.github/workflows/test-image-mcp-server.yml'
+
+jobs:
+  image-host-header:
+    name: Built image accepts a proxied Host header
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the solution server image
+        run: |
+          docker build \
+            -f kai_mcp_solution_server/tools/deploy/Containerfile \
+            -t kai-solution-server:ci \
+            kai_mcp_solution_server
+
+      - name: Assert the image did not resolve a breaking fastmcp major
+        run: |
+          # The image installs from the pinned requirements.txt (fastmcp 2.x).
+          # A jump to 3.x re-enables DNS-rebinding protection by default (#934),
+          # so pin the invariant here too: a deliberate 3.x bump must also add
+          # explicit transport_security config and update this check.
+          version=$(docker run --rm --entrypoint pip3.12 kai-solution-server:ci \
+            show fastmcp | awk '/^Version:/ {print $2}')
+          echo "Image fastmcp version: ${version}"
+          major=${version%%.*}
+          if [ "${major}" != "2" ]; then
+            echo "::error::Image resolved fastmcp ${version}; expected 2.x (see issue #934)"
+            exit 1
+          fi
+
+      - name: Start the container (streamable-http)
+        run: |
+          docker run -d --name kai-api \
+            -p 8000:8000 \
+            -e KAI_DB_DSN="sqlite+aiosqlite:////data/kai.db" \
+            -e KAI_LLM_PARAMS='{"model": "fake"}' \
+            kai-solution-server:ci
+
+      - name: Wait for the server to become ready
+        run: |
+          body='{"jsonrpc":"2.0","method":"initialize","id":0,"params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"probe","version":"0.0.0"}}}'
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X POST http://localhost:8000/ \
+              -H "Host: localhost:8000" \
+              -H "Content-Type: application/json" \
+              -H "Accept: application/json, text/event-stream" \
+              -d "${body}" || true)
+            if [ "${code}" != "000" ]; then
+              echo "Server responding (HTTP ${code})"
+              break
+            fi
+            if [ "${i}" -eq 60 ]; then
+              echo "::error::Server did not become ready in time"
+              docker logs kai-api
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: A proxied (mismatched) Host header must not be rejected with 421
+        run: |
+          # Mirrors the issue #934 repro: nginx forwards the external IP as Host.
+          body='{"jsonrpc":"2.0","method":"initialize","id":1,"params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ingress-test","version":"0.0.0"}}}'
+          code=$(curl -s -o /tmp/resp.txt -w "%{http_code}" \
+            -X POST http://localhost:8000/ \
+            -H "Host: 192.168.49.2" \
+            -H "Origin: https://192.168.49.2" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json, text/event-stream" \
+            -d "${body}")
+          echo "HTTP ${code}"
+          head -c 500 /tmp/resp.txt || true
+          echo
+          if [ "${code}" = "421" ]; then
+            echo "::error::Built image returned HTTP 421 for a proxied Host header — DNS-rebinding regression (issue #934)"
+            docker logs kai-api
+            exit 1
+          fi
+          if [ "${code}" != "200" ]; then
+            echo "::error::Expected HTTP 200 for initialize, got ${code}"
+            docker logs kai-api
+            exit 1
+          fi
+
+      - name: Container logs
+        if: always()
+        run: docker logs kai-api || true
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f kai-api || true

@@ -44,7 +44,7 @@ T = TypeVar("T")
 
 
 def with_db_recovery(
-    func: Callable[..., Coroutine[Any, Any, T]]
+    func: Callable[..., Coroutine[Any, Any, T]],
 ) -> Callable[..., Coroutine[Any, Any, T]]:
     """Decorator to execute database operations with automatic recovery on connection errors.
 
@@ -297,6 +297,15 @@ async def kai_solution_server_lifespan(
         raise e
 
 
+# NOTE: This server is deployed behind a trusted cluster ingress whose external
+# Host/Origin header (OpenShift route, minikube IP, etc.) is unknowable at build
+# time. The MCP SDK's DNS-rebinding protection MUST stay disabled or it returns
+# HTTP 421 for every proxied request (see https://github.com/konveyor/kai/issues/934).
+# With the pinned fastmcp (<3, see pyproject.toml) the underlying mcp SDK leaves
+# that protection off by default, so no explicit configuration is needed here.
+# If fastmcp is ever bumped to 3.x, this default flips: pass an explicit
+# transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False)
+# (or a proper allowed_hosts allowlist) to whatever FastMCP 3.x exposes.
 mcp: FastMCP[KaiSolutionServerContext] = FastMCP(
     "KaiSolutionServer", lifespan=kai_solution_server_lifespan
 )
