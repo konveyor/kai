@@ -11,10 +11,17 @@ RUN dnf --refresh -y update \
 # Copy project files
 COPY src/ src/
 COPY pyproject.toml .
+COPY requirements.txt .
 COPY README.md .
 
-# Install Python dependencies
-RUN pip3.12 install --no-cache-dir .
+# Install Python dependencies from the pinned lockfile export, then the
+# package itself without re-resolving. Installing `.` alone resolves the
+# pyproject floors at build time, which let fastmcp drift onto 3.4.3 —
+# whose Host/Origin guard 421s every request behind an ingress proxy.
+# Pinning to requirements.txt (fastmcp==2.14.3, mcp==1.25.0, ...) keeps the
+# image reproducible and matches what the project actually tests against.
+RUN pip3.12 install --no-cache-dir -r requirements.txt \
+ && pip3.12 install --no-cache-dir --no-deps .
 
 # Create a non-root user
 RUN useradd -m mcp
