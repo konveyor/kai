@@ -8,7 +8,10 @@ dependencies = [
   "aiosqlite>=0.21.0",
   "alembic>=1.15.2",
   "asyncpg>=0.30.0",
-  "fastmcp>=2.8.0",
+  # Upper bound pinned to the tested major: a fresh resolution across a major
+  # version enabled DNS-rebinding protection by default and broke ingress
+  # deployments (issue #934). Bump deliberately, not incidentally.
+  "fastmcp>=2.8.0,<3",
   "langchain>=1.2.4",
   "langchain-aws>=1.2.1",
   "langchain-azure-ai>=1.0.0",
