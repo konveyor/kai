@@ -77,6 +77,7 @@ func (s *Server) Accept(pipePath string) {
 	}
 	s.log.Info("handle analysis")
 	s.Server.Handle("analysis_engine.Analyze", analyzerService.Analyze)
+	s.Server.Handle("analysis_engine.NotifyFileChanges", analyzerService.NotifyFileChanges)
 	// Register pipe analysis handler
 	for {
 		conn, err := l.Accept()
