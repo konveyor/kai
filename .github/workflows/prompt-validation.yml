@@ -1,0 +1,48 @@
+name: Prompt Template Validation (ISO 42001 A.5.2)
+
+# Governance gate for the versioned prompt template set in the solution server.
+# Runs whenever a governed prompt asset, the manifest, the validation script, the
+# render registry, or this workflow changes. Required-status + CODEOWNERS review
+# for the prompts directory are documented in PROMPT_GOVERNANCE.md.
+on:
+  pull_request:
+    paths:
+      - "kai_mcp_solution_server/src/kai_mcp_solution_server/prompts/**"
+      - "kai_mcp_solution_server/scripts/prompts_version.py"
+      - "kai_mcp_solution_server/tests/prompts/**"
+      - ".github/workflows/prompt-validation.yml"
+  workflow_dispatch:
+
+jobs:
+  validate-prompts:
+    name: Validate prompt templates
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./kai_mcp_solution_server
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync
+
+      # Syntactic verification + version governance: every template declared in
+      # manifest.yaml (and vice-versa), checksums match, Jinja parses, declared
+      # variables match the template's referenced variables, no leftover f-strings.
+      - name: Syntactic & manifest validation
+        run: uv run python scripts/prompts_version.py check
+
+      # Byte-exact parity + deterministic (mock-model) semantic regression.
+      - name: Parity & semantic-regression tests
+        run: uv run python -m pytest tests/prompts -v
