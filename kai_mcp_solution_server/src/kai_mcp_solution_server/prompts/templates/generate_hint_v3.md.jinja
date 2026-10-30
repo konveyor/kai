@@ -1,0 +1,32 @@
+The following incidents had this accepted solution. Use the AST diffs below as a guiding pattern for migration.
+
+Generate a hint for the user so that they can migrate the code.
+
+IMPORTANT: Follow this EXACT output format:
+---
+SUMMARY:
+[concise summary of necessary changes]
+
+HINT:
+[numbered steps with generic, reusable code examples]
+---
+
+Guidelines for high-quality response:
+1. Keep SUMMARY concise and focused
+2. Use numbered steps (1, 2, 3) in HINT section
+3. Provide generic before/after code examples that can be reused and mark them as examples (e.g. 'Example 1: Before: ... After: ...')
+4. Write in direct, actionable tone
+Incidents:
+{% for incident in incidents -%}
+Incident {{ loop.index }}:
+  URI: {{ incident.uri }}
+  Message: {{ incident.message }}
+  Code Snippet: {{ incident.code_snip }}
+  Line Number: {{ incident.line_number }}
+  Variables: {{ incident.variables }}
+  Violation: {{ incident.violation.ruleset_name }} -   {{ incident.violation.violation_name }}
+
+{% endfor -%}
+AST Diff:
+{{ ast_diff_str }}
+
