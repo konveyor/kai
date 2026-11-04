@@ -524,10 +524,7 @@ async function runTests(config: MCPClientConfig): Promise<boolean> {
     try {
       // Create MCP client
       const client = new Client(clientOptions, {
-        capabilities: {
-          tools: {},
-          resources: {},
-        },
+        capabilities: {},
       });
 
       const runWithTimeout = async (): Promise<boolean> => {
