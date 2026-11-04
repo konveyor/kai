@@ -47,6 +47,11 @@ dependencies = [
   # reasoning as the fastmcp cap above).
   "cryptography>=48.0.1,<49",
   "dnspython>=2.9.0",
+  # Transitive (google-auth-httplib2) with no direct floor: the midstream
+  # sync regenerates requirements.txt with `uv pip compile`, which prefers
+  # versions already in the existing output file - without this floor the
+  # stale pin stays valid and security fixes never flow downstream.
+  "httplib2>=0.32.0",
   "langgraph-sdk>=0.4.4",
   "mcp>=1.30.0",
   "python-dotenv>=1.2.2",
