@@ -8,13 +8,13 @@ from uuid import uuid4
 from fastmcp import Client
 from mcp import ClientSession
 from mcp.types import CallToolResult
+from tests.mcp_client import MCPClientArgs
+from tests.mcp_loader_script import create_client
+from tests.ssl_utils import apply_ssl_bypass
 
 from kai_mcp_solution_server.analyzer_types import ExtendedIncident
 from kai_mcp_solution_server.db.python_objects import ViolationID
 from kai_mcp_solution_server.server import GetBestHintResult, SuccessRateMetric
-from tests.mcp_client import MCPClientArgs
-from tests.mcp_loader_script import create_client
-from tests.ssl_utils import apply_ssl_bypass
 
 # TODO: The tracebacks from these tests contain horrible impossibly-to-parse output.
 
@@ -486,6 +486,10 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
 
         2. External server mode: Connect to already-running server
            MCP_SERVER_URL="http://localhost:8000" NUM_CONCURRENT_CLIENTS=100 pytest tests/test_multiple_integration.py::TestMultipleIntegration::test_multiple_users
+
+           The URL's path is kept, so a server mounted behind a prefix (e.g.
+           the operator's deployment, which serves at /api) is addressed as
+           MCP_SERVER_URL="http://kai-solution-server.ns.svc:8000/api".
         """
         # Require external server URL
         external_server_url = os.environ.get("MCP_SERVER_URL")
@@ -496,18 +500,24 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
                 "and set MCP_SERVER_URL=http://localhost:8000"
             )
 
-        # External server mode - parse URL to get host and port
+        # External server mode - parse URL to get host, port and path
         from urllib.parse import urlparse
 
         parsed = urlparse(external_server_url)
         host = parsed.hostname or "localhost"
         port = parsed.port or 8000
-        print(f"Using external MCP server at {host}:{port}")
+        # Keep the path: a deployed server mounts the MCP endpoint at
+        # MOUNT_PATH (e.g. the operator deploys it at /api), and dropping it
+        # sends every request to the root, which 404s. URLs without a path
+        # get "/", which is today's behaviour.
+        mount_path = parsed.path or "/"
+        print(f"Using external MCP server at {host}:{port}{mount_path}")
 
         multiple_user_mcp_args = MCPClientArgs(
             transport="http",
             host=host,
             port=port,
+            mount_path=mount_path,
             insecure=True,
             server_path=None,  # Not needed for external server
         )
@@ -520,7 +530,7 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
             apply_ssl_bypass()
 
             client = Client(
-                transport=f"http://{multiple_user_mcp_args.host}:{multiple_user_mcp_args.port}",
+                transport=f"http://{multiple_user_mcp_args.host}:{multiple_user_mcp_args.port}{multiple_user_mcp_args.mount_path}",
             )
 
             try:
