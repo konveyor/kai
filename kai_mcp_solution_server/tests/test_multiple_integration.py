@@ -473,6 +473,68 @@ class TestMultipleIntegration(unittest.IsolatedAsyncioTestCase):
             print(f"Best hint for {RULESET_NAME_A}/{VIOLATION_NAME_A}: {best_hint}")
             self.assertEqual(best_hint.hint, llm_params["responses"][0])
 
+    async def test_create_solution_rejects_unknown_incident_ids(self) -> None:
+        os.environ["KAI_LLM_PARAMS"] = json.dumps({"model": "fake", "responses": []})
+
+        async with create_client(self.mcp_args) as session:
+            await session.initialize()
+
+            client_id = str(uuid4())
+            other_client_id = str(uuid4())
+
+            create_incident = await self.call_tool(
+                session,
+                "create_incident",
+                {
+                    "client_id": other_client_id,
+                    "extended_incident": ExtendedIncident(
+                        uri="file://src/file_to_smile.txt",
+                        message="this file needs to have a smiley face",
+                        ruleset_name=f"ruleset-{uuid4()}",
+                        violation_name=f"violation-{uuid4()}",
+                    ).model_dump(),
+                },
+            )
+            other_incident_id = int(create_incident.content[0].text)
+
+            solution_args = {
+                "client_id": client_id,
+                "before": [
+                    {
+                        "uri": "file://src/file_to_smile.txt",
+                        "content": "I am very frowny :(",
+                    }
+                ],
+                "after": [
+                    {
+                        "uri": "file://src/file_to_smile.txt",
+                        "content": "I am very smiley :)",
+                    }
+                ],
+                "reasoning": None,
+                "used_hint_ids": None,
+            }
+
+            # An incident ID that does not exist
+            response = await session.call_tool(
+                "create_solution",
+                {**solution_args, "incident_ids": [other_incident_id + 1000]},
+            )
+            self.assertTrue(
+                response.isError,
+                f"Expected create_solution to fail: {response.model_dump()}",
+            )
+
+            # An incident ID that belongs to another client
+            response = await session.call_tool(
+                "create_solution",
+                {**solution_args, "incident_ids": [other_incident_id]},
+            )
+            self.assertTrue(
+                response.isError,
+                f"Expected create_solution to fail: {response.model_dump()}",
+            )
+
     async def test_multiple_users(self) -> None:
         """
         Test multiple concurrent users accessing the MCP server.

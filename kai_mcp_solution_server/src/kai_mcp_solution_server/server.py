@@ -460,6 +460,11 @@ async def create_solution(
         incidents_stmt = select(DBIncident).where(or_(*incident_ids_cond))
         incidents = (await session.execute(incidents_stmt)).scalars().all()
 
+        if missing_incident_ids := set(incident_ids) - {i.id for i in incidents}:
+            raise ValueError(
+                f"Some incident IDs {missing_incident_ids} do not exist in the database for client {client_id}."
+            )
+
         hint_stmt = select(DBHint).where(DBHint.id.in_(used_hint_ids))
         hints = (await session.execute(hint_stmt)).scalars().all()
 
