@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prompt template governance checks (ISO 42001 A.5.2).
+"""Prompt template governance checks (ISO 42001 A.6.1.3).
 
 Validates the versioned prompt template set under
 ``src/kai_mcp_solution_server/prompts/``:
@@ -129,7 +129,7 @@ def update() -> int:
     for entry in manifest.get("templates", []):
         entry["checksum"] = sha256((ROOT / entry["path"]).read_text())
     header = (
-        "# Prompt template manifest — governed under ISO 42001 A.5.2.\n"
+        "# Prompt template manifest — governed under ISO 42001 A.6.1.3.\n"
         "# Checksums are maintained by scripts/prompts_version.py; do not edit by hand.\n"
     )
     MANIFEST_PATH.write_text(

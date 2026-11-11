@@ -1,4 +1,4 @@
-"""Governed prompt templates for the solution server (ISO 42001 A.5.2).
+"""Governed prompt templates for the solution server (ISO 42001 A.6.1.3).
 
 Prompts live as individual Jinja2 assets under ``templates/`` and are rendered
 through :func:`render_prompt`. They are versioned and validated independently of
