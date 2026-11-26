@@ -90,7 +90,7 @@ jobs:
       - name: Build Kai Analyzer
         run: |
           cd kai_analyzer_rpc
-          go build -ldflags="-extldflags=-static" -o kai-analyzer-rpc main.go
+          go build -ldflags="-extldflags=-static -X main.version=${{ inputs.tag || github.ref_name }} -X main.commit=${{ github.sha }}" -o kai-analyzer-rpc main.go
           cd ..
 
       - name: Download Java deps artifact

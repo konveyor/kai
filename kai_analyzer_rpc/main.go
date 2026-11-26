@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"syscall"
 
 	rpc "github.com/cenkalti/rpc2"
@@ -19,7 +20,20 @@ import (
 	"github.com/konveyor/kai-analyzer/pkg/tracing"
 )
 
+// version and commit are set at build time, for example:
+//
+//	go build -ldflags "-X main.version=v0.9.0 -X main.commit=$(git rev-parse HEAD)"
+//
+// When commit is not set the VCS revision recorded by the Go toolchain is
+// used instead, which is only available for builds that do not name main.go
+// on the command line.
+var (
+	version = "dev"
+	commit  = ""
+)
+
 func main() {
+	showVersion := flag.Bool("version", false, "Print the version and commit of this binary and exit")
 	rules := flag.String("rules", "", "Comma separated list of absolute path to rules directories")
 	logFile := flag.String("log-file", "", "This is the file where logs should be stored. By default they will just be written to stderr")
 	serverPipe := flag.String("server-pipe", "", "Path to the pipe to use for bi-directional communication")
@@ -28,10 +42,14 @@ func main() {
 	progressOutput := flag.String("progress-output", "", "Where to write progress events (stderr, stdout, or file path)")
 	progressFormat := flag.String("progress-format", "json", "Format for progress output: text or json")
 
-	// TODO(djzager): We should do verbosity type argument(s)
-	logLevel := slog.Level(*logVerbosity)
-
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(versionString())
+		return
+	}
+
+	// TODO(djzager): We should do verbosity type argument(s)
 	// In the future add cobra for flags maybe
 	// create log file in working directory for now.
 
@@ -39,23 +57,16 @@ func main() {
 	// ChatGPT told me gopls and jdtls default to stderr but I couldn't confirm that
 	// for now I think it's enough to make it configurable to be one or the other.
 	// The editor extension(s) can tee stderr to a temp file.
-	var logger *slog.JSONHandler
-	if logFile != nil && *logFile != "" {
-		file, err := os.Create(*logFile)
-		if err != nil {
-			panic(err)
-		}
-		logger = slog.NewJSONHandler(file, &slog.HandlerOptions{
-			Level: slog.Level(logLevel),
-		})
-	} else {
-		logger = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-			Level: slog.Level(logLevel),
-		})
+	logger, closeLog, err := newLogHandler(*logFile, *logVerbosity)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "unable to create log file: %v\n", err)
+		os.Exit(1)
 	}
+	defer closeLog()
 
 	l := logr.FromSlogHandler(logger)
 
+	l.Info("starting", "version", version, "commit", resolvedCommit())
 	l.Info("args", "rules", rules, "logFile", logFile, "serverPipe", serverPipe, "providerConfig", providerConfigFile, "verbosity", logVerbosity, "progressOutput", progressOutput, "progressFormat", progressFormat)
 
 	// Create progress reporter for stream-based output (stderr/stdout/file).
@@ -69,13 +80,17 @@ func main() {
 		// Set up OpenTelemetry.
 		otelShutdown, err := tracing.SetupOTelSDK(context.Background())
 		if err != nil {
-			return
+			// Tracing is optional, so a failure here should not take the
+			// analyzer down without a word.
+			l.Error(err, "unable to set up tracing, continuing without it")
+		} else {
+			// Handle shutdown properly so nothing leaks.
+			defer func() {
+				if err := otelShutdown(context.Background()); err != nil {
+					l.Error(err, "unable to shut down tracing")
+				}
+			}()
 		}
-
-		// Handle shutdown properly so nothing leaks.
-		defer func() {
-			err = errors.Join(err, otelShutdown(context.Background()))
-		}()
 	}
 	server := rpc.NewServer()
 	notificationService := &service.NotificationService{Logger: l}
@@ -174,4 +189,51 @@ func createProgressReporter(progressOutput, progressFormat string, l logr.Logger
 
 	l.Info("progress reporting enabled", "output", progressOutput, "format", progressFormat)
 	return reporter, cleanup
+}
+
+// newLogHandler builds the JSON log handler for the given log file and
+// verbosity. An empty logFile means stderr. The returned function closes the
+// log file, if one was opened.
+func newLogHandler(logFile string, verbosity int) (*slog.JSONHandler, func(), error) {
+	opts := &slog.HandlerOptions{Level: slog.Level(verbosity)}
+	if logFile == "" {
+		return slog.NewJSONHandler(os.Stderr, opts), func() {}, nil
+	}
+	file, err := os.Create(logFile)
+	if err != nil {
+		return nil, nil, err
+	}
+	return slog.NewJSONHandler(file, opts), func() { file.Close() }, nil
+}
+
+// resolvedCommit returns the commit injected at build time, falling back to
+// the VCS revision stamped by the Go toolchain.
+func resolvedCommit() string {
+	if commit != "" {
+		return commit
+	}
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return "unknown"
+	}
+	rev, modified := "", false
+	for _, setting := range info.Settings {
+		switch setting.Key {
+		case "vcs.revision":
+			rev = setting.Value
+		case "vcs.modified":
+			modified = setting.Value == "true"
+		}
+	}
+	if rev == "" {
+		return "unknown"
+	}
+	if modified {
+		rev += "-dirty"
+	}
+	return rev
+}
+
+func versionString() string {
+	return fmt.Sprintf("version: %s\ncommit: %s", version, resolvedCommit())
 }
