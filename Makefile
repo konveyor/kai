@@ -24,7 +24,7 @@ run-postgres: ## Start a local PostgreSQL container for development
 	$(CONTAINER_RUNTIME) run -it $(POSTGRES_RUN_ARGS) -v data:/var/lib/postgresql/data -e POSTGRES_USER=kai -e POSTGRES_PASSWORD=dog8code -e POSTGRES_DB=kai -p 5432:5432 docker.io/library/postgres:16.3
 
 build-kai-analyzer: ## Build the kai-analyzer-rpc binary
-	cd kai_analyzer_rpc && go build -o kai-analyzer main.go
+	cd kai_analyzer_rpc && go build -ldflags "-X main.version=$$(git describe --tags --always --dirty) -X main.commit=$$(git rev-parse HEAD)" -o kai-analyzer main.go
 
 get-analyzer-deps: ## Download Java analysis dependencies
 	${CONTAINER_RUNTIME} run -d --name=bundle quay.io/konveyor/jdtls-server-base:latest &&\

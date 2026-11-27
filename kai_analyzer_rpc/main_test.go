@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -198,5 +200,116 @@ func TestProgressReporter_AllStages(t *testing.T) {
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
 			t.Errorf("Line %d: failed to parse JSON: %v", i, err)
 		}
+	}
+}
+
+// logLines writes one debug, info and error message through a handler built
+// by newLogHandler and returns the messages that reached the log file.
+func logLines(t *testing.T, verbosity int) []string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "kai.log")
+	handler, closeLog, err := newLogHandler(path, verbosity)
+	if err != nil {
+		t.Fatalf("newLogHandler: %v", err)
+	}
+	l := logr.FromSlogHandler(handler)
+	l.V(1).Info("debug message")
+	l.Info("info message")
+	l.Error(errors.New("boom"), "error message")
+	closeLog()
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading log file: %v", err)
+	}
+	var msgs []string
+	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
+		if line == "" {
+			continue
+		}
+		var entry struct {
+			Msg string `json:"msg"`
+		}
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			t.Fatalf("log line is not JSON: %q: %v", line, err)
+		}
+		msgs = append(msgs, entry.Msg)
+	}
+	return msgs
+}
+
+func TestNewLogHandler_HonorsVerbosity(t *testing.T) {
+	tests := []struct {
+		name      string
+		verbosity int
+		want      []string
+	}{
+		{"debug", -4, []string{"debug message", "info message", "error message"}},
+		{"info", 0, []string{"info message", "error message"}},
+		{"warning", 4, []string{"error message"}},
+		{"error", 8, []string{"error message"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := logLines(t, tt.verbosity)
+			if strings.Join(got, "|") != strings.Join(tt.want, "|") {
+				t.Errorf("verbosity %d logged %v, want %v", tt.verbosity, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNewLogHandler_StderrWhenNoLogFile(t *testing.T) {
+	handler, closeLog, err := newLogHandler("", 0)
+	if err != nil {
+		t.Fatalf("newLogHandler: %v", err)
+	}
+	defer closeLog()
+	if handler == nil {
+		t.Fatal("Expected a handler writing to stderr")
+	}
+}
+
+func TestNewLogHandler_UnwritableLogFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "missing-dir", "kai.log")
+	if _, _, err := newLogHandler(path, 0); err == nil {
+		t.Fatal("Expected an error for a log file in a missing directory")
+	}
+}
+
+func TestVersionString(t *testing.T) {
+	origVersion, origCommit := version, commit
+	defer func() { version, commit = origVersion, origCommit }()
+
+	version, commit = "v1.2.3", "abc123"
+	got := versionString()
+	if got != "version: v1.2.3\ncommit: abc123" {
+		t.Errorf("unexpected version string %q", got)
+	}
+
+	commit = ""
+	if got := resolvedCommit(); got == "" {
+		t.Error("Expected a fallback commit value when none was injected")
+	}
+}
+
+// TestVersionFlag builds the real binary with injected build variables and
+// checks that -version prints them without starting the server.
+func TestVersionFlag(t *testing.T) {
+	bin := filepath.Join(t.TempDir(), "kai-analyzer")
+	build := exec.Command("go", "build",
+		"-ldflags", "-X main.version=v9.9.9 -X main.commit=deadbeef",
+		"-o", bin, ".")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("go build failed: %v\n%s", err, out)
+	}
+
+	out, err := exec.Command(bin, "-version").Output()
+	if err != nil {
+		t.Fatalf("running -version: %v", err)
+	}
+	got := string(out)
+	if !strings.Contains(got, "version: v9.9.9") || !strings.Contains(got, "commit: deadbeef") {
+		t.Errorf("unexpected -version output %q", got)
 	}
 }
